@@ -1456,6 +1456,23 @@
                     </div>
                 </div>
 
+                <!-- USB Information -->
+                <div class="result-card" id="usb-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>🔌 USB</h3>
+                        <span class="count-badge" id="usb-devices-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle collapsed" onclick="toggleSection('usb')">▼</button>
+                    <div class="section-content collapsed" id="usb-content">
+                        <div id="usb-ports-info"></div>
+                        <div class="search-box" style="margin-top: 1rem;">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="usb-search-input" placeholder="Search devices by VID, PID, driver, or interface...">
+                        </div>
+                        <div id="usb-devices-list"></div>
+                    </div>
+                </div>
+
                 <!-- Full Data (JSON) -->
                 <div class="result-card">
                     <div class="section-header">
@@ -1577,7 +1594,9 @@
                 power_history: currentResults.power_history || [],
                 network_info: currentResults.network_info || [],
                 network_stats: currentResults.network_stats || [],
-                sockets: currentResults.sockets || []
+                sockets: currentResults.sockets || [],
+                bluetooth_info: currentResults.bluetooth_info || null,
+                usb_info: currentResults.usb_info || null
             };
             
             const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
@@ -1615,7 +1634,9 @@
                     power_history: currentResults.power_history || [],
                     network_info: currentResults.network_info || [],
                     network_stats: currentResults.network_stats || [],
-                    sockets: currentResults.sockets || []
+                    sockets: currentResults.sockets || [],
+                    bluetooth_info: currentResults.bluetooth_info || null,
+                    usb_info: currentResults.usb_info || null
                 };
                 
                 await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
@@ -2009,6 +2030,9 @@
 
             // Bluetooth info
             displayBluetoothInfo(data);
+
+            // USB info
+            displayUsbInfo(data);
 
             // JSON output
             document.getElementById('json-output').textContent = JSON.stringify(data, null, 2);
@@ -2619,6 +2643,160 @@
                     const networkName = item.getAttribute('data-network-name') || '';
                     
                     if (networkType.includes(query) || networkName.includes(query)) {
+                        item.style.display = 'block';
+                        visibleCount++;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        function displayUsbInfo(data) {
+            const usbCard = document.getElementById('usb-card');
+            const usbPortsInfoEl = document.getElementById('usb-ports-info');
+            const usbDevicesListEl = document.getElementById('usb-devices-list');
+            const countBadge = document.getElementById('usb-devices-count-badge');
+
+            if (!data.usb_info || !data.usb_info.connected_devices || !Array.isArray(data.usb_info.connected_devices)) {
+                usbCard.style.display = 'none';
+                return;
+            }
+
+            const usbInfo = data.usb_info;
+            const devices = usbInfo.connected_devices || [];
+            const ports = usbInfo.ports || [];
+
+            if (devices.length === 0 && ports.length === 0) {
+                usbCard.style.display = 'none';
+                return;
+            }
+
+            usbCard.style.display = 'block';
+            countBadge.textContent = devices.length;
+
+            // Display ports
+            let portsHtml = '';
+            if (ports.length > 0) {
+                portsHtml += '<div class="package-detail-item" style="margin-bottom: 1.5rem;">';
+                portsHtml += '<div class="package-detail-header">';
+                portsHtml += '<h4>🔌 USB Ports</h4>';
+                portsHtml += '</div>';
+                portsHtml += '<div class="package-detail-content">';
+                portsHtml += '<table class="info-table">';
+                
+                ports.forEach((port, idx) => {
+                    portsHtml += '<tr>';
+                    portsHtml += `<td>Port ${idx + 1} (${escapeHtml(port.id || 'Unknown')}):</td>`;
+                    portsHtml += '<td>';
+                    if (port.connected !== undefined) {
+                        portsHtml += `<span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; background: ${port.connected ? 'var(--success)' : 'var(--text-secondary)'}; color: white;">${port.connected ? 'CONNECTED' : 'DISCONNECTED'}</span>`;
+                    }
+                    if (port.current_mode) {
+                        portsHtml += ` <span style="margin-left: 0.5rem; color: var(--text-secondary);">Mode: ${escapeHtml(port.current_mode)}</span>`;
+                    }
+                    if (port.first_seen) {
+                        portsHtml += ` <span style="margin-left: 0.5rem; color: var(--text-secondary); font-size: 0.75rem;">First seen: ${escapeHtml(port.first_seen)}</span>`;
+                    }
+                    portsHtml += '</td>';
+                    portsHtml += '</tr>';
+                });
+                
+                portsHtml += '</table>';
+                portsHtml += '</div>';
+                portsHtml += '</div>';
+            }
+            usbPortsInfoEl.innerHTML = portsHtml;
+
+            // Display devices
+            let devicesHtml = '<div class="package-details-container">';
+            
+            devices.forEach((device, index) => {
+                const vid = device.vid || 'Unknown';
+                const pid = device.pid || 'Unknown';
+                const interfaceName = device.interface || 'Unknown';
+                const driver = device.driver || 'No driver';
+                const lastAction = device.last_action || 'Unknown';
+                
+                devicesHtml += `<div class="package-detail-item" data-vid="${vid.toLowerCase()}" data-pid="${pid.toLowerCase()}" data-driver="${driver.toLowerCase()}" data-interface="${interfaceName.toLowerCase()}">`;
+                devicesHtml += '<div class="package-detail-header">';
+                devicesHtml += `<h4>USB Device ${index + 1}</h4>`;
+                devicesHtml += `<span class="version-badge" style="background: var(--accent);">VID:${escapeHtml(vid)} PID:${escapeHtml(pid)}</span>`;
+                devicesHtml += '</div>';
+                
+                devicesHtml += '<div class="package-detail-content">';
+                devicesHtml += '<table class="info-table">';
+                
+                if (vid && vid !== 'Unknown') {
+                    devicesHtml += `<tr><td>VID:</td><td><code>${escapeHtml(vid)}</code></td></tr>`;
+                }
+                if (pid && pid !== 'Unknown') {
+                    devicesHtml += `<tr><td>PID:</td><td><code>${escapeHtml(pid)}</code></td></tr>`;
+                }
+                if (driver && driver !== 'No driver') {
+                    devicesHtml += `<tr><td>Driver:</td><td><code>${escapeHtml(driver)}</code></td></tr>`;
+                }
+                if (interfaceName && interfaceName !== 'Unknown') {
+                    devicesHtml += `<tr><td>Interface:</td><td><code>${escapeHtml(interfaceName)}</code></td></tr>`;
+                }
+                if (device.first_seen) {
+                    devicesHtml += `<tr><td>First Seen:</td><td>${escapeHtml(device.first_seen)}</td></tr>`;
+                }
+                if (device.last_seen) {
+                    devicesHtml += `<tr><td>Last Seen:</td><td>${escapeHtml(device.last_seen)}</td></tr>`;
+                }
+                if (lastAction && lastAction !== 'Unknown') {
+                    devicesHtml += `<tr><td>Last Action:</td><td>${escapeHtml(lastAction)}</td></tr>`;
+                }
+                
+                devicesHtml += '</table>';
+                
+                // Display events
+                if (device.events && device.events.length > 0) {
+                    devicesHtml += '<div class="detail-section" style="margin-top: 1rem;">';
+                    devicesHtml += `<strong>Events (${device.events.length})</strong>`;
+                    devicesHtml += '<div class="data-table-container" style="max-height: 300px;">';
+                    devicesHtml += '<table class="data-table">';
+                    devicesHtml += '<thead><tr><th>Timestamp</th><th>Action</th><th>Driver</th><th>Interface</th></tr></thead>';
+                    devicesHtml += '<tbody>';
+                    
+                    device.events.forEach((event) => {
+                        const actionClass = event.action === 'add' ? 'success' : event.action === 'remove' ? 'error' : 'warning';
+                        devicesHtml += '<tr>';
+                        devicesHtml += `<td style="font-size: 0.75rem;">${escapeHtml(event.timestamp || '-')}</td>`;
+                        devicesHtml += `<td><span style="padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.75rem; background: var(--${actionClass}); color: white;">${escapeHtml(event.action || '-')}</span></td>`;
+                        devicesHtml += `<td><code style="font-size: 0.75rem;">${escapeHtml(event.driver || '-')}</code></td>`;
+                        devicesHtml += `<td><code style="font-size: 0.75rem;">${escapeHtml(event.interface || '-')}</code></td>`;
+                        devicesHtml += '</tr>';
+                    });
+                    
+                    devicesHtml += '</tbody>';
+                    devicesHtml += '</table>';
+                    devicesHtml += '</div>';
+                    devicesHtml += '</div>';
+                }
+                
+                devicesHtml += '</div>';
+                devicesHtml += '</div>';
+            });
+            
+            devicesHtml += '</div>';
+            usbDevicesListEl.innerHTML = devicesHtml;
+
+            // Add search functionality
+            const searchInput = document.getElementById('usb-search-input');
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                const items = document.querySelectorAll('#usb-devices-list .package-detail-item');
+                let visibleCount = 0;
+
+                items.forEach(item => {
+                    const vid = item.getAttribute('data-vid') || '';
+                    const pid = item.getAttribute('data-pid') || '';
+                    const driver = item.getAttribute('data-driver') || '';
+                    const interfaceName = item.getAttribute('data-interface') || '';
+                    
+                    if (vid.includes(query) || pid.includes(query) || driver.includes(query) || interfaceName.includes(query)) {
                         item.style.display = 'block';
                         visibleCount++;
                     } else {

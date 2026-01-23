@@ -904,10 +904,48 @@
             </div>
             <div class="section-content collapsed" id="help-guide-content" style="margin-top: 1rem;">
                 <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 1.5rem;">
-                    <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Android Bug Report Acquisition Guide (No USB Debugging)</h3>
+                    <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Android Bug Report Acquisition Guide</h3>
                     <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.875rem;">
-                        This guide details how to capture system logs and bug reports on Android devices without using a computer (ADB) or enabling USB Debugging. Most methods rely on manufacturer-specific "Secret Codes" or engineering menus.
+                        This guide details how to capture system logs and bug reports on Android devices. You can use manufacturer-specific "Secret Codes" (no USB debugging required) or connect via USB/ADB with USB debugging enabled.
                     </p>
+                    
+                    <!-- USB Debugging Option -->
+                    <div style="margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 2px solid var(--border); background: rgba(33, 150, 243, 0.05); padding: 1.5rem; border-radius: 6px;">
+                        <h4 style="color: var(--text-primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span>🔌 USB Debugging Method (Recommended for Direct Connection)</span>
+                        </h4>
+                        <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.875rem;">
+                            You can connect your phone directly to this browser via USB/ADB. This allows you to generate bug reports, download existing ones, and analyze them directly from your device.
+                        </p>
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+                            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Requires Developer Mode: <strong>YES</strong></div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Requires USB Connection: <strong>YES</strong></div>
+                        </div>
+                        <ol style="margin-left: 1.5rem; color: var(--text-primary); line-height: 1.8;">
+                            <li>Go to <strong>Settings</strong> > <strong>About Phone</strong>.</li>
+                            <li>Tap <strong>Build Number</strong> 7 times to enable Developer Mode.</li>
+                            <li>Go to <strong>Settings</strong> > <strong>System</strong> > <strong>Developer Options</strong>.</li>
+                            <li>Enable <strong>USB Debugging</strong> (toggle it ON).</li>
+                            <li>Connect your phone to your computer via USB cable.</li>
+                            <li>When prompted on your phone, tap <strong>Allow USB debugging</strong> and check <strong>Always allow from this computer</strong> (optional but recommended).</li>
+                            <li>Use the <strong>"Generate New"</strong> or <strong>"From Device"</strong> tabs in this tool to connect and work with your device.</li>
+                        </ol>
+                        <div style="background: rgba(33, 150, 243, 0.1); border-left: 4px solid var(--accent); padding: 1rem; margin-top: 1rem; border-radius: 4px;">
+                            <strong style="color: var(--accent);">💡 Benefits of USB Debugging:</strong>
+                            <ul style="margin-left: 1.5rem; margin-top: 0.5rem; color: var(--text-primary); font-size: 0.875rem;">
+                                <li>Generate bug reports directly from the browser</li>
+                                <li>Download existing bug reports without manual file transfer</li>
+                                <li>Real-time device connection and analysis</li>
+                                <li>No need to manually locate files on your device</li>
+                            </ul>
+                        </div>
+                        <div style="background: rgba(244, 67, 54, 0.1); border-left: 4px solid var(--error); padding: 1rem; margin-top: 1rem; border-radius: 4px;">
+                            <strong style="color: var(--error);">🔒 Security Reminder</strong>
+                            <p style="margin-top: 0.5rem; color: var(--text-primary); font-size: 0.875rem;">
+                                <strong>Important:</strong> After completing your analysis, please <strong>disable USB Debugging</strong> and <strong>disable Developer Mode</strong> for security reasons. USB Debugging can expose your device to potential security risks if left enabled.
+                            </p>
+                        </div>
+                    </div>
 
                     <!-- Google Pixel -->
                     <div style="margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border);">

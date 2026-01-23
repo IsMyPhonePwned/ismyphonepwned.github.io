@@ -1,0 +1,3434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IsMyPhonePwned ?</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f5f5f5;
+            --bg-card: #ffffff;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666666;
+            --border: #e0e0e0;
+            --accent: #2196F3;
+            --accent-hover: #1976D2;
+            --success: #4CAF50;
+            --warning: #FF9800;
+            --error: #f44336;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --bg-card: #252525;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --border: #404040;
+            --accent: #42A5F5;
+            --accent-hover: #64B5F6;
+            --success: #66BB6A;
+            --warning: #FFA726;
+            --error: #EF5350;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo {
+            height: 100px;
+            width: auto;
+            max-width: 350px;
+            object-fit: contain;
+        }
+
+        .logo-text {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 600;
+        }
+
+        .theme-toggle {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px var(--shadow);
+        }
+
+        .section h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-toggle {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 0.25rem;
+            transition: transform 0.2s;
+            width: auto;
+            min-width: 1.5rem;
+            height: 1.5rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .section-toggle:hover {
+            background: transparent;
+            color: var(--text-primary);
+            transform: scale(1);
+        }
+
+        .section-toggle.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .section-toggle.collapsed:hover {
+            transform: rotate(-90deg) scale(1);
+        }
+
+        .section-content {
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            overflow: hidden;
+        }
+
+        .section-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
+
+        .section p {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+        }
+
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 0.75rem 1.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            width: 100%;
+        }
+
+        button:hover:not(:disabled) {
+            background: var(--accent-hover);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 1rem;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent);
+            background: var(--bg-secondary);
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--accent);
+            background: var(--bg-secondary);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.5;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+            cursor: pointer;
+        }
+
+        .status {
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            display: none;
+        }
+
+        .status.info {
+            background: rgba(33, 150, 243, 0.1);
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            display: block;
+        }
+
+        .status.success {
+            background: rgba(76, 175, 80, 0.1);
+            color: var(--success);
+            border: 1px solid var(--success);
+            display: block;
+        }
+
+        .status.error {
+            background: rgba(244, 67, 54, 0.1);
+            color: var(--error);
+            border: 1px solid var(--error);
+            display: block;
+        }
+
+        .results {
+            display: none;
+            margin-top: 2rem;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .result-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .result-card h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .result-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+        }
+
+        .result-item-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.25rem;
+        }
+
+        .result-item-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .progress {
+            width: 100%;
+            height: 4px;
+            background: var(--bg-secondary);
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 1rem 0;
+            display: none;
+        }
+
+        .progress.show {
+            display: block;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+            width: 0%;
+            transition: width 0.3s;
+            animation: progress-animation 1.5s infinite;
+        }
+
+        @keyframes progress-animation {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        /* Loading Spinner */
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .loading-spinner.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid var(--bg-secondary);
+            border-top: 4px solid var(--accent);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-primary);
+            font-size: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab {
+            padding: 0.75rem 1rem;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-weight: 500;
+            width: auto;
+        }
+
+        .tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .tab:hover {
+            background: transparent;
+            color: var(--text-primary);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+            color: var(--text-primary);
+            position: sticky;
+            top: 0;
+        }
+
+        .data-table tr:hover {
+            background: var(--bg-secondary);
+        }
+
+        .data-table-container {
+            max-height: 500px;
+            overflow-y: auto;
+            margin-top: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+
+        .search-box {
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem;
+            padding-left: 2.5rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        .count-badge {
+            display: inline-block;
+            background: var(--accent);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        .json-viewer {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.813rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .listing-indicator {
+            animation: pulse 2s ease-in-out infinite;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(0.98); }
+        }
+
+        #wasm-status {
+            transition: opacity 0.3s ease, background 0.3s ease, color 0.3s ease;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .package-details-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .package-detail-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .package-detail-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .package-detail-header h4 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .version-badge {
+            background: var(--accent);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .service-badge {
+            display: inline-block;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin: 0.25rem 0.25rem 0.25rem 0;
+            border: 1px solid var(--border);
+        }
+
+        .package-detail-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .detail-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem;
+        }
+
+        .detail-section strong {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .detail-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        .detail-table td {
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .detail-table td:first-child {
+            font-weight: 600;
+            color: var(--text-secondary);
+            width: 40%;
+        }
+
+        .detail-table td:last-child {
+            color: var(--text-primary);
+        }
+
+        .detail-table code {
+            background: var(--bg-primary);
+            padding: 0.125rem 0.25rem;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.813rem;
+            word-break: break-all;
+        }
+
+        .install-logs-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .install-log-entry {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem;
+        }
+
+        .install-log-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .install-log-type {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .install-log-time {
+            color: var(--text-secondary);
+            font-size: 0.813rem;
+        }
+
+        .install-log-details {
+            margin-top: 0.5rem;
+        }
+
+        .related-events {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .related-event {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+            margin-bottom: 0.25rem;
+            font-size: 0.813rem;
+        }
+
+        .event-type {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .event-time {
+            color: var(--text-secondary);
+        }
+
+        .users-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .user-entry {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem;
+        }
+
+        .user-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .user-id {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .user-status {
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .user-status.installed {
+            background: var(--success);
+            color: white;
+        }
+
+        .user-status.not-installed {
+            background: var(--error);
+            color: white;
+        }
+
+        .power-history-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .power-history-entry {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .power-history-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .power-history-header h4 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .power-reason-badge {
+            background: var(--warning);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .power-events-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .power-event-entry {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem;
+        }
+
+        .power-event-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .power-event-type {
+            font-weight: 600;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.813rem;
+        }
+
+        .power-event-type.reboot {
+            background: var(--accent);
+            color: white;
+        }
+
+        .power-event-type.shutdown {
+            background: var(--error);
+            color: white;
+        }
+
+        .power-event-type.on {
+            background: var(--success);
+            color: white;
+        }
+
+        .power-event-type.lpm {
+            background: var(--warning);
+            color: white;
+        }
+
+        .power-event-time {
+            color: var(--text-secondary);
+            font-size: 0.813rem;
+        }
+
+        .power-event-flags {
+            background: var(--bg-secondary);
+            padding: 0.125rem 0.375rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-family: monospace;
+            color: var(--text-primary);
+        }
+
+        .power-event-details {
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .stack-trace-container {
+            margin-top: 0.5rem;
+        }
+
+        .stack-trace {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            line-height: 1.5;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-container">
+                <img src="logo.png" alt="IsMyPhonePwned Logo" class="logo" onerror="this.style.display='none';">
+                <h1 class="logo-text">IsMyPhonePwned ?</h1>
+            </div>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <span id="wasm-status" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px;">
+                    ⏳ Loading...
+                </span>
+                <button class="theme-toggle" onclick="toggleTheme()">
+                    <span id="theme-icon">🌙</span>
+                    <span id="theme-text">Dark</span>
+                </button>
+            </div>
+        </header>
+
+        <div id="status" class="status"></div>
+        <div id="progress" class="progress"><div class="progress-bar"></div></div>
+        <div id="loading-spinner" class="loading-spinner">
+            <div class="spinner"></div>
+            <div class="loading-text">Analyzing bugreport... Please wait</div>
+        </div>
+
+        <!-- Help Guide -->
+        <div class="section" style="background: var(--bg-secondary); border-left: 4px solid var(--accent);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <h2 style="margin: 0;">📖 How to Get Bug Reports</h2>
+                <button class="section-toggle collapsed" onclick="toggleSection('help-guide')" style="margin: 0;">▼</button>
+            </div>
+            <div class="section-content collapsed" id="help-guide-content" style="margin-top: 1rem;">
+                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 1.5rem;">
+                    <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Android Bug Report Acquisition Guide (No USB Debugging)</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.875rem;">
+                        This guide details how to capture system logs and bug reports on Android devices without using a computer (ADB) or enabling USB Debugging. Most methods rely on manufacturer-specific "Secret Codes" or engineering menus.
+                    </p>
+
+                    <!-- Google Pixel -->
+                    <div style="margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border);">
+                        <h4 style="color: var(--text-primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span>1. Google Pixel / Motorola / Sony (Stock Android)</span>
+                        </h4>
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+                            <div style="font-family: monospace; font-size: 1.25rem; font-weight: 600; color: var(--accent); margin-bottom: 0.5rem;">N/A (No Secret Code)</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Requires Developer Mode: <strong>YES (Mandatory)</strong></div>
+                        </div>
+                        <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.875rem;">
+                            These devices <em>do not</em> have secret codes to dump logs to storage. You must use the Developer Options menu.
+                        </p>
+                        <ol style="margin-left: 1.5rem; color: var(--text-primary); line-height: 1.8;">
+                            <li>Go to <strong>Settings</strong> > <strong>About Phone</strong>.</li>
+                            <li>Tap <strong>Build Number</strong> 7 times to enable Developer Mode.</li>
+                            <li>Go to <strong>Settings</strong> > <strong>System</strong> > <strong>Developer Options</strong>.</li>
+                            <li>Tap <strong>Take bug report</strong> > <strong>Interactive report</strong>.</li>
+                            <li>Wait for the notification "Bug report captured" (2-5 mins).</li>
+                            <li><strong>File Retrieval:</strong> You <strong>cannot</strong> browse to the file manually due to permissions. You must tap the <strong>Notification</strong> when finished and share it to <strong>Google Drive</strong> or <strong>Email</strong>.</li>
+                        </ol>
+                        <div style="background: rgba(244, 67, 54, 0.1); border-left: 4px solid var(--error); padding: 1rem; margin-top: 1rem; border-radius: 4px;">
+                            <strong style="color: var(--error);">🔒 Security Reminder</strong>
+                            <p style="margin-top: 0.5rem; color: var(--text-primary); font-size: 0.875rem;">
+                                <strong>Important:</strong> After completing the bug report analysis, please <strong>disable Developer Mode</strong> for security reasons. Developer Mode can expose your device to potential security risks if left enabled. Go to <strong>Settings</strong> > <strong>System</strong> > <strong>Developer Options</strong> and toggle it OFF.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Samsung -->
+                    <div style="margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border);">
+                        <h4 style="color: var(--text-primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span>2. Samsung Galaxy Devices (SysDump)</span>
+                            <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-secondary);">S-Series, Z-Flip, Z-Fold, A-Series</span>
+                        </h4>
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+                            <div style="font-family: monospace; font-size: 1.25rem; font-weight: 600; color: var(--accent); margin-bottom: 0.5rem;">*#9900#</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Requires Developer Mode: <strong>NO</strong></div>
+                        </div>
+                        <ol style="margin-left: 1.5rem; color: var(--text-primary); line-height: 1.8;">
+                            <li>Open the <strong>Samsung Phone</strong> app (do not use Google Phone or third-party dialers).</li>
+                            <li>Dial <code style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">*#9900#</code>.</li>
+                            <li>A menu titled <strong>SysDump</strong> will appear.</li>
+                            <li>Tap <strong>Run dumpstate/logcat/modem log</strong>.</li>
+                            <li>Wait for the process to finish (usually silent or shows a loading spinner).</li>
+                            <li><strong>Crucial Step:</strong> Scroll down and tap <strong>Copy to sdcard (include CP Ramdump)</strong>.</li>
+                            <li><strong>File Location:</strong> Open <strong>My Files</strong> > <strong>Internal Storage</strong> > <strong>log</strong>. Look for a file named <code>dumpState_&lt;model&gt;_&lt;date&gt;.zip</code>.</li>
+                        </ol>
+                        <div style="background: rgba(255, 152, 0, 0.1); border-left: 4px solid var(--warning); padding: 1rem; margin-top: 1rem; border-radius: 4px;">
+                            <strong style="color: var(--warning);">⚠️ Troubleshooting: Samsung Z Flip 7 (One UI 6/7)</strong>
+                            <p style="margin-top: 0.5rem; color: var(--text-primary); font-size: 0.875rem;">
+                                If dialing <code>*#9900#</code> does nothing on your newer Samsung device:
+                            </p>
+                            <ul style="margin-left: 1.5rem; margin-top: 0.5rem; color: var(--text-primary); font-size: 0.875rem;">
+                                <li><strong>Issue 1: Auto Blocker is On (Most Likely)</strong> - Go to <strong>Settings</strong> > <strong>Security and Privacy</strong> > <strong>Auto Blocker</strong> and turn it OFF temporarily.</li>
+                                <li><strong>Issue 2: Carrier Restrictions</strong> - US Carriers often disable these codes. Workaround: Open <strong>Samsung Members</strong> app > <strong>Support</strong> > <strong>Error Reports</strong>.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Xiaomi -->
+                    <div style="margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border);">
+                        <h4 style="color: var(--text-primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span>3. Xiaomi / Redmi / POCO (MIUI & HyperOS)</span>
+                        </h4>
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+                            <div style="font-family: monospace; font-size: 1.25rem; font-weight: 600; color: var(--accent); margin-bottom: 0.5rem;">*#*#284#*#*</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Requires Developer Mode: <strong>NO</strong></div>
+                        </div>
+                        <ol style="margin-left: 1.5rem; color: var(--text-primary); line-height: 1.8;">
+                            <li>Open the <strong>Dialer/Phone</strong> app.</li>
+                            <li>Dial <code style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">*#*#284#*#*</code>.</li>
+                            <li>The phone will vibrate immediately and show a notification: "Generating bug report...".</li>
+                            <li>Wait for the notification to say "Created".</li>
+                            <li><strong>File Location:</strong> <strong>File Manager</strong> > <strong>Internal Storage</strong> > <strong>MIUI</strong> > <strong>debug_log</strong>. The file is a <code>.zip</code> archive.</li>
+                        </ol>
+                    </div>
+
+                    <!-- OnePlus -->
+                    <div style="margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border);">
+                        <h4 style="color: var(--text-primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span>4. OnePlus / OPPO / Realme (LogKit)</span>
+                        </h4>
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+                            <div style="font-family: monospace; font-size: 1.25rem; font-weight: 600; color: var(--accent); margin-bottom: 0.5rem;">*#800#</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Requires Developer Mode: <strong>NO</strong></div>
+                        </div>
+                        <ol style="margin-left: 1.5rem; color: var(--text-primary); line-height: 1.8;">
+                            <li>Open the <strong>Dialer/Phone</strong> app.</li>
+                            <li>Dial <code style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">*#800#</code>.</li>
+                            <li>This opens the <strong>Feedback</strong> or <strong>LogKit</strong> app.</li>
+                            <li>Select a category (e.g., "System" or "Other").</li>
+                            <li>Tap <strong>Start Logging</strong>.</li>
+                            <li>Reproduce your bug/crash.</li>
+                            <li>Return to the app and tap <strong>Stop Logging</strong>.</li>
+                            <li><strong>File Location:</strong> <strong>File Manager</strong> > <strong>Phone Storage</strong> > <strong>Android</strong> > <strong>data</strong> > <strong>com.oplus.logkit</strong> > <strong>files</strong> > <strong>Log</strong>.</li>
+                            <li style="color: var(--text-secondary); font-size: 0.875rem;"><em>Note: On Android 11+, you may need a third-party file manager like "Solid Explorer" to view the Android/data folder.</em></li>
+                        </ol>
+                    </div>
+
+                    <!-- Huawei -->
+                    <div style="margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border);">
+                        <h4 style="color: var(--text-primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span>5. Huawei / Honor (Project Menu)</span>
+                        </h4>
+                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+                            <div style="font-family: monospace; font-size: 1.25rem; font-weight: 600; color: var(--accent); margin-bottom: 0.5rem;">*#*#2846579#*#*</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Requires Developer Mode: <strong>NO</strong></div>
+                        </div>
+                        <ol style="margin-left: 1.5rem; color: var(--text-primary); line-height: 1.8;">
+                            <li>Open the <strong>Dialer/Phone</strong> app.</li>
+                            <li>Dial <code style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">*#*#2846579#*#*</code>.</li>
+                            <li>Go to <strong>Background Settings</strong> > <strong>Log Settings</strong>.</li>
+                            <li>Check the logs you need (AP Log, Charge Log, etc.) and tap <strong>Log switch</strong>.</li>
+                            <li>Reproduce the issue, then turn logging off.</li>
+                            <li><strong>File Location:</strong> <strong>Files</strong> > <strong>Internal Storage</strong> > <strong>log</strong> (or <strong>ProjectMenu</strong> folder).</li>
+                        </ol>
+                    </div>
+
+
+                    <!-- Summary Table -->
+                    <div style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid var(--border);">
+                        <h4 style="color: var(--text-primary); margin-bottom: 1rem;">Summary Cheat Sheet</h4>
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+                                <thead>
+                                    <tr style="background: var(--bg-secondary);">
+                                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--text-primary); font-weight: 600;">Brand</th>
+                                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--text-primary); font-weight: 600;">Secret Code</th>
+                                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--text-primary); font-weight: 600;">Action Required</th>
+                                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--text-primary); font-weight: 600;">Location (Internal Storage)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-primary);"><strong>Samsung</strong></td>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);"><code style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">*#9900#</code></td>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-primary);">Select "Copy to sdcard"</td>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);"><code style="color: var(--text-secondary);">/log</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-primary);"><strong>Xiaomi / POCO</strong></td>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);"><code style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">*#*#284#*#*</code></td>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-primary);">Auto-generates</td>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);"><code style="color: var(--text-secondary);">/MIUI/debug_log</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-primary);"><strong>OnePlus / OPPO</strong></td>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);"><code style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">*#800#</code></td>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-primary);">Use LogKit UI</td>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);"><code style="color: var(--text-secondary);">/Android/data/com.oplus.logkit</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-primary);"><strong>Huawei</strong></td>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);"><code style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">*#*#2846579#*#*</code></td>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-primary);">Project Menu UI</td>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);"><code style="color: var(--text-secondary);">/log</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-primary);"><strong>Pixel / Moto</strong></td>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-secondary);">N/A</td>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-primary);">Dev Options Menu</td>
+                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-secondary);">Via Notification Share</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Method Selection -->
+        <div class="section">
+            <h2>Select Analysis Method</h2>
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('generate')">Generate New</button>
+                <button class="tab" onclick="switchTab('device')">From Device</button>
+                <button class="tab" onclick="switchTab('upload')">Upload File</button>
+            </div>
+
+            <!-- Generate New Bugreport -->
+            <div id="tab-generate">
+                <p>Connect to your device and generate a fresh bugreport (takes 5-10 minutes).</p>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button id="btn-generate" onclick="generateBugreport()" style="flex: 1;">Connect & Generate Bugreport</button>
+                    <button id="btn-disconnect-generate" class="hidden" onclick="disconnectDevice()" title="Disconnect from device" style="background: var(--error); padding: 0.75rem; min-width: 44px; font-size: 1.2rem; line-height: 1;">
+                        🔌
+                    </button>
+                </div>
+            </div>
+
+            <!-- Use Existing from Device -->
+            <div id="tab-device" class="hidden">
+                <p>Connect to device and select an existing bugreport.</p>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button id="btn-connect-device" onclick="connectDevice()" style="flex: 1;">Connect to Device</button>
+                    <button id="btn-disconnect-device" class="hidden" onclick="disconnectDevice()" title="Disconnect from device" style="background: var(--error); padding: 0.75rem; min-width: 44px; font-size: 1.2rem; line-height: 1;">
+                        🔌
+                    </button>
+                </div>
+                <div id="listing-status" class="listing-indicator hidden" style="text-align: center; padding: 1rem; margin: 1rem 0;">
+                    <div style="margin-bottom: 0.5rem; font-weight: 500;">📡 Scanning device for bugreports...</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary);">This may take 10-30 seconds</div>
+                </div>
+                <select id="bugreport-select" class="hidden" onchange="selectBugreport()">
+                    <option value="">Select a bugreport...</option>
+                </select>
+                <button id="btn-refresh-list" class="hidden" onclick="refreshBugreportList()" style="background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); margin-top: 0.5rem;">
+                    🔄 Refresh List
+                </button>
+                <button id="btn-analyze-device" class="hidden" onclick="analyzeFromDevice()">Analyze Selected Bugreport</button>
+            </div>
+
+            <!-- Upload File -->
+            <div id="tab-upload" class="hidden">
+                <p>Upload a bugreport file from your computer.</p>
+                <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+                    <div class="upload-icon">📁</div>
+                    <div>Click or drag a bugreport file here</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                        Supports .zip, .txt files
+                    </div>
+                </div>
+                <input type="file" id="file-input" accept=".zip,.txt" onchange="handleFileSelect(event)">
+                <button id="btn-analyze-upload" class="hidden" onclick="analyzeUploadedFile()">Analyze Uploaded File</button>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div id="results" class="results">
+            <div class="section">
+                <h2>📊 Analysis Results</h2>
+                <div id="analysis-timestamp" style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; display: none;">
+                    <span style="opacity: 0.7;">Analyzed on</span> <span id="timestamp-value"></span>
+                </div>
+                
+                <!-- Device Information -->
+                <div class="result-card">
+                    <h3>📱 Device Information</h3>
+                    <div class="result-grid">
+                        <div class="result-item">
+                            <div class="result-item-label">Manufacturer</div>
+                            <div class="result-item-value" id="device-manufacturer">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Model</div>
+                            <div class="result-item-value" id="device-model">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Android Version</div>
+                            <div class="result-item-value" id="device-android">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Build ID</div>
+                            <div class="result-item-value" id="device-build" style="font-size: 0.9rem;">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Kernel Version</div>
+                            <div class="result-item-value" id="device-kernel" style="font-size: 0.9rem;">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Information -->
+                <div class="result-card" id="file-info-card" style="display: none;">
+                    <h3>📄 File Information</h3>
+                    <div class="result-grid">
+                        <div class="result-item" style="grid-column: 1 / -1;">
+                            <div class="result-item-label">File Path</div>
+                            <div class="result-item-value" id="file-path" style="font-size: 0.85rem; word-break: break-all;">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">File Size</div>
+                            <div class="result-item-value" id="file-size" style="font-size: 0.85rem;">-</div>
+                        </div>
+                        <div class="result-item" style="grid-column: 1 / -1;">
+                            <div class="result-item-label">SHA-256</div>
+                            <div class="result-item-value" id="file-sha256" style="font-family: monospace; font-size: 0.85rem; word-break: break-all;">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Battery Status -->
+                <div class="result-card">
+                    <h3>🔋 Battery Status</h3>
+                    <div class="result-grid">
+                        <div class="result-item">
+                            <div class="result-item-label">Level</div>
+                            <div class="result-item-value" id="battery-level">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Health</div>
+                            <div class="result-item-value" id="battery-health">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Temperature</div>
+                            <div class="result-item-value" id="battery-temp">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Voltage</div>
+                            <div class="result-item-value" id="battery-voltage">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Statistics -->
+                <div class="result-card">
+                    <h3>📈 System Statistics</h3>
+                    <div class="result-grid">
+                        <div class="result-item">
+                            <div class="result-item-label">Processes</div>
+                            <div class="result-item-value" id="stats-processes">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Unique Packages</div>
+                            <div class="result-item-value" id="stats-packages">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Process List -->
+                <div class="result-card" id="process-details-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>⚙️ Running Processes</h3>
+                        <span class="count-badge" id="process-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle" onclick="toggleSection('process-details')">▼</button>
+                    <div class="section-content" id="process-details-content">
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="process-search" placeholder="Search processes by name or PID...">
+                        </div>
+                        <div class="data-table-container">
+                            <table class="data-table" id="process-table">
+                                <thead>
+                                    <tr>
+                                        <th>PID</th>
+                                        <th>Name</th>
+                                        <th>User</th>
+                                        <th>CPU%</th>
+                                        <th>Memory</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="process-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Battery Stats -->
+                <div class="result-card" id="battery-details-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>🔋 App Battery Usage</h3>
+                        <span class="count-badge" id="battery-apps-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle" onclick="toggleSection('battery-details')">▼</button>
+                    <div class="section-content" id="battery-details-content">
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="battery-search" placeholder="Search apps by package name...">
+                        </div>
+                        <div class="data-table-container">
+                            <table class="data-table" id="battery-table">
+                                <thead>
+                                    <tr>
+                                        <th>Package Name</th>
+                                        <th>UID</th>
+                                        <th>CPU Time</th>
+                                        <th>Network (RX/TX)</th>
+                                        <th>Wakelock Time</th>
+                                        <th>Job Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="battery-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Package Installation History -->
+                <div class="result-card" id="package-history-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>📦 Package History (Including Deleted)</h3>
+                        <span class="count-badge" id="package-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle" onclick="toggleSection('package-history')">▼</button>
+                    <div class="section-content" id="package-history-content">
+                        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">
+                            Packages that were installed or uninstalled. Packages not found in the "Package Details" section have been deleted.
+                        </p>
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="package-search-input" placeholder="Search packages by name or installer...">
+                        </div>
+                        <div id="package-list"></div>
+                    </div>
+                </div>
+
+                <!-- Package Details -->
+                <div class="result-card" id="package-details-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>📱 Package Details</h3>
+                        <span class="count-badge" id="package-details-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle collapsed" onclick="toggleSection('package-details')">▼</button>
+                    <div class="section-content collapsed" id="package-details-content">
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="package-details-search-input" placeholder="Search packages by name...">
+                        </div>
+                        <div id="package-details-list"></div>
+                    </div>
+                </div>
+
+                <!-- Power History -->
+                <div class="result-card" id="power-history-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>⚡ Power History</h3>
+                        <span class="count-badge" id="power-history-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle collapsed" onclick="toggleSection('power-history')">▼</button>
+                    <div class="section-content collapsed" id="power-history-content">
+                        <div id="power-history-list"></div>
+                    </div>
+                </div>
+
+                <!-- Network Information -->
+                <div class="result-card" id="network-info-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>🌐 Network Interfaces</h3>
+                        <span class="count-badge" id="network-info-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle collapsed" onclick="toggleSection('network-info')">▼</button>
+                    <div class="section-content collapsed" id="network-info-content">
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="network-search-input" placeholder="Search interfaces by name or IP...">
+                        </div>
+                        <div id="network-info-list"></div>
+                    </div>
+                </div>
+
+                <!-- Network Statistics -->
+                <div class="result-card" id="network-stats-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>📊 Network Statistics</h3>
+                        <span class="count-badge" id="network-stats-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle collapsed" onclick="toggleSection('network-stats')">▼</button>
+                    <div class="section-content collapsed" id="network-stats-content">
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="network-stats-search-input" placeholder="Search by network name or type...">
+                        </div>
+                        <div id="network-stats-list"></div>
+                    </div>
+                </div>
+
+                <!-- Network Sockets -->
+                <div class="result-card" id="network-sockets-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>🔌 Network Sockets</h3>
+                        <span class="count-badge" id="network-sockets-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle collapsed" onclick="toggleSection('network-sockets')">▼</button>
+                    <div class="section-content collapsed" id="network-sockets-content">
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="network-sockets-search-input" placeholder="Search by protocol, address, port, or state...">
+                        </div>
+                        <div class="data-table-container">
+                            <table class="data-table" id="network-sockets-table">
+                                <thead>
+                                    <tr>
+                                        <th>Protocol</th>
+                                        <th>Local Address</th>
+                                        <th>Local Port</th>
+                                        <th>Remote Address</th>
+                                        <th>Remote Port</th>
+                                        <th>State</th>
+                                        <th>UID</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="network-sockets-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bluetooth Information -->
+                <div class="result-card" id="bluetooth-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>📶 Bluetooth</h3>
+                        <span class="count-badge" id="bluetooth-devices-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle collapsed" onclick="toggleSection('bluetooth')">▼</button>
+                    <div class="section-content collapsed" id="bluetooth-content">
+                        <div id="bluetooth-adapter-info"></div>
+                        <div class="search-box" style="margin-top: 1rem;">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="bluetooth-search-input" placeholder="Search devices by name, MAC address, or services...">
+                        </div>
+                        <div id="bluetooth-devices-list"></div>
+                    </div>
+                </div>
+
+                <!-- Full Data (JSON) -->
+                <div class="result-card">
+                    <div class="section-header">
+                        <h3>📋 Full Data (JSON)</h3>
+                    </div>
+                    <button class="section-toggle collapsed" onclick="toggleSection('json-output')">▼</button>
+                    <div class="section-content collapsed" id="json-output-content">
+                        <div class="json-viewer" id="json-output">Analyzing...</div>
+                    </div>
+                </div>
+                
+                <!-- Results Actions -->
+                <div id="results-actions" style="margin-top: 1.5rem; display: none; gap: 0.5rem; flex-wrap: wrap;">
+                    <button onclick="downloadResults()" style="background: #4CAF50; color: white;">
+                        📥 Download JSON
+                    </button>
+                    <button onclick="copyResults()" style="background: var(--accent); color: white;">
+                        📋 Copy to Clipboard
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <footer style="text-align: center; padding: 2rem 0; color: var(--text-secondary); font-size: 0.813rem;">
+            <div style="margin-bottom: 1rem;">
+                Built with WebADB & bugreport-extractor-library
+            </div>
+            <div style="max-width: 800px; margin: 0 auto; padding: 1rem; background: rgba(244, 67, 54, 0.05); border: 1px solid rgba(244, 67, 54, 0.2); border-radius: 6px; font-size: 0.75rem; line-height: 1.6;">
+                <strong style="color: var(--error); display: block; margin-bottom: 0.5rem;">⚠️ Disclaimer</strong>
+                <p style="color: var(--text-primary); margin: 0;">
+                    This website and the analysis results are provided "as is" without any warranties or guarantees. 
+                    Use of this tool and its results is at your own risk. The developers and contributors are not 
+                    responsible for any damage, data loss, or security issues that may arise from using this tool. 
+                    Always exercise caution when enabling Developer Mode or sharing bug reports, as they may contain 
+                    sensitive information. After analysis, please disable Developer Mode for security reasons.
+                </p>
+                <p style="color: var(--text-primary); margin: 1rem 0 0 0; text-align: center;">
+                    <a href="https://github.com/IsMyPhonePwned/" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none; font-weight: 500;">
+                        Learn more at IsMyPhonePwned on GitHub →
+                    </a>
+                </p>
+            </div>
+        </footer>
+    </div>
+
+    <script type="module">
+        import init, { Adb, generate_keypair, has_keypair } from './pkg/webadb_rs.js';
+
+        let adb = null;
+        let uploadedFile = null;
+        let selectedBugreportPath = null;
+        let currentResults = null;
+
+        window.adb = null;
+        
+        // Section toggle functionality
+        window.toggleSection = function(sectionId) {
+            const content = document.getElementById(sectionId + '-content');
+            const toggle = event.target;
+            
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                toggle.classList.remove('collapsed');
+            } else {
+                content.classList.add('collapsed');
+                toggle.classList.add('collapsed');
+            }
+        }
+        
+        // Calculate SHA-256 hash
+        async function calculateHash(data) {
+            try {
+                const buffer = data.buffer || data;
+                const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                return hashHex;
+            } catch (error) {
+                console.error('Hash calculation failed:', error);
+                return 'Error calculating hash';
+            }
+        }
+        
+        // Download results
+        window.downloadResults = function() {
+            if (!currentResults) {
+                showStatus('⚠️ No results to download', 'error');
+                return;
+            }
+            
+            const data = {
+                analysis_timestamp: currentResults.analysis_timestamp || new Date().toISOString(),
+                file_info: currentResults.file_info,
+                device_info: currentResults.device_info,
+                battery_info: currentResults.battery_info,
+                process_count: currentResults.process_count,
+                package_count: currentResults.package_count,
+                packages: currentResults.packages,
+                processes: currentResults.processes,
+                battery_apps: currentResults.battery_apps,
+                package_details: currentResults.package_details || [],
+                power_history: currentResults.power_history || [],
+                network_info: currentResults.network_info || [],
+                network_stats: currentResults.network_stats || [],
+                sockets: currentResults.sockets || []
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            a.download = `bugreport-analysis-${timestamp}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showStatus('✓ Results downloaded!', 'success');
+        }
+        
+        // Copy results
+        window.copyResults = async function() {
+            if (!currentResults) {
+                showStatus('⚠️ No results to copy', 'error');
+                return;
+            }
+            
+            try {
+                const data = {
+                    analysis_timestamp: currentResults.analysis_timestamp || new Date().toISOString(),
+                    file_info: currentResults.file_info,
+                    device_info: currentResults.device_info,
+                    battery_info: currentResults.battery_info,
+                    process_count: currentResults.process_count,
+                    package_count: currentResults.package_count,
+                    logcat_lines: currentResults.logcat_lines,
+                    has_security_analysis: currentResults.has_security_analysis,
+                    packages: currentResults.packages,
+                    processes: currentResults.processes,
+                    battery_apps: currentResults.battery_apps,
+                    package_details: currentResults.package_details || [],
+                    power_history: currentResults.power_history || [],
+                    network_info: currentResults.network_info || [],
+                    network_stats: currentResults.network_stats || [],
+                    sockets: currentResults.sockets || []
+                };
+                
+                await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+                showStatus('✓ Results copied to clipboard!', 'success');
+            } catch (error) {
+                console.error('Copy error:', error);
+                showStatus('❌ Failed to copy: ' + error.message, 'error');
+            }
+        }
+
+        // Initialize WebAssembly
+        async function initWasm() {
+            const statusEl = document.getElementById('wasm-status');
+            
+            try {
+                statusEl.textContent = '⏳ Loading WASM...';
+                statusEl.style.background = 'rgba(33, 150, 243, 0.1)';
+                statusEl.style.color = 'var(--accent)';
+                statusEl.style.borderColor = 'var(--accent)';
+                
+                await init();
+                
+                statusEl.textContent = '🔑 Generating keys...';
+                
+                if (!await has_keypair()) {
+                    await generate_keypair();
+                }
+                
+                statusEl.textContent = '✓ Ready';
+                statusEl.style.background = 'rgba(76, 175, 80, 0.1)';
+                statusEl.style.color = 'var(--success)';
+                statusEl.style.borderColor = 'var(--success)';
+                
+                console.log('WebAssembly initialized');
+                
+                setTimeout(() => {
+                    statusEl.style.opacity = '0';
+                    setTimeout(() => {
+                        statusEl.style.display = 'none';
+                    }, 300);
+                }, 3000);
+            } catch (error) {
+                console.error('Failed to initialize:', error);
+                statusEl.textContent = '❌ Failed to load';
+                statusEl.style.background = 'rgba(244, 67, 54, 0.1)';
+                statusEl.style.color = 'var(--error)';
+                statusEl.style.borderColor = 'var(--error)';
+                showStatus('Failed to initialize: ' + error.message, 'error');
+            }
+        }
+
+        initWasm();
+
+        // Theme toggle
+        window.toggleTheme = function() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            html.setAttribute('data-theme', newTheme);
+            
+            document.getElementById('theme-icon').textContent = newTheme === 'dark' ? '☀️' : '🌙';
+            document.getElementById('theme-text').textContent = newTheme === 'dark' ? 'Light' : 'Dark';
+            
+            localStorage.setItem('theme', newTheme);
+        }
+
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        if (savedTheme === 'dark') {
+            toggleTheme();
+        }
+
+        // Tab switching
+        window.switchTab = function(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.getElementById('tab-generate').classList.add('hidden');
+            document.getElementById('tab-device').classList.add('hidden');
+            document.getElementById('tab-upload').classList.add('hidden');
+            
+            document.getElementById('tab-' + tab).classList.remove('hidden');
+            hideResults();
+        }
+
+        // Status messages
+        function showStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = 'status ' + type;
+        }
+
+        function hideStatus() {
+            document.getElementById('status').className = 'status';
+        }
+
+        function showProgress() {
+            document.getElementById('progress').classList.add('show');
+        }
+
+        function hideProgress() {
+            document.getElementById('progress').classList.remove('show');
+        }
+
+        function showLoadingSpinner(text = 'Analyzing bugreport... Please wait') {
+            const spinner = document.getElementById('loading-spinner');
+            const loadingText = spinner.querySelector('.loading-text');
+            if (loadingText) {
+                loadingText.textContent = text;
+            }
+            spinner.classList.add('show');
+        }
+
+        function hideLoadingSpinner() {
+            document.getElementById('loading-spinner').classList.remove('show');
+        }
+
+        function showResults() {
+            document.getElementById('results').classList.add('show');
+        }
+
+        function hideResults() {
+            document.getElementById('results').classList.remove('show');
+            const actionsEl = document.getElementById('results-actions');
+            if (actionsEl) {
+                actionsEl.style.display = 'none';
+            }
+        }
+
+        // Display process details
+        function displayProcessDetails(data) {
+            const processCard = document.getElementById('process-details-card');
+            const processTableBody = document.getElementById('process-table-body');
+            
+            if (!data.processes || !Array.isArray(data.processes) || data.processes.length === 0) {
+                processCard.style.display = 'none';
+                return;
+            }
+
+            processCard.style.display = 'block';
+            document.getElementById('process-count-badge').textContent = data.processes.length;
+
+            // Clear table
+            processTableBody.innerHTML = '';
+
+            // Add processes to table
+            data.processes.forEach(proc => {
+                const row = document.createElement('tr');
+                row.setAttribute('data-pid', proc.pid || '');
+                row.setAttribute('data-name', (proc.name || '').toLowerCase());
+                row.setAttribute('data-user', (proc.user || '').toLowerCase());
+                
+                row.innerHTML = `
+                    <td>${proc.pid || '-'}</td>
+                    <td>${proc.name || '-'}</td>
+                    <td>${proc.user || '-'}</td>
+                    <td>${proc.cpu_percent !== undefined ? proc.cpu_percent.toFixed(1) + '%' : '-'}</td>
+                    <td>${proc.memory || '-'}</td>
+                `;
+                
+                processTableBody.appendChild(row);
+            });
+
+            // Add search functionality
+            const searchInput = document.getElementById('process-search');
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                const rows = processTableBody.querySelectorAll('tr');
+                let visibleCount = 0;
+
+                rows.forEach(row => {
+                    const pid = row.getAttribute('data-pid');
+                    const name = row.getAttribute('data-name');
+                    const user = row.getAttribute('data-user');
+                    
+                    if (pid.includes(query) || name.includes(query) || user.includes(query)) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        // Display battery details
+        function displayBatteryDetails(data) {
+            const batteryCard = document.getElementById('battery-details-card');
+            const batteryTableBody = document.getElementById('battery-table-body');
+            
+            if (!data.battery_apps || !Array.isArray(data.battery_apps) || data.battery_apps.length === 0) {
+                batteryCard.style.display = 'none';
+                return;
+            }
+
+            batteryCard.style.display = 'block';
+            document.getElementById('battery-apps-count-badge').textContent = data.battery_apps.length;
+
+            // Clear table
+            batteryTableBody.innerHTML = '';
+
+            // Add battery stats to table
+            data.battery_apps.forEach(batt => {
+                const row = document.createElement('tr');
+                const pkgName = batt.package_name || '';
+                row.setAttribute('data-package', pkgName.toLowerCase());
+                
+                // Format CPU time
+                const cpuTimeMs = batt.total_cpu_time_ms || 0;
+                const cpuTimeStr = cpuTimeMs > 0 ? formatTime(cpuTimeMs) : '-';
+                
+                // Format network usage
+                const networkRx = (batt.network_rx_mobile || 0) + (batt.network_rx_wifi || 0);
+                const networkTx = (batt.network_tx_mobile || 0) + (batt.network_tx_wifi || 0);
+                const networkStr = (networkRx > 0 || networkTx > 0) 
+                    ? `${formatBytes(networkRx)} / ${formatBytes(networkTx)}`
+                    : '-';
+                
+                // Format wakelock time
+                const wakelockTimeMs = batt.total_wakelock_time_ms || 0;
+                const wakelockStr = wakelockTimeMs > 0 ? formatTime(wakelockTimeMs) : '-';
+                
+                // Format job time
+                const jobTimeMs = batt.total_job_time_ms || 0;
+                const jobStr = jobTimeMs > 0 ? formatTime(jobTimeMs) : '-';
+                
+                row.innerHTML = `
+                    <td>${pkgName || '-'}</td>
+                    <td>${batt.uid || '-'}</td>
+                    <td>${cpuTimeStr}</td>
+                    <td>${networkStr}</td>
+                    <td>${wakelockStr}</td>
+                    <td>${jobStr}</td>
+                `;
+                
+                batteryTableBody.appendChild(row);
+            });
+
+            // Add search functionality
+            const searchInput = document.getElementById('battery-search');
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                const rows = batteryTableBody.querySelectorAll('tr');
+                let visibleCount = 0;
+
+                rows.forEach(row => {
+                    const pkg = row.getAttribute('data-package');
+                    
+                    if (pkg.includes(query)) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        // Format bytes
+        function formatBytes(bytes) {
+            if (!bytes || bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        // Format time in milliseconds to human-readable format
+        function formatTime(ms) {
+            if (!ms || ms === 0) return '0ms';
+            
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+            
+            if (days > 0) {
+                const remainingHours = hours % 24;
+                if (remainingHours > 0) {
+                    return `${days}d ${remainingHours}h`;
+                }
+                return `${days}d`;
+            }
+            
+            if (hours > 0) {
+                const remainingMinutes = minutes % 60;
+                if (remainingMinutes > 0) {
+                    return `${hours}h ${remainingMinutes}m`;
+                }
+                return `${hours}h`;
+            }
+            
+            if (minutes > 0) {
+                const remainingSeconds = seconds % 60;
+                if (remainingSeconds > 0) {
+                    return `${minutes}m ${remainingSeconds}s`;
+                }
+                return `${minutes}m`;
+            }
+            
+            if (seconds > 0) {
+                const remainingMs = ms % 1000;
+                if (remainingMs > 0) {
+                    return `${seconds}.${Math.floor(remainingMs / 100)}s`;
+                }
+                return `${seconds}s`;
+            }
+            
+            return `${ms}ms`;
+        }
+
+        // Helper function to format duration in human-readable format (accepts milliseconds)
+        function formatDuration(ms) {
+            if (ms < 1000) {
+                return `${ms.toFixed(2)}ms`;
+            }
+            const seconds = Math.floor(ms / 1000);
+            const milliseconds = Math.floor(ms % 1000);
+            if (seconds < 60) {
+                return `${seconds}s ${milliseconds}ms (${ms.toFixed(2)}ms)`;
+            }
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes}m ${remainingSeconds}s ${milliseconds}ms (${ms.toFixed(2)}ms)`;
+        }
+
+        // Helper function to format duration from seconds (for compatibility)
+        function formatDurationFromSeconds(seconds) {
+            return formatDuration(seconds * 1000);
+        }
+
+        // Display results
+        function displayResults(data) {
+            currentResults = data;
+            
+            // Device info
+            if (data.device_info) {
+                document.getElementById('device-manufacturer').textContent = data.device_info.manufacturer || 'Unknown';
+                document.getElementById('device-model').textContent = data.device_info.model || 'Unknown';
+                document.getElementById('device-android').textContent = data.device_info.android_version || 'Unknown';
+                document.getElementById('device-build').textContent = data.device_info.build_id || 'Unknown';
+                document.getElementById('device-kernel').textContent = data.device_info.kernel_version || 'Unknown';
+            }
+
+            // Battery info
+            if (data.battery_info) {
+                document.getElementById('battery-level').textContent = data.battery_info.level ? data.battery_info.level.toFixed(1) + '%' : '-';
+                document.getElementById('battery-health').textContent = data.battery_info.health || '-';
+                document.getElementById('battery-temp').textContent = data.battery_info.temperature ? data.battery_info.temperature.toFixed(1) + '°C' : '-';
+                document.getElementById('battery-voltage').textContent = data.battery_info.voltage ? data.battery_info.voltage.toFixed(2) + 'V' : '-';
+            }
+
+            // Stats
+            document.getElementById('stats-processes').textContent = data.process_count || 0;
+            document.getElementById('stats-packages').textContent = data.package_count || 0;
+
+            // File info
+            const fileInfoCard = document.getElementById('file-info-card');
+            if (data.file_info) {
+                document.getElementById('file-path').textContent = data.file_info.path || '-';
+                document.getElementById('file-size').textContent = data.file_info.size_mb ? `${data.file_info.size_mb} MB (${data.file_info.size_bytes.toLocaleString()} bytes)` : '-';
+                document.getElementById('file-sha256').textContent = data.file_info.sha256 || '-';
+                fileInfoCard.style.display = 'block';
+            } else {
+                fileInfoCard.style.display = 'none';
+            }
+
+            // Display detailed process list
+            displayProcessDetails(data);
+
+            // Display detailed battery stats
+            displayBatteryDetails(data);
+
+            // Package installation history
+            displayPackageHistory(data);
+
+            // Package details
+            displayPackageDetails(data);
+
+            // Power history
+            displayPowerHistory(data);
+
+            // Network info
+            displayNetworkInfo(data);
+
+            // Network stats
+            displayNetworkStats(data);
+
+            // Network sockets
+            displayNetworkSockets(data);
+
+            // Bluetooth info
+            displayBluetoothInfo(data);
+
+            // JSON output
+            document.getElementById('json-output').textContent = JSON.stringify(data, null, 2);
+
+            // Display timestamp
+            const timestampEl = document.getElementById('analysis-timestamp');
+            const timestampValueEl = document.getElementById('timestamp-value');
+            if (data.analysis_timestamp) {
+                const date = new Date(data.analysis_timestamp);
+                const options = { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    second: '2-digit'
+                };
+                timestampValueEl.textContent = date.toLocaleString(undefined, options);
+                timestampEl.style.display = 'block';
+            } else {
+                timestampEl.style.display = 'none';
+            }
+
+            // Show action buttons
+            document.getElementById('results-actions').style.display = 'flex';
+
+            showResults();
+        }
+
+        function displayPackageHistory(data) {
+            const packageHistoryCard = document.getElementById('package-history-card');
+            const packageListEl = document.getElementById('package-list');
+
+            // Use the packages array from Rust
+            let packages = [];
+            
+            if (data.packages && Array.isArray(data.packages) && data.packages.length > 0) {
+                // Use the structured packages data from Rust
+                packages = data.packages.map(pkg => ({
+                    packageName: pkg.package_name || 'Unknown',
+                    installer: pkg.installer || 'Unknown',
+                    timestamp: pkg.timestamp || '',
+                    versionCode: pkg.version_code || null,
+                    success: pkg.success !== undefined ? pkg.success : false,
+                    duration: pkg.duration_seconds ? formatDuration(pkg.duration_seconds * 1000) : null
+                }));
+            }
+
+            if (packages.length === 0) {
+                packageHistoryCard.style.display = 'none';
+                return;
+            }
+
+            packageHistoryCard.style.display = 'block';
+            document.getElementById('package-count-badge').textContent = packages.length;
+
+            let html = '';
+
+            packages.forEach((pkg) => {
+                const statusClass = pkg.success ? 'success' : 'failed';
+                const statusText = pkg.success ? '✓ Installed' : '✗ Failed';
+                const installerName = pkg.installer ? formatInstaller(pkg.installer) : 'Unknown';
+                const versionText = pkg.versionCode ? `v${pkg.versionCode}` : '-';
+                
+                html += `
+                    <div class="package-item" data-package-name="${pkg.packageName.toLowerCase()}" data-installer="${installerName.toLowerCase()}" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-bottom: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; gap: 1rem;">
+                            <div style="font-family: monospace; font-size: 0.875rem; font-weight: 600; color: var(--text-primary); word-break: break-all; flex: 1;">${pkg.packageName}</div>
+                            <div style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 500; white-space: nowrap; background: ${pkg.success ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)'}; color: ${pkg.success ? 'var(--success)' : 'var(--error)'}; border: 1px solid ${pkg.success ? 'var(--success)' : 'var(--error)'};">${statusText}</div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; margin-top: 0.75rem; font-size: 0.75rem;">
+                            <div><span style="color: var(--text-secondary); margin-right: 0.25rem;">📅 Installed:</span><span style="color: var(--text-primary); font-weight: 500;">${formatDate(pkg.timestamp)}</span></div>
+                            <div><span style="color: var(--text-secondary); margin-right: 0.25rem;">📦 Installer:</span><span style="color: var(--text-primary); font-weight: 500;">${installerName}</span></div>
+                            <div><span style="color: var(--text-secondary); margin-right: 0.25rem;">🔢 Version:</span><span style="color: var(--text-primary); font-weight: 500;">${versionText}</span></div>
+                            ${pkg.duration ? `<div><span style="color: var(--text-secondary); margin-right: 0.25rem;">⏱️ Duration:</span><span style="color: var(--text-primary); font-weight: 500;">${pkg.duration}</span></div>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            packageListEl.innerHTML = html;
+
+            // Add search functionality
+            const searchInput = document.getElementById('package-search-input');
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                const items = document.querySelectorAll('.package-item');
+                let visibleCount = 0;
+
+                items.forEach(item => {
+                    const packageName = item.getAttribute('data-package-name');
+                    const installer = item.getAttribute('data-installer');
+                    
+                    if (packageName.includes(query) || installer.includes(query)) {
+                        item.style.display = 'block';
+                        visibleCount++;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function displayPackageDetails(data) {
+            const packageDetailsCard = document.getElementById('package-details-card');
+            const packageDetailsListEl = document.getElementById('package-details-list');
+            const countBadge = document.getElementById('package-details-count-badge');
+
+            if (!data.package_details || !Array.isArray(data.package_details) || data.package_details.length === 0) {
+                packageDetailsCard.style.display = 'none';
+                return;
+            }
+
+            packageDetailsCard.style.display = 'block';
+            countBadge.textContent = data.package_details.length;
+
+            let html = '<div class="package-details-container">';
+            
+            data.package_details.forEach((pkg, index) => {
+                html += `<div class="package-detail-item" data-package-name="${pkg.package_name.toLowerCase()}">`;
+                html += `<div class="package-detail-header">`;
+                html += `<h4>${escapeHtml(pkg.package_name)}</h4>`;
+                if (pkg.version_name) {
+                    html += `<span class="version-badge">v${escapeHtml(pkg.version_name)}</span>`;
+                }
+                html += `</div>`;
+                
+                html += `<div class="package-detail-content">`;
+                
+                // Basic Info
+                html += `<div class="detail-section">`;
+                html += `<strong>Basic Information</strong>`;
+                html += `<table class="detail-table">`;
+                if (pkg.version_code) {
+                    html += `<tr><td>Version Code:</td><td>${pkg.version_code}</td></tr>`;
+                }
+                if (pkg.app_id) {
+                    html += `<tr><td>App ID:</td><td>${pkg.app_id}</td></tr>`;
+                }
+                if (pkg.target_sdk) {
+                    html += `<tr><td>Target SDK:</td><td>${pkg.target_sdk}</td></tr>`;
+                }
+                if (pkg.min_sdk) {
+                    html += `<tr><td>Min SDK:</td><td>${pkg.min_sdk}</td></tr>`;
+                }
+                if (pkg.category) {
+                    html += `<tr><td>Category:</td><td>${escapeHtml(pkg.category)}</td></tr>`;
+                }
+                html += `</table>`;
+                html += `</div>`;
+                
+                // Paths
+                html += `<div class="detail-section">`;
+                html += `<strong>Paths</strong>`;
+                html += `<table class="detail-table">`;
+                if (pkg.code_path) {
+                    html += `<tr><td>Code Path:</td><td><code>${escapeHtml(pkg.code_path)}</code></td></tr>`;
+                }
+                if (pkg.resource_path) {
+                    html += `<tr><td>Resource Path:</td><td><code>${escapeHtml(pkg.resource_path)}</code></td></tr>`;
+                }
+                if (pkg.primary_cpu_abi) {
+                    html += `<tr><td>Primary CPU ABI:</td><td>${escapeHtml(pkg.primary_cpu_abi)}</td></tr>`;
+                }
+                html += `</table>`;
+                html += `</div>`;
+                
+                // Flags
+                if (pkg.flags || pkg.pkg_flags) {
+                    html += `<div class="detail-section">`;
+                    html += `<strong>Flags</strong>`;
+                    html += `<table class="detail-table">`;
+                    if (pkg.flags) {
+                        html += `<tr><td>Flags:</td><td><code>${escapeHtml(pkg.flags)}</code></td></tr>`;
+                    }
+                    if (pkg.pkg_flags) {
+                        html += `<tr><td>Package Flags:</td><td><code>${escapeHtml(pkg.pkg_flags)}</code></td></tr>`;
+                    }
+                    html += `</table>`;
+                    html += `</div>`;
+                }
+                
+                // Installer & Timestamps
+                html += `<div class="detail-section">`;
+                html += `<strong>Installation Info</strong>`;
+                html += `<table class="detail-table">`;
+                if (pkg.installer_package_name) {
+                    html += `<tr><td>Installer:</td><td>${escapeHtml(pkg.installer_package_name)}</td></tr>`;
+                }
+                if (pkg.last_update_time) {
+                    html += `<tr><td>Last Update:</td><td>${escapeHtml(pkg.last_update_time)}</td></tr>`;
+                }
+                if (pkg.time_stamp) {
+                    html += `<tr><td>Time Stamp:</td><td>${escapeHtml(pkg.time_stamp)}</td></tr>`;
+                }
+                html += `<tr><td>Users:</td><td>${pkg.user_count}</td></tr>`;
+                html += `</table>`;
+                html += `</div>`;
+                
+                // Users Information
+                if (pkg.users && Array.isArray(pkg.users) && pkg.users.length > 0) {
+                    html += `<div class="detail-section">`;
+                    html += `<strong>Users (${pkg.users.length})</strong>`;
+                    html += `<div class="users-container">`;
+                    
+                    pkg.users.forEach((user, userIdx) => {
+                        html += `<div class="user-entry">`;
+                        html += `<div class="user-header">`;
+                        html += `<span class="user-id">User ${user.user_id !== null && user.user_id !== undefined ? user.user_id : 'Unknown'}</span>`;
+                        if (user.installed !== null && user.installed !== undefined) {
+                            html += `<span class="user-status ${user.installed ? 'installed' : 'not-installed'}">${user.installed ? '✓ Installed' : '✗ Not Installed'}</span>`;
+                        }
+                        html += `</div>`;
+                        html += `<table class="detail-table">`;
+                        if (user.first_install_time) {
+                            html += `<tr><td>First Install Time:</td><td>${escapeHtml(user.first_install_time)}</td></tr>`;
+                        }
+                        if (user.last_disabled_caller) {
+                            html += `<tr><td>Last Disabled By:</td><td>${escapeHtml(user.last_disabled_caller)}</td></tr>`;
+                        }
+                        if (user.data_dir) {
+                            html += `<tr><td>Data Directory:</td><td><code>${escapeHtml(user.data_dir)}</code></td></tr>`;
+                        }
+                        if (user.enabled !== null && user.enabled !== undefined) {
+                            html += `<tr><td>Enabled:</td><td>${user.enabled === 0 ? 'Yes' : 'No'}</td></tr>`;
+                        }
+                        html += `</table>`;
+                        html += `</div>`;
+                    });
+                    
+                    html += `</div>`;
+                    html += `</div>`;
+                }
+                
+                // Install Logs
+                if (pkg.install_logs && Array.isArray(pkg.install_logs) && pkg.install_logs.length > 0) {
+                    html += `<div class="detail-section">`;
+                    html += `<strong>Installation History (${pkg.install_logs.length} entries)</strong>`;
+                    html += `<div class="install-logs-container">`;
+                    
+                    // Group install logs by START_INSTALL events
+                    const installEvents = [];
+                    pkg.install_logs.forEach(log => {
+                        if (log.event_type === 'START_INSTALL') {
+                            installEvents.push({
+                                start: log,
+                                related: []
+                            });
+                        } else if (installEvents.length > 0) {
+                            installEvents[installEvents.length - 1].related.push(log);
+                        }
+                    });
+                    
+                    installEvents.forEach((event, idx) => {
+                        html += `<div class="install-log-entry">`;
+                        html += `<div class="install-log-header">`;
+                        html += `<span class="install-log-type">Installation #${idx + 1}</span>`;
+                        if (event.start.timestamp) {
+                            html += `<span class="install-log-time">${escapeHtml(event.start.timestamp)}</span>`;
+                        }
+                        html += `</div>`;
+                        html += `<div class="install-log-details">`;
+                        html += `<table class="detail-table">`;
+                        if (event.start.versionCode) {
+                            html += `<tr><td>Version Code:</td><td>${event.start.versionCode}</td></tr>`;
+                        }
+                        if (event.start.request_from) {
+                            html += `<tr><td>Requested By:</td><td>${escapeHtml(event.start.request_from)}</td></tr>`;
+                        }
+                        if (event.start.stagedDir) {
+                            html += `<tr><td>Staged Dir:</td><td><code>${escapeHtml(event.start.stagedDir)}</code></td></tr>`;
+                        }
+                        html += `</table>`;
+                        
+                        // Show related events
+                        if (event.related.length > 0) {
+                            html += `<div class="related-events">`;
+                            event.related.forEach(rel => {
+                                html += `<div class="related-event">`;
+                                html += `<span class="event-type">${escapeHtml(rel.event_type || 'Unknown')}</span>`;
+                                if (rel.timestamp) {
+                                    html += `<span class="event-time">${escapeHtml(rel.timestamp)}</span>`;
+                                }
+                                html += `</div>`;
+                            });
+                            html += `</div>`;
+                        }
+                        html += `</div>`;
+                        html += `</div>`;
+                    });
+                    
+                    html += `</div>`;
+                    html += `</div>`;
+                }
+                
+                html += `</div>`;
+                html += `</div>`;
+            });
+            
+            html += '</div>';
+            packageDetailsListEl.innerHTML = html;
+
+            // Add search functionality
+            const searchInput = document.getElementById('package-details-search-input');
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                const items = document.querySelectorAll('.package-detail-item');
+                let visibleCount = 0;
+
+                items.forEach(item => {
+                    const packageName = item.getAttribute('data-package-name');
+                    
+                    if (packageName.includes(query)) {
+                        item.style.display = 'block';
+                        visibleCount++;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        function displayPowerHistory(data) {
+            const powerHistoryCard = document.getElementById('power-history-card');
+            const powerHistoryListEl = document.getElementById('power-history-list');
+            const countBadge = document.getElementById('power-history-count-badge');
+
+            if (!data.power_history || !Array.isArray(data.power_history) || data.power_history.length === 0) {
+                powerHistoryCard.style.display = 'none';
+                return;
+            }
+
+            powerHistoryCard.style.display = 'block';
+            countBadge.textContent = data.power_history.length;
+
+            let html = '<div class="power-history-container">';
+            
+            data.power_history.forEach((entry, index) => {
+                html += `<div class="power-history-entry">`;
+                html += `<div class="power-history-header">`;
+                html += `<h4>${escapeHtml(entry.timestamp)}</h4>`;
+                if (entry.reason) {
+                    html += `<span class="power-reason-badge">${escapeHtml(entry.reason)}</span>`;
+                }
+                html += `</div>`;
+                
+                html += `<div class="power-history-content">`;
+                
+                // History Events
+                if (entry.history_events && entry.history_events.length > 0) {
+                    html += `<div class="detail-section">`;
+                    html += `<strong>History Events (${entry.history_events.length})</strong>`;
+                    html += `<div class="power-events-container">`;
+                    
+                    entry.history_events.forEach((event, eventIdx) => {
+                        html += `<div class="power-event-entry">`;
+                        html += `<div class="power-event-header">`;
+                        if (event.event_type) {
+                            html += `<span class="power-event-type ${event.event_type.toLowerCase()}">${escapeHtml(event.event_type)}</span>`;
+                        }
+                        if (event.timestamp) {
+                            html += `<span class="power-event-time">${escapeHtml(event.timestamp)}</span>`;
+                        }
+                        if (event.flags) {
+                            html += `<span class="power-event-flags">${escapeHtml(event.flags)}</span>`;
+                        }
+                        html += `</div>`;
+                        if (event.details) {
+                            html += `<div class="power-event-details">${escapeHtml(event.details)}</div>`;
+                        }
+                        html += `</div>`;
+                    });
+                    
+                    html += `</div>`;
+                    html += `</div>`;
+                }
+                
+                // Stack Trace
+                if (entry.stack_trace && entry.stack_trace.length > 0) {
+                    html += `<div class="detail-section">`;
+                    html += `<strong>Stack Trace (${entry.stack_trace.length} lines)</strong>`;
+                    html += `<div class="stack-trace-container">`;
+                    html += `<pre class="stack-trace">`;
+                    entry.stack_trace.forEach(line => {
+                        html += escapeHtml(line) + '\n';
+                    });
+                    html += `</pre>`;
+                    html += `</div>`;
+                    html += `</div>`;
+                }
+                
+                html += `</div>`;
+                html += `</div>`;
+            });
+            
+            html += '</div>';
+            powerHistoryListEl.innerHTML = html;
+        }
+
+        function displayNetworkInfo(data) {
+            const networkInfoCard = document.getElementById('network-info-card');
+            const networkInfoListEl = document.getElementById('network-info-list');
+            const countBadge = document.getElementById('network-info-count-badge');
+
+            if (!data.network_info || !Array.isArray(data.network_info) || data.network_info.length === 0) {
+                networkInfoCard.style.display = 'none';
+                return;
+            }
+
+            networkInfoCard.style.display = 'block';
+            countBadge.textContent = data.network_info.length;
+
+            let html = '<div class="package-details-container">';
+            
+            data.network_info.forEach((net, index) => {
+                html += `<div class="package-detail-item" data-interface-name="${(net.interface_name || '').toLowerCase()}" data-ip="${(net.ip_address || '').toLowerCase()}">`;
+                html += `<div class="package-detail-header">`;
+                html += `<h4>${escapeHtml(net.interface_name || 'Unknown Interface')}</h4>`;
+                if (net.state) {
+                    // Check if state contains "UP" or "LOWER_UP" to determine if interface is active
+                    const isUp = net.state.toLowerCase().includes('up') || net.state.toLowerCase().includes('lower_up');
+                    const stateClass = isUp ? 'success' : 'warning';
+                    html += `<span class="version-badge" style="background: var(--${stateClass});">${isUp ? 'UP' : 'DOWN'}</span>`;
+                }
+                html += `</div>`;
+                
+                html += `<div class="package-detail-content">`;
+                
+                // Basic Info
+                html += `<div class="detail-section">`;
+                html += `<strong>Network Information</strong>`;
+                html += `<table class="detail-table">`;
+                if (net.ip_address) {
+                    html += `<tr><td>IP Address:</td><td><code>${escapeHtml(net.ip_address)}</code></td></tr>`;
+                } else {
+                    html += `<tr><td>IP Address:</td><td><span style="color: var(--text-secondary); font-style: italic;">None</span></td></tr>`;
+                }
+                if (net.mac_address) {
+                    html += `<tr><td>MAC Address:</td><td><code>${escapeHtml(net.mac_address)}</code></td></tr>`;
+                }
+                if (net.state) {
+                    // Display flags as badges
+                    const flags = net.state.split(', ').filter(f => f.trim());
+                    if (flags.length > 0) {
+                        html += `<tr><td>Flags:</td><td>`;
+                        flags.forEach(flag => {
+                            const flagLower = flag.toLowerCase();
+                            let flagClass = 'warning';
+                            if (flagLower.includes('up') || flagLower.includes('lower_up')) {
+                                flagClass = 'success';
+                            } else if (flagLower.includes('broadcast') || flagLower.includes('multicast')) {
+                                flagClass = 'info';
+                            }
+                            html += `<span style="display: inline-block; background: var(--${flagClass}); color: white; padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.75rem; margin-right: 0.25rem; margin-bottom: 0.25rem;">${escapeHtml(flag.trim())}</span>`;
+                        });
+                        html += `</td></tr>`;
+                    }
+                }
+                if (net.mtu) {
+                    html += `<tr><td>MTU:</td><td>${net.mtu}</td></tr>`;
+                }
+                html += `</table>`;
+                html += `</div>`;
+                
+                // Statistics
+                if (net.rx_bytes !== null && net.rx_bytes !== undefined || net.tx_bytes !== null && net.tx_bytes !== undefined) {
+                    html += `<div class="detail-section">`;
+                    html += `<strong>Statistics</strong>`;
+                    html += `<table class="detail-table">`;
+                    if (net.rx_bytes !== null && net.rx_bytes !== undefined) {
+                        html += `<tr><td>RX Bytes:</td><td>${formatBytes(net.rx_bytes)}</td></tr>`;
+                    }
+                    if (net.tx_bytes !== null && net.tx_bytes !== undefined) {
+                        html += `<tr><td>TX Bytes:</td><td>${formatBytes(net.tx_bytes)}</td></tr>`;
+                    }
+                    if (net.rx_packets !== null && net.rx_packets !== undefined) {
+                        html += `<tr><td>RX Packets:</td><td>${net.rx_packets.toLocaleString()}</td></tr>`;
+                    }
+                    if (net.tx_packets !== null && net.tx_packets !== undefined) {
+                        html += `<tr><td>TX Packets:</td><td>${net.tx_packets.toLocaleString()}</td></tr>`;
+                    }
+                    html += `</table>`;
+                    html += `</div>`;
+                }
+                
+                html += `</div>`;
+                html += `</div>`;
+            });
+            
+            html += '</div>';
+            networkInfoListEl.innerHTML = html;
+
+            // Add search functionality
+            const searchInput = document.getElementById('network-search-input');
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                const items = document.querySelectorAll('.package-detail-item[data-interface-name]');
+                let visibleCount = 0;
+
+                items.forEach(item => {
+                    const interfaceName = item.getAttribute('data-interface-name') || '';
+                    const ip = item.getAttribute('data-ip') || '';
+                    
+                    if (interfaceName.includes(query) || ip.includes(query)) {
+                        item.style.display = 'block';
+                        visibleCount++;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        function displayNetworkStats(data) {
+            const networkStatsCard = document.getElementById('network-stats-card');
+            const networkStatsListEl = document.getElementById('network-stats-list');
+            const countBadge = document.getElementById('network-stats-count-badge');
+
+            if (!data.network_stats || !Array.isArray(data.network_stats) || data.network_stats.length === 0) {
+                networkStatsCard.style.display = 'none';
+                return;
+            }
+
+            networkStatsCard.style.display = 'block';
+            countBadge.textContent = data.network_stats.length;
+
+            let html = '<div class="package-details-container">';
+            
+            data.network_stats.forEach((stat, index) => {
+                const networkType = stat.network_type || 'Unknown';
+                const networkName = stat.wifi_network_name || stat.subscriber_id || 'N/A';
+                
+                html += `<div class="package-detail-item" data-network-type="${networkType.toLowerCase()}" data-network-name="${networkName.toLowerCase()}">`;
+                html += `<div class="package-detail-header">`;
+                html += `<h4>${escapeHtml(networkName)}</h4>`;
+                html += `<span class="version-badge" style="background: ${networkType === 'WIFI' ? 'var(--accent)' : 'var(--warning)'};">${escapeHtml(networkType)}</span>`;
+                html += `</div>`;
+                
+                html += `<div class="package-detail-content">`;
+                
+                // Basic Info
+                html += `<div class="detail-section">`;
+                html += `<strong>Network Information</strong>`;
+                html += `<table class="detail-table">`;
+                html += `<tr><td>Network Type:</td><td>${escapeHtml(networkType)}</td></tr>`;
+                if (stat.wifi_network_name) {
+                    html += `<tr><td>WiFi Name:</td><td>${escapeHtml(stat.wifi_network_name)}</td></tr>`;
+                }
+                if (stat.subscriber_id) {
+                    html += `<tr><td>Subscriber ID:</td><td>${escapeHtml(stat.subscriber_id)}</td></tr>`;
+                }
+                if (stat.rat_type) {
+                    html += `<tr><td>RAT Type:</td><td>${escapeHtml(stat.rat_type)}</td></tr>`;
+                }
+                if (stat.default_network !== null && stat.default_network !== undefined) {
+                    html += `<tr><td>Default Network:</td><td>${stat.default_network ? 'Yes' : 'No'}</td></tr>`;
+                }
+                if (stat.metered !== null && stat.metered !== undefined) {
+                    html += `<tr><td>Metered:</td><td>${stat.metered ? 'Yes' : 'No'}</td></tr>`;
+                }
+                html += `</table>`;
+                html += `</div>`;
+                
+                // Statistics
+                if (stat.rx_bytes !== null && stat.rx_bytes !== undefined || stat.tx_bytes !== null && stat.tx_bytes !== undefined) {
+                    html += `<div class="detail-section">`;
+                    html += `<strong>Statistics</strong>`;
+                    html += `<table class="detail-table">`;
+                    if (stat.rx_bytes !== null && stat.rx_bytes !== undefined) {
+                        html += `<tr><td>RX Bytes:</td><td>${formatBytes(stat.rx_bytes)}</td></tr>`;
+                    }
+                    if (stat.tx_bytes !== null && stat.tx_bytes !== undefined) {
+                        html += `<tr><td>TX Bytes:</td><td>${formatBytes(stat.tx_bytes)}</td></tr>`;
+                    }
+                    if (stat.rx_packets !== null && stat.rx_packets !== undefined) {
+                        html += `<tr><td>RX Packets:</td><td>${stat.rx_packets.toLocaleString()}</td></tr>`;
+                    }
+                    if (stat.tx_packets !== null && stat.tx_packets !== undefined) {
+                        html += `<tr><td>TX Packets:</td><td>${stat.tx_packets.toLocaleString()}</td></tr>`;
+                    }
+                    html += `</table>`;
+                    html += `</div>`;
+                }
+                
+                html += `</div>`;
+                html += `</div>`;
+            });
+            
+            html += '</div>';
+            networkStatsListEl.innerHTML = html;
+
+            // Add search functionality
+            const searchInput = document.getElementById('network-stats-search-input');
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                const items = document.querySelectorAll('.package-detail-item[data-network-type]');
+                let visibleCount = 0;
+
+                items.forEach(item => {
+                    const networkType = item.getAttribute('data-network-type') || '';
+                    const networkName = item.getAttribute('data-network-name') || '';
+                    
+                    if (networkType.includes(query) || networkName.includes(query)) {
+                        item.style.display = 'block';
+                        visibleCount++;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        function displayBluetoothInfo(data) {
+            const bluetoothCard = document.getElementById('bluetooth-card');
+            const bluetoothAdapterInfoEl = document.getElementById('bluetooth-adapter-info');
+            const bluetoothDevicesListEl = document.getElementById('bluetooth-devices-list');
+            const countBadge = document.getElementById('bluetooth-devices-count-badge');
+
+            if (!data.bluetooth_info || !data.bluetooth_info.devices || !Array.isArray(data.bluetooth_info.devices)) {
+                bluetoothCard.style.display = 'none';
+                return;
+            }
+
+            const btInfo = data.bluetooth_info;
+            const devices = btInfo.devices || [];
+
+            if (devices.length === 0 && !btInfo.adapter_properties) {
+                bluetoothCard.style.display = 'none';
+                return;
+            }
+
+            bluetoothCard.style.display = 'block';
+            countBadge.textContent = devices.length;
+
+            // Display adapter properties
+            let adapterHtml = '';
+            if (btInfo.adapter_properties) {
+                const adapter = btInfo.adapter_properties;
+                adapterHtml += '<div class="package-detail-item" style="margin-bottom: 1.5rem;">';
+                adapterHtml += '<div class="package-detail-header">';
+                adapterHtml += '<h4>📶 Bluetooth Adapter</h4>';
+                if (adapter.state) {
+                    const isOn = adapter.state === 'ON';
+                    const stateClass = isOn ? 'success' : 'warning';
+                    adapterHtml += `<span class="version-badge" style="background: var(--${stateClass});">${adapter.state || 'UNKNOWN'}</span>`;
+                }
+                adapterHtml += '</div>';
+                adapterHtml += '<div class="package-detail-content">';
+                adapterHtml += '<table class="info-table">';
+                
+                if (adapter.name) {
+                    adapterHtml += `<tr><td>Name:</td><td>${escapeHtml(adapter.name)}</td></tr>`;
+                }
+                if (adapter.address) {
+                    adapterHtml += `<tr><td>Address:</td><td><code>${escapeHtml(adapter.address)}</code></td></tr>`;
+                }
+                if (adapter.state) {
+                    adapterHtml += `<tr><td>State:</td><td>${escapeHtml(adapter.state)}</td></tr>`;
+                }
+                if (adapter.connection_state) {
+                    adapterHtml += `<tr><td>Connection State:</td><td>${escapeHtml(adapter.connection_state)}</td></tr>`;
+                }
+                if (adapter.discovering !== undefined) {
+                    adapterHtml += `<tr><td>Discovering:</td><td>${adapter.discovering ? 'Yes' : 'No'}</td></tr>`;
+                }
+                if (adapter.max_connected_audio_devices !== undefined) {
+                    adapterHtml += `<tr><td>Max Connected Audio Devices:</td><td>${adapter.max_connected_audio_devices}</td></tr>`;
+                }
+                if (adapter.a2dp_offload_enabled !== undefined) {
+                    adapterHtml += `<tr><td>A2DP Offload Enabled:</td><td>${adapter.a2dp_offload_enabled ? 'Yes' : 'No'}</td></tr>`;
+                }
+                if (adapter.sar_status) {
+                    adapterHtml += `<tr><td>SAR Status:</td><td>${escapeHtml(adapter.sar_status)}</td></tr>`;
+                }
+                if (adapter.sar_type) {
+                    adapterHtml += `<tr><td>SAR Type:</td><td>${escapeHtml(adapter.sar_type)}</td></tr>`;
+                }
+                
+                adapterHtml += '</table>';
+                adapterHtml += '</div>';
+                adapterHtml += '</div>';
+            }
+            bluetoothAdapterInfoEl.innerHTML = adapterHtml;
+
+            // Display devices
+            let devicesHtml = '<div class="package-details-container">';
+            
+            devices.forEach((device, index) => {
+                const isConnected = device.connected === true;
+                const deviceName = device.name || 'Unknown Device';
+                const macAddress = device.mac_address || device.masked_address || 'N/A';
+                
+                devicesHtml += `<div class="package-detail-item" data-device-name="${deviceName.toLowerCase()}" data-mac="${macAddress.toLowerCase()}" data-services="${(device.services || []).join(' ').toLowerCase()}">`;
+                devicesHtml += '<div class="package-detail-header">';
+                devicesHtml += `<h4>${escapeHtml(deviceName)}</h4>`;
+                if (isConnected) {
+                    devicesHtml += '<span class="version-badge" style="background: var(--success);">CONNECTED</span>';
+                } else {
+                    devicesHtml += '<span class="version-badge" style="background: var(--text-secondary);">NOT CONNECTED</span>';
+                }
+                devicesHtml += '</div>';
+                
+                devicesHtml += '<div class="package-detail-content">';
+                devicesHtml += '<table class="info-table">';
+                
+                if (macAddress && macAddress !== 'N/A') {
+                    devicesHtml += `<tr><td>MAC Address:</td><td><code>${escapeHtml(macAddress)}</code></td></tr>`;
+                }
+                if (device.masked_address && device.masked_address !== macAddress) {
+                    devicesHtml += `<tr><td>Masked Address:</td><td><code>${escapeHtml(device.masked_address)}</code></td></tr>`;
+                }
+                if (device.identity_address) {
+                    devicesHtml += `<tr><td>Identity Address:</td><td><code>${escapeHtml(device.identity_address)}</code></td></tr>`;
+                }
+                if (device.device_class) {
+                    devicesHtml += `<tr><td>Device Class:</td><td><code>${escapeHtml(device.device_class)}</code></td></tr>`;
+                }
+                if (device.device_type !== undefined) {
+                    devicesHtml += `<tr><td>Device Type:</td><td>${device.device_type}</td></tr>`;
+                }
+                if (device.transport_type) {
+                    devicesHtml += `<tr><td>Transport Type:</td><td>${escapeHtml(device.transport_type)}</td></tr>`;
+                }
+                if (device.link_type !== undefined) {
+                    devicesHtml += `<tr><td>Link Type:</td><td>${device.link_type}</td></tr>`;
+                }
+                if (device.manufacturer !== undefined) {
+                    devicesHtml += `<tr><td>Manufacturer ID:</td><td>${device.manufacturer}</td></tr>`;
+                }
+                if (device.services && device.services.length > 0) {
+                    devicesHtml += `<tr><td>Services:</td><td>`;
+                    device.services.forEach((service, idx) => {
+                        if (service !== 'No uuid' && service !== '00000000-0000-0000-0000-000000000000') {
+                            devicesHtml += `<span class="service-badge">${escapeHtml(service)}</span>`;
+                        }
+                    });
+                    if (device.services.every(s => s === 'No uuid' || s === '00000000-0000-0000-0000-000000000000')) {
+                        devicesHtml += '<span style="color: var(--text-secondary);">No services</span>';
+                    }
+                    devicesHtml += '</td></tr>';
+                }
+                
+                devicesHtml += '</table>';
+                devicesHtml += '</div>';
+                devicesHtml += '</div>';
+            });
+            
+            devicesHtml += '</div>';
+            bluetoothDevicesListEl.innerHTML = devicesHtml;
+
+            // Add search functionality
+            const searchInput = document.getElementById('bluetooth-search-input');
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                const items = document.querySelectorAll('#bluetooth-devices-list .package-detail-item');
+                let visibleCount = 0;
+
+                items.forEach(item => {
+                    const deviceName = item.getAttribute('data-device-name') || '';
+                    const mac = item.getAttribute('data-mac') || '';
+                    const services = item.getAttribute('data-services') || '';
+                    
+                    if (deviceName.includes(query) || mac.includes(query) || services.includes(query)) {
+                        item.style.display = 'block';
+                        visibleCount++;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        function displayNetworkSockets(data) {
+            const networkSocketsCard = document.getElementById('network-sockets-card');
+            const networkSocketsTableBody = document.getElementById('network-sockets-table-body');
+            const countBadge = document.getElementById('network-sockets-count-badge');
+
+            if (!data.sockets || !Array.isArray(data.sockets) || data.sockets.length === 0) {
+                networkSocketsCard.style.display = 'none';
+                return;
+            }
+
+            networkSocketsCard.style.display = 'block';
+            countBadge.textContent = data.sockets.length;
+
+            // Clear table
+            networkSocketsTableBody.innerHTML = '';
+
+            // Add sockets to table
+            data.sockets.forEach(socket => {
+                const row = document.createElement('tr');
+                const protocol = socket.protocol || '-';
+                const localAddr = socket.local_address || '-';
+                const localPort = socket.local_port !== null && socket.local_port !== undefined ? socket.local_port.toString() : '-';
+                const remoteAddr = socket.remote_address || '-';
+                const remotePort = socket.remote_port !== null && socket.remote_port !== undefined ? socket.remote_port.toString() : '-';
+                const state = socket.state || '-';
+                const uid = socket.uid !== null && socket.uid !== undefined ? socket.uid.toString() : '-';
+                
+                row.setAttribute('data-protocol', protocol.toLowerCase());
+                row.setAttribute('data-local', localAddr.toLowerCase());
+                row.setAttribute('data-local-port', localPort);
+                row.setAttribute('data-remote', remoteAddr.toLowerCase());
+                row.setAttribute('data-remote-port', remotePort);
+                row.setAttribute('data-state', state.toLowerCase());
+                
+                row.innerHTML = `
+                    <td><code>${escapeHtml(protocol)}</code></td>
+                    <td><code>${escapeHtml(localAddr)}</code></td>
+                    <td>${localPort !== '-' ? `<code>${localPort}</code>` : '-'}</td>
+                    <td><code>${escapeHtml(remoteAddr)}</code></td>
+                    <td>${remotePort !== '-' ? `<code>${remotePort}</code>` : '-'}</td>
+                    <td>${escapeHtml(state)}</td>
+                    <td>${uid}</td>
+                `;
+                
+                // Add click handler to show details
+                row.style.cursor = 'pointer';
+                row.onclick = () => {
+                    showSocketDetails(socket);
+                };
+                
+                networkSocketsTableBody.appendChild(row);
+            });
+
+            // Add search functionality
+            const searchInput = document.getElementById('network-sockets-search-input');
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                const rows = networkSocketsTableBody.querySelectorAll('tr');
+                let visibleCount = 0;
+
+                rows.forEach(row => {
+                    const protocol = row.getAttribute('data-protocol') || '';
+                    const local = row.getAttribute('data-local') || '';
+                    const localPort = row.getAttribute('data-local-port') || '';
+                    const remote = row.getAttribute('data-remote') || '';
+                    const remotePort = row.getAttribute('data-remote-port') || '';
+                    const state = row.getAttribute('data-state') || '';
+                    
+                    if (protocol.includes(query) || 
+                        local.includes(query) || 
+                        localPort.includes(query) ||
+                        remote.includes(query) || 
+                        remotePort.includes(query) ||
+                        state.includes(query)) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        function showSocketDetails(socket) {
+            let details = '<div class="detail-section">';
+            details += '<strong>Socket Details</strong>';
+            details += '<table class="detail-table">';
+            
+            if (socket.protocol) {
+                details += `<tr><td>Protocol:</td><td><code>${escapeHtml(socket.protocol)}</code></td></tr>`;
+            }
+            if (socket.local_address) {
+                details += `<tr><td>Local Address:</td><td><code>${escapeHtml(socket.local_address)}</code></td></tr>`;
+            }
+            if (socket.local_ip) {
+                details += `<tr><td>Local IP:</td><td><code>${escapeHtml(socket.local_ip)}</code></td></tr>`;
+            }
+            if (socket.local_port !== null && socket.local_port !== undefined) {
+                details += `<tr><td>Local Port:</td><td><code>${socket.local_port}</code></td></tr>`;
+            }
+            if (socket.remote_address) {
+                details += `<tr><td>Remote Address:</td><td><code>${escapeHtml(socket.remote_address)}</code></td></tr>`;
+            }
+            if (socket.remote_ip) {
+                details += `<tr><td>Remote IP:</td><td><code>${escapeHtml(socket.remote_ip)}</code></td></tr>`;
+            }
+            if (socket.remote_port !== null && socket.remote_port !== undefined) {
+                details += `<tr><td>Remote Port:</td><td><code>${socket.remote_port}</code></td></tr>`;
+            }
+            if (socket.state) {
+                details += `<tr><td>State:</td><td>${escapeHtml(socket.state)}</td></tr>`;
+            }
+            if (socket.uid !== null && socket.uid !== undefined) {
+                details += `<tr><td>UID:</td><td>${socket.uid}</td></tr>`;
+            }
+            if (socket.inode !== null && socket.inode !== undefined) {
+                details += `<tr><td>Inode:</td><td>${socket.inode}</td></tr>`;
+            }
+            if (socket.recv_q !== null && socket.recv_q !== undefined) {
+                details += `<tr><td>Receive Queue:</td><td>${socket.recv_q}</td></tr>`;
+            }
+            if (socket.send_q !== null && socket.send_q !== undefined) {
+                details += `<tr><td>Send Queue:</td><td>${socket.send_q}</td></tr>`;
+            }
+            if (socket.socket_key) {
+                details += `<tr><td>Socket Key:</td><td><code>${escapeHtml(socket.socket_key)}</code></td></tr>`;
+            }
+            if (socket.additional_info) {
+                details += `<tr><td>Additional Info:</td><td><code style="font-size: 0.75rem; word-break: break-all;">${escapeHtml(socket.additional_info)}</code></td></tr>`;
+            }
+            
+            details += '</table>';
+            details += '</div>';
+            
+            // Show in a modal or alert (simple alert for now, can be enhanced)
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;';
+            modal.innerHTML = `
+                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 2rem; max-width: 80%; max-height: 80%; overflow-y: auto; position: relative;">
+                    <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" style="position: absolute; top: 1rem; right: 1rem; background: var(--error); color: white; border: none; border-radius: 4px; padding: 0.5rem 1rem; cursor: pointer;">Close</button>
+                    <h3 style="margin-bottom: 1rem;">Socket Details</h3>
+                    ${details}
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modal.onclick = (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            };
+        }
+
+        function parseInstallLogs(logs) {
+            const packages = [];
+            const installMap = new Map();
+            
+            logs.forEach((log) => {
+                if (log.event_type === 'START_INSTALL') {
+                    const key = log.observer;
+                    installMap.set(key, {
+                        packageName: log.pkg,
+                        installer: log.request_from,
+                        timestamp: log.timestamp,
+                        versionCode: log.versionCode,
+                        observer: log.observer
+                    });
+                } else if (log.event_type === 'INSTALL_RESULT') {
+                    const match = log.message.match(/\{(\d+)\}/);
+                    if (match) {
+                        const key = match[1];
+                        const install = installMap.get(key);
+                        
+                        if (install) {
+                            let duration = null;
+                            if (install.timestamp && log.timestamp) {
+                                const start = new Date(install.timestamp);
+                                const end = new Date(log.timestamp);
+                                const durationMs = end - start;
+                                duration = durationMs > 0 ? formatDuration(durationMs) : null;
+                            }
+
+                            const isSuccess = log.message.includes('result of install: 1');
+                            
+                            packages.push({
+                                packageName: install.packageName,
+                                installer: install.installer,
+                                timestamp: install.timestamp,
+                                versionCode: install.versionCode,
+                                success: isSuccess,
+                                duration: duration
+                            });
+                            
+                            installMap.delete(key);
+                        }
+                    }
+                }
+            });
+
+            packages.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            return packages;
+        }
+
+        function formatInstaller(installer) {
+            const installerMap = {
+                'com.android.vending': 'Play Store',
+                'com.sec.android.app.samsungapps': 'Galaxy Store',
+                'com.android.managedprovisioning': 'System Provisioning',
+                'android': 'Android System',
+                'com.google.android.packageinstaller': 'Package Installer'
+            };
+            return installerMap[installer] || installer;
+        }
+
+        function formatDate(timestamp) {
+            if (!timestamp) return '-';
+            
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 0) return 'Today ' + date.toLocaleTimeString();
+            if (diffDays === 1) return 'Yesterday ' + date.toLocaleTimeString();
+            if (diffDays < 7) return `${diffDays} days ago`;
+            
+            const options = { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            return date.toLocaleString(undefined, options);
+        }
+
+        // Connect to device
+        window.connectDevice = async function() {
+            try {
+                if (typeof Adb === 'undefined') {
+                    showStatus('⚠️ WebAssembly not loaded yet. Please wait a moment and try again.', 'error');
+                    return;
+                }
+                
+                const btn = document.getElementById('btn-connect-device');
+                btn.disabled = false;
+                
+                showStatus('Connecting to device...', 'info');
+                showProgress();
+                hideResults();
+
+                adb = new Adb();
+                window.adb = adb;
+                
+                await adb.connect();
+                
+                btn.textContent = 'Connected ✓';
+                btn.disabled = true;
+                
+                showStatus('Connected! Listing bugreports...', 'info');
+                
+                const listingStatus = document.getElementById('listing-status');
+                listingStatus.classList.remove('hidden');
+                
+                let timeoutWarning = setTimeout(() => {
+                    showStatus('Still scanning... This is normal for devices with many bugreports', 'info');
+                }, 15000);
+
+                const startTime = Date.now();
+                const bugreports = await adb.list_bugreports();
+                const durationMs = Date.now() - startTime;
+                
+                clearTimeout(timeoutWarning);
+                listingStatus.classList.add('hidden');
+                
+                const select = document.getElementById('bugreport-select');
+                select.innerHTML = '<option value="">Select a bugreport...</option>';
+                
+                if (bugreports && bugreports.length > 0) {
+                    bugreports.forEach(path => {
+                        const option = document.createElement('option');
+                        option.value = path;
+                        option.textContent = path.split('/').pop();
+                        select.appendChild(option);
+                    });
+                    
+                    showStatus(`✓ Found ${bugreports.length} bugreport(s) on device in ${formatDuration(durationMs)} - select one to analyze`, 'success');
+                    document.getElementById('btn-refresh-list').classList.remove('hidden');
+                } else {
+                    showStatus('⚠️ No bugreports found on device. Try generating a new one or use the "Generate New" tab.', 'error');
+                }
+
+                select.classList.remove('hidden');
+                select.style.display = 'block';
+                document.getElementById('btn-disconnect-device').classList.remove('hidden');
+                
+                hideProgress();
+            } catch (error) {
+                console.error('[CONNECT] Connection error:', error);
+                
+                let errorMessage = 'Failed to connect: ';
+                if (error.toString().includes('No device selected')) {
+                    errorMessage = '⚠️ No device selected. Please accept USB debugging permission on your device.';
+                } else if (error.toString().includes('device not found')) {
+                    errorMessage = '⚠️ Device not found. Please check USB connection and enable USB debugging.';
+                } else if (error.toString().includes('permission')) {
+                    errorMessage = '⚠️ Permission denied. Please accept USB debugging permission on your device.';
+                } else {
+                    errorMessage += error.toString();
+                }
+                
+                showStatus(errorMessage, 'error');
+                hideProgress();
+                document.getElementById('listing-status').classList.add('hidden');
+                
+                const btn = document.getElementById('btn-connect-device');
+                btn.textContent = 'Retry Connection';
+                btn.disabled = false;
+            }
+        }
+
+        // Disconnect from device
+        window.disconnectDevice = async function() {
+            try {
+                showStatus('Disconnecting from device...', 'info');
+                
+                if (adb) {
+                    try {
+                        await adb.disconnect();
+                    } catch (e) {
+                        console.warn('Disconnect error (ignored):', e);
+                    }
+                    adb = null;
+                    window.adb = null;
+                }
+                
+                const btnConnectDevice = document.getElementById('btn-connect-device');
+                if (btnConnectDevice) {
+                    btnConnectDevice.textContent = 'Connect to Device';
+                    btnConnectDevice.disabled = false;
+                }
+                document.getElementById('btn-disconnect-device').classList.add('hidden');
+                
+                const btnGenerate = document.getElementById('btn-generate');
+                if (btnGenerate) {
+                    btnGenerate.textContent = 'Connect & Generate Bugreport';
+                    btnGenerate.disabled = false;
+                }
+                document.getElementById('btn-disconnect-generate').classList.add('hidden');
+                
+                const select = document.getElementById('bugreport-select');
+                select.classList.add('hidden');
+                select.innerHTML = '<option value="">Select a bugreport...</option>';
+                
+                document.getElementById('btn-refresh-list').classList.add('hidden');
+                document.getElementById('btn-analyze-device').classList.add('hidden');
+                
+                selectedBugreportPath = null;
+                hideResults();
+                
+                showStatus('✓ Disconnected from device', 'success');
+                
+            } catch (error) {
+                console.error('Disconnect error:', error);
+                showStatus('Error during disconnect: ' + error, 'error');
+            }
+        }
+
+        // Refresh bugreport list
+        window.refreshBugreportList = async function() {
+            if (!adb) {
+                showStatus('Please connect to device first', 'error');
+                return;
+            }
+
+            try {
+                showStatus('Refreshing bugreport list...', 'info');
+                showProgress();
+                hideResults();
+                
+                const listingStatus = document.getElementById('listing-status');
+                listingStatus.classList.remove('hidden');
+                
+                let timeoutWarning = setTimeout(() => {
+                    showStatus('Still scanning... This is normal for devices with many bugreports', 'info');
+                }, 15000);
+
+                const startTime = Date.now();
+                const bugreports = await adb.list_bugreports();
+                const durationMs = Date.now() - startTime;
+                
+                clearTimeout(timeoutWarning);
+                listingStatus.classList.add('hidden');
+                
+                const select = document.getElementById('bugreport-select');
+                select.innerHTML = '<option value="">Select a bugreport...</option>';
+                
+                if (bugreports && bugreports.length > 0) {
+                    bugreports.forEach(path => {
+                        const option = document.createElement('option');
+                        option.value = path;
+                        option.textContent = path.split('/').pop();
+                        select.appendChild(option);
+                    });
+                    
+                    showStatus(`✓ Refreshed - found ${bugreports.length} bugreport(s) in ${formatDuration(durationMs)}`, 'success');
+                } else {
+                    showStatus('⚠️ No bugreports found on device', 'error');
+                }
+                
+                document.getElementById('btn-analyze-device').classList.add('hidden');
+                selectedBugreportPath = null;
+                
+                hideProgress();
+            } catch (error) {
+                console.error('Refresh error:', error);
+                showStatus('Failed to refresh list: ' + error, 'error');
+                document.getElementById('listing-status').classList.add('hidden');
+                hideProgress();
+            }
+        }
+
+        window.selectBugreport = function() {
+            const select = document.getElementById('bugreport-select');
+            selectedBugreportPath = select.value;
+            
+            if (selectedBugreportPath) {
+                document.getElementById('btn-analyze-device').classList.remove('hidden');
+            } else {
+                document.getElementById('btn-analyze-device').classList.add('hidden');
+            }
+        }
+
+        // Generate new bugreport
+        window.generateBugreport = async function() {
+            try {
+                if (typeof Adb === 'undefined') {
+                    showStatus('⚠️ WebAssembly not loaded yet. Please wait a moment and try again.', 'error');
+                    return;
+                }
+                
+                const btnGenerate = document.getElementById('btn-generate');
+                btnGenerate.disabled = false;
+                
+                showStatus('Connecting to device...', 'info');
+                showProgress();
+                hideResults();
+
+                adb = new Adb();
+                window.adb = adb;
+                
+                await adb.connect();
+                
+                btnGenerate.textContent = 'Connected ✓';
+                btnGenerate.disabled = true;
+                
+                document.getElementById('btn-disconnect-generate').classList.remove('hidden');
+                
+                showStatus('Generating bugreport (this takes 5-10 minutes)...', 'info');
+                
+                const bugreportData = await adb.bugreport();
+                const sizeMB = (bugreportData.length / 1024 / 1024).toFixed(2);
+                
+                showStatus('Bugreport generated! Calculating hash...', 'info');
+                
+                const hashHex = await calculateHash(bugreportData);
+                
+                showStatus('Hash calculated! Analyzing...', 'info');
+
+                const result = await adb.analyze_bugreport(bugreportData);
+                
+                result.file_info = {
+                    path: 'Generated on device',
+                    size_bytes: bugreportData.length,
+                    size_mb: sizeMB,
+                    sha256: hashHex
+                };
+                
+                result.analysis_timestamp = new Date().toISOString();
+                
+                showStatus('Analysis complete!', 'success');
+                hideProgress();
+                displayResults(result);
+            } catch (error) {
+                console.error('[GENERATE] Generation error:', error);
+                
+                let errorMessage = 'Failed to generate bugreport: ';
+                if (error.toString().includes('No device selected')) {
+                    errorMessage = '⚠️ No device selected. Please accept USB debugging permission on your device.';
+                } else if (error.toString().includes('device not found')) {
+                    errorMessage = '⚠️ Device not found. Please check USB connection and enable USB debugging.';
+                } else if (error.toString().includes('permission')) {
+                    errorMessage = '⚠️ Permission denied. Please accept USB debugging permission on your device.';
+                } else if (error.toString().includes('timeout')) {
+                    errorMessage = '⚠️ Operation timed out. Bugreport generation can take 5-10 minutes. Try again.';
+                } else {
+                    errorMessage += error.toString();
+                }
+                
+                showStatus(errorMessage, 'error');
+                hideProgress();
+                
+                const btnGenerate = document.getElementById('btn-generate');
+                btnGenerate.textContent = 'Retry Generation';
+                btnGenerate.disabled = false;
+                
+                document.getElementById('btn-disconnect-generate').classList.add('hidden');
+            }
+        }
+
+        // Analyze from device
+        window.analyzeFromDevice = async function() {
+            if (!selectedBugreportPath) {
+                showStatus('Please select a bugreport first', 'error');
+                return;
+            }
+
+            try {
+                showStatus('📥 Downloading bugreport from device...', 'info');
+                showProgress();
+                showLoadingSpinner('Downloading bugreport from device...');
+                hideResults();
+
+                const startDownload = Date.now();
+                const bugreportData = await adb.download_bugreport(selectedBugreportPath);
+                
+                const downloadDurationMs = Date.now() - startDownload;
+                const sizeMB = (bugreportData.length / 1024 / 1024).toFixed(2);
+                
+                showStatus(`✓ Downloaded ${sizeMB} MB in ${formatDuration(downloadDurationMs)}! Calculating hash...`, 'info');
+                showLoadingSpinner('Calculating file hash...');
+                
+                const startHash = Date.now();
+                const hashHex = await calculateHash(bugreportData);
+                const hashDurationMs = Date.now() - startHash;
+                
+                showStatus(`✓ Hash calculated in ${formatDuration(hashDurationMs)}! Now analyzing...`, 'info');
+                showLoadingSpinner('Analyzing bugreport... This may take a minute');
+                
+                const startAnalysis = Date.now();
+                const result = await adb.analyze_bugreport(bugreportData);
+                
+                const analysisDurationMs = Date.now() - startAnalysis;
+                const totalDurationMs = Date.now() - startDownload;
+                
+                result.file_info = {
+                    path: selectedBugreportPath,
+                    size_bytes: bugreportData.length,
+                    size_mb: sizeMB,
+                    sha256: hashHex
+                };
+                
+                result.analysis_timestamp = new Date().toISOString();
+                
+                showStatus(`✓ Analysis complete! (Total: ${formatDuration(totalDurationMs)})`, 'success');
+                hideProgress();
+                hideLoadingSpinner();
+                displayResults(result);
+            } catch (error) {
+                console.error('[ANALYZE-DEVICE] Analysis error:', error);
+                
+                let errorMessage = 'Failed to analyze: ';
+                if (error.toString().includes('Not connected')) {
+                    errorMessage = '⚠️ Not connected to device. Please connect first.';
+                } else if (error.toString().includes('file not found') || error.toString().includes('No such file')) {
+                    errorMessage = '⚠️ Bugreport file not found on device. It may have been deleted.';
+                } else if (error.toString().includes('permission')) {
+                    errorMessage = '⚠️ Permission denied. Check USB debugging is enabled.';
+                } else {
+                    errorMessage += error.toString();
+                }
+                
+                showStatus(errorMessage, 'error');
+                hideProgress();
+                hideLoadingSpinner();
+            }
+        }
+
+        // File upload handling
+        window.handleFileSelect = function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                uploadedFile = file;
+                const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+                document.getElementById('btn-analyze-upload').classList.remove('hidden');
+                
+                if (file.size > 50 * 1024 * 1024) {
+                    showStatus(`⚠️ Large file loaded: ${file.name} (${sizeMB} MB) - Analysis may take 30-60 seconds`, 'info');
+                } else {
+                    showStatus(`✓ File loaded: ${file.name} (${sizeMB} MB)`, 'success');
+                }
+            }
+        }
+
+        // Drag and drop
+        const uploadZone = document.getElementById('upload-zone');
+        
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                uploadedFile = file;
+                const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+                document.getElementById('btn-analyze-upload').classList.remove('hidden');
+                
+                if (file.size > 50 * 1024 * 1024) {
+                    showStatus(`⚠️ Large file loaded: ${file.name} (${sizeMB} MB) - Analysis may take 30-60 seconds`, 'info');
+                } else {
+                    showStatus(`✓ File loaded: ${file.name} (${sizeMB} MB)`, 'success');
+                }
+            }
+        });
+
+        // Analyze uploaded file
+        window.analyzeUploadedFile = async function() {
+            if (!uploadedFile) {
+                showStatus('Please upload a file first', 'error');
+                return;
+            }
+
+            try {
+                const fileSizeMB = (uploadedFile.size / 1024 / 1024).toFixed(2);
+                
+                if (uploadedFile.size > 100 * 1024 * 1024) {
+                    const proceed = confirm(
+                        `⚠️ Warning: This file is ${fileSizeMB} MB.\n\n` +
+                        `Analyzing very large files may:\n` +
+                        `• Take 60+ seconds\n` +
+                        `• Use significant memory\n` +
+                        `• Potentially freeze the browser\n\n` +
+                        `For files over 100 MB, consider using "From Device" method instead.\n\n` +
+                        `Continue anyway?`
+                    );
+                    if (!proceed) {
+                        showStatus('Analysis cancelled by user', 'info');
+                        return;
+                    }
+                }
+                
+                showStatus(`Reading file (${fileSizeMB} MB)...`, 'info');
+                showProgress();
+                showLoadingSpinner('Reading file...');
+                hideResults();
+
+                const arrayBuffer = await uploadedFile.arrayBuffer();
+                const uint8Array = new Uint8Array(arrayBuffer);
+
+                showStatus(`Calculating hash...`, 'info');
+                showLoadingSpinner('Calculating file hash...');
+                
+                const hashHex = await calculateHash(uint8Array);
+
+                showStatus(`Analyzing bugreport (${fileSizeMB} MB)...`, 'info');
+                showLoadingSpinner('Analyzing bugreport... This may take a minute');
+
+                if (!adb) {
+                    adb = new Adb();
+                    window.adb = adb;
+                }
+
+                const result = await adb.analyze_bugreport(uint8Array);
+                
+                result.file_info = {
+                    path: uploadedFile.name,
+                    size_bytes: uploadedFile.size,
+                    size_mb: fileSizeMB,
+                    sha256: hashHex
+                };
+                
+                result.analysis_timestamp = new Date().toISOString();
+                
+                showStatus('✓ Analysis complete!', 'success');
+                hideProgress();
+                hideLoadingSpinner();
+                displayResults(result);
+            } catch (error) {
+                console.error('Analysis error:', error);
+                
+                if (error.toString().includes('array length') || error.toString().includes('memory')) {
+                    showStatus(`Failed: File too large (${(uploadedFile.size / 1024 / 1024).toFixed(2)} MB). Try analyzing from device instead.`, 'error');
+                } else {
+                    showStatus('Failed to analyze: ' + error, 'error');
+                }
+                hideProgress();
+                hideLoadingSpinner();
+            }
+        }
+    </script>
+</body>
+</html>

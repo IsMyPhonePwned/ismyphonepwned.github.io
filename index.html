@@ -23,6 +23,8 @@
             --success: #4CAF50;
             --warning: #FF9800;
             --error: #f44336;
+            --sigma-medium: #F59E0B;
+            --sigma-low: #3B82F6;
             --shadow: rgba(0, 0, 0, 0.1);
         }
 
@@ -38,6 +40,8 @@
             --success: #66BB6A;
             --warning: #FFA726;
             --error: #EF5350;
+            --sigma-medium: #FBBF24;
+            --sigma-low: #60A5FA;
             --shadow: rgba(0, 0, 0, 0.3);
         }
 
@@ -296,6 +300,32 @@
             font-weight: 600;
             margin-bottom: 0.75rem;
             color: var(--text-primary);
+        }
+
+        .sigma-matched-log {
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--border);
+        }
+        .sigma-matched-log summary {
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--text-secondary);
+            user-select: none;
+            list-style: none;
+        }
+        .sigma-matched-log summary::-webkit-details-marker { display: none; }
+        .sigma-matched-log summary::before {
+            content: '▶ ';
+            font-size: 0.7em;
+        }
+        .sigma-matched-log[open] summary::before {
+            content: '▼ ';
+        }
+        .sigma-matched-log-body {
+            margin-top: 0.35rem;
+            font-family: monospace;
+            font-size: 0.8rem;
         }
 
         .result-grid {
@@ -2115,14 +2145,19 @@
                     const title = (m.rule_title && m.rule_title.trim()) ? escapeHtml(m.rule_title) : '-';
                     const level = (m.level && m.level.trim()) ? escapeHtml(m.level) : '-';
                     const l = (m.level || '').toLowerCase();
-                    const levelColor = l === 'critical' ? 'var(--error)' : l === 'high' ? 'var(--warning)' : 'var(--text-secondary)';
+                    const levelColor = l === 'critical' ? 'var(--error)' : l === 'high' ? 'var(--warning)' : l === 'medium' ? 'var(--sigma-medium)' : l === 'low' ? 'var(--sigma-low)' : 'var(--text-secondary)';
                     let matchedLogHtml = '';
-                    const ml = m.log_entry ?? m.matched_log;
+                    let ml = m.log_entry ?? m.matched_log;
+                    // serde_wasm_bindgen can serialize maps as JS Map; Object.keys(Map) is [] so we convert to plain object
+                    if (ml && typeof ml === 'object' && ml instanceof Map) {
+                        ml = Object.fromEntries(ml);
+                    }
                     if (ml && typeof ml === 'object' && !Array.isArray(ml) && Object.keys(ml).length > 0) {
                         const fmt = (v) => typeof v === 'object' && v !== null ? escapeHtml(JSON.stringify(v)) : escapeHtml(String(v ?? ''));
-                        matchedLogHtml = '<div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border);"><span style="color: var(--text-secondary); font-weight: 500;">Matched log:</span><div style="margin-top: 0.35rem; font-family: monospace; font-size: 0.8rem;">' + Object.entries(ml).map(([k, v]) => '<div style="margin-bottom: 0.2rem;"><span style="color: var(--text-secondary);">' + escapeHtml(k) + ':</span> ' + fmt(v) + '</div>').join('') + '</div></div>';
+                        const entriesHtml = Object.entries(ml).map(([k, v]) => '<div style="margin-bottom: 0.2rem;"><span style="color: var(--text-secondary);">' + escapeHtml(k) + ':</span> ' + fmt(v) + '</div>').join('');
+                        matchedLogHtml = '<details class="sigma-matched-log"><summary>Matched log</summary><div class="sigma-matched-log-body">' + entriesHtml + '</div></details>';
                     }
-                    return `<div class="result-card" style="margin-bottom: 0.5rem; padding: 0.75rem 1rem;"><div style="font-size: 0.875rem;"><div style="margin-bottom: 0.25rem;"><span style="color: var(--text-secondary); font-weight: 500;">Rule:</span> ${title}</div><div style="display: flex; gap: 1rem; flex-wrap: wrap;"><span><span style="color: var(--text-secondary);">ID:</span> ${id}</span><span style="color: ${levelColor}; font-weight: 500;">${level}</span></div>${matchedLogHtml}</div></div>`;
+                    return `<div class="result-card" style="margin-bottom: 0.5rem; padding: 0.75rem 1rem; border-left: 4px solid ${levelColor};"><div style="font-size: 0.875rem;"><div style="margin-bottom: 0.25rem;"><span style="color: var(--text-secondary); font-weight: 500;">Rule:</span> ${title}</div><div style="display: flex; gap: 1rem; flex-wrap: wrap;"><span><span style="color: var(--text-secondary);">ID:</span> ${id}</span><span style="color: ${levelColor}; font-weight: 500;">${level}</span></div>${matchedLogHtml}</div></div>`;
                 }).join('');
             } else {
                 matchesEl.textContent = 'No matches.';

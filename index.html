@@ -1177,6 +1177,28 @@
 
         <!-- Results -->
         <div id="results" class="results">
+            <!-- Pwned Results Detection (before Analysis Results) -->
+            <div class="section" id="detection-section">
+                <h2>🔍 Pwned Results Detection</h2>
+                <div class="subsection" style="margin-top: 0.75rem;">
+                    <h4 style="font-size: 0.95rem; font-weight: 600; margin: 0 0 0.5rem 0; color: var(--text-secondary);">Sigma</h4>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.5rem; gap: 0.5rem;">
+                        <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-primary);">Rules</span>
+                        <button class="section-toggle collapsed" onclick="toggleSection('sigma-rules')">▼</button>
+                    </div>
+                    <div class="section-content collapsed" id="sigma-rules-content" style="margin-top: 0.5rem;">
+                        <div id="sigma-rules-container" style="font-size: 0.875rem; color: var(--text-primary);"></div>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.75rem; gap: 0.5rem;">
+                        <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-primary);">Matches</span>
+                        <button class="section-toggle" onclick="toggleSection('sigma-matches')">▼</button>
+                    </div>
+                    <div class="section-content" id="sigma-matches-content" style="margin-top: 0.5rem;">
+                        <div id="sigma-matches-container" style="font-size: 0.875rem; color: var(--text-primary);"></div>
+                    </div>
+                </div>
+            </div>
+
             <div class="section">
                 <h2>📊 Analysis Results</h2>
                 <div id="analysis-timestamp" style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; display: none;">
@@ -1572,7 +1594,70 @@
                 return 'Error calculating hash';
             }
         }
-        
+
+        // Parse Sigma rule YAML for title, id, description, status, level (best-effort, no external deps)
+        function parseSigmaRuleMeta(yamlText) {
+            const o = { title: null, id: null, description: null, status: null, level: null };
+            if (!yamlText || typeof yamlText !== 'string') return o;
+            const m = (name, pat) => { const r = yamlText.match(pat); if (r) o[name] = r[1].trim(); };
+            m('title', /^title:\s*(.+)$/m);
+            m('id', /^id:\s*(.+)$/m);
+            m('status', /^status:\s*(.+)$/m);
+            m('level', /^level:\s*(.+)$/m);
+            const desc = yamlText.match(/^description:\s*(.+)$/m);
+            if (desc) o.description = desc[1].replace(/\s+/g, ' ').trim();
+            return o;
+        }
+
+        // Fetch Sigma rules from server
+        async function fetchSigmaRules() {
+            const urls = ['/rules/novispy.yml', '/rules/cellebrite.yml'];
+            console.log('[fetchSigmaRules] Fetching Sigma rules:', urls.join(', '));
+            try {
+                const fetchOne = async (url) => {
+                    try {
+                        const res = await fetch(url);
+                        const text = res.ok ? await res.text() : '';
+                        const success = !!(res.ok && (text || '').length > 0);
+                        if (success) {
+                            console.log(`[fetchSigmaRules] ✓ ${url}: ${res.status}, ${(text || '').length} chars`);
+                        } else {
+                            console.warn(`[fetchSigmaRules] ✗ ${url}: ${res.status} ${res.statusText}`);
+                        }
+                        return { text, success, httpStatus: res.status, fetchError: success ? null : (res.status + ' ' + (res.statusText || '')), url };
+                    } catch (e) {
+                        console.warn(`[fetchSigmaRules] ✗ ${url}:`, e);
+                        return { text: '', success: false, httpStatus: null, fetchError: 'Network error: ' + (e.message || String(e)), url };
+                    }
+                };
+                const results = await Promise.all(urls.map(u => fetchOne(u)));
+                const combined = results.filter(r => (r.text || '').length > 0).map(r => r.text).join('\n---\n');
+                const rulesInfo = results.map(r => {
+                    const meta = r.success ? parseSigmaRuleMeta(r.text) : {};
+                    return {
+                        url: r.url,
+                        success: r.success,
+                        fetchError: r.fetchError || null,
+                        title: meta.title ?? null,
+                        id: meta.id ?? null,
+                        description: meta.description ?? null,
+                        status: meta.status ?? null,
+                        level: meta.level ?? null
+                    };
+                });
+                const count = rulesInfo.filter(r => r.success).length;
+                if (count > 0) {
+                    console.log(`[fetchSigmaRules] Loaded ${count} rule file(s), ${combined.length} chars total`);
+                } else {
+                    console.warn('[fetchSigmaRules] No rules loaded (all fetches failed or empty)');
+                }
+                return { rules: combined, rulesInfo };
+            } catch (e) {
+                console.warn('[fetchSigmaRules] Could not fetch Sigma rules:', e);
+                return { rules: '', rulesInfo: [] };
+            }
+        }
+
         // Download results
         window.downloadResults = function() {
             if (!currentResults) {
@@ -1587,6 +1672,8 @@
                 battery_info: currentResults.battery_info,
                 process_count: currentResults.process_count,
                 package_count: currentResults.package_count,
+                sigma_matches: currentResults.sigma_matches || null,
+                sigma_rules_info: currentResults.sigma_rules_info || [],
                 packages: currentResults.packages,
                 processes: currentResults.processes,
                 battery_apps: currentResults.battery_apps,
@@ -1625,6 +1712,8 @@
                     battery_info: currentResults.battery_info,
                     process_count: currentResults.process_count,
                     package_count: currentResults.package_count,
+                    sigma_matches: currentResults.sigma_matches || null,
+                    sigma_rules_info: currentResults.sigma_rules_info || [],
                     logcat_lines: currentResults.logcat_lines,
                     has_security_analysis: currentResults.has_security_analysis,
                     packages: currentResults.packages,
@@ -1992,6 +2081,52 @@
             // Stats
             document.getElementById('stats-processes').textContent = data.process_count || 0;
             document.getElementById('stats-packages').textContent = data.package_count || 0;
+
+            // Detection / Sigma rules (title, id, description, status, level, fetch success)
+            const sigmaEl = document.getElementById('sigma-rules-container');
+            const info = data.sigma_rules_info;
+            if (info && Array.isArray(info) && info.length > 0) {
+                sigmaEl.innerHTML = info.map(r => {
+                    const fetchBadge = r.success
+                        ? '<span style="color: var(--success);">✓ Fetched</span>'
+                        : '<span style="color: var(--error);">✗ ' + escapeHtml(r.fetchError || 'Failed') + '</span>';
+                    const rows = [
+                        ['URL', escapeHtml(r.url)],
+                        ['Server', fetchBadge],
+                        ['Title', r.title ? escapeHtml(r.title) : '-'],
+                        ['ID', r.id ? escapeHtml(r.id) : '-'],
+                        ['Description', r.description ? escapeHtml(r.description) : '-'],
+                        ['Status', r.status ? escapeHtml(r.status) : '-'],
+                        ['Level', r.level ? escapeHtml(r.level) : '-']
+                    ];
+                    const body = rows.map(([l, v]) => `<div style="margin-bottom: 0.35rem;"><span style="color: var(--text-secondary); font-weight: 500;">${escapeHtml(l)}:</span> ${v}</div>`).join('');
+                    return `<div class="result-card" style="margin-bottom: 0.75rem; padding: 1rem;"><div style="font-size: 0.875rem;">${body}</div></div>`;
+                }).join('');
+            } else {
+                sigmaEl.textContent = 'No rules loaded.';
+            }
+
+            // Sigma matches (from match_with_log_to_value: rule_id, rule_title, level, log_entry)
+            const matchesEl = document.getElementById('sigma-matches-container');
+            const matches = data.sigma_matches;
+            if (matches && Array.isArray(matches) && matches.length > 0) {
+                matchesEl.innerHTML = matches.map(m => {
+                    const id = (m.rule_id && m.rule_id.trim()) ? escapeHtml(m.rule_id) : '-';
+                    const title = (m.rule_title && m.rule_title.trim()) ? escapeHtml(m.rule_title) : '-';
+                    const level = (m.level && m.level.trim()) ? escapeHtml(m.level) : '-';
+                    const l = (m.level || '').toLowerCase();
+                    const levelColor = l === 'critical' ? 'var(--error)' : l === 'high' ? 'var(--warning)' : 'var(--text-secondary)';
+                    let matchedLogHtml = '';
+                    const ml = m.log_entry ?? m.matched_log;
+                    if (ml && typeof ml === 'object' && !Array.isArray(ml) && Object.keys(ml).length > 0) {
+                        const fmt = (v) => typeof v === 'object' && v !== null ? escapeHtml(JSON.stringify(v)) : escapeHtml(String(v ?? ''));
+                        matchedLogHtml = '<div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border);"><span style="color: var(--text-secondary); font-weight: 500;">Matched log:</span><div style="margin-top: 0.35rem; font-family: monospace; font-size: 0.8rem;">' + Object.entries(ml).map(([k, v]) => '<div style="margin-bottom: 0.2rem;"><span style="color: var(--text-secondary);">' + escapeHtml(k) + ':</span> ' + fmt(v) + '</div>').join('') + '</div></div>';
+                    }
+                    return `<div class="result-card" style="margin-bottom: 0.5rem; padding: 0.75rem 1rem;"><div style="font-size: 0.875rem;"><div style="margin-bottom: 0.25rem;"><span style="color: var(--text-secondary); font-weight: 500;">Rule:</span> ${title}</div><div style="display: flex; gap: 1rem; flex-wrap: wrap;"><span><span style="color: var(--text-secondary);">ID:</span> ${id}</span><span style="color: ${levelColor}; font-weight: 500;">${level}</span></div>${matchedLogHtml}</div></div>`;
+                }).join('');
+            } else {
+                matchesEl.textContent = 'No matches.';
+            }
 
             // File info
             const fileInfoCard = document.getElementById('file-info-card');
@@ -3433,8 +3568,10 @@
                 
                 showStatus('Hash calculated! Analyzing...', 'info');
 
-                const result = await adb.analyze_bugreport(bugreportData);
-                
+                const { rules, rulesInfo } = await fetchSigmaRules();
+                const result = await adb.analyze_bugreport(bugreportData, rules);
+                result.sigma_rules_info = rulesInfo;
+
                 result.file_info = {
                     path: 'Generated on device',
                     size_bytes: bugreportData.length,
@@ -3502,10 +3639,12 @@
                 
                 showStatus(`✓ Hash calculated in ${formatDuration(hashDurationMs)}! Now analyzing...`, 'info');
                 showLoadingSpinner('Analyzing bugreport... This may take a minute');
-                
+
+                const { rules, rulesInfo } = await fetchSigmaRules();
                 const startAnalysis = Date.now();
-                const result = await adb.analyze_bugreport(bugreportData);
-                
+                const result = await adb.analyze_bugreport(bugreportData, rules);
+                result.sigma_rules_info = rulesInfo;
+
                 const analysisDurationMs = Date.now() - startAnalysis;
                 const totalDurationMs = Date.now() - startDownload;
                 
@@ -3635,8 +3774,10 @@
                     window.adb = adb;
                 }
 
-                const result = await adb.analyze_bugreport(uint8Array);
-                
+                const { rules, rulesInfo } = await fetchSigmaRules();
+                const result = await adb.analyze_bugreport(uint8Array, rules);
+                result.sigma_rules_info = rulesInfo;
+
                 result.file_info = {
                     path: uploadedFile.name,
                     size_bytes: uploadedFile.size,

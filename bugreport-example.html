@@ -1,0 +1,2302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bugreport Analysis - Example Results</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f5f5f5;
+            --bg-card: #ffffff;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666666;
+            --border: #e0e0e0;
+            --accent: #2196F3;
+            --accent-hover: #1976D2;
+            --success: #4CAF50;
+            --warning: #FF9800;
+            --error: #f44336;
+            --sigma-medium: #F59E0B;
+            --sigma-low: #3B82F6;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --bg-card: #252525;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --border: #404040;
+            --accent: #42A5F5;
+            --accent-hover: #64B5F6;
+            --success: #66BB6A;
+            --warning: #FFA726;
+            --error: #EF5350;
+            --sigma-medium: #FBBF24;
+            --sigma-low: #60A5FA;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo-text {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .theme-toggle {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px var(--shadow);
+        }
+
+        .section h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .result-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .result-card h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .result-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+        }
+
+        .result-item-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.25rem;
+        }
+
+        .result-item-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .section-toggle {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 0.25rem;
+            transition: transform 0.2s;
+        }
+
+        .section-toggle:hover {
+            color: var(--text-primary);
+        }
+
+        .section-toggle.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .section-content {
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            overflow: hidden;
+        }
+
+        .section-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
+
+        .count-badge {
+            background: var(--accent);
+            color: white;
+            border-radius: 12px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .data-table-container {
+            overflow-x: auto;
+            margin-top: 1rem;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .data-table tr:hover {
+            background: var(--bg-secondary);
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .package-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .sigma-matched-log {
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .sigma-matched-log summary {
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--text-secondary);
+            user-select: none;
+            list-style: none;
+        }
+
+        .sigma-matched-log summary::-webkit-details-marker { display: none; }
+        .sigma-matched-log summary::before {
+            content: '▶ ';
+            font-size: 0.7em;
+        }
+        .sigma-matched-log[open] summary::before {
+            content: '▼ ';
+        }
+        .sigma-matched-log-body {
+            margin-top: 0.35rem;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+
+        .info-banner {
+            background: rgba(33, 150, 243, 0.1);
+            border: 1px solid var(--accent);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            color: var(--accent);
+        }
+
+        code {
+            background: var(--bg-secondary);
+            padding: 0.125rem 0.25rem;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1 class="logo-text">IsMyPhonePwned ?</h1>
+                <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.875rem;">Example Results Page</p>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()">
+                <span id="theme-icon">🌙</span>
+                <span id="theme-text">Dark</span>
+            </button>
+        </header>
+
+        <div class="info-banner">
+            <strong>📋 Example Page</strong><br>
+            This page demonstrates how the bugreport analysis results would look for an end user. 
+            All data shown here is sample data for demonstration purposes.
+        </div>
+
+        <!-- Results -->
+        <div id="results" class="results show">
+            <!-- Pwned Results Detection -->
+            <div class="section" id="detection-section">
+                <h2>🔍 Pwned Results Detection</h2>
+                <div class="subsection" style="margin-top: 0.75rem;">
+                    <h4 style="font-size: 0.95rem; font-weight: 600; margin: 0 0 0.5rem 0; color: var(--text-secondary);">Sigma</h4>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.5rem; gap: 0.5rem;">
+                        <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-primary);">Rules</span>
+                        <button class="section-toggle collapsed" onclick="toggleSection('sigma-rules')">▼</button>
+                    </div>
+                    <div class="section-content collapsed" id="sigma-rules-content" style="margin-top: 0.5rem;">
+                        <div id="sigma-rules-container" style="font-size: 0.875rem; color: var(--text-primary);"></div>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.75rem; gap: 0.5rem;">
+                        <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-primary);">Matches</span>
+                        <button class="section-toggle" onclick="toggleSection('sigma-matches')">▼</button>
+                    </div>
+                    <div class="section-content" id="sigma-matches-content" style="margin-top: 0.5rem;">
+                        <div id="sigma-matches-container" style="font-size: 0.875rem; color: var(--text-primary);"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📊 Analysis Results</h2>
+                <div id="analysis-timestamp" style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; display: block;">
+                    <span style="opacity: 0.7;">Analyzed on</span> <span id="timestamp-value"></span>
+                </div>
+                
+                <!-- Device Information -->
+                <div class="result-card">
+                    <h3>📱 Device Information</h3>
+                    <div class="result-grid">
+                        <div class="result-item">
+                            <div class="result-item-label">Manufacturer</div>
+                            <div class="result-item-value" id="device-manufacturer">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Model</div>
+                            <div class="result-item-value" id="device-model">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Android Version</div>
+                            <div class="result-item-value" id="device-android">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Build ID</div>
+                            <div class="result-item-value" id="device-build" style="font-size: 0.9rem;">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Kernel Version</div>
+                            <div class="result-item-value" id="device-kernel" style="font-size: 0.9rem;">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Information -->
+                <div class="result-card" id="file-info-card" style="display: none;">
+                    <h3>📄 File Information</h3>
+                    <div class="result-grid">
+                        <div class="result-item" style="grid-column: 1 / -1;">
+                            <div class="result-item-label">File Path</div>
+                            <div class="result-item-value" id="file-path" style="font-size: 0.85rem; word-break: break-all;">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">File Size</div>
+                            <div class="result-item-value" id="file-size" style="font-size: 0.85rem;">-</div>
+                        </div>
+                        <div class="result-item" style="grid-column: 1 / -1;">
+                            <div class="result-item-label">SHA-256</div>
+                            <div class="result-item-value" id="file-sha256" style="font-family: monospace; font-size: 0.85rem; word-break: break-all;">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ANR / Crash -->
+                <div class="result-card" id="crash-info-card" style="display: none;">
+                    <h3>💥 ANR / Crash</h3>
+                    <div id="crash-info-container" style="font-size: 0.875rem; color: var(--text-primary);"></div>
+                </div>
+
+                <!-- Battery Status -->
+                <div class="result-card">
+                    <h3>🔋 Battery Status</h3>
+                    <div class="result-grid">
+                        <div class="result-item">
+                            <div class="result-item-label">Level</div>
+                            <div class="result-item-value" id="battery-level">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Health</div>
+                            <div class="result-item-value" id="battery-health">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Temperature</div>
+                            <div class="result-item-value" id="battery-temp">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Voltage</div>
+                            <div class="result-item-value" id="battery-voltage">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Statistics -->
+                <div class="result-card">
+                    <h3>📈 System Statistics</h3>
+                    <div class="result-grid">
+                        <div class="result-item">
+                            <div class="result-item-label">Processes</div>
+                            <div class="result-item-value" id="stats-processes">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Unique Packages</div>
+                            <div class="result-item-value" id="stats-packages">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Process List -->
+                <div class="result-card" id="process-details-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>⚙️ Running Processes</h3>
+                        <span class="count-badge" id="process-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle" onclick="toggleSection('process-details')">▼</button>
+                    <div class="section-content" id="process-details-content">
+                        <div class="search-box">
+                            <span>🔍</span>
+                            <input type="text" id="process-search" placeholder="Search processes by name or PID...">
+                        </div>
+                        <div class="data-table-container">
+                            <table class="data-table" id="process-table">
+                                <thead>
+                                    <tr>
+                                        <th>PID</th>
+                                        <th>Name</th>
+                                        <th>User</th>
+                                        <th>CPU%</th>
+                                        <th>Memory</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="process-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Battery Stats -->
+                <div class="result-card" id="battery-details-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>🔋 App Battery Usage</h3>
+                        <span class="count-badge" id="battery-apps-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle" onclick="toggleSection('battery-details')">▼</button>
+                    <div class="section-content" id="battery-details-content">
+                        <div class="search-box">
+                            <span>🔍</span>
+                            <input type="text" id="battery-search" placeholder="Search apps by package name...">
+                        </div>
+                        <div class="data-table-container">
+                            <table class="data-table" id="battery-table">
+                                <thead>
+                                    <tr>
+                                        <th>Package Name</th>
+                                        <th>UID</th>
+                                        <th>CPU Time</th>
+                                        <th>Network (RX/TX)</th>
+                                        <th>Wakelock Time</th>
+                                        <th>Job Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="battery-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Package Installation History -->
+                <div class="result-card" id="package-history-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>📦 Package History (Including Deleted)</h3>
+                        <span class="count-badge" id="package-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle" onclick="toggleSection('package-history')">▼</button>
+                    <div class="section-content" id="package-history-content">
+                        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">
+                            Packages that were installed or uninstalled. Packages not found in the "Package Details" section have been deleted.
+                        </p>
+                        <div class="search-box">
+                            <span>🔍</span>
+                            <input type="text" id="package-search-input" placeholder="Search packages by name or installer...">
+                        </div>
+                        <div id="package-list"></div>
+                    </div>
+                </div>
+
+                <!-- Package Details -->
+                <div class="result-card" id="package-details-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>📱 Package Details</h3>
+                        <span class="count-badge" id="package-details-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle collapsed" onclick="toggleSection('package-details')">▼</button>
+                    <div class="section-content collapsed" id="package-details-content">
+                        <div class="search-box">
+                            <span>🔍</span>
+                            <input type="text" id="package-details-search-input" placeholder="Search packages by name...">
+                        </div>
+                        <div id="package-details-list"></div>
+                    </div>
+                </div>
+
+                <!-- Power History -->
+                <div class="result-card" id="power-history-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>⚡ Power History</h3>
+                        <span class="count-badge" id="power-history-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle collapsed" onclick="toggleSection('power-history')">▼</button>
+                    <div class="section-content collapsed" id="power-history-content">
+                        <div id="power-history-list"></div>
+                    </div>
+                </div>
+
+                <!-- Network Information -->
+                <div class="result-card" id="network-info-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>🌐 Network Interfaces</h3>
+                        <span class="count-badge" id="network-info-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle collapsed" onclick="toggleSection('network-info')">▼</button>
+                    <div class="section-content collapsed" id="network-info-content">
+                        <div class="search-box">
+                            <span>🔍</span>
+                            <input type="text" id="network-search-input" placeholder="Search interfaces by name or IP...">
+                        </div>
+                        <div id="network-info-list"></div>
+                    </div>
+                </div>
+
+                <!-- Network Statistics -->
+                <div class="result-card" id="network-stats-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>📊 Network Statistics</h3>
+                        <span class="count-badge" id="network-stats-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle collapsed" onclick="toggleSection('network-stats')">▼</button>
+                    <div class="section-content collapsed" id="network-stats-content">
+                        <div class="search-box">
+                            <span>🔍</span>
+                            <input type="text" id="network-stats-search-input" placeholder="Search by network name or type...">
+                        </div>
+                        <div id="network-stats-list"></div>
+                    </div>
+                </div>
+
+                <!-- Network Sockets -->
+                <div class="result-card" id="network-sockets-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>🔌 Network Sockets</h3>
+                        <span class="count-badge" id="network-sockets-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle collapsed" onclick="toggleSection('network-sockets')">▼</button>
+                    <div class="section-content collapsed" id="network-sockets-content">
+                        <div class="search-box">
+                            <span>🔍</span>
+                            <input type="text" id="network-sockets-search-input" placeholder="Search by protocol, address, port, or state...">
+                        </div>
+                        <div class="data-table-container">
+                            <table class="data-table" id="network-sockets-table">
+                                <thead>
+                                    <tr>
+                                        <th>Protocol</th>
+                                        <th>Local Address</th>
+                                        <th>Local Port</th>
+                                        <th>Remote Address</th>
+                                        <th>Remote Port</th>
+                                        <th>State</th>
+                                        <th>UID</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="network-sockets-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bluetooth Information -->
+                <div class="result-card" id="bluetooth-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>📶 Bluetooth</h3>
+                        <span class="count-badge" id="bluetooth-devices-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle collapsed" onclick="toggleSection('bluetooth')">▼</button>
+                    <div class="section-content collapsed" id="bluetooth-content">
+                        <div id="bluetooth-adapter-info"></div>
+                        <div class="search-box" style="margin-top: 1rem;">
+                            <span>🔍</span>
+                            <input type="text" id="bluetooth-search-input" placeholder="Search devices by name, MAC address, or services...">
+                        </div>
+                        <div id="bluetooth-devices-list"></div>
+                    </div>
+                </div>
+
+                <!-- USB Information -->
+                <div class="result-card" id="usb-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>🔌 USB</h3>
+                        <span class="count-badge" id="usb-devices-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle collapsed" onclick="toggleSection('usb')">▼</button>
+                    <div class="section-content collapsed" id="usb-content">
+                        <div id="usb-ports-info"></div>
+                        <div class="search-box" style="margin-top: 1rem;">
+                            <span>🔍</span>
+                            <input type="text" id="usb-search-input" placeholder="Search devices by VID, PID, driver, or interface...">
+                        </div>
+                        <div id="usb-devices-list"></div>
+                    </div>
+                </div>
+
+                <!-- Full Data (JSON) -->
+                <div class="result-card">
+                    <div class="section-header">
+                        <h3>📋 Full Data (JSON)</h3>
+                    </div>
+                    <button class="section-toggle collapsed" onclick="toggleSection('json-output')">▼</button>
+                    <div class="section-content collapsed" id="json-output-content">
+                        <div style="font-family: monospace; font-size: 0.75rem; background: var(--bg-secondary); padding: 1rem; border-radius: 4px; overflow-x: auto;" id="json-output">Analyzing...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentResults = null;
+
+        // Theme toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            document.getElementById('theme-icon').textContent = newTheme === 'dark' ? '☀️' : '🌙';
+            document.getElementById('theme-text').textContent = newTheme === 'dark' ? 'Light' : 'Dark';
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.getElementById('theme-icon').textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+        document.getElementById('theme-text').textContent = savedTheme === 'dark' ? 'Light' : 'Dark';
+
+        // Section toggle
+        function toggleSection(id) {
+            const content = document.getElementById(id + '-content');
+            const toggle = event.target;
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                toggle.classList.remove('collapsed');
+            } else {
+                content.classList.add('collapsed');
+                toggle.classList.add('collapsed');
+            }
+        }
+
+        // Helper functions
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDate(timestamp) {
+            if (!timestamp) return '-';
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+            if (diffDays === 0) return 'Today ' + date.toLocaleTimeString();
+            if (diffDays === 1) return 'Yesterday ' + date.toLocaleTimeString();
+            if (diffDays < 7) return `${diffDays} days ago`;
+            const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+            return date.toLocaleString(undefined, options);
+        }
+
+        function formatDuration(ms) {
+            if (ms < 1000) return `${ms.toFixed(2)}ms`;
+            const seconds = Math.floor(ms / 1000);
+            const milliseconds = Math.floor(ms % 1000);
+            if (seconds < 60) return `${seconds}s ${milliseconds}ms`;
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes}m ${remainingSeconds}s`;
+        }
+
+        function formatInstaller(installer) {
+            const installerMap = {
+                'com.android.vending': 'Play Store',
+                'com.sec.android.app.samsungapps': 'Galaxy Store',
+                'com.android.managedprovisioning': 'System Provisioning',
+                'android': 'Android System',
+                'com.google.android.packageinstaller': 'Package Installer'
+            };
+            return installerMap[installer] || installer;
+        }
+
+        function formatBytes(bytes) {
+            if (!bytes || bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function formatTime(ms) {
+            if (!ms || ms === 0) return '0ms';
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+            if (days > 0) {
+                const remainingHours = hours % 24;
+                if (remainingHours > 0) return `${days}d ${remainingHours}h`;
+                return `${days}d`;
+            }
+            if (hours > 0) {
+                const remainingMinutes = minutes % 60;
+                if (remainingMinutes > 0) return `${hours}h ${remainingMinutes}m`;
+                return `${hours}h`;
+            }
+            if (minutes > 0) return `${minutes}m`;
+            return `${seconds}s`;
+        }
+
+        // Display results
+        function displayResults(data) {
+            currentResults = data;
+            
+            // Device info
+            if (data.device_info) {
+                document.getElementById('device-manufacturer').textContent = data.device_info.manufacturer || 'Unknown';
+                document.getElementById('device-model').textContent = data.device_info.model || 'Unknown';
+                document.getElementById('device-android').textContent = data.device_info.android_version || 'Unknown';
+                document.getElementById('device-build').textContent = data.device_info.build_id || 'Unknown';
+                document.getElementById('device-kernel').textContent = data.device_info.kernel_version || 'Unknown';
+            }
+
+            // Battery info
+            if (data.battery_info) {
+                document.getElementById('battery-level').textContent = data.battery_info.level ? data.battery_info.level.toFixed(1) + '%' : '-';
+                document.getElementById('battery-health').textContent = data.battery_info.health || '-';
+                document.getElementById('battery-temp').textContent = data.battery_info.temperature ? data.battery_info.temperature.toFixed(1) + '°C' : '-';
+                document.getElementById('battery-voltage').textContent = data.battery_info.voltage ? data.battery_info.voltage.toFixed(2) + 'V' : '-';
+            }
+
+            // Stats
+            document.getElementById('stats-processes').textContent = data.process_count || 0;
+            document.getElementById('stats-packages').textContent = data.package_count || 0;
+
+            // Sigma rules
+            const sigmaEl = document.getElementById('sigma-rules-container');
+            const info = data.sigma_rules_info;
+            if (info && Array.isArray(info) && info.length > 0) {
+                const loadedCount = info.filter(r => r.success).length;
+                const failedCount = info.filter(r => !r.success).length;
+                sigmaEl.innerHTML = `<div style="margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 6px; font-size: 0.875rem;">
+                    <strong>Rules Summary:</strong> ${loadedCount} loaded, ${failedCount} failed, ${info.length} total
+                </div>`;
+                sigmaEl.innerHTML += info.map(r => {
+                    const fetchBadge = r.success
+                        ? '<span style="color: var(--success);">✓ Fetched</span>'
+                        : '<span style="color: var(--error);">✗ ' + escapeHtml(r.fetchError || 'Failed') + '</span>';
+                    const levelColor = r.level === 'critical' ? 'var(--error)' : r.level === 'high' ? 'var(--warning)' : r.level === 'medium' ? 'var(--sigma-medium)' : r.level === 'low' ? 'var(--sigma-low)' : 'var(--text-secondary)';
+                    const rows = [
+                        ['URL', escapeHtml(r.url)],
+                        ['Server', fetchBadge],
+                        ['Title', r.title ? escapeHtml(r.title) : '-'],
+                        ['ID', r.id ? escapeHtml(r.id) : '-'],
+                        ['Description', r.description ? escapeHtml(r.description) : '-'],
+                        ['Status', r.status ? escapeHtml(r.status) : '-'],
+                        ['Level', `<span style="color: ${levelColor}; font-weight: 600;">${escapeHtml(r.level || '-')}</span>`]
+                    ];
+                    const body = rows.map(([l, v]) => `<div style="margin-bottom: 0.35rem;"><span style="color: var(--text-secondary); font-weight: 500;">${escapeHtml(l)}:</span> ${v}</div>`).join('');
+                    return `<div class="result-card" style="margin-bottom: 0.75rem; padding: 1rem; border-left: 4px solid ${levelColor};"><div style="font-size: 0.875rem;">${body}</div></div>`;
+                }).join('');
+            } else {
+                sigmaEl.textContent = 'No rules loaded.';
+            }
+
+            // Sigma matches
+            const matchesEl = document.getElementById('sigma-matches-container');
+            const matches = data.sigma_matches;
+            if (matches && Array.isArray(matches) && matches.length > 0) {
+                // Summary banner
+                const criticalCount = matches.filter(m => (m.level || '').toLowerCase() === 'critical').length;
+                const highCount = matches.filter(m => (m.level || '').toLowerCase() === 'high').length;
+                const mediumCount = matches.filter(m => (m.level || '').toLowerCase() === 'medium').length;
+                const lowCount = matches.filter(m => (m.level || '').toLowerCase() === 'low').length;
+                
+                let summaryHtml = '<div style="margin-bottom: 1rem; padding: 1rem; background: ';
+                if (criticalCount > 0) {
+                    summaryHtml += 'rgba(244, 67, 54, 0.1); border: 2px solid var(--error); border-radius: 6px;">';
+                    summaryHtml += '<div style="color: var(--error); font-weight: 600; font-size: 1rem; margin-bottom: 0.5rem;">⚠️ Security Threats Detected!</div>';
+                } else if (highCount > 0) {
+                    summaryHtml += 'rgba(255, 152, 0, 0.1); border: 2px solid var(--warning); border-radius: 6px;">';
+                    summaryHtml += '<div style="color: var(--warning); font-weight: 600; font-size: 1rem; margin-bottom: 0.5rem;">⚠️ High-Risk Activities Detected</div>';
+                } else {
+                    summaryHtml += 'var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px;">';
+                    summaryHtml += '<div style="font-weight: 600; font-size: 1rem; margin-bottom: 0.5rem;">Detection Summary</div>';
+                }
+                summaryHtml += `<div style="font-size: 0.875rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <span><strong>Total Matches:</strong> ${matches.length}</span>
+                    ${criticalCount > 0 ? `<span style="color: var(--error);"><strong>Critical:</strong> ${criticalCount}</span>` : ''}
+                    ${highCount > 0 ? `<span style="color: var(--warning);"><strong>High:</strong> ${highCount}</span>` : ''}
+                    ${mediumCount > 0 ? `<span style="color: var(--sigma-medium);"><strong>Medium:</strong> ${mediumCount}</span>` : ''}
+                    ${lowCount > 0 ? `<span style="color: var(--sigma-low);"><strong>Low:</strong> ${lowCount}</span>` : ''}
+                </div></div>`;
+                
+                matchesEl.innerHTML = summaryHtml;
+                matchesEl.innerHTML += matches.map(m => {
+                    const id = (m.rule_id && m.rule_id.trim()) ? escapeHtml(m.rule_id) : '-';
+                    const title = (m.rule_title && m.rule_title.trim()) ? escapeHtml(m.rule_title) : '-';
+                    const level = (m.level && m.level.trim()) ? escapeHtml(m.level) : '-';
+                    const l = (m.level || '').toLowerCase();
+                    const levelColor = l === 'critical' ? 'var(--error)' : l === 'high' ? 'var(--warning)' : l === 'medium' ? 'var(--sigma-medium)' : l === 'low' ? 'var(--sigma-low)' : 'var(--text-secondary)';
+                    let matchedLogHtml = '';
+                    let ml = m.log_entry ?? m.matched_log;
+                    if (ml && typeof ml === 'object' && ml instanceof Map) {
+                        ml = Object.fromEntries(ml);
+                    }
+                    if (ml && typeof ml === 'object' && !Array.isArray(ml) && Object.keys(ml).length > 0) {
+                        const fmt = (v) => {
+                            if (v === null || v === undefined) return '';
+                            if (typeof v === 'object') return escapeHtml(JSON.stringify(v, null, 2));
+                            if (typeof v === 'boolean') return v ? 'true' : 'false';
+                            return escapeHtml(String(v));
+                        };
+                        const entriesHtml = Object.entries(ml)
+                            .filter(([k, v]) => v !== null && v !== undefined && v !== '')
+                            .map(([k, v]) => '<div style="margin-bottom: 0.3rem; padding: 0.25rem 0; border-bottom: 1px solid var(--border);"><span style="color: var(--text-secondary); font-weight: 500; display: inline-block; min-width: 150px;">' + escapeHtml(k) + ':</span> <span style="font-family: monospace; font-size: 0.85rem;">' + fmt(v) + '</span></div>').join('');
+                        matchedLogHtml = '<details class="sigma-matched-log" style="margin-top: 0.75rem;"><summary style="font-weight: 600; cursor: pointer; padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;">📋 View Detection Details</summary><div class="sigma-matched-log-body" style="margin-top: 0.5rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 4px; max-height: 400px; overflow-y: auto;">' + entriesHtml + '</div></details>';
+                    }
+                    return `<div class="result-card" style="margin-bottom: 0.75rem; padding: 1rem; border-left: 4px solid ${levelColor}; background: var(--bg-card);">
+                        <div style="font-size: 0.875rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; gap: 1rem;">
+                                <div style="flex: 1;">
+                                    <div style="margin-bottom: 0.25rem; font-weight: 600; color: var(--text-primary);">${title}</div>
+                                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.8rem;">
+                                        <span style="color: var(--text-secondary);">Rule ID: <code>${id}</code></span>
+                                        <span style="color: ${levelColor}; font-weight: 600; padding: 0.125rem 0.5rem; background: ${levelColor}20; border-radius: 4px;">${level.toUpperCase()}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            ${matchedLogHtml}
+                        </div>
+                    </div>`;
+                }).join('');
+            } else {
+                matchesEl.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-secondary); background: var(--bg-secondary); border-radius: 6px;">✓ No security threats detected. All checks passed.</div>';
+            }
+
+            // File info
+            const fileInfoCard = document.getElementById('file-info-card');
+            if (data.file_info) {
+                document.getElementById('file-path').textContent = data.file_info.path || '-';
+                document.getElementById('file-size').textContent = data.file_info.size_mb ? `${data.file_info.size_mb} MB (${data.file_info.size_bytes.toLocaleString()} bytes)` : '-';
+                document.getElementById('file-sha256').textContent = data.file_info.sha256 || '-';
+                fileInfoCard.style.display = 'block';
+            } else {
+                fileInfoCard.style.display = 'none';
+            }
+
+            // ANR / Crash
+            const crashCard = document.getElementById('crash-info-card');
+            const crashContainer = document.getElementById('crash-info-container');
+            const toObj = (x) => (x && typeof x === 'object' && x instanceof Map) ? Object.fromEntries(x) : x;
+            if (data.crash_info && typeof data.crash_info === 'object') {
+                const ci = data.crash_info;
+                const anrFiles = toObj(ci.anr_files);
+                const trace = toObj(ci.anr_trace);
+                let html = '';
+                if (anrFiles && Array.isArray(anrFiles.files) && anrFiles.files.length > 0) {
+                    html += '<div style="margin-bottom: 1rem;"><span style="color: var(--text-secondary); font-weight: 500;">ANR files</span> <span style="color: var(--text-secondary);">(' + (anrFiles.total_size != null ? anrFiles.total_size + ' total)' : '') + '</span><ul style="margin: 0.35rem 0 0 1.25rem; font-size: 0.85rem;">';
+                    anrFiles.files.forEach(f => {
+                        const fObj = toObj(f);
+                        const fn = (fObj && fObj.filename) || '-';
+                        const sz = (fObj && fObj.size != null) ? (fObj.size >= 1024 ? (fObj.size / 1024).toFixed(1) + ' KB' : fObj.size) : '';
+                        const ts = (fObj && fObj.timestamp) || '';
+                        html += '<li>' + escapeHtml(fn) + (ts ? ' <span style="color: var(--text-secondary);">' + escapeHtml(ts) + '</span>' : '') + (sz ? ' <span style="color: var(--text-secondary);">' + escapeHtml(String(sz)) + '</span>' : '') + '</li>';
+                    });
+                    html += '</ul></div>';
+                }
+                if (trace) {
+                    const proc = toObj(trace.process_info);
+                    const header = toObj(trace.header);
+                    const subject = (header && header.subject) ? header.subject : (trace.subject || '');
+                    if (subject) html += '<div style="margin-bottom: 0.5rem;"><span style="color: var(--text-secondary); font-weight: 500;">Subject:</span> ' + escapeHtml(subject) + '</div>';
+                    if (proc && (proc.cmd_line || proc.pid || proc.timestamp)) {
+                        html += '<div style="margin-bottom: 1rem;"><span style="color: var(--text-secondary); font-weight: 500;">Process</span><div style="margin-top: 0.25rem; font-size: 0.85rem;">';
+                        if (proc.cmd_line) html += '<div><span style="color: var(--text-secondary);">cmd_line:</span> ' + escapeHtml(proc.cmd_line) + '</div>';
+                        if (proc.pid != null) html += '<div><span style="color: var(--text-secondary);">pid:</span> ' + escapeHtml(String(proc.pid)) + '</div>';
+                        if (proc.timestamp) html += '<div><span style="color: var(--text-secondary);">timestamp:</span> ' + escapeHtml(proc.timestamp) + '</div>';
+                        html += '</div></div>';
+                    }
+                    const threads = Array.isArray(trace.threads) ? trace.threads : [];
+                    if (threads.length > 0) {
+                        const threadsId = 'threads-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                        html += '<div style="margin-top: 1rem;"><div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;"><span style="color: var(--text-secondary); font-weight: 500;">Threads</span> <span style="color: var(--text-secondary);">(' + threads.length + ')</span>';
+                        html += '<button id="' + threadsId + '-toggle" onclick="document.getElementById(\'' + threadsId + '-content\').style.display = document.getElementById(\'' + threadsId + '-content\').style.display === \'none\' ? \'block\' : \'none\'; this.textContent = document.getElementById(\'' + threadsId + '-content\').style.display === \'none\' ? \'Show\' : \'Hide\';" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; color: var(--text-primary);">Show</button>';
+                        html += '</div><div id="' + threadsId + '-content" style="display: none; margin-top: 0.5rem;">';
+                        threads.forEach((t, i) => {
+                            const th = toObj(t);
+                            const name = (th && th.name) ? th.name : ('Thread ' + (i + 1));
+                            const status = (th && th.status) ? th.status : '';
+                            const tid = (th && th.tid != null) ? th.tid : '';
+                            const st = Array.isArray(th && th.stack_trace) ? th.stack_trace : [];
+                            let head = escapeHtml(name) + (status ? ' <span style="color: var(--text-secondary);">' + escapeHtml(String(status)) + '</span>' : '') + (tid !== '' ? ' <span style="color: var(--text-secondary);">tid=' + escapeHtml(String(tid)) + '</span>' : '');
+                            let body = '';
+                            if (st.length > 0) {
+                                body = '<ul style="margin: 0.25rem 0 0 1rem; font-size: 0.8rem; font-family: monospace;">';
+                                st.forEach(fr => {
+                                    const f = toObj(fr);
+                                    const m = (f && f.method) ? f.method : '';
+                                    const loc = (f && f.file_loc) ? f.file_loc : '';
+                                    const ln = (f && f.line_number != null) ? f.line_number : '';
+                                    body += '<li>' + (m ? escapeHtml(m) : (loc ? escapeHtml(loc) + (ln ? ':' + ln : '') : '-')) + '</li>';
+                                });
+                                body += '</ul>';
+                            }
+                            html += '<details style="margin-bottom: 0.5rem;"><summary style="cursor: pointer;">' + head + '</summary>' + (body || '<span style="color: var(--text-secondary);">(no stack)</span>') + '</details>';
+                        });
+                        html += '</div></div>';
+                    }
+                }
+                // Render tombstones
+                const tombstones = Array.isArray(ci.tombstones) ? ci.tombstones : [];
+                if (tombstones.length > 0) {
+                    html += '<div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);"><span style="color: var(--text-secondary); font-weight: 500;">Tombstones</span> (' + tombstones.length + ' crash' + (tombstones.length !== 1 ? 'es' : '') + ')<div style="margin-top: 0.75rem;">';
+                    tombstones.forEach((tombstone, idx) => {
+                        const ts = toObj(tombstone);
+                        const processName = (ts && ts.process_name) ? ts.process_name : (ts && ts.cmdline) ? ts.cmdline : 'Unknown';
+                        const signal = (ts && ts.signal) ? ts.signal : '';
+                        const code = (ts && ts.code) ? ts.code : '';
+                        const timestamp = (ts && ts.timestamp) ? ts.timestamp : '';
+                        const pid = (ts && ts.pid != null) ? ts.pid : '';
+                        const tid = (ts && ts.tid != null) ? ts.tid : '';
+                        const threadName = (ts && ts.thread_name) ? ts.thread_name : '';
+                        const faultAddr = (ts && ts.fault_addr) ? ts.fault_addr : '';
+                        const backtrace = Array.isArray(ts && ts.backtrace) ? ts.backtrace : [];
+                        
+                        html += '<details style="margin-bottom: 1rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem;"><summary style="cursor: pointer; font-weight: 500; color: var(--text-primary);">';
+                        html += '<span style="font-family: monospace;">' + escapeHtml(processName) + '</span>';
+                        if (signal) html += ' <span style="color: var(--error); font-weight: 600;">' + escapeHtml(signal) + '</span>';
+                        if (code) html += ' <span style="color: var(--text-secondary);">(' + escapeHtml(code) + ')</span>';
+                        if (timestamp) html += ' <span style="color: var(--text-secondary); font-size: 0.85rem;">' + escapeHtml(timestamp) + '</span>';
+                        html += '</summary><div style="margin-top: 0.75rem; font-size: 0.85rem;">';
+                        
+                        if (pid !== '' || tid !== '' || threadName) {
+                            html += '<div style="margin-bottom: 0.5rem;"><span style="color: var(--text-secondary); font-weight: 500;">Process Info:</span> ';
+                            const infoParts = [];
+                            if (pid !== '') infoParts.push('PID: ' + escapeHtml(String(pid)));
+                            if (tid !== '') infoParts.push('TID: ' + escapeHtml(String(tid)));
+                            if (threadName) infoParts.push('Thread: ' + escapeHtml(threadName));
+                            html += infoParts.join(' | ') + '</div>';
+                        }
+                        
+                        if (faultAddr) {
+                            html += '<div style="margin-bottom: 0.5rem;"><span style="color: var(--text-secondary); font-weight: 500;">Fault Address:</span> <span style="font-family: monospace;">' + escapeHtml(faultAddr) + '</span></div>';
+                        }
+                        
+                        if (backtrace.length > 0) {
+                            html += '<div style="margin-top: 0.75rem;"><span style="color: var(--text-secondary); font-weight: 500;">Backtrace:</span><ul style="margin: 0.5rem 0 0 1.25rem; font-size: 0.8rem; font-family: monospace;">';
+                            backtrace.forEach(bt => {
+                                const frame = toObj(bt);
+                                const func = (frame && frame.function) ? frame.function : '';
+                                const lib = (frame && frame.library) ? frame.library : '';
+                                const pc = (frame && frame.pc) ? frame.pc : '';
+                                const rawLine = (frame && frame.raw_line) ? frame.raw_line : '';
+                                
+                                if (rawLine) {
+                                    html += '<li style="margin-bottom: 0.25rem;">' + escapeHtml(rawLine) + '</li>';
+                                } else if (func || lib || pc) {
+                                    const parts = [];
+                                    if (pc) parts.push('pc ' + escapeHtml(pc));
+                                    if (lib) parts.push(escapeHtml(lib));
+                                    if (func) parts.push('(' + escapeHtml(func) + ')');
+                                    html += '<li style="margin-bottom: 0.25rem;">' + (parts.length > 0 ? parts.join(' ') : '-') + '</li>';
+                                }
+                            });
+                            html += '</ul></div>';
+                        }
+                        
+                        html += '</div></details>';
+                    });
+                    html += '</div></div>';
+                }
+                if (html) {
+                    crashContainer.innerHTML = html;
+                    crashCard.style.display = 'block';
+                } else {
+                    crashContainer.textContent = 'No ANR or crash data.';
+                    crashCard.style.display = 'block';
+                }
+            } else {
+                crashCard.style.display = 'none';
+            }
+
+            // Display timestamp
+            const timestampEl = document.getElementById('analysis-timestamp');
+            const timestampValueEl = document.getElementById('timestamp-value');
+            if (data.analysis_timestamp) {
+                const date = new Date(data.analysis_timestamp);
+                const options = { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    second: '2-digit'
+                };
+                timestampValueEl.textContent = date.toLocaleString(undefined, options);
+                timestampEl.style.display = 'block';
+            } else {
+                timestampEl.style.display = 'none';
+            }
+
+            // Display processes
+            displayProcessDetails(data);
+            displayBatteryDetails(data);
+            displayPackageHistory(data);
+            displayPackageDetails(data);
+            displayPowerHistory(data);
+            displayNetworkInfo(data);
+            displayNetworkStats(data);
+            displayNetworkSockets(data);
+            displayBluetoothInfo(data);
+            displayUsbInfo(data);
+
+            // Display JSON
+            document.getElementById('json-output').textContent = JSON.stringify(data, null, 2);
+        }
+
+        function displayProcessDetails(data) {
+            const processCard = document.getElementById('process-details-card');
+            const processTableBody = document.getElementById('process-table-body');
+            const countBadge = document.getElementById('process-count-badge');
+
+            if (!data.processes || !Array.isArray(data.processes) || data.processes.length === 0) {
+                processCard.style.display = 'none';
+                return;
+            }
+
+            processCard.style.display = 'block';
+            countBadge.textContent = data.processes.length;
+
+            processTableBody.innerHTML = '';
+            data.processes.forEach(p => {
+                const row = document.createElement('tr');
+                row.setAttribute('data-pid', p.pid);
+                row.setAttribute('data-name', p.name.toLowerCase());
+                row.innerHTML = `
+                    <td>${p.pid}</td>
+                    <td>${escapeHtml(p.name)}</td>
+                    <td>${escapeHtml(p.user)}</td>
+                    <td>${p.cpu_percent.toFixed(2)}%</td>
+                    <td>${escapeHtml(p.memory)}</td>
+                `;
+                processTableBody.appendChild(row);
+            });
+
+            const searchInput = document.getElementById('process-search');
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                const rows = processTableBody.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const pid = row.getAttribute('data-pid');
+                    const name = row.getAttribute('data-name');
+                    if (pid.includes(query) || name.includes(query)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        function displayBatteryDetails(data) {
+            const batteryCard = document.getElementById('battery-details-card');
+            const batteryTableBody = document.getElementById('battery-table-body');
+            const countBadge = document.getElementById('battery-apps-count-badge');
+
+            if (!data.battery_apps || !Array.isArray(data.battery_apps) || data.battery_apps.length === 0) {
+                batteryCard.style.display = 'none';
+                return;
+            }
+
+            batteryCard.style.display = 'block';
+            countBadge.textContent = data.battery_apps.length;
+
+            batteryTableBody.innerHTML = '';
+            data.battery_apps.forEach(app => {
+                const row = document.createElement('tr');
+                row.setAttribute('data-package', app.package_name.toLowerCase());
+                const networkRx = (app.network_rx_mobile || 0) + (app.network_rx_wifi || 0);
+                const networkTx = (app.network_tx_mobile || 0) + (app.network_tx_wifi || 0);
+                row.innerHTML = `
+                    <td>${escapeHtml(app.package_name)}</td>
+                    <td>${app.uid}</td>
+                    <td>${formatTime(app.total_cpu_time_ms || 0)}</td>
+                    <td>${formatBytes(networkRx)} / ${formatBytes(networkTx)}</td>
+                    <td>${formatTime(app.total_wakelock_time_ms || 0)}</td>
+                    <td>${formatTime(app.total_job_time_ms || 0)}</td>
+                `;
+                batteryTableBody.appendChild(row);
+            });
+
+            const searchInput = document.getElementById('battery-search');
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                const rows = batteryTableBody.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const pkg = row.getAttribute('data-package');
+                    if (pkg.includes(query)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        function displayPackageHistory(data) {
+            const packageHistoryCard = document.getElementById('package-history-card');
+            const packageListEl = document.getElementById('package-list');
+            const countBadge = document.getElementById('package-count-badge');
+
+            let packages = [];
+            if (data.packages && Array.isArray(data.packages) && data.packages.length > 0) {
+                packages = data.packages.map(pkg => ({
+                    packageName: pkg.package_name || 'Unknown',
+                    installer: pkg.installer || 'Unknown',
+                    timestamp: pkg.timestamp || '',
+                    versionCode: pkg.version_code || null,
+                    success: pkg.success !== undefined ? pkg.success : false,
+                    duration: pkg.duration_seconds ? formatDuration(pkg.duration_seconds * 1000) : null
+                }));
+            }
+
+            if (packages.length === 0) {
+                packageHistoryCard.style.display = 'none';
+                return;
+            }
+
+            packageHistoryCard.style.display = 'block';
+            countBadge.textContent = packages.length;
+
+            let html = '';
+            packages.forEach((pkg) => {
+                const statusClass = pkg.success ? 'success' : 'failed';
+                const statusText = pkg.success ? '✓ Installed' : '✗ Failed';
+                const installerName = pkg.installer ? formatInstaller(pkg.installer) : 'Unknown';
+                const versionText = pkg.versionCode ? `v${pkg.versionCode}` : '-';
+                
+                html += `
+                    <div class="package-item" data-package-name="${pkg.packageName.toLowerCase()}" data-installer="${installerName.toLowerCase()}" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-bottom: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; gap: 1rem;">
+                            <div style="font-family: monospace; font-size: 0.875rem; font-weight: 600; color: var(--text-primary); word-break: break-all; flex: 1;">${pkg.packageName}</div>
+                            <div style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 500; white-space: nowrap; background: ${pkg.success ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)'}; color: ${pkg.success ? 'var(--success)' : 'var(--error)'}; border: 1px solid ${pkg.success ? 'var(--success)' : 'var(--error)'};">${statusText}</div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; margin-top: 0.75rem; font-size: 0.75rem;">
+                            <div><span style="color: var(--text-secondary); margin-right: 0.25rem;">📅 Installed:</span><span style="color: var(--text-primary); font-weight: 500;">${formatDate(pkg.timestamp)}</span></div>
+                            <div><span style="color: var(--text-secondary); margin-right: 0.25rem;">📦 Installer:</span><span style="color: var(--text-primary); font-weight: 500;">${installerName}</span></div>
+                            <div><span style="color: var(--text-secondary); margin-right: 0.25rem;">🔢 Version:</span><span style="color: var(--text-primary); font-weight: 500;">${versionText}</span></div>
+                            ${pkg.duration ? `<div><span style="color: var(--text-secondary); margin-right: 0.25rem;">⏱️ Duration:</span><span style="color: var(--text-primary); font-weight: 500;">${pkg.duration}</span></div>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            packageListEl.innerHTML = html;
+
+            const searchInput = document.getElementById('package-search-input');
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                const items = document.querySelectorAll('.package-item');
+                items.forEach(item => {
+                    const packageName = item.getAttribute('data-package-name');
+                    const installer = item.getAttribute('data-installer');
+                    if (packageName.includes(query) || installer.includes(query)) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        function displayPackageDetails(data) {
+            const packageDetailsCard = document.getElementById('package-details-card');
+            const packageDetailsListEl = document.getElementById('package-details-list');
+            const countBadge = document.getElementById('package-details-count-badge');
+
+            if (!data.package_details || !Array.isArray(data.package_details) || data.package_details.length === 0) {
+                packageDetailsCard.style.display = 'none';
+                return;
+            }
+
+            packageDetailsCard.style.display = 'block';
+            countBadge.textContent = data.package_details.length;
+
+            let html = '';
+            data.package_details.forEach((pkg) => {
+                html += `<div class="package-item" data-package-name="${pkg.package_name.toLowerCase()}" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-bottom: 1rem;">`;
+                html += `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">`;
+                html += `<h4 style="font-family: monospace; font-size: 0.875rem; font-weight: 600; color: var(--text-primary);">${escapeHtml(pkg.package_name)}</h4>`;
+                if (pkg.version_name) {
+                    html += `<span style="padding: 0.25rem 0.5rem; background: var(--bg-secondary); border-radius: 4px; font-size: 0.75rem;">v${escapeHtml(pkg.version_name)}</span>`;
+                }
+                html += `</div>`;
+                html += `<table class="data-table" style="font-size: 0.85rem;">`;
+                if (pkg.version_code) html += `<tr><td style="color: var(--text-secondary);">Version Code:</td><td>${pkg.version_code}</td></tr>`;
+                if (pkg.app_id) html += `<tr><td style="color: var(--text-secondary);">App ID:</td><td>${pkg.app_id}</td></tr>`;
+                if (pkg.target_sdk) html += `<tr><td style="color: var(--text-secondary);">Target SDK:</td><td>${pkg.target_sdk}</td></tr>`;
+                if (pkg.min_sdk) html += `<tr><td style="color: var(--text-secondary);">Min SDK:</td><td>${pkg.min_sdk}</td></tr>`;
+                if (pkg.code_path) html += `<tr><td style="color: var(--text-secondary);">Code Path:</td><td><code>${escapeHtml(pkg.code_path)}</code></td></tr>`;
+                if (pkg.installer_package_name) html += `<tr><td style="color: var(--text-secondary);">Installer:</td><td>${escapeHtml(pkg.installer_package_name)}</td></tr>`;
+                if (pkg.last_update_time) html += `<tr><td style="color: var(--text-secondary);">Last Update:</td><td>${formatDate(pkg.last_update_time)}</td></tr>`;
+                html += `<tr><td style="color: var(--text-secondary);">Users:</td><td>${pkg.user_count || 0}</td></tr>`;
+                html += `</table>`;
+                if (pkg.users && pkg.users.length > 0) {
+                    html += `<div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">`;
+                    html += `<strong style="font-size: 0.85rem;">Users:</strong>`;
+                    pkg.users.forEach(user => {
+                        html += `<div style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px; font-size: 0.8rem;">`;
+                        html += `User ${user.user_id !== null ? user.user_id : 'Unknown'}`;
+                        if (user.installed !== null) html += ` - ${user.installed ? 'Installed' : 'Not Installed'}`;
+                        if (user.first_install_time) html += `<br><span style="color: var(--text-secondary);">First Install: ${formatDate(user.first_install_time)}</span>`;
+                        html += `</div>`;
+                    });
+                    html += `</div>`;
+                }
+                html += `</div>`;
+            });
+
+            packageDetailsListEl.innerHTML = html;
+
+            const searchInput = document.getElementById('package-details-search-input');
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                const items = document.querySelectorAll('.package-item');
+                items.forEach(item => {
+                    const packageName = item.getAttribute('data-package-name');
+                    if (packageName.includes(query)) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        function displayPowerHistory(data) {
+            const powerHistoryCard = document.getElementById('power-history-card');
+            const powerHistoryListEl = document.getElementById('power-history-list');
+            const countBadge = document.getElementById('power-history-count-badge');
+
+            if (!data.power_history || !Array.isArray(data.power_history) || data.power_history.length === 0) {
+                powerHistoryCard.style.display = 'none';
+                return;
+            }
+
+            powerHistoryCard.style.display = 'block';
+            countBadge.textContent = data.power_history.length;
+
+            let html = '';
+            data.power_history.forEach((entry) => {
+                html += `<div class="package-item" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-bottom: 1rem;">`;
+                html += `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">`;
+                html += `<h4 style="font-size: 0.875rem; font-weight: 600; color: var(--text-primary);">${escapeHtml(entry.timestamp)}</h4>`;
+                if (entry.reason) {
+                    html += `<span style="padding: 0.25rem 0.5rem; background: var(--bg-secondary); border-radius: 4px; font-size: 0.75rem;">${escapeHtml(entry.reason)}</span>`;
+                }
+                html += `</div>`;
+                if (entry.history_events && entry.history_events.length > 0) {
+                    html += `<div style="margin-top: 0.5rem;"><strong style="font-size: 0.85rem;">Events (${entry.history_events.length}):</strong>`;
+                    entry.history_events.forEach(event => {
+                        html += `<div style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px; font-size: 0.8rem;">`;
+                        if (event.event_type) html += `<span style="font-weight: 600;">${escapeHtml(event.event_type)}</span>`;
+                        if (event.timestamp) html += ` <span style="color: var(--text-secondary);">${escapeHtml(event.timestamp)}</span>`;
+                        if (event.details) html += `<br><span style="color: var(--text-secondary);">${escapeHtml(event.details)}</span>`;
+                        html += `</div>`;
+                    });
+                    html += `</div>`;
+                }
+                if (entry.stack_trace && entry.stack_trace.length > 0) {
+                    html += `<div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">`;
+                    html += `<strong style="font-size: 0.85rem;">Stack Trace:</strong>`;
+                    html += `<pre style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px; font-size: 0.75rem; font-family: monospace; overflow-x: auto;">${entry.stack_trace.map(l => escapeHtml(l)).join('\n')}</pre>`;
+                    html += `</div>`;
+                }
+                html += `</div>`;
+            });
+
+            powerHistoryListEl.innerHTML = html;
+        }
+
+        function displayNetworkInfo(data) {
+            const networkInfoCard = document.getElementById('network-info-card');
+            const networkInfoListEl = document.getElementById('network-info-list');
+            const countBadge = document.getElementById('network-info-count-badge');
+
+            if (!data.network_info || !Array.isArray(data.network_info) || data.network_info.length === 0) {
+                networkInfoCard.style.display = 'none';
+                return;
+            }
+
+            networkInfoCard.style.display = 'block';
+            countBadge.textContent = data.network_info.length;
+
+            let html = '';
+            data.network_info.forEach((net) => {
+                html += `<div class="package-item" data-interface="${(net.interface_name || '').toLowerCase()}" data-ip="${(net.ip_address || '').toLowerCase()}" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-bottom: 1rem;">`;
+                html += `<h4 style="font-size: 0.875rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.75rem;">${escapeHtml(net.interface_name || 'Unknown')}</h4>`;
+                html += `<table class="data-table" style="font-size: 0.85rem;">`;
+                if (net.ip_address) html += `<tr><td style="color: var(--text-secondary);">IP Address:</td><td><code>${escapeHtml(net.ip_address)}</code></td></tr>`;
+                if (net.mac_address) html += `<tr><td style="color: var(--text-secondary);">MAC Address:</td><td><code>${escapeHtml(net.mac_address)}</code></td></tr>`;
+                if (net.state) html += `<tr><td style="color: var(--text-secondary);">State:</td><td>${escapeHtml(net.state)}</td></tr>`;
+                if (net.rx_bytes !== null) html += `<tr><td style="color: var(--text-secondary);">RX Bytes:</td><td>${formatBytes(net.rx_bytes)}</td></tr>`;
+                if (net.tx_bytes !== null) html += `<tr><td style="color: var(--text-secondary);">TX Bytes:</td><td>${formatBytes(net.tx_bytes)}</td></tr>`;
+                if (net.mtu) html += `<tr><td style="color: var(--text-secondary);">MTU:</td><td>${net.mtu}</td></tr>`;
+                html += `</table>`;
+                html += `</div>`;
+            });
+
+            networkInfoListEl.innerHTML = html;
+
+            const searchInput = document.getElementById('network-search-input');
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                const items = document.querySelectorAll('.package-item[data-interface]');
+                items.forEach(item => {
+                    const iface = item.getAttribute('data-interface');
+                    const ip = item.getAttribute('data-ip');
+                    if (iface.includes(query) || ip.includes(query)) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        function displayNetworkStats(data) {
+            const networkStatsCard = document.getElementById('network-stats-card');
+            const networkStatsListEl = document.getElementById('network-stats-list');
+            const countBadge = document.getElementById('network-stats-count-badge');
+
+            if (!data.network_stats || !Array.isArray(data.network_stats) || data.network_stats.length === 0) {
+                networkStatsCard.style.display = 'none';
+                return;
+            }
+
+            networkStatsCard.style.display = 'block';
+            countBadge.textContent = data.network_stats.length;
+
+            let html = '';
+            data.network_stats.forEach((stat) => {
+                html += `<div class="package-item" data-network="${(stat.network_type || '').toLowerCase()}" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-bottom: 1rem;">`;
+                html += `<h4 style="font-size: 0.875rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.75rem;">${escapeHtml(stat.network_type || 'Unknown')}</h4>`;
+                html += `<table class="data-table" style="font-size: 0.85rem;">`;
+                if (stat.wifi_network_name) html += `<tr><td style="color: var(--text-secondary);">WiFi Network:</td><td>${escapeHtml(stat.wifi_network_name)}</td></tr>`;
+                if (stat.rx_bytes !== null) html += `<tr><td style="color: var(--text-secondary);">RX Bytes:</td><td>${formatBytes(stat.rx_bytes)}</td></tr>`;
+                if (stat.tx_bytes !== null) html += `<tr><td style="color: var(--text-secondary);">TX Bytes:</td><td>${formatBytes(stat.tx_bytes)}</td></tr>`;
+                if (stat.default_network !== null) html += `<tr><td style="color: var(--text-secondary);">Default:</td><td>${stat.default_network ? 'Yes' : 'No'}</td></tr>`;
+                if (stat.metered !== null) html += `<tr><td style="color: var(--text-secondary);">Metered:</td><td>${stat.metered ? 'Yes' : 'No'}</td></tr>`;
+                if (stat.rat_type) html += `<tr><td style="color: var(--text-secondary);">RAT Type:</td><td>${escapeHtml(stat.rat_type)}</td></tr>`;
+                html += `</table>`;
+                html += `</div>`;
+            });
+
+            networkStatsListEl.innerHTML = html;
+
+            const searchInput = document.getElementById('network-stats-search-input');
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                const items = document.querySelectorAll('.package-item[data-network]');
+                items.forEach(item => {
+                    const network = item.getAttribute('data-network');
+                    if (network.includes(query)) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        function displayNetworkSockets(data) {
+            const networkSocketsCard = document.getElementById('network-sockets-card');
+            const networkSocketsTableBody = document.getElementById('network-sockets-table-body');
+            const countBadge = document.getElementById('network-sockets-count-badge');
+
+            if (!data.sockets || !Array.isArray(data.sockets) || data.sockets.length === 0) {
+                networkSocketsCard.style.display = 'none';
+                return;
+            }
+
+            networkSocketsCard.style.display = 'block';
+            countBadge.textContent = data.sockets.length;
+
+            networkSocketsTableBody.innerHTML = '';
+            data.sockets.forEach(socket => {
+                const row = document.createElement('tr');
+                row.setAttribute('data-protocol', (socket.protocol || '').toLowerCase());
+                row.setAttribute('data-local', (socket.local_address || '').toLowerCase());
+                row.setAttribute('data-remote', (socket.remote_address || '').toLowerCase());
+                row.setAttribute('data-state', (socket.state || '').toLowerCase());
+                row.innerHTML = `
+                    <td>${escapeHtml(socket.protocol || '-')}</td>
+                    <td><code>${escapeHtml(socket.local_address || '-')}</code></td>
+                    <td>${socket.local_port || '-'}</td>
+                    <td><code>${escapeHtml(socket.remote_address || '-')}</code></td>
+                    <td>${socket.remote_port || '-'}</td>
+                    <td>${escapeHtml(socket.state || '-')}</td>
+                    <td>${socket.uid || '-'}</td>
+                `;
+                networkSocketsTableBody.appendChild(row);
+            });
+
+            const searchInput = document.getElementById('network-sockets-search-input');
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                const rows = networkSocketsTableBody.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const protocol = row.getAttribute('data-protocol');
+                    const local = row.getAttribute('data-local');
+                    const remote = row.getAttribute('data-remote');
+                    const state = row.getAttribute('data-state');
+                    if (protocol.includes(query) || local.includes(query) || remote.includes(query) || state.includes(query)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        function displayBluetoothInfo(data) {
+            const bluetoothCard = document.getElementById('bluetooth-card');
+            const bluetoothAdapterInfo = document.getElementById('bluetooth-adapter-info');
+            const bluetoothDevicesList = document.getElementById('bluetooth-devices-list');
+            const countBadge = document.getElementById('bluetooth-devices-count-badge');
+
+            if (!data.bluetooth_info) {
+                bluetoothCard.style.display = 'none';
+                return;
+            }
+
+            bluetoothCard.style.display = 'block';
+
+            // Adapter info
+            if (data.bluetooth_info.adapter_properties) {
+                const adapter = data.bluetooth_info.adapter_properties;
+                let adapterHtml = '<div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-bottom: 1rem;">';
+                adapterHtml += '<h4 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem;">Adapter Properties</h4>';
+                adapterHtml += '<table class="data-table" style="font-size: 0.85rem;">';
+                if (adapter.name) adapterHtml += `<tr><td style="color: var(--text-secondary);">Name:</td><td>${escapeHtml(adapter.name)}</td></tr>`;
+                if (adapter.address) adapterHtml += `<tr><td style="color: var(--text-secondary);">Address:</td><td><code>${escapeHtml(adapter.address)}</code></td></tr>`;
+                if (adapter.state) adapterHtml += `<tr><td style="color: var(--text-secondary);">State:</td><td>${escapeHtml(adapter.state)}</td></tr>`;
+                if (adapter.connection_state) adapterHtml += `<tr><td style="color: var(--text-secondary);">Connection State:</td><td>${escapeHtml(adapter.connection_state)}</td></tr>`;
+                adapterHtml += '</table></div>';
+                bluetoothAdapterInfo.innerHTML = adapterHtml;
+            }
+
+            // Devices
+            const devices = data.bluetooth_info.devices || [];
+            countBadge.textContent = devices.length;
+
+            if (devices.length === 0) {
+                bluetoothDevicesList.innerHTML = '<p style="color: var(--text-secondary);">No devices found.</p>';
+                return;
+            }
+
+            let html = '';
+            devices.forEach(device => {
+                html += `<div class="package-item" data-device="${(device.name || '').toLowerCase()}" data-mac="${(device.mac_address || '').toLowerCase()}" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-bottom: 1rem;">`;
+                html += `<h4 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem;">${escapeHtml(device.name || 'Unknown Device')}</h4>`;
+                html += `<table class="data-table" style="font-size: 0.85rem;">`;
+                if (device.mac_address) html += `<tr><td style="color: var(--text-secondary);">MAC Address:</td><td><code>${escapeHtml(device.mac_address)}</code></td></tr>`;
+                if (device.device_type !== null) html += `<tr><td style="color: var(--text-secondary);">Device Type:</td><td>${device.device_type}</td></tr>`;
+                if (device.device_class) html += `<tr><td style="color: var(--text-secondary);">Device Class:</td><td>${escapeHtml(device.device_class)}</td></tr>`;
+                if (device.connected !== null) html += `<tr><td style="color: var(--text-secondary);">Connected:</td><td>${device.connected ? 'Yes' : 'No'}</td></tr>`;
+                if (device.transport_type) html += `<tr><td style="color: var(--text-secondary);">Transport:</td><td>${escapeHtml(device.transport_type)}</td></tr>`;
+                if (device.services && device.services.length > 0) {
+                    html += `<tr><td style="color: var(--text-secondary);">Services:</td><td>${device.services.map(s => escapeHtml(s)).join(', ')}</td></tr>`;
+                }
+                html += `</table>`;
+                html += `</div>`;
+            });
+
+            bluetoothDevicesList.innerHTML = html;
+
+            const searchInput = document.getElementById('bluetooth-search-input');
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                const items = document.querySelectorAll('.package-item[data-device]');
+                items.forEach(item => {
+                    const name = item.getAttribute('data-device');
+                    const mac = item.getAttribute('data-mac');
+                    if (name.includes(query) || mac.includes(query)) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        function displayUsbInfo(data) {
+            const usbCard = document.getElementById('usb-card');
+            const usbPortsInfo = document.getElementById('usb-ports-info');
+            const usbDevicesList = document.getElementById('usb-devices-list');
+            const countBadge = document.getElementById('usb-devices-count-badge');
+
+            if (!data.usb_info) {
+                usbCard.style.display = 'none';
+                return;
+            }
+
+            usbCard.style.display = 'block';
+
+            // Ports info
+            if (data.usb_info.ports && data.usb_info.ports.length > 0) {
+                let portsHtml = '<div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-bottom: 1rem;">';
+                portsHtml += '<h4 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem;">USB Ports</h4>';
+                data.usb_info.ports.forEach(port => {
+                    portsHtml += `<div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px; font-size: 0.85rem;">`;
+                    portsHtml += `<strong>${escapeHtml(port.port_name || 'Unknown')}</strong>`;
+                    if (port.connected_device) {
+                        portsHtml += ` - ${escapeHtml(port.connected_device)}`;
+                    }
+                    portsHtml += `</div>`;
+                });
+                portsHtml += '</div>';
+                usbPortsInfo.innerHTML = portsHtml;
+            }
+
+            // Devices
+            const devices = data.usb_info.connected_devices || [];
+            countBadge.textContent = devices.length;
+
+            if (devices.length === 0) {
+                usbDevicesList.innerHTML = '<p style="color: var(--text-secondary);">No devices found.</p>';
+                return;
+            }
+
+            let html = '';
+            devices.forEach(device => {
+                html += `<div class="package-item" data-driver="${(device.driver || '').toLowerCase()}" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-bottom: 1rem;">`;
+                html += `<h4 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem;">${escapeHtml(device.driver || 'Unknown Device')}</h4>`;
+                html += `<table class="data-table" style="font-size: 0.85rem;">`;
+                if (device.interface) html += `<tr><td style="color: var(--text-secondary);">Interface:</td><td>${escapeHtml(device.interface)}</td></tr>`;
+                if (device.first_seen) html += `<tr><td style="color: var(--text-secondary);">First Seen:</td><td>${formatDate(device.first_seen)}</td></tr>`;
+                if (device.last_seen) html += `<tr><td style="color: var(--text-secondary);">Last Seen:</td><td>${formatDate(device.last_seen)}</td></tr>`;
+                if (device.last_action) html += `<tr><td style="color: var(--text-secondary);">Last Action:</td><td>${escapeHtml(device.last_action)}</td></tr>`;
+                if (device.events && device.events.length > 0) {
+                    html += `<tr><td style="color: var(--text-secondary);">Events:</td><td>${device.events.length}</td></tr>`;
+                }
+                html += `</table>`;
+                if (device.events && device.events.length > 0) {
+                    html += `<div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">`;
+                    html += `<strong style="font-size: 0.85rem;">Recent Events:</strong>`;
+                    device.events.slice(0, 5).forEach(event => {
+                        html += `<div style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px; font-size: 0.8rem;">`;
+                        if (event.action) html += `<span style="font-weight: 600;">${escapeHtml(event.action)}</span>`;
+                        if (event.timestamp) html += ` <span style="color: var(--text-secondary);">${formatDate(event.timestamp)}</span>`;
+                        html += `</div>`;
+                    });
+                    html += `</div>`;
+                }
+                html += `</div>`;
+            });
+
+            usbDevicesList.innerHTML = html;
+
+            const searchInput = document.getElementById('usb-search-input');
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                const items = document.querySelectorAll('.package-item[data-driver]');
+                items.forEach(item => {
+                    const driver = item.getAttribute('data-driver');
+                    if (driver.includes(query)) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        // Sample data
+        const sampleData = {
+            device_info: {
+                manufacturer: "Samsung",
+                model: "SM-G998B",
+                android_version: "13",
+                build_id: "TP1A.220624.014.G998BXXU5DWB5",
+                kernel_version: "5.10.81-android12-9-00001-g8b3c0c0d0e0a"
+            },
+            battery_info: {
+                level: 87.5,
+                health: "Good",
+                temperature: 28.5,
+                voltage: 4.2
+            },
+            process_count: 245,
+            package_count: 312,
+            analysis_timestamp: new Date().toISOString(),
+            file_info: {
+                path: "/data/local/tmp/bugreport-2024-01-15-10-30-00.zip",
+                size_mb: 15.7,
+                size_bytes: 16457728,
+                sha256: "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"
+            },
+            sigma_rules_info: [
+                {
+                    url: "https://github.com/SigmaHQ/sigma/rules/android/",
+                    success: true,
+                    title: "Android Root Access Detection",
+                    id: "android_root_001",
+                    description: "Detects execution of su binary or root access attempts on Android devices",
+                    status: "active",
+                    level: "critical"
+                },
+                {
+                    url: "https://github.com/SigmaHQ/sigma/rules/android/",
+                    success: true,
+                    title: "Suspicious Package Installation",
+                    id: "android_package_install_001",
+                    description: "Detects installation of packages from unknown or untrusted sources",
+                    status: "active",
+                    level: "high"
+                },
+                {
+                    url: "https://github.com/SigmaHQ/sigma/rules/android/",
+                    success: true,
+                    title: "Data Exfiltration via Network",
+                    id: "android_data_exfil_001",
+                    description: "Detects suspicious network activity indicating potential data exfiltration",
+                    status: "active",
+                    level: "high"
+                },
+                {
+                    url: "https://github.com/SigmaHQ/sigma/rules/android/",
+                    success: true,
+                    title: "Privilege Escalation Attempt",
+                    id: "android_priv_esc_001",
+                    description: "Detects attempts to escalate privileges or access protected resources",
+                    status: "active",
+                    level: "high"
+                },
+                {
+                    url: "https://github.com/SigmaHQ/sigma/rules/android/",
+                    success: true,
+                    title: "Suspicious System Modification",
+                    id: "android_system_mod_001",
+                    description: "Detects unauthorized modifications to system files or directories",
+                    status: "active",
+                    level: "medium"
+                },
+                {
+                    url: "https://github.com/SigmaHQ/sigma/rules/android/",
+                    success: true,
+                    title: "Background Service Abuse",
+                    id: "android_service_abuse_001",
+                    description: "Detects suspicious background service activity or persistent services",
+                    status: "active",
+                    level: "medium"
+                },
+                {
+                    url: "https://github.com/SigmaHQ/sigma/rules/android/",
+                    success: true,
+                    title: "SMS/MMS Interception",
+                    id: "android_sms_intercept_001",
+                    description: "Detects applications attempting to intercept or read SMS/MMS messages",
+                    status: "active",
+                    level: "high"
+                },
+                {
+                    url: "https://github.com/SigmaHQ/sigma/rules/android/",
+                    success: false,
+                    fetchError: "Network timeout",
+                    title: "Advanced Persistent Threat Detection",
+                    id: "android_apt_001",
+                    description: "Detects indicators of advanced persistent threats",
+                    status: "pending",
+                    level: "critical"
+                }
+            ],
+            sigma_matches: [
+                {
+                    rule_id: "android_root_001",
+                    rule_title: "Android Root Access Detection",
+                    level: "critical",
+                    matched_log: {
+                        timestamp: "2024-01-15T09:15:22Z",
+                        process: "su",
+                        command: "/system/xbin/su",
+                        pid: 9876,
+                        uid: 0,
+                        package: "com.example.rootapp",
+                        log_entry: "Process 'su' executed with root privileges",
+                        source: "logcat",
+                        tag: "Security"
+                    }
+                },
+                {
+                    rule_id: "android_package_install_001",
+                    rule_title: "Suspicious Package Installation",
+                    level: "high",
+                    matched_log: {
+                        timestamp: "2024-01-14T20:15:00Z",
+                        package: "com.example.suspicious",
+                        installer: "com.android.packageinstaller",
+                        source: "unknown",
+                        version_code: 1,
+                        apk_path: "/data/local/tmp/suspicious.apk",
+                        user_id: 0,
+                        log_entry: "Package installed from unknown source without user interaction",
+                        source: "package_manager",
+                        tag: "PackageInstaller"
+                    }
+                },
+                {
+                    rule_id: "android_data_exfil_001",
+                    rule_title: "Data Exfiltration via Network",
+                    level: "high",
+                    matched_log: {
+                        timestamp: "2024-01-15T11:30:45Z",
+                        package: "com.example.suspicious",
+                        network_type: "mobile",
+                        remote_address: "185.220.101.45",
+                        remote_port: 443,
+                        bytes_sent: 52428800,
+                        bytes_received: 1024,
+                        protocol: "tcp",
+                        connection_duration: 300,
+                        log_entry: "Large data transfer to suspicious IP address",
+                        source: "network_stats",
+                        tag: "NetworkSecurity"
+                    }
+                },
+                {
+                    rule_id: "android_priv_esc_001",
+                    rule_title: "Privilege Escalation Attempt",
+                    level: "high",
+                    matched_log: {
+                        timestamp: "2024-01-15T10:45:12Z",
+                        package: "com.example.suspicious",
+                        action: "android.permission.WRITE_SECURE_SETTINGS",
+                        requested_by: "com.example.suspicious",
+                        granted: false,
+                        reason: "Permission denied: requires system signature",
+                        log_entry: "Attempt to access protected system settings",
+                        source: "permission_manager",
+                        tag: "Security"
+                    }
+                },
+                {
+                    rule_id: "android_system_mod_001",
+                    rule_title: "Suspicious System Modification",
+                    level: "medium",
+                    matched_log: {
+                        timestamp: "2024-01-15T08:20:33Z",
+                        package: "com.example.suspicious",
+                        file_path: "/system/etc/hosts",
+                        operation: "write",
+                        result: "denied",
+                        uid: 10123,
+                        log_entry: "Attempt to modify system file /system/etc/hosts",
+                        source: "file_system",
+                        tag: "Security"
+                    }
+                },
+                {
+                    rule_id: "android_service_abuse_001",
+                    rule_title: "Background Service Abuse",
+                    level: "medium",
+                    matched_log: {
+                        timestamp: "2024-01-15T07:00:00Z",
+                        package: "com.example.suspicious",
+                        service: "com.example.suspicious.BackgroundService",
+                        action: "start",
+                        foreground: false,
+                        persistent: true,
+                        wakelock_held: true,
+                        cpu_usage: 15.5,
+                        log_entry: "Persistent background service with high CPU usage",
+                        source: "activity_manager",
+                        tag: "BatteryStats"
+                    }
+                },
+                {
+                    rule_id: "android_sms_intercept_001",
+                    rule_title: "SMS/MMS Interception",
+                    level: "high",
+                    matched_log: {
+                        timestamp: "2024-01-15T12:15:30Z",
+                        package: "com.example.suspicious",
+                        permission: "android.permission.RECEIVE_SMS",
+                        action: "android.provider.Telephony.SMS_RECEIVED",
+                        sms_sender: "+1234567890",
+                        sms_body_preview: "Your verification code is: 123456",
+                        intercepted: true,
+                        log_entry: "Application intercepted SMS message without user consent",
+                        source: "telephony",
+                        tag: "Privacy"
+                    }
+                },
+                {
+                    rule_id: "android_data_exfil_001",
+                    rule_title: "Data Exfiltration via Network",
+                    level: "high",
+                    matched_log: {
+                        timestamp: "2024-01-15T13:45:20Z",
+                        package: "com.example.suspicious",
+                        network_type: "wifi",
+                        remote_address: "192.168.1.100",
+                        remote_port: 8080,
+                        bytes_sent: 104857600,
+                        bytes_received: 2048,
+                        protocol: "tcp",
+                        data_type: "contacts",
+                        contacts_count: 500,
+                        log_entry: "Large amount of contact data transmitted to local network",
+                        source: "network_stats",
+                        tag: "Privacy"
+                    }
+                },
+                {
+                    rule_id: "android_system_mod_001",
+                    rule_title: "Suspicious System Modification",
+                    level: "medium",
+                    matched_log: {
+                        timestamp: "2024-01-14T22:10:15Z",
+                        package: "com.example.suspicious",
+                        file_path: "/data/data/com.android.providers.settings/databases/settings.db",
+                        operation: "read",
+                        accessed_tables: ["secure", "global"],
+                        query: "SELECT * FROM secure WHERE name='install_non_market_apps'",
+                        log_entry: "Unauthorized access to system settings database",
+                        source: "database_access",
+                        tag: "Security"
+                    }
+                },
+                {
+                    rule_id: "android_package_install_001",
+                    rule_title: "Suspicious Package Installation",
+                    level: "high",
+                    matched_log: {
+                        timestamp: "2024-01-13T15:30:00Z",
+                        package: "com.malware.trojan",
+                        installer: "com.android.packageinstaller",
+                        source: "http://malicious-site.com/app.apk",
+                        version_code: 1,
+                        permissions: ["android.permission.READ_SMS", "android.permission.SEND_SMS", "android.permission.ACCESS_FINE_LOCATION"],
+                        suspicious_permissions: true,
+                        log_entry: "Package with suspicious permissions installed from untrusted source",
+                        source: "package_manager",
+                        tag: "Security"
+                    }
+                }
+            ],
+            crash_info: {
+                anr_files: {
+                    files: [
+                        {
+                            filename: "/data/anr/anr_2024-01-15-10-20-00.txt",
+                            size: 245760,
+                            timestamp: "2024-01-15T10:20:00Z"
+                        },
+                        {
+                            filename: "/data/anr/anr_2024-01-15-09-45-00.txt",
+                            size: 189440,
+                            timestamp: "2024-01-15T09:45:00Z"
+                        }
+                    ],
+                    total_size: 435200
+                },
+                anr_trace: {
+                    subject: "ANR in com.sec.android.gallery3d",
+                    header: {
+                        subject: "ANR in com.sec.android.gallery3d"
+                    },
+                    process_info: {
+                        cmd_line: "com.sec.android.gallery3d",
+                        pid: 12345,
+                        timestamp: "2024-01-15T10:20:00Z"
+                    },
+                    threads: [
+                        {
+                            name: "main",
+                            tid: 12345,
+                            status: "blocked",
+                            stack_trace: [
+                                {
+                                    method: "android.os.MessageQueue.nativePollOnce",
+                                    file_loc: "MessageQueue.java",
+                                    line_number: 123
+                                },
+                                {
+                                    method: "android.os.MessageQueue.next",
+                                    file_loc: "MessageQueue.java",
+                                    line_number: 345
+                                },
+                                {
+                                    method: "android.os.Looper.loop",
+                                    file_loc: "Looper.java",
+                                    line_number: 173
+                                }
+                            ]
+                        },
+                        {
+                            name: "Thread-2",
+                            tid: 12350,
+                            status: "runnable",
+                            stack_trace: [
+                                {
+                                    method: "java.lang.Thread.run",
+                                    file_loc: "Thread.java",
+                                    line_number: 833
+                                }
+                            ]
+                        }
+                    ]
+                },
+                tombstones: [
+                    {
+                        process_name: "com.sec.android.gallery3d",
+                        signal: "SIGSEGV",
+                        code: "SEGV_ACCERR",
+                        timestamp: "2024-01-15T10:25:30Z",
+                        pid: 12345,
+                        tid: 12346,
+                        thread_name: "RenderThread",
+                        fault_addr: "0x0000000000000000",
+                        backtrace: [
+                            {
+                                raw_line: "#00 pc 0000000000123456  /system/lib64/libandroid_runtime.so (android::NativeBridgeRuntimeCallbacks::getMethodName+123)"
+                            },
+                            {
+                                raw_line: "#01 pc 0000000000456789  /system/lib64/libart.so (art::Method::Invoke+456)"
+                            },
+                            {
+                                raw_line: "#02 pc 0000000000789012  /data/app/com.sec.android.gallery3d/lib/arm64/libgallery.so (Java_com_sec_android_gallery3d_ImageLoader_loadImage+789)"
+                            }
+                        ]
+                    },
+                    {
+                        process_name: "com.example.crasher",
+                        signal: "SIGABRT",
+                        code: "SI_USER",
+                        timestamp: "2024-01-15T09:30:15Z",
+                        pid: 9876,
+                        tid: 9876,
+                        thread_name: "main",
+                        fault_addr: "0x0000000000000000",
+                        backtrace: [
+                            {
+                                raw_line: "#00 pc 0000000000012345  /system/lib64/libc.so (abort+123)"
+                            },
+                            {
+                                raw_line: "#01 pc 0000000000023456  /data/app/com.example.crasher/lib/arm64/libcrasher.so (crash_function+456)"
+                            }
+                        ]
+                    }
+                ]
+            },
+            processes: [
+                { pid: 1234, name: "system_server", user: "system", cpu_percent: 15.5, memory: "245 MB", virtual_memory: "1.2 GB", policy: "foreground" },
+                { pid: 5678, name: "com.android.chrome", user: "u0_a123", cpu_percent: 8.2, memory: "189 MB", virtual_memory: "890 MB", policy: "foreground" },
+                { pid: 9012, name: "com.sec.android.gallery3d", user: "u0_a456", cpu_percent: 2.1, memory: "67 MB", virtual_memory: "234 MB", policy: "background" }
+            ],
+            battery_apps: [
+                { package_name: "com.android.chrome", uid: 10123, total_cpu_time_ms: 3600000, network_rx_mobile: 52428800, network_rx_wifi: 104857600, network_tx_mobile: 26214400, network_tx_wifi: 52428800, total_wakelock_time_ms: 180000, total_job_time_ms: 45000, foreground_service_time_ms: 0, total_job_count: 5 },
+                { package_name: "com.sec.android.gallery3d", uid: 10456, total_cpu_time_ms: 1200000, network_rx_mobile: 0, network_rx_wifi: 1048576, network_tx_mobile: 0, network_tx_wifi: 524288, total_wakelock_time_ms: 30000, total_job_time_ms: 15000, foreground_service_time_ms: 0, total_job_count: 2 }
+            ],
+            packages: [
+                { package_name: "com.android.chrome", installer: "com.android.vending", timestamp: "2024-01-10T08:30:00Z", version_code: 120, success: true, duration_seconds: 45.5 },
+                { package_name: "com.sec.android.gallery3d", installer: "android", timestamp: "2023-12-01T00:00:00Z", version_code: 15, success: true, duration_seconds: null },
+                { package_name: "com.example.suspicious", installer: "com.android.packageinstaller", timestamp: "2024-01-14T20:15:00Z", version_code: 1, success: false, duration_seconds: 2.3 }
+            ],
+            package_details: [
+                {
+                    package_name: "com.android.chrome",
+                    version_code: 120,
+                    version_name: "120.0.6099.43",
+                    app_id: 10123,
+                    target_sdk: 34,
+                    min_sdk: 24,
+                    code_path: "/data/app/com.android.chrome-abc123",
+                    resource_path: "/data/app/com.android.chrome-abc123",
+                    flags: "system|hasCode",
+                    pkg_flags: "0x00000000",
+                    primary_cpu_abi: "arm64-v8a",
+                    installer_package_name: "com.android.vending",
+                    last_update_time: "2024-01-10T08:30:00Z",
+                    time_stamp: "2024-01-10T08:30:00Z",
+                    category: "browser",
+                    install_logs: [
+                        { event_type: "START_INSTALL", timestamp: "2024-01-10T08:30:00Z", versionCode: 120, request_from: "com.android.vending", stagedDir: "/data/app-staging/com.android.chrome" },
+                        { event_type: "INSTALL_SUCCEEDED", timestamp: "2024-01-10T08:30:45Z" }
+                    ],
+                    user_count: 1,
+                    users: [
+                        {
+                            user_id: 0,
+                            first_install_time: "2024-01-10T08:30:00Z",
+                            last_disabled_caller: null,
+                            data_dir: "/data/user/0/com.android.chrome",
+                            enabled: 0,
+                            installed: true
+                        }
+                    ]
+                },
+                {
+                    package_name: "com.sec.android.gallery3d",
+                    version_code: 15,
+                    version_name: "15.0.0.123",
+                    app_id: 10456,
+                    target_sdk: 33,
+                    min_sdk: 31,
+                    code_path: "/system/app/Gallery3D",
+                    resource_path: "/system/app/Gallery3D",
+                    flags: "system|hasCode",
+                    pkg_flags: "0x00000001",
+                    primary_cpu_abi: "arm64-v8a",
+                    installer_package_name: "android",
+                    last_update_time: "2023-12-01T00:00:00Z",
+                    time_stamp: "2023-12-01T00:00:00Z",
+                    category: "gallery",
+                    install_logs: [],
+                    user_count: 1,
+                    users: [
+                        {
+                            user_id: 0,
+                            first_install_time: "2023-12-01T00:00:00Z",
+                            last_disabled_caller: null,
+                            data_dir: "/data/user/0/com.sec.android.gallery3d",
+                            enabled: 0,
+                            installed: true
+                        }
+                    ]
+                }
+            ],
+            power_history: [
+                {
+                    timestamp: "2024-01-15T10:00:00Z",
+                    reason: "Screen turned on",
+                    history_events: [
+                        { event_type: "SCREEN_ON", timestamp: "2024-01-15T10:00:00Z", details: "User pressed power button", flags: "0x00000001" },
+                        { event_type: "WAKE_LOCK", timestamp: "2024-01-15T10:00:05Z", details: "com.android.chrome", flags: "0x00000002" }
+                    ],
+                    stack_trace: [
+                        "at android.os.PowerManagerService.wakeUp(PowerManagerService.java:1234)",
+                        "at com.android.server.power.PowerManagerService$DisplayBlankerImpl.setDisplayState(PowerManagerService.java:5678)"
+                    ]
+                },
+                {
+                    timestamp: "2024-01-15T09:45:00Z",
+                    reason: "Screen turned off",
+                    history_events: [
+                        { event_type: "SCREEN_OFF", timestamp: "2024-01-15T09:45:00Z", details: "User pressed power button", flags: "0x00000001" }
+                    ],
+                    stack_trace: [
+                        "at android.os.PowerManagerService.goToSleep(PowerManagerService.java:2345)",
+                        "at com.android.server.power.PowerManagerService$DisplayBlankerImpl.setDisplayState(PowerManagerService.java:5678)"
+                    ]
+                }
+            ],
+            network_info: [
+                {
+                    interface_name: "wlan0",
+                    ip_address: "192.168.1.100",
+                    mac_address: "02:00:00:00:00:00",
+                    state: "UP",
+                    rx_bytes: 524288000,
+                    tx_bytes: 104857600,
+                    rx_packets: 1234567,
+                    tx_packets: 987654,
+                    mtu: 1500
+                },
+                {
+                    interface_name: "rmnet_data0",
+                    ip_address: "10.0.0.5",
+                    mac_address: "02:00:00:00:00:01",
+                    state: "UP",
+                    rx_bytes: 1048576000,
+                    tx_bytes: 524288000,
+                    rx_packets: 2345678,
+                    tx_packets: 1234567,
+                    mtu: 1500
+                },
+                {
+                    interface_name: "lo",
+                    ip_address: "127.0.0.1",
+                    mac_address: "00:00:00:00:00:00",
+                    state: "UP",
+                    rx_bytes: 5242880,
+                    tx_bytes: 5242880,
+                    rx_packets: 12345,
+                    tx_packets: 12345,
+                    mtu: 65536
+                }
+            ],
+            network_stats: [
+                {
+                    network_type: "WIFI",
+                    wifi_network_name: "MyHomeNetwork",
+                    rx_bytes: 524288000,
+                    tx_bytes: 104857600,
+                    rx_packets: 1234567,
+                    tx_packets: 987654,
+                    default_network: true,
+                    metered: false,
+                    rat_type: "WIFI",
+                    subscriber_id: null
+                },
+                {
+                    network_type: "MOBILE",
+                    wifi_network_name: null,
+                    rx_bytes: 1048576000,
+                    tx_bytes: 524288000,
+                    rx_packets: 2345678,
+                    tx_packets: 1234567,
+                    default_network: false,
+                    metered: true,
+                    rat_type: "LTE",
+                    subscriber_id: "310260000000000"
+                }
+            ],
+            sockets: [
+                {
+                    protocol: "tcp",
+                    local_address: "192.168.1.100",
+                    local_ip: "192.168.1.100",
+                    local_port: 443,
+                    remote_address: "142.250.185.14",
+                    remote_ip: "142.250.185.14",
+                    remote_port: 443,
+                    state: "ESTABLISHED",
+                    uid: 10123,
+                    inode: 123456,
+                    recv_q: 0,
+                    send_q: 0,
+                    socket_key: "tcp:192.168.1.100:443:142.250.185.14:443"
+                },
+                {
+                    protocol: "tcp",
+                    local_address: "127.0.0.1",
+                    local_ip: "127.0.0.1",
+                    local_port: 8080,
+                    remote_address: "127.0.0.1",
+                    remote_ip: "127.0.0.1",
+                    remote_port: 54321,
+                    state: "ESTABLISHED",
+                    uid: 1000,
+                    inode: 789012,
+                    recv_q: 0,
+                    send_q: 0,
+                    socket_key: "tcp:127.0.0.1:8080:127.0.0.1:54321"
+                },
+                {
+                    protocol: "udp",
+                    local_address: "0.0.0.0",
+                    local_ip: "0.0.0.0",
+                    local_port: 53,
+                    remote_address: "0.0.0.0",
+                    remote_ip: "0.0.0.0",
+                    remote_port: 0,
+                    state: "UNCONN",
+                    uid: 0,
+                    inode: 345678,
+                    recv_q: 0,
+                    send_q: 0,
+                    socket_key: "udp:0.0.0.0:53"
+                }
+            ],
+            bluetooth_info: {
+                adapter_properties: {
+                    name: "Samsung Galaxy S21",
+                    address: "AA:BB:CC:DD:EE:FF",
+                    state: "ON",
+                    connection_state: "CONNECTED",
+                    discovering: false,
+                    a2dp_offload_enabled: true,
+                    max_connected_audio_devices: 2
+                },
+                devices: [
+                    {
+                        name: "Sony WH-1000XM4",
+                        mac_address: "AA:11:22:33:44:55",
+                        device_type: 1,
+                        device_class: "Audio/Video",
+                        connected: true,
+                        transport_type: "LE",
+                        services: ["A2DP", "AVRCP", "HFP"]
+                    },
+                    {
+                        name: "Samsung Galaxy Watch",
+                        mac_address: "BB:22:33:44:55:66",
+                        device_type: 2,
+                        device_class: "Wearable",
+                        connected: true,
+                        transport_type: "BR/EDR",
+                        services: ["HID", "A2DP"]
+                    },
+                    {
+                        name: "Unknown Device",
+                        mac_address: "CC:33:44:55:66:77",
+                        device_type: 0,
+                        device_class: "Unknown",
+                        connected: false,
+                        transport_type: "LE",
+                        services: []
+                    }
+                ]
+            },
+            usb_info: {
+                ports: [
+                    { port_name: "USB-C", connected_device: "Charging Cable" },
+                    { port_name: "USB-A", connected_device: null }
+                ],
+                connected_devices: [
+                    {
+                        driver: "usb-storage",
+                        interface: "Mass Storage",
+                        first_seen: "2024-01-15T08:00:00Z",
+                        last_seen: "2024-01-15T10:30:00Z",
+                        last_action: "CONNECTED",
+                        events: [
+                            { action: "CONNECTED", timestamp: "2024-01-15T08:00:00Z", driver: "usb-storage", interface: "Mass Storage" },
+                            { action: "DISCONNECTED", timestamp: "2024-01-15T09:15:00Z", driver: "usb-storage", interface: "Mass Storage" },
+                            { action: "CONNECTED", timestamp: "2024-01-15T10:30:00Z", driver: "usb-storage", interface: "Mass Storage" }
+                        ]
+                    },
+                    {
+                        driver: "android_usb",
+                        interface: "MTP",
+                        first_seen: "2024-01-14T15:30:00Z",
+                        last_seen: "2024-01-14T16:00:00Z",
+                        last_action: "DISCONNECTED",
+                        events: [
+                            { action: "CONNECTED", timestamp: "2024-01-14T15:30:00Z", driver: "android_usb", interface: "MTP" },
+                            { action: "DISCONNECTED", timestamp: "2024-01-14T16:00:00Z", driver: "android_usb", interface: "MTP" }
+                        ]
+                    }
+                ]
+            }
+        };
+
+        // Auto-load sample data on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            displayResults(sampleData);
+        });
+    </script>
+</body>
+</html>

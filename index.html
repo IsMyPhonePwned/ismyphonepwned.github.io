@@ -1281,6 +1281,12 @@
                     </div>
                 </div>
 
+                <!-- ANR / Crash -->
+                <div class="result-card" id="crash-info-card" style="display: none;">
+                    <h3>💥 ANR / Crash</h3>
+                    <div id="crash-info-container" style="font-size: 0.875rem; color: var(--text-primary);"></div>
+                </div>
+
                 <!-- Battery Status -->
                 <div class="result-card">
                     <h3>🔋 Battery Status</h3>
@@ -1574,6 +1580,11 @@
                     sensitive information. After analysis, please disable Developer Mode for security reasons.
                 </p>
                 <p style="color: var(--text-primary); margin: 1rem 0 0.5rem 0; text-align: center;">
+                    <a href="bugreport-example.html" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none; font-weight: 500; display: inline-block; padding: 0.5rem 1rem; background: rgba(33, 150, 243, 0.1); border: 1px solid var(--accent); border-radius: 6px; margin-bottom: 0.5rem;">
+                        📋 View Example Results
+                    </a>
+                </p>
+                <p style="color: var(--text-primary); margin: 1rem 0 0.5rem 0; text-align: center;">
                     <a href="mailto:contact@ismyphonepwned.com" style="color: var(--accent); text-decoration: none; font-weight: 500;">
                         📧 Contact: contact@ismyphonepwned.com
                     </a>
@@ -1713,7 +1724,8 @@
                 network_stats: currentResults.network_stats || [],
                 sockets: currentResults.sockets || [],
                 bluetooth_info: currentResults.bluetooth_info || null,
-                usb_info: currentResults.usb_info || null
+                usb_info: currentResults.usb_info || null,
+                crash_info: currentResults.crash_info || null
             };
             
             const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
@@ -1755,7 +1767,8 @@
                     network_stats: currentResults.network_stats || [],
                     sockets: currentResults.sockets || [],
                     bluetooth_info: currentResults.bluetooth_info || null,
-                    usb_info: currentResults.usb_info || null
+                    usb_info: currentResults.usb_info || null,
+                    crash_info: currentResults.crash_info || null
                 };
                 
                 await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
@@ -2172,6 +2185,144 @@
                 fileInfoCard.style.display = 'block';
             } else {
                 fileInfoCard.style.display = 'none';
+            }
+
+            // ANR / Crash
+            const crashCard = document.getElementById('crash-info-card');
+            const crashContainer = document.getElementById('crash-info-container');
+            const toObj = (x) => (x && typeof x === 'object' && x instanceof Map) ? Object.fromEntries(x) : x;
+            if (data.crash_info && typeof data.crash_info === 'object') {
+                const ci = data.crash_info;
+                const anrFiles = toObj(ci.anr_files);
+                const trace = toObj(ci.anr_trace);
+                let html = '';
+                if (anrFiles && Array.isArray(anrFiles.files) && anrFiles.files.length > 0) {
+                    html += '<div style="margin-bottom: 1rem;"><span style="color: var(--text-secondary); font-weight: 500;">ANR files</span> <span style="color: var(--text-secondary);">(' + (anrFiles.total_size != null ? anrFiles.total_size + ' total)' : '') + '</span><ul style="margin: 0.35rem 0 0 1.25rem; font-size: 0.85rem;">';
+                    anrFiles.files.forEach(f => {
+                        const fObj = toObj(f);
+                        const fn = (fObj && fObj.filename) || '-';
+                        const sz = (fObj && fObj.size != null) ? (fObj.size >= 1024 ? (fObj.size / 1024).toFixed(1) + ' KB' : fObj.size) : '';
+                        const ts = (fObj && fObj.timestamp) || '';
+                        html += '<li>' + escapeHtml(fn) + (ts ? ' <span style="color: var(--text-secondary);">' + escapeHtml(ts) + '</span>' : '') + (sz ? ' <span style="color: var(--text-secondary);">' + escapeHtml(String(sz)) + '</span>' : '') + '</li>';
+                    });
+                    html += '</ul></div>';
+                }
+                if (trace) {
+                    const proc = toObj(trace.process_info);
+                    const header = toObj(trace.header);
+                    const subject = (header && header.subject) ? header.subject : (trace.subject || '');
+                    if (subject) html += '<div style="margin-bottom: 0.5rem;"><span style="color: var(--text-secondary); font-weight: 500;">Subject:</span> ' + escapeHtml(subject) + '</div>';
+                    if (proc && (proc.cmd_line || proc.pid || proc.timestamp)) {
+                        html += '<div style="margin-bottom: 1rem;"><span style="color: var(--text-secondary); font-weight: 500;">Process</span><div style="margin-top: 0.25rem; font-size: 0.85rem;">';
+                        if (proc.cmd_line) html += '<div><span style="color: var(--text-secondary);">cmd_line:</span> ' + escapeHtml(proc.cmd_line) + '</div>';
+                        if (proc.pid != null) html += '<div><span style="color: var(--text-secondary);">pid:</span> ' + escapeHtml(String(proc.pid)) + '</div>';
+                        if (proc.timestamp) html += '<div><span style="color: var(--text-secondary);">timestamp:</span> ' + escapeHtml(proc.timestamp) + '</div>';
+                        html += '</div></div>';
+                    }
+                    const threads = Array.isArray(trace.threads) ? trace.threads : [];
+                    if (threads.length > 0) {
+                        const threadsId = 'threads-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                        html += '<div style="margin-top: 1rem;"><div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;"><span style="color: var(--text-secondary); font-weight: 500;">Threads</span> <span style="color: var(--text-secondary);">(' + threads.length + ')</span>';
+                        html += '<button id="' + threadsId + '-toggle" onclick="document.getElementById(\'' + threadsId + '-content\').style.display = document.getElementById(\'' + threadsId + '-content\').style.display === \'none\' ? \'block\' : \'none\'; this.textContent = document.getElementById(\'' + threadsId + '-content\').style.display === \'none\' ? \'Show\' : \'Hide\';" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; color: var(--text-primary);">Show</button>';
+                        html += '</div><div id="' + threadsId + '-content" style="display: none; margin-top: 0.5rem;">';
+                        threads.forEach((t, i) => {
+                            const th = toObj(t);
+                            const name = (th && th.name) ? th.name : ('Thread ' + (i + 1));
+                            const status = (th && th.status) ? th.status : '';
+                            const tid = (th && th.tid != null) ? th.tid : '';
+                            const st = Array.isArray(th && th.stack_trace) ? th.stack_trace : [];
+                            let head = escapeHtml(name) + (status ? ' <span style="color: var(--text-secondary);">' + escapeHtml(String(status)) + '</span>' : '') + (tid !== '' ? ' <span style="color: var(--text-secondary);">tid=' + escapeHtml(String(tid)) + '</span>' : '');
+                            let body = '';
+                            if (st.length > 0) {
+                                body = '<ul style="margin: 0.25rem 0 0 1rem; font-size: 0.8rem; font-family: monospace;">';
+                                st.forEach(fr => {
+                                    const f = toObj(fr);
+                                    const m = (f && f.method) ? f.method : '';
+                                    const loc = (f && f.file_loc) ? f.file_loc : '';
+                                    const ln = (f && f.line_number != null) ? f.line_number : '';
+                                    body += '<li>' + (m ? escapeHtml(m) : (loc ? escapeHtml(loc) + (ln ? ':' + ln : '') : '-')) + '</li>';
+                                });
+                                body += '</ul>';
+                            }
+                            html += '<details style="margin-bottom: 0.5rem;"><summary style="cursor: pointer;">' + head + '</summary>' + (body || '<span style="color: var(--text-secondary);">(no stack)</span>') + '</details>';
+                        });
+                        html += '</div></div>';
+                    }
+                }
+                // Render tombstones (native crashes)
+                const tombstones = Array.isArray(ci.tombstones) ? ci.tombstones : [];
+                if (tombstones.length > 0) {
+                    html += '<div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);"><span style="color: var(--text-secondary); font-weight: 500;">Tombstones</span> (' + tombstones.length + ' crash' + (tombstones.length !== 1 ? 'es' : '') + ')<div style="margin-top: 0.75rem;">';
+                    tombstones.forEach((tombstone, idx) => {
+                        const ts = toObj(tombstone);
+                        const processName = (ts && ts.process_name) ? ts.process_name : (ts && ts.cmdline) ? ts.cmdline : 'Unknown';
+                        const signal = (ts && ts.signal) ? ts.signal : '';
+                        const code = (ts && ts.code) ? ts.code : '';
+                        const timestamp = (ts && ts.timestamp) ? ts.timestamp : '';
+                        const pid = (ts && ts.pid != null) ? ts.pid : '';
+                        const tid = (ts && ts.tid != null) ? ts.tid : '';
+                        const threadName = (ts && ts.thread_name) ? ts.thread_name : '';
+                        const faultAddr = (ts && ts.fault_addr) ? ts.fault_addr : '';
+                        const backtrace = Array.isArray(ts && ts.backtrace) ? ts.backtrace : [];
+                        
+                        html += '<details style="margin-bottom: 1rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem;"><summary style="cursor: pointer; font-weight: 500; color: var(--text-primary);">';
+                        html += '<span style="font-family: monospace;">' + escapeHtml(processName) + '</span>';
+                        if (signal) html += ' <span style="color: var(--error); font-weight: 600;">' + escapeHtml(signal) + '</span>';
+                        if (code) html += ' <span style="color: var(--text-secondary);">(' + escapeHtml(code) + ')</span>';
+                        if (timestamp) html += ' <span style="color: var(--text-secondary); font-size: 0.85rem;">' + escapeHtml(timestamp) + '</span>';
+                        html += '</summary><div style="margin-top: 0.75rem; font-size: 0.85rem;">';
+                        
+                        // Process info
+                        if (pid !== '' || tid !== '' || threadName) {
+                            html += '<div style="margin-bottom: 0.5rem;"><span style="color: var(--text-secondary); font-weight: 500;">Process Info:</span> ';
+                            const infoParts = [];
+                            if (pid !== '') infoParts.push('PID: ' + escapeHtml(String(pid)));
+                            if (tid !== '') infoParts.push('TID: ' + escapeHtml(String(tid)));
+                            if (threadName) infoParts.push('Thread: ' + escapeHtml(threadName));
+                            html += infoParts.join(' | ') + '</div>';
+                        }
+                        
+                        // Fault address
+                        if (faultAddr) {
+                            html += '<div style="margin-bottom: 0.5rem;"><span style="color: var(--text-secondary); font-weight: 500;">Fault Address:</span> <span style="font-family: monospace;">' + escapeHtml(faultAddr) + '</span></div>';
+                        }
+                        
+                        // Backtrace
+                        if (backtrace.length > 0) {
+                            html += '<div style="margin-top: 0.75rem;"><span style="color: var(--text-secondary); font-weight: 500;">Backtrace:</span><ul style="margin: 0.5rem 0 0 1.25rem; font-size: 0.8rem; font-family: monospace;">';
+                            backtrace.forEach(bt => {
+                                const frame = toObj(bt);
+                                const func = (frame && frame.function) ? frame.function : '';
+                                const lib = (frame && frame.library) ? frame.library : '';
+                                const pc = (frame && frame.pc) ? frame.pc : '';
+                                const rawLine = (frame && frame.raw_line) ? frame.raw_line : '';
+                                
+                                if (rawLine) {
+                                    html += '<li style="margin-bottom: 0.25rem;">' + escapeHtml(rawLine) + '</li>';
+                                } else if (func || lib || pc) {
+                                    const parts = [];
+                                    if (pc) parts.push('pc ' + escapeHtml(pc));
+                                    if (lib) parts.push(escapeHtml(lib));
+                                    if (func) parts.push('(' + escapeHtml(func) + ')');
+                                    html += '<li style="margin-bottom: 0.25rem;">' + (parts.length > 0 ? parts.join(' ') : '-') + '</li>';
+                                }
+                            });
+                            html += '</ul></div>';
+                        }
+                        
+                        html += '</div></details>';
+                    });
+                    html += '</div></div>';
+                }
+                if (html) {
+                    crashContainer.innerHTML = html;
+                    crashCard.style.display = 'block';
+                } else {
+                    crashContainer.textContent = 'No ANR or crash data.';
+                    crashCard.style.display = 'block';
+                }
+            } else {
+                crashCard.style.display = 'none';
             }
 
             // Display detailed process list

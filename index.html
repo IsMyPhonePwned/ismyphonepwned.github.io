@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>IsMyPhonePwned ?</title>
     <style>
         * {
@@ -45,18 +45,26 @@
             --shadow: rgba(0, 0, 0, 0.3);
         }
 
+        html {
+            -webkit-text-size-adjust: 100%;
+            overflow-x: hidden;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
             line-height: 1.6;
             transition: background-color 0.3s, color 0.3s;
+            overflow-x: hidden;
+            min-width: 0;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 2rem 1rem;
+            width: 100%;
         }
 
         header {
@@ -898,6 +906,68 @@
             max-height: 300px;
             overflow-y: auto;
             color: var(--text-primary);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem 0.75rem;
+            }
+            header {
+                flex-wrap: wrap;
+                gap: 0.75rem;
+                margin-bottom: 1.5rem;
+            }
+            .logo {
+                height: 60px;
+                max-width: 200px;
+            }
+            .logo-text, h1 {
+                font-size: 1.25rem;
+            }
+            .section, .result-card {
+                padding: 1rem;
+            }
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+            .data-table-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .data-table {
+                min-width: 400px;
+            }
+            button, .theme-toggle {
+                min-height: 44px;
+                min-width: 44px;
+                padding: 0.6rem 1rem;
+            }
+            .upload-zone {
+                padding: 1.5rem 1rem;
+            }
+            footer .container,
+            footer [style*="max-width"] {
+                padding-left: 0.75rem;
+                padding-right: 0.75rem;
+            }
+            footer p[style*="margin-top"] {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 0.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 0.75rem max(0.5rem, env(safe-area-inset-left)) 0.75rem max(0.5rem, env(safe-area-inset-right));
+            }
+            .logo-text, h1 {
+                font-size: 1.1rem;
+            }
+            .logo {
+                height: 50px;
+                max-width: 160px;
+            }
         }
     </style>
 </head>

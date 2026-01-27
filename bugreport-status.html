@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bugreport Analysis — Status & Capabilities</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f5f5f5;
+            --bg-card: #ffffff;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666666;
+            --border: #e0e0e0;
+            --accent: #2196F3;
+            --accent-hover: #1976D2;
+            --success: #4CAF50;
+            --warning: #FF9800;
+            --error: #f44336;
+            --sigma-medium: #F59E0B;
+            --sigma-low: #3B82F6;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --bg-card: #252525;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --border: #404040;
+            --accent: #42A5F5;
+            --accent-hover: #64B5F6;
+            --success: #66BB6A;
+            --warning: #FFA726;
+            --error: #EF5350;
+            --sigma-medium: #FBBF24;
+            --sigma-low: #60A5FA;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .theme-toggle {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .last-updated {
+            text-align: center;
+            padding: 0.75rem 1rem;
+            margin-bottom: 2rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .last-updated strong {
+            color: var(--text-primary);
+        }
+
+        .section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px var(--shadow);
+        }
+
+        .section h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 1.25rem 0 0.5rem 0;
+            color: var(--text-primary);
+        }
+
+        .section h3:first-of-type {
+            margin-top: 0;
+        }
+
+        .parser-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .parser-card h4 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .parser-card p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .parser-card ul {
+            margin: 0.5rem 0 0 1.25rem;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .parser-card ul li {
+            margin-bottom: 0.25rem;
+        }
+
+        .rule-format {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            font-family: monospace;
+            font-size: 0.8rem;
+            overflow-x: auto;
+            margin-top: 0.5rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-critical { background: rgba(244, 67, 54, 0.15); color: var(--error); }
+        .badge-high { background: rgba(255, 152, 0, 0.15); color: var(--warning); }
+        .badge-medium { background: rgba(245, 158, 11, 0.15); color: var(--sigma-medium); }
+        .badge-low { background: rgba(59, 130, 246, 0.15); color: var(--sigma-low); }
+        .badge-info { background: rgba(33, 150, 243, 0.15); color: var(--accent); }
+
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.875rem;
+        }
+
+        .nav-links a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+
+        button.secondary {
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        button.secondary:hover {
+            background: var(--border);
+        }
+
+        .rules-list-container {
+            margin-top: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+            background: var(--bg-secondary);
+        }
+
+        .rules-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .rules-list-body {
+            padding: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .rules-list-body pre {
+            font-family: monospace;
+            font-size: 0.8rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin: 0;
+        }
+
+        .rule-item {
+            padding: 0.5rem 0.75rem;
+            margin-bottom: 0.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+
+        .rule-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .rule-item-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .rule-item-meta {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .rule-content-toggle {
+            flex-shrink: 0;
+        }
+
+        .rule-content {
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+
+        .rule-content-pre {
+            font-family: monospace;
+            font-size: 0.75rem;
+            white-space: pre;
+            word-break: normal;
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .fetch-status {
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        .fetch-status.error {
+            color: var(--error);
+        }
+
+        .fetch-status.success {
+            color: var(--success);
+        }
+
+        code {
+            background: var(--bg-secondary);
+            padding: 0.125rem 0.35rem;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1 class="logo-text">Bugreport Analysis — Status & Capabilities</h1>
+                <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.875rem;">Rules, parsers, and detection reference</p>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()">
+                <span id="theme-icon">🌙</span>
+                <span id="theme-text">Dark</span>
+            </button>
+        </header>
+
+        <div class="last-updated">
+            <strong>Last updated:</strong> <span id="status-timestamp"></span>
+        </div>
+
+        <!-- Rules supported -->
+        <section class="section">
+            <h2>📋 Rules supported</h2>
+            <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">
+                The analysis pipeline evaluates <strong>Sigma</strong> rules (YAML) against log entries extracted from parser outputs. Rules are user-provided; multiple documents can be concatenated with <code>---</code>.
+            </p>
+            <h3>Sigma rule format</h3>
+            <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                Rules follow the Sigma schema. Supported fields include <code>title</code>, <code>id</code>, <code>description</code>, <code>status</code>, <code>level</code> (critical / high / medium / low), and detection <code>selection</code> / <code>condition</code>.
+            </p>
+            <div class="rule-format">
+title: Android Root Access Detection<br>
+id: android-root-001<br>
+description: Detects execution of su or root access on Android<br>
+status: experimental<br>
+level: critical<br>
+logsource:<br>
+&nbsp;&nbsp;category: android<br>
+detection:<br>
+&nbsp;&nbsp;selection:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;field: "process"<br>
+&nbsp;&nbsp;&nbsp;&nbsp;contains: "su"<br>
+&nbsp;&nbsp;condition: selection
+            </div>
+            <h3>Rule levels</h3>
+            <ul style="margin-left: 1.25rem; font-size: 0.875rem;">
+                <li><span class="badge badge-critical">critical</span> — Critical security events (e.g. root access)</li>
+                <li><span class="badge badge-high">high</span> — High-risk behaviour (e.g. suspicious installs, exfiltration)</li>
+                <li><span class="badge badge-medium">medium</span> — Medium-risk (e.g. system modification attempts)</li>
+                <li><span class="badge badge-low">low</span> — Low-risk or informational</li>
+            </ul>
+
+            <h3>Rules list</h3>
+            <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+                Rules are auto-loaded from <code>/rules/novispy.yml</code> and <code>/rules/cellebrite.yml</code>.
+            </p>
+            <div id="fetch-status" class="fetch-status" style="display: none;"></div>
+            <div id="rules-list-wrapper" style="display: none;">
+                <div class="rules-list-container">
+                    <div class="rules-list-header">
+                        <span style="font-weight: 600; font-size: 0.875rem;">Fetched rules</span>
+                        <button type="button" id="toggle-rules-list-btn" class="secondary" onclick="toggleRulesList()">Hide list</button>
+                    </div>
+                    <div id="rules-list-body" class="rules-list-body">
+                        <!-- filled by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Parsers and extraction -->
+        <section class="section">
+            <h2>🔧 Parsers &amp; extracted data</h2>
+            <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">
+                Each parser reads specific parts of the bugreport and produces structured output. The fields below are those used in the UI and for Sigma detection.
+            </p>
+
+            <div class="parser-card">
+                <h4>📝 Header parser</h4>
+                <p>Device identity and build from bugreport header.</p>
+                <ul>
+                    <li>Android SDK version, Build ID, Kernel version</li>
+                    <li>Manufacturer &amp; model (from Build fingerprint)</li>
+                    <li>Output: <code>device_info</code> (manufacturer, model, android_version, build_id, kernel_version)</li>
+                </ul>
+            </div>
+
+            <div class="parser-card">
+                <h4>🔋 Battery parser</h4>
+                <p>Per-app battery and usage stats.</p>
+                <ul>
+                    <li>package_name, uid</li>
+                    <li>cpu_system_time_ms, cpu_user_time_ms, total_cpu_time_ms</li>
+                    <li>network_rx_mobile, network_rx_wifi, network_tx_mobile, network_tx_wifi, total_network_bytes</li>
+                    <li>total_wakelock_time_ms, total_job_time_ms, foreground_service_time_ms, total_job_count</li>
+                    <li>Output: <code>battery_apps</code> (list of app usage entries)</li>
+                </ul>
+            </div>
+
+            <div class="parser-card">
+                <h4>📦 Package parser</h4>
+                <p>Installed packages, install history, and package details.</p>
+                <ul>
+                    <li>Install logs: event_type, timestamp, versionCode, request_from, stagedDir, observer</li>
+                    <li>Packages: package_name, installer, timestamp, version_code, success, duration_seconds</li>
+                    <li>Package details: package_name, version_code, version_name, app_id, target_sdk, min_sdk, code_path, installer_package_name, last_update_time, category, users, install_logs</li>
+                    <li>Output: <code>packages</code>, <code>package_details</code>, <code>package_count</code></li>
+                </ul>
+            </div>
+
+            <div class="parser-card">
+                <h4>⚙️ Process parser</h4>
+                <p>Running processes and resource usage.</p>
+                <ul>
+                    <li>pid, cmd (process name), user</li>
+                    <li>Threads: cpu_percent per thread, aggregated for process</li>
+                    <li>res (memory), virt (virtual memory), pcy (scheduling policy)</li>
+                    <li>Output: <code>processes</code>, <code>process_count</code></li>
+                </ul>
+            </div>
+
+            <div class="parser-card">
+                <h4>⚡ Power parser</h4>
+                <p>Power and wake history.</p>
+                <ul>
+                    <li>Entries keyed by timestamp; each has reason, history_events, stack_trace</li>
+                    <li>history_events: event_type, timestamp, details, flags (e.g. SCREEN_ON, SCREEN_OFF, WAKE_LOCK)</li>
+                    <li>stack_trace: list of stack trace lines</li>
+                    <li>Output: <code>power_history</code></li>
+                </ul>
+            </div>
+
+            <div class="parser-card">
+                <h4>🌐 Network parser</h4>
+                <p>Interfaces, network stats, and sockets.</p>
+                <ul>
+                    <li>interfaces: name, ip_addresses, flags, rx_bytes, tx_bytes, mtu</li>
+                    <li>network_stats: network_type, wifi_network_name, rx/tx bytes/packets, default_network, metered, rat_type, subscriber_id</li>
+                    <li>sockets: protocol, local/remote address &amp; port, state, uid, inode, recv_q, send_q, socket_key, additional_info</li>
+                    <li>Output: <code>network_info</code>, <code>network_stats</code>, <code>sockets</code></li>
+                </ul>
+            </div>
+
+            <div class="parser-card">
+                <h4>📶 Bluetooth parser</h4>
+                <p>Bluetooth adapter and paired/bonded devices.</p>
+                <ul>
+                    <li>adapter_properties: Name, Address, State, ConnectionState, Discovering, A2dpOffloadEnabled, MaxConnectedAudioDevices, SarHistory, SarStatus, SarType</li>
+                    <li>devices: name, mac_address, device_type, device_class, connected, transport_type, services</li>
+                    <li>Output: <code>bluetooth_info</code> (adapter_properties, devices)</li>
+                </ul>
+            </div>
+
+            <div class="parser-card">
+                <h4>🔌 USB parser</h4>
+                <p>USB ports and connected devices with events.</p>
+                <ul>
+                    <li>Ports: port_name, connected_device</li>
+                    <li>connected_devices: driver, interface, first_seen, last_seen, last_action, events (action, timestamp, driver, interface)</li>
+                    <li>Output: <code>usb_info</code> (ports, connected_devices)</li>
+                </ul>
+            </div>
+
+            <div class="parser-card">
+                <h4>💥 Crash parser</h4>
+                <p>ANR and native crash data.</p>
+                <ul>
+                    <li>anr_files: files (filename, size, timestamp, etc.), total_size</li>
+                    <li>anr_trace: subject, header, process_info, threads (name, tid, status, stack_trace with method/file_loc/line_number or address/library/details)</li>
+                    <li>tombstones: array of native crash objects (process_name, signal, code, timestamp, pid, tid, thread_name, fault_addr, backtrace)</li>
+                    <li>Output: <code>crash_info</code> (anr_files, anr_trace, tombstones)</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Detection -->
+        <section class="section">
+            <h2>🔍 Detection</h2>
+            <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">
+                Detection is based on <strong>Sigma</strong>. Log entries are built from parser outputs via <code>extract_all_log_entries</code>; the Sigma engine evaluates each rule against these entries. Matches produce <code>rule_id</code>, <code>rule_title</code>, <code>level</code>, and <code>matched_log</code> (the log fields that matched).
+            </p>
+            <h3>What is evaluated</h3>
+            <ul style="margin-left: 1.25rem; font-size: 0.875rem;">
+                <li>Structured log entries derived from Header, Battery, Package, Process, Power, Network, Bluetooth, USB, and Crash parser results</li>
+                <li>Rule conditions (selection/condition) are applied to the key–value fields of each entry</li>
+                <li>Rules are supplied at analysis time as YAML (single or multiple documents separated by <code>---</code>)</li>
+            </ul>
+            <h3>Match output</h3>
+            <p style="font-size: 0.875rem; color: var(--text-secondary);">
+                Each match includes the rule identifier, title, severity level, and the actual log payload (<code>matched_log</code>) so analysts can see exactly which data triggered the rule.
+            </p>
+        </section>
+
+        <div class="nav-links">
+            <a href="bugreport.html">Bugreport analysis</a>
+            <a href="bugreport-example.html">Example results</a>
+        </div>
+    </div>
+
+    <script>
+        // Timestamp: update this when the status page content or capabilities change
+        const STATUS_LAST_UPDATED = '2025-01-24T12:00:00Z';
+
+        function formatTimestamp(iso) {
+            const d = new Date(iso);
+            const opts = {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZoneName: 'short'
+            };
+            return d.toLocaleString(undefined, opts);
+        }
+
+        document.getElementById('status-timestamp').textContent = formatTimestamp(STATUS_LAST_UPDATED);
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            document.getElementById('theme-icon').textContent = newTheme === 'dark' ? '☀️' : '🌙';
+            document.getElementById('theme-text').textContent = newTheme === 'dark' ? 'Light' : 'Dark';
+            localStorage.setItem('theme', newTheme);
+        }
+
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.getElementById('theme-icon').textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+        document.getElementById('theme-text').textContent = savedTheme === 'dark' ? 'Light' : 'Dark';
+
+        let fetchedRulesVisible = true;
+        let lastFetchedRules = [];
+
+        function escapeHtml(s) {
+            if (!s) return '';
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+
+        const DEFAULT_RULES_URLS = ['/rules/novispy.yml', '/rules/cellebrite.yml'];
+
+        function parseRulesFromYaml(text, source) {
+            const rules = [];
+            const blocks = text.split(/\n---\s*\n/);
+            for (const block of blocks) {
+                const t = block.trim();
+                if (!t) continue;
+                let title = '';
+                let id = '';
+                let level = '';
+                for (const line of t.split('\n')) {
+                    const m = line.match(/^\s*title\s*:\s*(.+)$/i);
+                    if (m) { title = m[1].replace(/^["']|["']$/g, '').trim(); continue; }
+                    const m2 = line.match(/^\s*id\s*:\s*(.+)$/i);
+                    if (m2) { id = m2[1].replace(/^["']|["']$/g, '').trim(); continue; }
+                    const m3 = line.match(/^\s*level\s*:\s*(.+)$/i);
+                    if (m3) { level = m3[1].replace(/^["']|["']$/g, '').trim(); continue; }
+                }
+                if (title || id) {
+                    rules.push({ title: title || '(no title)', id: id || '(no id)', level: level || '', source: source || '', content: t });
+                }
+            }
+            if (rules.length === 0 && text.trim()) {
+                rules.push({ title: '(single block, no title/id found)', id: '-', level: '', raw: text, source: source || '', content: text.trim() });
+            }
+            return rules;
+        }
+
+        function toggleRuleContent(idx) {
+            const el = document.getElementById('rule-content-' + idx);
+            const btn = document.getElementById('rule-toggle-btn-' + idx);
+            if (!el || !btn) return;
+            const hidden = el.style.display === 'none';
+            el.style.display = hidden ? 'block' : 'none';
+            btn.textContent = hidden ? 'Hide content' : 'Show content';
+        }
+
+        function renderRulesList(rules, rawText) {
+            const body = document.getElementById('rules-list-body');
+            const useList = rules.length > 0 && !rules[0].raw;
+            if (useList) {
+                let html = '';
+                const levelClass = l => {
+                    const x = (l || '').toLowerCase();
+                    if (x === 'critical') return 'badge-critical';
+                    if (x === 'high') return 'badge-high';
+                    if (x === 'medium') return 'badge-medium';
+                    if (x === 'low') return 'badge-low';
+                    return 'badge-info';
+                };
+                rules.forEach((r, idx) => {
+                    const content = (r.content || '').trim();
+                    html += '<div class="rule-item">';
+                    html += '<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; flex-wrap: wrap;">';
+                    html += '<div style="flex: 1; min-width: 0;">';
+                    html += '<div class="rule-item-title">' + escapeHtml(r.title) + '</div>';
+                    html += '<div class="rule-item-meta">';
+                    html += 'ID: <code>' + escapeHtml(r.id) + '</code>';
+                    if (r.level) html += ' &middot; <span class="badge ' + levelClass(r.level) + '">' + escapeHtml(r.level) + '</span>';
+                    if (r.source) html += ' &middot; <span style="color: var(--text-secondary);">' + escapeHtml(r.source) + '</span>';
+                    html += '</div></div>';
+                    if (content) html += '<button type="button" id="rule-toggle-btn-' + idx + '" class="secondary rule-content-toggle" onclick="toggleRuleContent(' + idx + ')">Show content</button>';
+                    html += '</div>';
+                    if (content) {
+                        html += '<div id="rule-content-' + idx + '" class="rule-content" style="display: none;"><pre class="rule-content-pre">' + escapeHtml(content) + '</pre></div>';
+                    }
+                    html += '</div>';
+                });
+                body.innerHTML = html;
+            } else {
+                body.innerHTML = '<pre>' + escapeHtml(rawText || (rules[0] && rules[0].raw) || '') + '</pre>';
+            }
+        }
+
+        function toggleRulesList() {
+            const wrapper = document.getElementById('rules-list-wrapper');
+            const btn = document.getElementById('toggle-rules-list-btn');
+            fetchedRulesVisible = !fetchedRulesVisible;
+            const listBody = document.getElementById('rules-list-body');
+            if (fetchedRulesVisible) {
+                listBody.style.display = '';
+                btn.textContent = 'Hide list';
+            } else {
+                listBody.style.display = 'none';
+                btn.textContent = 'Show list';
+            }
+        }
+
+        async function fetchAutoRules() {
+            const statusEl = document.getElementById('fetch-status');
+            const wrapper = document.getElementById('rules-list-wrapper');
+
+            statusEl.style.display = 'block';
+            statusEl.className = 'fetch-status';
+            statusEl.textContent = 'Loading rules from ' + DEFAULT_RULES_URLS.join(', ') + '…';
+
+            const allRules = [];
+            const results = { ok: [], err: [] };
+
+            for (const url of DEFAULT_RULES_URLS) {
+                try {
+                    const res = await fetch(url, { method: 'GET' });
+                    if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
+                    const text = await res.text();
+                    const name = url.replace(/^.*\//, '');
+                    const rules = parseRulesFromYaml(text, name);
+                    rules.forEach(r => { allRules.push(r); });
+                    results.ok.push({ url: name, count: rules.length });
+                } catch (e) {
+                    results.err.push({ url: url.replace(/^.*\//, ''), msg: e.message || String(e) });
+                }
+            }
+
+            lastFetchedRules = allRules;
+            renderRulesList(allRules, null);
+            wrapper.style.display = 'block';
+            document.getElementById('rules-list-body').style.display = '';
+            document.getElementById('toggle-rules-list-btn').textContent = 'Hide list';
+            fetchedRulesVisible = true;
+
+            if (results.err.length) {
+                statusEl.textContent = 'Loaded ' + allRules.length + ' rule(s) from ' + results.ok.map(o => o.url).join(', ') + '. Failed: ' + results.err.map(e => e.url + ' (' + e.msg + ')').join('; ');
+                statusEl.classList.add('error');
+            } else {
+                statusEl.textContent = 'Loaded ' + allRules.length + ' rule(s) from ' + results.ok.map(o => o.url + ' (' + o.count + ')').join(', ') + '.';
+                statusEl.classList.add('success');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchAutoRules();
+        });
+    </script>
+</body>
+</html>

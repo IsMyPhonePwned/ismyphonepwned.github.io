@@ -1,0 +1,62 @@
+title: AmnestyTech Investigations - NSO Pegasus Infrastructure (2021-07-18)
+id: amnesty-inv-2021-07-18-nso
+status: experimental
+description: NSO Pegasus infrastructure IoCs (domains, emails, processes, files). Full list at https://github.com/AmnestyTech/investigations/tree/master/2021-07-18_nso
+level: critical
+author: AmnestyTech (adapted for sigma-zero)
+date: 2021/07/18
+references:
+  - https://github.com/AmnestyTech/investigations/tree/master/2021-07-18_nso
+
+detection:
+  selection_domain:
+    destination_domain:
+      - '123tramites.com'
+      - '14-tracking.com'
+      - '1minto-start.com'
+      - '24-7clinic.com'
+      - '301-redirecting.com'
+      - '365redirect.co'
+      - 'accountnotify.com'
+      - 'egov-sergek.info'
+      - 'ehistorybooks.com'
+      - 'findmyass.org'
+      - 'legyelvodas.com'
+      - 'pastesbin.com'
+      - 'shia-voice.com'
+      - 'so-this-is.com'
+      - 'stopmysms.com'
+      - 'videosdownload.co'
+      - 'hmizat.co'
+      - 'free247downloads.com'
+      - 'revolution-news.co'
+      - 'business-today.info'
+  selection_email:
+    email:
+      - 'ameliehaggart@gmail.com'
+      - 'arvidamelia1@gmail.com'
+      - 'bekkerfredi@gmail.com'
+      - 'benjiburns8@gmail.com'
+      - 'emmadavies8266@gmail.com'
+      - 'filip.bl82@gmail.com'
+      - 'jessicadavies1345@outlook.com'
+      - 'kleinleon1987@gmail.com'
+      - 'krystynajasinska86@gmail.com'
+      - 'mitchkremer14@outlook.com'
+      - 'natalymarinova@proton.me'
+  selection_process:
+    process_name:
+      - 'com.apple.Mappit.SnapshotService'
+      - 'com.apple.rapports.events'
+      - 'CommsCenterRootHelper'
+      - 'GoldenGate'
+      - 'JarvisPluginMgr'
+      - 'MobileSMSd'
+      - 'PDPDialogs'
+      - 'ReminderIntentsUIExtension'
+      - 'launchafd'
+      - 'gatekeeperd'
+  selection_file:
+    file_path:
+      - 'roleaccountd.plist'
+  condition: selection_domain or selection_email or selection_process or selection_file

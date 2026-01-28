@@ -1,0 +1,35 @@
+title: AmnestyTech Investigations - NSO Group Infrastructure (2018-08-01)
+id: amnesty-inv-2018-08-01-nso
+status: experimental
+description: IoCs from NSO Group infrastructure. Full list at https://github.com/AmnestyTech/investigations/tree/master/2018-08-01_nso
+level: high
+author: AmnestyTech (adapted for sigma-zero)
+date: 2018/08/01
+references:
+  - https://github.com/AmnestyTech/investigations/tree/master/2018-08-01_nso
+
+detection:
+  selection_domain:
+    destination_domain:
+      - '14-tracking.com'
+      - '1minto-start.com'
+      - '24-7clinic.com'
+      - 'accountnotify.com'
+      - 'egov-sergek.info'
+      - 'domainsearching.net'
+      - 'ehistorybooks.com'
+      - 'findmyass.org'
+      - 'legyelvodas.com'
+      - 'pastesbin.com'
+      - 'shia-voice.com'
+      - 'so-this-is.com'
+      - 'stopmysms.com'
+  selection_ip:
+    destination_ip:
+      - '191.101.31.25'
+      - '185.94.190.203'
+      - '46.183.219.79'
+      - '185.130.184.35'
+      - '185.195.200.47'
+      - '159.89.193.231'
+  condition: selection_domain or selection_ip

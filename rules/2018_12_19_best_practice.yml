@@ -1,0 +1,26 @@
+title: AmnestyTech Investigations - Phishing Best Practice Domains (2018-12-19)
+id: amnesty-inv-2018-12-19-best-practice
+status: experimental
+description: Fake account/login/phishing domains. Full list at https://github.com/AmnestyTech/investigations/tree/master/2018-12-19_best_practice
+level: high
+author: AmnestyTech (adapted for sigma-zero)
+date: 2018/12/19
+references:
+  - https://github.com/AmnestyTech/investigations/tree/master/2018-12-19_best_practice
+
+detection:
+  selection_domain:
+    destination_domain:
+      - 'account-facebook.com'
+      - 'account-privacy.com'
+      - 'accounts-settings.com'
+      - 'connect-myaccount.com'
+      - 'inbox101-live.com'
+      - 'mail02-inbox.com'
+      - 'myaccount-logins.com'
+      - 'myaccount.verification-approve.com'
+      - 'noreply-myaccount.com'
+      - 'verification-approve.com'
+      - 'truecaller.services'
+      - 'tutanota.org'
+  condition: selection_domain

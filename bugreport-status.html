@@ -413,7 +413,7 @@
         <header>
             <div>
                 <h1 class="logo-text">Bugreport Analysis — Status & Capabilities</h1>
-                <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.875rem;">Rules, parsers, and detection reference</p>
+                <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.875rem;">Rules, parsers, and detection reference • <span style="font-weight: 500;">v0.1.0</span> • Updated Jan 2026</p>
             </div>
             <button class="theme-toggle" onclick="toggleTheme()">
                 <span id="theme-icon">🌙</span>
@@ -506,11 +506,12 @@ detection:<br>
 
             <div class="parser-card">
                 <h4>📦 Package parser</h4>
-                <p>Installed packages, install history, and package details.</p>
+                <p>Installed packages, install history, and comprehensive package details with permissions.</p>
                 <ul>
-                    <li>Install logs: event_type, timestamp, versionCode, request_from, stagedDir, observer</li>
+                    <li>Install logs: event_type, timestamp, versionCode, request_from, stagedDir, observer, caller, user, flags</li>
                     <li>Packages: package_name, installer, timestamp, version_code, success, duration_seconds</li>
-                    <li>Package details: package_name, version_code, version_name, app_id, target_sdk, min_sdk, code_path, installer_package_name, last_update_time, category, users, install_logs</li>
+                    <li>Package details: package_name, version_code, version_name, app_id, target_sdk, min_sdk, code_path, data_dir, resource_path, primary_cpu_abi, installer_package_name, initiating_package_name, originating_package_name, package_source, last_update_time, time_stamp, category, flags, pkg_flags, private_flags, signatures, apk_signing_version, <strong>permissions</strong> (granted/denied), install_logs, users (with per-user permissions)</li>
+                    <li>User information: user_id, first_install_time, last_disabled_caller, data_dir, enabled, installed, stopped, suspended, hidden, install_reason, <strong>permissions</strong> (per-user granted/denied with flags)</li>
                     <li>Output: <code>packages</code>, <code>package_details</code>, <code>package_count</code></li>
                 </ul>
             </div>

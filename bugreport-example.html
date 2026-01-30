@@ -1326,13 +1326,6 @@
 
             let html = '';
             
-            // Debug: Log first package to see structure
-            if (data.package_details.length > 0) {
-                console.log('[DEBUG] First package data:', data.package_details[0]);
-                console.log('[DEBUG] Permissions:', data.package_details[0].permissions);
-                console.log('[DEBUG] Install logs:', data.package_details[0].install_logs);
-            }
-            
             data.package_details.forEach((pkg, index) => {
                 html += `<div class="package-item" data-package-name="${pkg.package_name.toLowerCase()}" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-bottom: 1rem;">`;
                 html += `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">`;

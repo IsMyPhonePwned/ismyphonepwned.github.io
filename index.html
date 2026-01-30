@@ -2571,13 +2571,6 @@
 
             let html = '<div class="package-details-container">';
             
-            // Debug: Log first package to see structure
-            if (data.package_details.length > 0) {
-                console.log('[DEBUG] First package data:', data.package_details[0]);
-                console.log('[DEBUG] Permissions:', data.package_details[0].permissions);
-                console.log('[DEBUG] Install logs:', data.package_details[0].install_logs);
-            }
-            
             data.package_details.forEach((pkg, index) => {
                 html += `<div class="package-detail-item" data-package-name="${pkg.package_name.toLowerCase()}">`;
                 html += `<div class="package-detail-header">`;

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Bugreport Analysis - Example Results</title>
     <style>
         * {
@@ -45,18 +45,26 @@
             --shadow: rgba(0, 0, 0, 0.3);
         }
 
+        html {
+            -webkit-text-size-adjust: 100%;
+            overflow-x: hidden;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
             line-height: 1.6;
             transition: background-color 0.3s, color 0.3s;
+            overflow-x: hidden;
+            min-width: 0;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 2rem 1rem;
+            width: 100%;
         }
 
         header {
@@ -225,6 +233,12 @@
             background: var(--bg-secondary);
         }
 
+        .toggle-icon {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            transition: transform 0.2s ease;
+        }
+
         .search-box {
             display: flex;
             align-items: center;
@@ -302,6 +316,59 @@
             margin: 0;
             white-space: pre-wrap;
             word-wrap: break-word;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem 0.75rem;
+            }
+            header {
+                flex-wrap: wrap;
+                gap: 0.75rem;
+                margin-bottom: 1.5rem;
+            }
+            .logo-text {
+                font-size: 1.25rem;
+            }
+            .section, .result-card {
+                padding: 1rem;
+            }
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+            .result-item-value {
+                font-size: 1rem;
+            }
+            .data-table-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .data-table {
+                min-width: 320px;
+            }
+            .info-banner {
+                padding: 0.75rem 1rem;
+                margin-bottom: 1rem;
+                font-size: 0.875rem;
+            }
+            .theme-toggle {
+                min-height: 44px;
+                min-width: 44px;
+            }
+            button.secondary,
+            .section-toggle {
+                min-height: 44px;
+                min-width: 44px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 0.75rem max(0.5rem, env(safe-area-inset-left)) 0.75rem max(0.5rem, env(safe-area-inset-right));
+            }
+            .logo-text {
+                font-size: 1.1rem;
+            }
         }
     </style>
 </head>
@@ -505,25 +572,6 @@
                     </div>
                 </div>
 
-                <!-- Package Installation History -->
-                <div class="result-card" id="package-history-card" style="display: none;">
-                    <div class="section-header">
-                        <h3>📦 Package History (Including Deleted)</h3>
-                        <span class="count-badge" id="package-count-badge">0</span>
-                    </div>
-                    <button class="section-toggle" onclick="toggleSection('package-history')">▼</button>
-                    <div class="section-content" id="package-history-content">
-                        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">
-                            Packages that were installed or uninstalled. Packages not found in the "Package Details" section have been deleted.
-                        </p>
-                        <div class="search-box">
-                            <span>🔍</span>
-                            <input type="text" id="package-search-input" placeholder="Search packages by name or installer...">
-                        </div>
-                        <div id="package-list"></div>
-                    </div>
-                </div>
-
                 <!-- Package Details -->
                 <div class="result-card" id="package-details-card" style="display: none;">
                     <div class="section-header">
@@ -537,6 +585,25 @@
                             <input type="text" id="package-details-search-input" placeholder="Search packages by name...">
                         </div>
                         <div id="package-details-list"></div>
+                    </div>
+                </div>
+
+                <!-- Package Installation History -->
+                <div class="result-card" id="package-history-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>📦 Deleted Packages</h3>
+                        <span class="count-badge" id="package-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle" onclick="toggleSection('package-history')">▼</button>
+                    <div class="section-content" id="package-history-content">
+                        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">
+                            Packages that were installed or uninstalled. Packages not found in the "Package Details" section have been deleted.
+                        </p>
+                        <div class="search-box">
+                            <span>🔍</span>
+                            <input type="text" id="package-search-input" placeholder="Search packages by name or installer...">
+                        </div>
+                        <div id="package-list"></div>
                     </div>
                 </div>
 
@@ -703,6 +770,21 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        window.togglePackageSection = function(sectionId) {
+            const section = document.getElementById(sectionId);
+            const icon = document.getElementById(sectionId + '-icon');
+            
+            if (section && icon) {
+                if (section.style.display === 'none') {
+                    section.style.display = 'block';
+                    icon.textContent = '▼';
+                } else {
+                    section.style.display = 'none';
+                    icon.textContent = '▶';
+                }
+            }
         }
 
         function formatDate(timestamp) {
@@ -1220,7 +1302,7 @@
                 items.forEach(item => {
                     const packageName = item.getAttribute('data-package-name');
                     const installer = item.getAttribute('data-installer');
-                    if (packageName.includes(query) || installer.includes(query)) {
+                    if ((packageName && packageName.includes(query)) || (installer && installer.includes(query))) {
                         item.style.display = 'block';
                     } else {
                         item.style.display = 'none';
@@ -1243,7 +1325,15 @@
             countBadge.textContent = data.package_details.length;
 
             let html = '';
-            data.package_details.forEach((pkg) => {
+            
+            // Debug: Log first package to see structure
+            if (data.package_details.length > 0) {
+                console.log('[DEBUG] First package data:', data.package_details[0]);
+                console.log('[DEBUG] Permissions:', data.package_details[0].permissions);
+                console.log('[DEBUG] Install logs:', data.package_details[0].install_logs);
+            }
+            
+            data.package_details.forEach((pkg, index) => {
                 html += `<div class="package-item" data-package-name="${pkg.package_name.toLowerCase()}" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-bottom: 1rem;">`;
                 html += `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">`;
                 html += `<h4 style="font-family: monospace; font-size: 0.875rem; font-weight: 600; color: var(--text-primary);">${escapeHtml(pkg.package_name)}</h4>`;
@@ -1251,27 +1341,222 @@
                     html += `<span style="padding: 0.25rem 0.5rem; background: var(--bg-secondary); border-radius: 4px; font-size: 0.75rem;">v${escapeHtml(pkg.version_name)}</span>`;
                 }
                 html += `</div>`;
+                
+                // Basic Information Section
+                html += `<div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.75rem;">`;
+                html += `<div onclick="togglePackageSection('pkg-ex-${index}-basic')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">`;
+                html += `<strong style="font-size: 0.85rem;">📊 Basic Information</strong>`;
+                html += `<span class="toggle-icon" id="pkg-ex-${index}-basic-icon">▼</span>`;
+                html += `</div>`;
+                html += `<div id="pkg-ex-${index}-basic" style="margin-top: 0.5rem;">`;
                 html += `<table class="data-table" style="font-size: 0.85rem;">`;
                 if (pkg.version_code) html += `<tr><td style="color: var(--text-secondary);">Version Code:</td><td>${pkg.version_code}</td></tr>`;
                 if (pkg.app_id) html += `<tr><td style="color: var(--text-secondary);">App ID:</td><td>${pkg.app_id}</td></tr>`;
                 if (pkg.target_sdk) html += `<tr><td style="color: var(--text-secondary);">Target SDK:</td><td>${pkg.target_sdk}</td></tr>`;
                 if (pkg.min_sdk) html += `<tr><td style="color: var(--text-secondary);">Min SDK:</td><td>${pkg.min_sdk}</td></tr>`;
-                if (pkg.code_path) html += `<tr><td style="color: var(--text-secondary);">Code Path:</td><td><code>${escapeHtml(pkg.code_path)}</code></td></tr>`;
-                if (pkg.installer_package_name) html += `<tr><td style="color: var(--text-secondary);">Installer:</td><td>${escapeHtml(pkg.installer_package_name)}</td></tr>`;
-                if (pkg.last_update_time) html += `<tr><td style="color: var(--text-secondary);">Last Update:</td><td>${formatDate(pkg.last_update_time)}</td></tr>`;
-                html += `<tr><td style="color: var(--text-secondary);">Users:</td><td>${pkg.user_count || 0}</td></tr>`;
+                if (pkg.primary_cpu_abi) html += `<tr><td style="color: var(--text-secondary);">Primary CPU ABI:</td><td><code>${escapeHtml(pkg.primary_cpu_abi)}</code></td></tr>`;
                 html += `</table>`;
-                if (pkg.users && pkg.users.length > 0) {
-                    html += `<div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">`;
-                    html += `<strong style="font-size: 0.85rem;">Users:</strong>`;
-                    pkg.users.forEach(user => {
-                        html += `<div style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px; font-size: 0.8rem;">`;
-                        html += `User ${user.user_id !== null ? user.user_id : 'Unknown'}`;
-                        if (user.installed !== null) html += ` - ${user.installed ? 'Installed' : 'Not Installed'}`;
-                        if (user.first_install_time) html += `<br><span style="color: var(--text-secondary);">First Install: ${formatDate(user.first_install_time)}</span>`;
+                html += `</div></div>`;
+                
+                // Paths Section
+                html += `<div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.75rem;">`;
+                html += `<div onclick="togglePackageSection('pkg-ex-${index}-paths')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">`;
+                html += `<strong style="font-size: 0.85rem;">📁 Paths</strong>`;
+                html += `<span class="toggle-icon" id="pkg-ex-${index}-paths-icon">▼</span>`;
+                html += `</div>`;
+                html += `<div id="pkg-ex-${index}-paths" style="margin-top: 0.5rem;">`;
+                html += `<table class="data-table" style="font-size: 0.85rem;">`;
+                if (pkg.code_path) html += `<tr><td style="color: var(--text-secondary);">Code Path:</td><td><code style="word-break: break-all; font-size: 0.75rem;">${escapeHtml(pkg.code_path)}</code></td></tr>`;
+                if (pkg.data_dir) html += `<tr><td style="color: var(--text-secondary);">Data Dir:</td><td><code style="word-break: break-all; font-size: 0.75rem;">${escapeHtml(pkg.data_dir)}</code></td></tr>`;
+                html += `</table>`;
+                html += `</div></div>`;
+                
+                // Installation Info Section
+                html += `<div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.75rem;">`;
+                html += `<div onclick="togglePackageSection('pkg-ex-${index}-install')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">`;
+                html += `<strong style="font-size: 0.85rem;">📦 Installation Info</strong>`;
+                html += `<span class="toggle-icon" id="pkg-ex-${index}-install-icon">▼</span>`;
+                html += `</div>`;
+                html += `<div id="pkg-ex-${index}-install" style="margin-top: 0.5rem;">`;
+                html += `<table class="data-table" style="font-size: 0.85rem;">`;
+                if (pkg.installer_package_name) html += `<tr><td style="color: var(--text-secondary);">Installer:</td><td>${escapeHtml(pkg.installer_package_name)}</td></tr>`;
+                if (pkg.initiating_package_name) html += `<tr><td style="color: var(--text-secondary);">Initiating Package:</td><td>${escapeHtml(pkg.initiating_package_name)}</td></tr>`;
+                if (pkg.originating_package_name) html += `<tr><td style="color: var(--text-secondary);">Originating Package:</td><td>${escapeHtml(pkg.originating_package_name)}</td></tr>`;
+                if (pkg.last_update_time) html += `<tr><td style="color: var(--text-secondary);">Last Update:</td><td>${formatDate(pkg.last_update_time)}</td></tr>`;
+                if (pkg.time_stamp) html += `<tr><td style="color: var(--text-secondary);">Time Stamp:</td><td>${formatDate(pkg.time_stamp)}</td></tr>`;
+                if (pkg.package_source) html += `<tr><td style="color: var(--text-secondary);">Package Source:</td><td>${escapeHtml(pkg.package_source)}</td></tr>`;
+                if (pkg.flags) html += `<tr><td style="color: var(--text-secondary);">Flags:</td><td><code style="font-size: 0.75rem;">${escapeHtml(pkg.flags)}</code></td></tr>`;
+                if (pkg.signatures) html += `<tr><td style="color: var(--text-secondary);">Signatures:</td><td><code style="font-size: 0.75rem; word-break: break-all;">${escapeHtml(pkg.signatures)}</code></td></tr>`;
+                if (pkg.apk_signing_version) html += `<tr><td style="color: var(--text-secondary);">APK Signing:</td><td>v${escapeHtml(pkg.apk_signing_version)}</td></tr>`;
+                html += `</table>`;
+                html += `</div></div>`;
+
+                // Package-level Permissions
+                if (pkg.permissions) {
+                    const permEntries = pkg.permissions instanceof Map 
+                        ? Array.from(pkg.permissions.entries()) 
+                        : Object.entries(pkg.permissions);
+                    
+                    if (permEntries.length > 0) {
+                        const grantedPerms = permEntries.filter(([_, p]) => {
+                            if (p instanceof Map) return p.get('granted') === true;
+                            return p && typeof p === 'object' && p.granted === true;
+                        });
+                        const deniedPerms = permEntries.filter(([_, p]) => {
+                            if (p instanceof Map) return p.get('granted') === false;
+                            return p && typeof p === 'object' && p.granted === false;
+                        });
+                        
+                        html += `<div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.75rem;">`;
+                        html += `<div onclick="togglePackageSection('pkg-ex-${index}-permissions')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">`;
+                        html += `<div><strong style="font-size: 0.85rem;">🔐 Package Permissions</strong>`;
+                        html += `<span style="margin-left: 0.5rem; color: var(--text-secondary); font-size: 0.75rem;">(${grantedPerms.length} granted, ${deniedPerms.length} denied)</span></div>`;
+                        html += `<span class="toggle-icon" id="pkg-ex-${index}-permissions-icon">▼</span>`;
+                        html += `</div>`;
+                        html += `<div id="pkg-ex-${index}-permissions" style="margin-top: 0.75rem;">`;
+                        
+                        if (grantedPerms.length > 0) {
+                            html += `<div style="margin-top: 0.5rem;">`;
+                            html += `<div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">✓ Granted:</div>`;
+                            grantedPerms.forEach(([perm, _]) => {
+                                const shortPerm = perm.split('.').pop();
+                                html += `<span style="display: inline-block; margin: 0.25rem 0.25rem 0 0; padding: 0.25rem 0.5rem; background: #10b98133; color: #10b981; border: 1px solid #10b98166; border-radius: 4px; font-size: 0.7rem; font-family: monospace;">${escapeHtml(shortPerm)}</span>`;
+                            });
+                            html += `</div>`;
+                        }
+                        
+                        if (deniedPerms.length > 0) {
+                            html += `<div style="margin-top: 0.5rem;">`;
+                            html += `<div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">✗ Denied:</div>`;
+                            deniedPerms.forEach(([perm, _]) => {
+                                const shortPerm = perm.split('.').pop();
+                                html += `<span style="display: inline-block; margin: 0.25rem 0.25rem 0 0; padding: 0.25rem 0.5rem; background: #ef444433; color: #ef4444; border: 1px solid #ef444466; border-radius: 4px; font-size: 0.7rem; font-family: monospace;">${escapeHtml(shortPerm)}</span>`;
+                            });
+                            html += `</div>`;
+                        }
+                        html += `</div></div>`;
+                    }
+                }
+
+                // Install Logs
+                if (pkg.install_logs && Array.isArray(pkg.install_logs) && pkg.install_logs.length > 0) {
+                    html += `<div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.75rem;">`;
+                    html += `<div onclick="togglePackageSection('pkg-ex-${index}-install-logs')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">`;
+                    html += `<strong style="font-size: 0.85rem;">📜 Installation History (${pkg.install_logs.length} events)</strong>`;
+                    html += `<span class="toggle-icon" id="pkg-ex-${index}-install-logs-icon">▼</span>`;
+                    html += `</div>`;
+                    html += `<div id="pkg-ex-${index}-install-logs" style="margin-top: 0.5rem;">`;
+                    html += `<div style="margin-top: 0.5rem; max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem;">`;
+                    pkg.install_logs.forEach((log, logIdx) => {
+                        const getVal = (obj, key) => obj instanceof Map ? obj.get(key) : obj[key];
+                        
+                        const event_type = getVal(log, 'event_type');
+                        const timestamp = getVal(log, 'timestamp');
+                        const pkg_name = getVal(log, 'pkg');
+                        const versionCode = getVal(log, 'versionCode');
+                        const request_from = getVal(log, 'request_from');
+                        const stagedDir = getVal(log, 'stagedDir');
+                        const observer = getVal(log, 'observer');
+                        
+                        const isInstall = event_type && event_type.includes('INSTALL');
+                        const isDelete = event_type && event_type.includes('DELETE');
+                        const bgColor = isInstall ? '#3b82f622' : (isDelete ? '#ef444422' : 'var(--bg-secondary)');
+                        const borderColor = isInstall ? '#3b82f666' : (isDelete ? '#ef444466' : 'var(--border)');
+                        
+                        html += `<div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 4px; padding: 0.5rem;">`;
+                        html += `<div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">`;
+                        html += `<span style="font-weight: 600; font-size: 0.8rem;">${escapeHtml(event_type || 'Unknown Event')}</span>`;
+                        if (timestamp) html += `<span style="color: var(--text-secondary); font-size: 0.7rem;">${escapeHtml(timestamp)}</span>`;
+                        html += `</div>`;
+                        html += `<div style="font-size: 0.75rem; color: var(--text-secondary);">`;
+                        if (pkg_name) html += `<div style="margin-top: 0.2rem;">Package: <code style="font-size: 0.7rem;">${escapeHtml(pkg_name)}</code></div>`;
+                        if (versionCode) html += `<div style="margin-top: 0.2rem;">Version: ${versionCode}</div>`;
+                        if (request_from) html += `<div style="margin-top: 0.2rem;">From: ${escapeHtml(request_from)}</div>`;
+                        if (stagedDir) html += `<div style="margin-top: 0.2rem;">Staged: <code style="font-size: 0.65rem;">${escapeHtml(stagedDir)}</code></div>`;
+                        if (observer) html += `<div style="margin-top: 0.2rem;">Observer: ${observer}</div>`;
+                        html += `</div>`;
                         html += `</div>`;
                     });
+                    html += `</div></div></div>`;
+                }
+
+                // Users Information
+                if (pkg.users && pkg.users.length > 0) {
+                    html += `<div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.75rem;">`;
+                    html += `<div onclick="togglePackageSection('pkg-ex-${index}-users')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">`;
+                    html += `<strong style="font-size: 0.85rem;">👥 Users (${pkg.users.length})</strong>`;
+                    html += `<span class="toggle-icon" id="pkg-ex-${index}-users-icon">▼</span>`;
                     html += `</div>`;
+                    html += `<div id="pkg-ex-${index}-users" style="margin-top: 0.5rem;">`;
+                    pkg.users.forEach(user => {
+                        html += `<div style="margin-top: 0.5rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 4px; font-size: 0.8rem;">`;
+                        html += `<div style="font-weight: 600;">User ${user.user_id !== null ? user.user_id : 'Unknown'}`;
+                        if (user.installed !== null) {
+                            const statusColor = user.installed ? '#10b981' : '#ef4444';
+                            html += ` <span style="padding: 0.125rem 0.375rem; background: ${statusColor}33; color: ${statusColor}; border-radius: 3px; font-size: 0.7rem;">${user.installed ? 'Installed' : 'Not Installed'}</span>`;
+                        }
+                        html += `</div>`;
+                        if (user.first_install_time) html += `<div style="color: var(--text-secondary); margin-top: 0.25rem; font-size: 0.75rem;">First Install: ${formatDate(user.first_install_time)}</div>`;
+                        if (user.stopped !== null) html += `<div style="margin-top: 0.25rem; font-size: 0.75rem;">Stopped: ${user.stopped ? 'Yes' : 'No'}</div>`;
+                        if (user.enabled !== null && user.enabled !== undefined) html += `<div style="margin-top: 0.25rem; font-size: 0.75rem;">Enabled: ${user.enabled}</div>`;
+                        
+                        // User-specific permissions
+                        if (user.permissions) {
+                            const userPermEntries = user.permissions instanceof Map 
+                                ? Array.from(user.permissions.entries()) 
+                                : Object.entries(user.permissions);
+                            
+                            const userGranted = userPermEntries.filter(([_, p]) => {
+                                if (p instanceof Map) return p.get('granted') === true;
+                                return p && p.granted === true;
+                            });
+                            const userDenied = userPermEntries.filter(([_, p]) => {
+                                if (p instanceof Map) return p.get('granted') === false;
+                                return p && p.granted === false;
+                            });
+                            
+                            if (userGranted.length > 0 || userDenied.length > 0) {
+                                html += `<div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border);">`;
+                                html += `<div style="font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem;">🔐 User Permissions</div>`;
+                            }
+                            
+                            if (userGranted.length > 0) {
+                                html += `<div style="margin-top: 0.25rem;">`;
+                                html += `<div style="font-size: 0.7rem; color: var(--text-secondary);">✓ Granted (${userGranted.length}):</div>`;
+                                userGranted.forEach(([perm, permData]) => {
+                                    const shortPerm = perm.split('.').pop();
+                                    const flags = permData instanceof Map ? permData.get('flags') : permData.flags;
+                                    html += `<span style="display: inline-block; margin: 0.25rem 0.25rem 0 0; padding: 0.2rem 0.4rem; background: #10b98133; color: #10b981; border: 1px solid #10b98166; border-radius: 3px; font-size: 0.65rem; font-family: monospace;">${escapeHtml(shortPerm)}`;
+                                    if (flags && flags.length > 0) {
+                                        html += ` <span style="color: #10b98199; font-size: 0.6rem;">⚑</span>`;
+                                    }
+                                    html += `</span>`;
+                                });
+                                html += `</div>`;
+                            }
+                            
+                            if (userDenied.length > 0) {
+                                html += `<div style="margin-top: 0.25rem;">`;
+                                html += `<div style="font-size: 0.7rem; color: var(--text-secondary);">✗ Denied (${userDenied.length}):</div>`;
+                                userDenied.forEach(([perm, permData]) => {
+                                    const shortPerm = perm.split('.').pop();
+                                    const flags = permData instanceof Map ? permData.get('flags') : permData.flags;
+                                    html += `<span style="display: inline-block; margin: 0.25rem 0.25rem 0 0; padding: 0.2rem 0.4rem; background: #ef444433; color: #ef4444; border: 1px solid #ef444466; border-radius: 3px; font-size: 0.65rem; font-family: monospace;">${escapeHtml(shortPerm)}`;
+                                    if (flags && flags.length > 0) {
+                                        html += ` <span style="color: #ef444499; font-size: 0.6rem;">⚑</span>`;
+                                    }
+                                    html += `</span>`;
+                                });
+                                html += `</div>`;
+                            }
+                            
+                            if (userGranted.length > 0 || userDenied.length > 0) {
+                                html += `</div>`;
+                            }
+                        }
+                        html += `</div>`;
+                    });
+                    html += `</div></div>`;
                 }
                 html += `</div>`;
             });
@@ -1284,7 +1569,7 @@
                 const items = document.querySelectorAll('.package-item');
                 items.forEach(item => {
                     const packageName = item.getAttribute('data-package-name');
-                    if (packageName.includes(query)) {
+                    if (packageName && packageName.includes(query)) {
                         item.style.display = 'block';
                     } else {
                         item.style.display = 'none';

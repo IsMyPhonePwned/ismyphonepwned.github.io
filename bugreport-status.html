@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Bugreport Analysis — Status & Capabilities</title>
     <style>
         * {
@@ -45,18 +45,26 @@
             --shadow: rgba(0, 0, 0, 0.3);
         }
 
+        html {
+            -webkit-text-size-adjust: 100%;
+            overflow-x: hidden;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
             line-height: 1.6;
             transition: background-color 0.3s, color 0.3s;
+            overflow-x: hidden;
+            min-width: 0;
         }
 
         .container {
             max-width: 900px;
             margin: 0 auto;
             padding: 2rem 1rem;
+            width: 100%;
         }
 
         header {
@@ -303,9 +311,12 @@
             font-family: monospace;
             font-size: 0.75rem;
             white-space: pre;
-            word-break: normal;
+            word-break: break-all;
+            overflow-wrap: anywhere;
             margin: 0;
             color: var(--text-primary);
+            max-width: 100%;
+            -webkit-overflow-scrolling: touch;
         }
 
         .fetch-status {
@@ -328,6 +339,72 @@
             border-radius: 3px;
             font-family: monospace;
             font-size: 0.9em;
+            word-break: break-all;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem 0.75rem;
+            }
+            header {
+                flex-wrap: wrap;
+                gap: 0.75rem;
+                margin-bottom: 1.25rem;
+            }
+            .logo-text {
+                font-size: 1.2rem;
+            }
+            .section {
+                padding: 1rem;
+            }
+            .section h2 {
+                font-size: 1rem;
+            }
+            .section h3 {
+                font-size: 0.95rem;
+            }
+            .rule-item {
+                padding: 0.75rem;
+            }
+            .rule-item > div:first-child {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .rule-content-toggle {
+                align-self: flex-start;
+                min-height: 44px;
+                min-width: 44px;
+            }
+            .rule-format {
+                font-size: 0.7rem;
+                padding: 0.75rem;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .rules-list-body {
+                max-height: 60vh;
+                padding: 0.75rem;
+            }
+            .last-updated {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.8rem;
+                margin-bottom: 1rem;
+            }
+            .nav-links {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 0.75rem;
+                padding-left: max(0.5rem, env(safe-area-inset-left));
+                padding-right: max(0.5rem, env(safe-area-inset-right));
+            }
+            .logo-text {
+                font-size: 1.1rem;
+            }
         }
     </style>
 </head>

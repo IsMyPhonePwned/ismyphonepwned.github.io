@@ -638,6 +638,29 @@
             letter-spacing: 0.5px;
         }
 
+        .section-header {
+            user-select: none;
+            transition: background 0.2s ease;
+            padding: 0.25rem;
+            margin: -0.25rem;
+            border-radius: 4px;
+        }
+
+        .section-header:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .toggle-icon {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            transition: transform 0.2s ease;
+        }
+
+        .section-collapsible {
+            margin-top: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
         .detail-table {
             width: 100%;
             border-collapse: collapse;
@@ -1456,25 +1479,6 @@
                     </div>
                 </div>
 
-                <!-- Package Installation History -->
-                <div class="result-card" id="package-history-card" style="display: none;">
-                    <div class="section-header">
-                        <h3>📦 Package History (Including Deleted)</h3>
-                        <span class="count-badge" id="package-count-badge">0</span>
-                    </div>
-                    <button class="section-toggle" onclick="toggleSection('package-history')">▼</button>
-                    <div class="section-content" id="package-history-content">
-                        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">
-                            Packages that were installed or uninstalled. Packages not found in the "Package Details" section have been deleted.
-                        </p>
-                        <div class="search-box">
-                            <span class="search-icon">🔍</span>
-                            <input type="text" id="package-search-input" placeholder="Search packages by name or installer...">
-                        </div>
-                        <div id="package-list"></div>
-                    </div>
-                </div>
-
                 <!-- Package Details -->
                 <div class="result-card" id="package-details-card" style="display: none;">
                     <div class="section-header">
@@ -1488,6 +1492,25 @@
                             <input type="text" id="package-details-search-input" placeholder="Search packages by name...">
                         </div>
                         <div id="package-details-list"></div>
+                    </div>
+                </div>
+
+                <!-- Package Installation History -->
+                <div class="result-card" id="package-history-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>📦 Deleted Packages</h3>
+                        <span class="count-badge" id="package-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle" onclick="toggleSection('package-history')">▼</button>
+                    <div class="section-content" id="package-history-content">
+                        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">
+                            Packages that were installed or uninstalled. Packages not found in the "Package Details" section have been deleted.
+                        </p>
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="package-search-input" placeholder="Search packages by name or installer...">
+                        </div>
+                        <div id="package-list"></div>
                     </div>
                 </div>
 
@@ -2515,6 +2538,21 @@
             return div.innerHTML;
         }
 
+        window.togglePackageSection = function(sectionId) {
+            const section = document.getElementById(sectionId);
+            const icon = document.getElementById(sectionId + '-icon');
+            
+            if (section && icon) {
+                if (section.style.display === 'none') {
+                    section.style.display = 'block';
+                    icon.textContent = '▼';
+                } else {
+                    section.style.display = 'none';
+                    icon.textContent = '▶';
+                }
+            }
+        }
+
         function displayPackageDetails(data) {
             const packageDetailsCard = document.getElementById('package-details-card');
             const packageDetailsListEl = document.getElementById('package-details-list');
@@ -2530,6 +2568,13 @@
 
             let html = '<div class="package-details-container">';
             
+            // Debug: Log first package to see structure
+            if (data.package_details.length > 0) {
+                console.log('[DEBUG] First package data:', data.package_details[0]);
+                console.log('[DEBUG] Permissions:', data.package_details[0].permissions);
+                console.log('[DEBUG] Install logs:', data.package_details[0].install_logs);
+            }
+            
             data.package_details.forEach((pkg, index) => {
                 html += `<div class="package-detail-item" data-package-name="${pkg.package_name.toLowerCase()}">`;
                 html += `<div class="package-detail-header">`;
@@ -2543,7 +2588,11 @@
                 
                 // Basic Info
                 html += `<div class="detail-section">`;
-                html += `<strong>Basic Information</strong>`;
+                html += `<div class="section-header" onclick="togglePackageSection('pkg-${index}-basic')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">`;
+                html += `<strong>📊 Basic Information</strong>`;
+                html += `<span class="toggle-icon" id="pkg-${index}-basic-icon">▼</span>`;
+                html += `</div>`;
+                html += `<div id="pkg-${index}-basic" class="section-collapsible">`;
                 html += `<table class="detail-table">`;
                 if (pkg.version_code) {
                     html += `<tr><td>Version Code:</td><td>${pkg.version_code}</td></tr>`;
@@ -2562,10 +2611,15 @@
                 }
                 html += `</table>`;
                 html += `</div>`;
+                html += `</div>`;
                 
                 // Paths
                 html += `<div class="detail-section">`;
-                html += `<strong>Paths</strong>`;
+                html += `<div class="section-header" onclick="togglePackageSection('pkg-${index}-paths')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">`;
+                html += `<strong>📁 Paths</strong>`;
+                html += `<span class="toggle-icon" id="pkg-${index}-paths-icon">▼</span>`;
+                html += `</div>`;
+                html += `<div id="pkg-${index}-paths" class="section-collapsible">`;
                 html += `<table class="detail-table">`;
                 if (pkg.code_path) {
                     html += `<tr><td>Code Path:</td><td><code>${escapeHtml(pkg.code_path)}</code></td></tr>`;
@@ -2578,11 +2632,16 @@
                 }
                 html += `</table>`;
                 html += `</div>`;
+                html += `</div>`;
                 
                 // Flags
                 if (pkg.flags || pkg.pkg_flags) {
                     html += `<div class="detail-section">`;
-                    html += `<strong>Flags</strong>`;
+                    html += `<div class="section-header" onclick="togglePackageSection('pkg-${index}-flags')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">`;
+                    html += `<strong>🏴 Flags & Signatures</strong>`;
+                    html += `<span class="toggle-icon" id="pkg-${index}-flags-icon">▼</span>`;
+                    html += `</div>`;
+                    html += `<div id="pkg-${index}-flags" class="section-collapsible">`;
                     html += `<table class="detail-table">`;
                     if (pkg.flags) {
                         html += `<tr><td>Flags:</td><td><code>${escapeHtml(pkg.flags)}</code></td></tr>`;
@@ -2590,16 +2649,39 @@
                     if (pkg.pkg_flags) {
                         html += `<tr><td>Package Flags:</td><td><code>${escapeHtml(pkg.pkg_flags)}</code></td></tr>`;
                     }
+                    if (pkg.private_flags) {
+                        html += `<tr><td>Private Flags:</td><td><code>${escapeHtml(pkg.private_flags)}</code></td></tr>`;
+                    }
+                    if (pkg.signatures) {
+                        html += `<tr><td>Signatures:</td><td><code style="word-break: break-all; font-size: 0.8rem;">${escapeHtml(pkg.signatures)}</code></td></tr>`;
+                    }
+                    if (pkg.apk_signing_version) {
+                        html += `<tr><td>APK Signing:</td><td>v${escapeHtml(pkg.apk_signing_version)}</td></tr>`;
+                    }
                     html += `</table>`;
+                    html += `</div>`;
                     html += `</div>`;
                 }
                 
                 // Installer & Timestamps
                 html += `<div class="detail-section">`;
-                html += `<strong>Installation Info</strong>`;
+                html += `<div class="section-header" onclick="togglePackageSection('pkg-${index}-install-info')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">`;
+                html += `<strong>📦 Installation Info</strong>`;
+                html += `<span class="toggle-icon" id="pkg-${index}-install-info-icon">▼</span>`;
+                html += `</div>`;
+                html += `<div id="pkg-${index}-install-info" class="section-collapsible">`;
                 html += `<table class="detail-table">`;
                 if (pkg.installer_package_name) {
                     html += `<tr><td>Installer:</td><td>${escapeHtml(pkg.installer_package_name)}</td></tr>`;
+                }
+                if (pkg.initiating_package_name) {
+                    html += `<tr><td>Initiating Package:</td><td>${escapeHtml(pkg.initiating_package_name)}</td></tr>`;
+                }
+                if (pkg.originating_package_name) {
+                    html += `<tr><td>Originating Package:</td><td>${escapeHtml(pkg.originating_package_name)}</td></tr>`;
+                }
+                if (pkg.package_source) {
+                    html += `<tr><td>Package Source:</td><td>${escapeHtml(pkg.package_source)}</td></tr>`;
                 }
                 if (pkg.last_update_time) {
                     html += `<tr><td>Last Update:</td><td>${escapeHtml(pkg.last_update_time)}</td></tr>`;
@@ -2607,14 +2689,78 @@
                 if (pkg.time_stamp) {
                     html += `<tr><td>Time Stamp:</td><td>${escapeHtml(pkg.time_stamp)}</td></tr>`;
                 }
+                if (pkg.data_dir) {
+                    html += `<tr><td>Data Directory:</td><td><code style="word-break: break-all; font-size: 0.85rem;">${escapeHtml(pkg.data_dir)}</code></td></tr>`;
+                }
                 html += `<tr><td>Users:</td><td>${pkg.user_count}</td></tr>`;
                 html += `</table>`;
                 html += `</div>`;
+                html += `</div>`;
+                
+                // Package-level Permissions
+                if (pkg.permissions) {
+                    // Handle both Map objects and plain objects
+                    const permEntries = pkg.permissions instanceof Map 
+                        ? Array.from(pkg.permissions.entries()) 
+                        : Object.entries(pkg.permissions);
+                    
+                    if (permEntries.length > 0) {
+                        const grantedPerms = permEntries.filter(([_, p]) => {
+                            if (p instanceof Map) {
+                                return p.get('granted') === true;
+                            }
+                            return p && typeof p === 'object' && p.granted === true;
+                        });
+                        const deniedPerms = permEntries.filter(([_, p]) => {
+                            if (p instanceof Map) {
+                                return p.get('granted') === false;
+                            }
+                            return p && typeof p === 'object' && p.granted === false;
+                        });
+                        
+                        html += `<div class="detail-section">`;
+                        html += `<div class="section-header" onclick="togglePackageSection('pkg-${index}-permissions')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">`;
+                        html += `<div><strong>🔐 Package Permissions</strong>`;
+                        html += `<span style="margin-left: 0.5rem; color: var(--text-secondary); font-size: 0.85rem;">(${grantedPerms.length} granted, ${deniedPerms.length} denied)</span></div>`;
+                        html += `<span class="toggle-icon" id="pkg-${index}-permissions-icon">▼</span>`;
+                        html += `</div>`;
+                        html += `<div id="pkg-${index}-permissions" class="section-collapsible" style="margin-top: 0.75rem;">`;
+                        
+                        if (grantedPerms.length > 0) {
+                            html += `<div style="margin-bottom: 0.75rem;">`;
+                            html += `<div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-weight: 600;">✓ Granted (${grantedPerms.length}):</div>`;
+                            html += `<div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">`;
+                            grantedPerms.forEach(([perm, _]) => {
+                                const shortPerm = perm.split('.').pop();
+                                html += `<span style="padding: 0.375rem 0.625rem; background: #10b98133; color: #10b981; border: 1px solid #10b98166; border-radius: 4px; font-size: 0.8rem; font-family: monospace;">${escapeHtml(shortPerm)}</span>`;
+                            });
+                            html += `</div></div>`;
+                        }
+                        
+                        if (deniedPerms.length > 0) {
+                            html += `<div>`;
+                            html += `<div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-weight: 600;">✗ Denied (${deniedPerms.length}):</div>`;
+                            html += `<div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">`;
+                            deniedPerms.forEach(([perm, _]) => {
+                                const shortPerm = perm.split('.').pop();
+                                html += `<span style="padding: 0.375rem 0.625rem; background: #ef444433; color: #ef4444; border: 1px solid #ef444466; border-radius: 4px; font-size: 0.8rem; font-family: monospace;">${escapeHtml(shortPerm)}</span>`;
+                            });
+                            html += `</div></div>`;
+                        }
+                        
+                        html += `</div>`;
+                        html += `</div>`;
+                    }
+                }
                 
                 // Users Information
                 if (pkg.users && Array.isArray(pkg.users) && pkg.users.length > 0) {
                     html += `<div class="detail-section">`;
-                    html += `<strong>Users (${pkg.users.length})</strong>`;
+                    html += `<div class="section-header" onclick="togglePackageSection('pkg-${index}-users')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">`;
+                    html += `<strong>👥 Users (${pkg.users.length})</strong>`;
+                    html += `<span class="toggle-icon" id="pkg-${index}-users-icon">▼</span>`;
+                    html += `</div>`;
+                    html += `<div id="pkg-${index}-users" class="section-collapsible">`;
                     html += `<div class="users-container">`;
                     
                     pkg.users.forEach((user, userIdx) => {
@@ -2638,10 +2784,80 @@
                         if (user.enabled !== null && user.enabled !== undefined) {
                             html += `<tr><td>Enabled:</td><td>${user.enabled === 0 ? 'Yes' : 'No'}</td></tr>`;
                         }
+                        if (user.stopped !== null && user.stopped !== undefined) {
+                            html += `<tr><td>Stopped:</td><td>${user.stopped ? 'Yes' : 'No'}</td></tr>`;
+                        }
+                        if (user.suspended !== null && user.suspended !== undefined) {
+                            html += `<tr><td>Suspended:</td><td>${user.suspended ? 'Yes' : 'No'}</td></tr>`;
+                        }
+                        if (user.hidden !== null && user.hidden !== undefined) {
+                            html += `<tr><td>Hidden:</td><td>${user.hidden ? 'Yes' : 'No'}</td></tr>`;
+                        }
+                        if (user.install_reason !== null && user.install_reason !== undefined) {
+                            html += `<tr><td>Install Reason:</td><td>${user.install_reason}</td></tr>`;
+                        }
                         html += `</table>`;
+                        
+                        // User-specific permissions
+                        if (user.permissions) {
+                            const userPermEntries = user.permissions instanceof Map 
+                                ? Array.from(user.permissions.entries()) 
+                                : Object.entries(user.permissions);
+                            
+                            const userGranted = userPermEntries.filter(([_, p]) => {
+                                if (p instanceof Map) return p.get('granted') === true;
+                                return p && p.granted === true;
+                            });
+                            const userDenied = userPermEntries.filter(([_, p]) => {
+                                if (p instanceof Map) return p.get('granted') === false;
+                                return p && p.granted === false;
+                            });
+                            
+                            html += `<div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">`;
+                            html += `<div style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">🔐 User Permissions</div>`;
+                            html += `<div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem;">${userGranted.length} granted, ${userDenied.length} denied</div>`;
+                            
+                            if (userGranted.length > 0) {
+                                html += `<div style="margin-bottom: 0.5rem;">`;
+                                html += `<div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.375rem;">✓ Granted:</div>`;
+                                html += `<div style="display: flex; flex-wrap: wrap; gap: 0.375rem;">`;
+                                userGranted.forEach(([perm, permData]) => {
+                                    const shortPerm = perm.split('.').pop();
+                                    const flags = permData instanceof Map ? permData.get('flags') : permData.flags;
+                                    html += `<span style="padding: 0.25rem 0.5rem; background: #10b98133; color: #10b981; border: 1px solid #10b98166; border-radius: 3px; font-size: 0.7rem; font-family: monospace;">${escapeHtml(shortPerm)}`;
+                                    if (flags && flags.length > 0) {
+                                        const flagsArray = Array.isArray(flags) ? flags : [flags];
+                                        html += ` <span style="color: #10b98199; font-size: 0.65rem;" title="${flagsArray.join(', ')}">⚑</span>`;
+                                    }
+                                    html += `</span>`;
+                                });
+                                html += `</div></div>`;
+                            }
+                            
+                            if (userDenied.length > 0) {
+                                html += `<div>`;
+                                html += `<div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.375rem;">✗ Denied:</div>`;
+                                html += `<div style="display: flex; flex-wrap: wrap; gap: 0.375rem;">`;
+                                userDenied.forEach(([perm, permData]) => {
+                                    const shortPerm = perm.split('.').pop();
+                                    const flags = permData instanceof Map ? permData.get('flags') : permData.flags;
+                                    html += `<span style="padding: 0.25rem 0.5rem; background: #ef444433; color: #ef4444; border: 1px solid #ef444466; border-radius: 3px; font-size: 0.7rem; font-family: monospace;">${escapeHtml(shortPerm)}`;
+                                    if (flags && flags.length > 0) {
+                                        const flagsArray = Array.isArray(flags) ? flags : [flags];
+                                        html += ` <span style="color: #ef444499; font-size: 0.65rem;" title="${flagsArray.join(', ')}">⚑</span>`;
+                                    }
+                                    html += `</span>`;
+                                });
+                                html += `</div></div>`;
+                            }
+                            
+                            html += `</div>`;
+                        }
+                        
                         html += `</div>`;
                     });
                     
+                    html += `</div>`;
                     html += `</div>`;
                     html += `</div>`;
                 }
@@ -2649,60 +2865,56 @@
                 // Install Logs
                 if (pkg.install_logs && Array.isArray(pkg.install_logs) && pkg.install_logs.length > 0) {
                     html += `<div class="detail-section">`;
-                    html += `<strong>Installation History (${pkg.install_logs.length} entries)</strong>`;
-                    html += `<div class="install-logs-container">`;
+                    html += `<div class="section-header" onclick="togglePackageSection('pkg-${index}-install-logs')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">`;
+                    html += `<strong>📜 Installation History (${pkg.install_logs.length} events)</strong>`;
+                    html += `<span class="toggle-icon" id="pkg-${index}-install-logs-icon">▼</span>`;
+                    html += `</div>`;
+                    html += `<div id="pkg-${index}-install-logs" class="section-collapsible">`;
+                    html += `<div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">`;
                     
-                    // Group install logs by START_INSTALL events
-                    const installEvents = [];
-                    pkg.install_logs.forEach(log => {
-                        if (log.event_type === 'START_INSTALL') {
-                            installEvents.push({
-                                start: log,
-                                related: []
-                            });
-                        } else if (installEvents.length > 0) {
-                            installEvents[installEvents.length - 1].related.push(log);
-                        }
-                    });
-                    
-                    installEvents.forEach((event, idx) => {
-                        html += `<div class="install-log-entry">`;
-                        html += `<div class="install-log-header">`;
-                        html += `<span class="install-log-type">Installation #${idx + 1}</span>`;
-                        if (event.start.timestamp) {
-                            html += `<span class="install-log-time">${escapeHtml(event.start.timestamp)}</span>`;
-                        }
-                        html += `</div>`;
-                        html += `<div class="install-log-details">`;
-                        html += `<table class="detail-table">`;
-                        if (event.start.versionCode) {
-                            html += `<tr><td>Version Code:</td><td>${event.start.versionCode}</td></tr>`;
-                        }
-                        if (event.start.request_from) {
-                            html += `<tr><td>Requested By:</td><td>${escapeHtml(event.start.request_from)}</td></tr>`;
-                        }
-                        if (event.start.stagedDir) {
-                            html += `<tr><td>Staged Dir:</td><td><code>${escapeHtml(event.start.stagedDir)}</code></td></tr>`;
-                        }
-                        html += `</table>`;
+                    // Display all install logs chronologically
+                    pkg.install_logs.forEach((log, logIdx) => {
+                        // Helper to get value from either Map or plain object
+                        const getVal = (obj, key) => obj instanceof Map ? obj.get(key) : obj[key];
                         
-                        // Show related events
-                        if (event.related.length > 0) {
-                            html += `<div class="related-events">`;
-                            event.related.forEach(rel => {
-                                html += `<div class="related-event">`;
-                                html += `<span class="event-type">${escapeHtml(rel.event_type || 'Unknown')}</span>`;
-                                if (rel.timestamp) {
-                                    html += `<span class="event-time">${escapeHtml(rel.timestamp)}</span>`;
-                                }
-                                html += `</div>`;
-                            });
-                            html += `</div>`;
+                        const event_type = getVal(log, 'event_type');
+                        const timestamp = getVal(log, 'timestamp');
+                        const pkg_name = getVal(log, 'pkg');
+                        const versionCode = getVal(log, 'versionCode');
+                        const request_from = getVal(log, 'request_from');
+                        const stagedDir = getVal(log, 'stagedDir');
+                        const observer = getVal(log, 'observer');
+                        const caller = getVal(log, 'caller');
+                        const user = getVal(log, 'user');
+                        const flags = getVal(log, 'flags');
+                        
+                        const isInstall = event_type && event_type.includes('INSTALL');
+                        const isDelete = event_type && event_type.includes('DELETE');
+                        const bgColor = isInstall ? '#3b82f622' : (isDelete ? '#ef444422' : 'var(--bg-secondary)');
+                        const borderColor = isInstall ? '#3b82f666' : (isDelete ? '#ef444466' : 'var(--border)');
+                        
+                        html += `<div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 4px; padding: 0.75rem;">`;
+                        html += `<div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">`;
+                        html += `<span style="font-weight: 600; font-size: 0.85rem;">${escapeHtml(event_type || 'Unknown Event')}</span>`;
+                        if (timestamp) {
+                            html += `<span style="color: var(--text-secondary); font-size: 0.75rem;">${escapeHtml(timestamp)}</span>`;
                         }
+                        html += `</div>`;
+                        
+                        html += `<div style="font-size: 0.8rem; color: var(--text-secondary);">`;
+                        if (pkg_name) html += `<div style="margin-top: 0.25rem;">Package: <code style="font-size: 0.75rem;">${escapeHtml(pkg_name)}</code></div>`;
+                        if (versionCode) html += `<div style="margin-top: 0.25rem;">Version: ${versionCode}</div>`;
+                        if (request_from) html += `<div style="margin-top: 0.25rem;">From: ${escapeHtml(request_from)}</div>`;
+                        if (stagedDir) html += `<div style="margin-top: 0.25rem;">Staged: <code style="font-size: 0.7rem;">${escapeHtml(stagedDir)}</code></div>`;
+                        if (observer) html += `<div style="margin-top: 0.25rem;">Observer: ${observer}</div>`;
+                        if (caller) html += `<div style="margin-top: 0.25rem;">Caller: ${caller}</div>`;
+                        if (user !== undefined) html += `<div style="margin-top: 0.25rem;">User: ${user}</div>`;
+                        if (flags !== undefined) html += `<div style="margin-top: 0.25rem;">Flags: ${flags}</div>`;
                         html += `</div>`;
                         html += `</div>`;
                     });
                     
+                    html += `</div>`;
                     html += `</div>`;
                     html += `</div>`;
                 }
@@ -2724,7 +2936,7 @@
                 items.forEach(item => {
                     const packageName = item.getAttribute('data-package-name');
                     
-                    if (packageName.includes(query)) {
+                    if (packageName && packageName.includes(query)) {
                         item.style.display = 'block';
                         visibleCount++;
                     } else {

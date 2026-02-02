@@ -15,7 +15,8 @@ detection:
       - 'twittre.co'
       - 'twit-er.app'
   selection_ip:
-    destination_ip:
+    event_type: network_socket
+    remote_ip:
       - '138.197.103.227'
       - '128.199.212.166'
       - '161.35.100.139'

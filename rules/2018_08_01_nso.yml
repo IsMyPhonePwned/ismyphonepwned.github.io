@@ -25,7 +25,8 @@ detection:
       - 'so-this-is.com'
       - 'stopmysms.com'
   selection_ip:
-    destination_ip:
+    event_type: network_socket
+    remote_ip:
       - '191.101.31.25'
       - '185.94.190.203'
       - '46.183.219.79'

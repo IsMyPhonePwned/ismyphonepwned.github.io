@@ -15,7 +15,8 @@ detection:
       - 'socialstatistics.zapto.org'
       - 'duniaenewsportal.ddns.net'
   selection_ip:
-    destination_ip:
+    event_type: network_socket
+    remote_ip:
       - '185.82.202.155'
       - '185.117.66.188'
       - '185.117.74.47'

@@ -22,7 +22,8 @@ detection:
       - 'delicato.dnsalias.net'
       - 'coco.cechire.com'
   selection_ip:
-    destination_ip:
+    event_type: network_socket
+    remote_ip:
       - '185.174.101.13'
       - '185.157.79.134'
       - '95.168.191.35'

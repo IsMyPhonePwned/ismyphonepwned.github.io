@@ -131,12 +131,19 @@
     .info-box a:hover { text-decoration: underline; }
     .info-box .cve { font-family: "SF Mono", "Consolas", "Monaco", monospace; color: var(--text); }
     .info-box code { font-size: 0.75rem; color: var(--accent); }
+    .repo-link {
+      font-size: 0.8125rem;
+      margin-bottom: 1.5rem;
+    }
+    .repo-link a { color: var(--accent); text-decoration: none; }
+    .repo-link a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
   <img src="mimic.png" alt="mimic" class="logo" width="240">
   <h1>mimic</h1>
   <p class="sub">Submit one or more files locally to see if they are flagged as malicious. Analysis runs in your browser; nothing is uploaded.</p>
+  <p class="repo-link"><a href="https://github.com/IsMyPhonePwned/mimic" target="_blank" rel="noopener noreferrer">GitHub — IsMyPhonePwned/mimic</a></p>
 
   <div class="dropzone" id="dropzone">
     <input type="file" id="file" accept="*" multiple>

@@ -106,6 +106,31 @@
       height: auto;
       margin: 0 auto 1rem auto;
     }
+    .info-box {
+      margin-top: 2.5rem;
+      padding: 1rem 1.25rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.8125rem;
+      color: var(--muted);
+    }
+    .info-box h2 {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0 0 0.75rem 0;
+    }
+    .info-box ul {
+      margin: 0;
+      padding-left: 1.25rem;
+      line-height: 1.6;
+    }
+    .info-box li { margin-bottom: 0.35rem; }
+    .info-box a { color: var(--accent); text-decoration: none; }
+    .info-box a:hover { text-decoration: underline; }
+    .info-box .cve { font-family: "SF Mono", "Consolas", "Monaco", monospace; color: var(--text); }
+    .info-box code { font-size: 0.75rem; color: var(--accent); }
   </style>
 </head>
 <body>
@@ -119,6 +144,17 @@
   </div>
 
   <div id="results"></div>
+
+  <aside class="info-box" aria-label="Detectable vulnerabilities">
+    <h2>Vulnerabilities we can detect</h2>
+    <ul>
+      <li><strong>DNG/TIFF</strong> — <span class="cve">CVE-2025-43300</span>: Apple RawCamera heap overflow (SamplesPerPixel vs SOF3 mismatch). <span class="cve">CVE-2025-21043</span>: excessive OpcodeList count. <span class="cve">DNG-TILE-CONFIG</span>: invalid tile config (low trust).</li>
+      <li><strong>RTF</strong> — <span class="cve">CVE-2026-21509</span>: Microsoft Office bypass via malformed OLE in <code>\object</code> / <code>\objdata</code>.</li>
+      <li><strong>TTF/OTF</strong> — <span class="cve">CVE-2023-41990</span>: Operation Triangulation, Apple ADJUST opcodes (0x8F/0x90) in fpgm/prep/glyf.</li>
+      <li><strong>RAR</strong> — <span class="cve">CVE-2025-8088</span>: WinRAR path traversal via Alternate Data Streams (ADS).</li>
+      <li><strong>PDF</strong> — Format detection only; CVE checks can be extended.</li>
+    </ul>
+  </aside>
 
   <script type="module">
     const dropzone = document.getElementById('dropzone');

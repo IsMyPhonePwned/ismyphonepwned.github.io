@@ -1730,9 +1730,30 @@
             return o;
         }
 
-        // Fetch Sigma rules from server
+        // Fetch Sigma rules from server (rules from ismyphonepwned.github.io/rules)
         async function fetchSigmaRules() {
-            const urls = ['/rules/novispy.yml', '/rules/cellebrite.yml'];
+            const urls = [
+                '/rules/2018_08_01_nso.yml',
+                '/rules/2018_12_19_best_practice.yml',
+                '/rules/2019_03_06_egypt_oauth.yml',
+                '/rules/2019_08_16_evolving_phishing.yml',
+                '/rules/2019_10_10_nso_morocco.yml',
+                '/rules/2020_03_12_uzbekistan.yml',
+                '/rules/2020_06_15_india.yml',
+                '/rules/2020_09_25_finfisher.yml',
+                '/rules/2021_02_24_vietnam.yml',
+                '/rules/2021_05_28_qatar.yml',
+                '/rules/2021_07_18_nso.yml',
+                '/rules/2021_10_07_donot.yml',
+                '/rules/2021_12_16_cytrox.yml',
+                '/rules/2023_03_29_android_campaign.yml',
+                '/rules/2024_05_02_wintego_helios.yml',
+                '/rules/2024_12_16_serbia_novispy.yml',
+                '/rules/cellebrite.yml',
+                '/rules/novispy.yml',
+                '/rules/CVE/CVE-2025-21055.yaml'
+            ];
+
             console.log('[fetchSigmaRules] Fetching Sigma rules:', urls.join(', '));
             try {
                 const fetchOne = async (url) => {

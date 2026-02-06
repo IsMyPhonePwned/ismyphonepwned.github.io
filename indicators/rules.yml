@@ -1,0 +1,1082 @@
+name: Active Directory enumeration activity
+description: Detects PowerShell usage of System.DirectoryServices and adsisearcher, which may indicate Active Directory enumeration via LDAP.
+regex: DirectoryServices\.|LdapConnection|adsiSearcher
+basescore: 9.4
+tactic: [TA0007]
+technique: [T1059.001, T1087, T1069, T1018]
+reference:
+  - https://unlockpowershell.wordpress.com/2010/07/01/powershell-search-ad-for-a-guid/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1069.002/T1069.002.md
+  - https://www.ired.team/offensive-security-experiments/active-directory-kerberos-abuse/using-dsacls-to-check-ad-object-permissions
+---
+name: Common AD enumeration cmdlets
+description: Indicates potential AD reconnaissance via standard enumeration cmdlets targeting users, groups, computers, or generic directory objects.
+regex: get-ad(trust|user|group|computer|object|principalgroupmembership|replication|domaincontroller)
+basescore: 4.8
+tactic: TA0002
+technique: [T1059.001, T1069.002, T1087]
+reference:
+  - https://lolad-project.github.io/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1069.002/T1069.002.md
+  - https://www.ired.team/offensive-security-experiments/active-directory-kerberos-abuse/using-dsacls-to-check-ad-object-permissions
+---
+name: AD high privilege group enumeration
+description: Enumerates enterprise admins or domain admins group membership.
+regex: get-adgroupmember.+(enterprise|domain) admins
+basescore: 10
+tactic: TA0007
+technique: [T1059.001, T1069.002]
+reference:
+  - https://lolad-project.github.io/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1069.002/T1069.002.md
+---
+name: AD Service Principal enumeration
+description: Potential Service Principal enumeration activity.
+regex: get-ad.+\s+ServicePrincipalName|servicePrincipalName=\*|\.DirectoryServices\.+principal|object.+serviceprincipalname
+basescore: 9.7
+tactic: [TA0007]
+technique: [T1059.001, T1069.002, T1558.003, T1018]
+reference:
+  - https://lolad-project.github.io/
+  - https://learn.microsoft.com/en-us/windows/win32/ad/service-principal-names
+  - https://www.ired.team/offensive-security-experiments/active-directory-kerberos-abuse/t1208-kerberoasting
+---
+name: Advanced DLL handling
+description: Matches on potential commands attempting to import unmanaged DLLs or load DLL files directly into memory.
+regex: \bDllImport|DllInjection|ReadAllBytes[\s\S]+\S\.dll
+basescore: 9.2
+tactic: [TA0005]
+technique: [T1059.001, T1055]
+reference:
+  - https://redcanary.com/blog/threat-detection/better-know-a-data-source/amsi/
+  - https://unit42.paloaltonetworks.com/unit42-pulling-back-the-curtains-on-encodedcommand-powershell-attacks/
+---
+name: Autorun registry path reference
+description: Detects references to autorun registry related paths, which are commonly abused to achieve persistence by executing programs automatically at user logon.
+regex: Windows[\\]+CurrentVersion[\\]+Run|Policies[\\]+Explorer[\\]+Run
+basescore: 8.5
+tactic: [TA0003]
+technique: [T1547.001]
+reference:
+  - https://attack.mitre.org/techniques/T1547/001/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/registry/registry_set/registry_set_powershell_in_run_keys.yml
+  - https://www.atomicredteam.io/atomic-red-team/atomics/T1547.001
+---
+name: Potential Base64 conversion
+description: Detects Base64 encoding and decoding primitives in PowerShell scripts that are commonly used to obfuscate data or stage payloads prior to further processing.
+regex: (To|From)Base64String|TransformFinalBlock\(|Base64Transform
+basescore: 9.3
+tactic: [TA0005]
+technique: [T1027]
+reference:
+  - https://archive.nullcon.net/website/archives/pdf/goa-2017/invoke-obfuscation-nullcon-2017.pdf
+  - https://community.sophos.com/sophos-labs/b/blog/posts/decoding-malicious-powershell
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_powershell_frombase64string.yml
+  - https://checkmarx.com/zero-post/checkmarx-zero-takes-down-malicious-prettier-alternative-found-in-vscode-marketplace/
+  - https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.tobase64transform.transformfinalblock?view=net-9.0
+  - https://attack.mitre.org/techniques/T1027/
+  - https://www.atomicredteam.io/atomic-red-team/atomics/T1027
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_powershell_base64_frombase64string.yml
+  - https://clickfix.carsonww.com/domains/tema-com-ua-568517.hostingersite.com
+---
+name: Binary generated via outfile
+description: Detects PowerShell usage of Out-File or -OutFile to write executable or system binary formats to disk, a common payload staging technique used to materialize malware, tools, or loaders from in-memory or downloaded content.
+regex: (-outfile|out-file)\s+\S+\.(exe|bin|dll|msi|scr|cpl|ocx|sys)
+basescore: 9.5
+tactic: [TA0002, TA0005]
+technique: [T1105, T1027]
+reference:
+  - https://attack.mitre.org/techniques/T1105/
+  - https://attack.mitre.org/techniques/T1027/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1105/T1105.md
+---
+name: Clipboard manipulation
+description: Simple clipboard references.
+regex: \.clipboard|clipboardcontent|get-clipboard
+basescore: 9.2
+tactic: [TA0009]
+technique: [T1059.001, T1115]
+reference:
+  - https://attack.mitre.org/techniques/T1115/
+---
+name: Compressed file manipulation
+description: Detects creation or extraction of compressed archives via PowerShell or .NET APIs, which may indicate data collection, staging, or obfuscation activity.
+regex: GZipStream|IO.Compression|(expand|compress)-Archive|-7*zip|ExtractToDirectory
+basescore: 3.8
+tactic: [TA0009, TA0005]
+technique: [T1560]
+reference:
+  - https://attack.mitre.org/techniques/T1560/
+---
+name: Critical Windows registry path reference
+description: Detects references to critical Windows registry paths associated with services, authentication, persistence, session control, credential storage & more. Make sure you filter out overly noisy processes before consuming this one.
+regex: SYSTEM[\\]+CurrentControlSet[\\]+Services|SAM[\\]+SAM[\\]+Domains[\\]+Account|CurrentControlSet[\\]+Control[\\]+Session Manager[\\]+KnownDLLs|Windows[\\]+CurrentVersion[\\]+(RunServices|Explorer[\\]+RunMRU)|Terminal Server Client[\\]+Servers|CurrentVersion[\\]+Internet\s+|Control[\\]+Lsa[\\]+
+basescore: 8.2
+tactic: [TA0005, TA0003, TA0006]
+technique: [T1059.001, T1003, T1547, T1543, T1112]
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/registry/registry_sam_hive_access.yml
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/registry/registry_lsa_secrets_access.yml
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/registry/registry_service_installation.yml
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/registry/registry_known_dlls_modification.yml
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/registry/registry_run_keys.yml
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/registry/registry_runonce_keys.yml
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/registry/registry_rdp_server_history.yml
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/registry/registry_internet_settings_modification.yml
+---
+name: Suspicious DNS activity
+description: Detects PowerShell-based DNS TXT retrieval patterns commonly used for DNS-based command retrieval/staging, including Resolve-DnsName/Resolve-Dns with TXT lookups and string reconstruction via .Strings or -join.
+regex: (Resolve-dns\s+.*-Type|nslookup\s+-type=txt).+(\.Strings|-join\s)
+basescore: 10
+tactic: [TA0011]
+technique: [T1071.004]
+reference:
+  - https://attack.mitre.org/techniques/T1071/004/
+  - https://learn.microsoft.com/en-us/powershell/module/dnsclient/resolve-dnsname
+  - https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/nslookup
+  - https://www.youtube.com/watch?v=t4rpsFt6n08---
+name: Potential downgrade attack
+description: >
+  Detects explicit attempts to force an older protocol or feature version (e.g., specifying version 2) via command-line switches,
+  a pattern commonly associated with downgrade attacks to weaken security controls or exploit legacy behaviors.
+
+  Note that the unicodes below refer to Hyphen-Minus (ASCII hyphen), En/m Dash and Horizontal Bar.
+  Refer to FAQ entry 3.1 in the reference to use those in Splunk/SPL.
+regex: \s[\u002D\u2013\u2014\u2015/]ve*r*s*i*o*n*\s+2\b
+basescore: 7.4
+tactic: [TA0005]
+technique: [T1573]
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_powershell_downgrade_attack.yml
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1562.010/T1562.010.yaml
+  - https://attack.mitre.org/techniques/T1562/010/
+---
+name: Email related reference
+description: Spots obvious email related commands and references.
+regex: Mail(box|from|to|message|kit)|attachment|\b-(from|to)\s+\S+@\S+\.\S+|send\S*mail
+basescore: 5.7
+tactic: [TA0011]
+technique: [T1071.003]
+reference:
+  - https://www.group-ib.com/blog/dark-pink-apt/
+  - https://attack.mitre.org/techniques/T1071/003/
+---
+name: Eventlog/ETW manipulation
+description: Detects interaction with Windows Event Logs or ETW tracing, including access to .evtx files or use of logging/tracing controls, which may indicate log tampering, monitoring evasion or other interesting activity.
+regex: eventlog|\.evtx|EventLog-App|-etwtrace|-eventlog
+basescore: 6
+tactic: [TA0005]
+technique: [T1070.001]
+reference:
+  - https://attack.mitre.org/techniques/T1070/001/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_susp_eventlog_clear.yml
+---
+name: Fairly suspicious keywords
+description: This indicator is designed to capture up to 3 low-severity strings through multi-matching (see the maxmatch field below), avoiding the need to create numerous similar-value indicators. As a result, the regex will be long. If a particular string/pattern needs to be highlighted separately, it can be offloaded into its own indicator and removed from this one. The maxmatch field defines how many distinct matches are treated as separate instances of the indicator. It was initially inspired and later expanded from a few Sigma detections (refer to references).
+regex: shell\.application|DisableRealtimeMonitoring|password|dump|Obfuscation|sploit|scanner|rundll|Reflection|icm\s+|base64|discover-|IsInRole|Get-WinSystemLocale|Set-Wallpaper|etsn\s+.+(ComputerName|TargetName)|(start|get)-Service.+(ComputerName|TargetName)|gsv\s+.+(ComputerName|TargetName)|get-Credential|(ps|Get-Process)\s+.+(ComputerName|TargetName)|(new|start)-ComplianceSearch|Get-Azure(user|group)|System.IO.File|PasswordSettings|localadmin|downloaddata|get-\S+(credent|password)|System\.Convert|[^\.]+\.dll\b|InteropServices|Get-LocalUser|\b-useb\s|binPath|PowerUp|GetTempFileName|SecurityProtocol|get-netfirewall|winsystemlocale|RemoteConnection|Get-PSSnapin|AntiVirusProduct|ldap://|\s+(start-job|sajb)\s+|ActiveDirectory\.Domain|\b(tnc|Test-NetConnection|Test-Connection)\s+\S+\.\S+\s+[-]port\s+\d+|\bcmd(\.exe)*\s+/c\b|taskkill.+/f|[^\-]encoded|foreach\s[\s\S]+\-join\s|downloadfile|DomainRole|Win32_UserAccount|RunMRU|readAllBytes|Text\.Encoding|SecureString|%[0-9a-z]+%/
+max_match: 3
+basescore: 4.0
+tactic: TA0002
+technique: T1059.001
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_script/posh_ps_susp_keywords.yml
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_script/posh_ps_malicious_keywords.yml
+---
+name: File download via PS web client
+description: Detects PowerShell usage of common web client methods (Invoke-WebRequest/iwr, curl, wget) combined with explicit file output parameters, indicating remote file retrieval and on-disk staging commonly used for tool transfer or payload delivery.
+regex: (invoke[-]WebRequest|curl|wget|iwr)\s+[\s\S]*(-outfile|out-file)
+basescore: 6.5
+tactic: [TA0011]
+technique: [T1105]
+reference:
+  - https://attack.mitre.org/techniques/T1105/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_susp_web_request_cmd_and_cmdlets.yml
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_powershell_download_iex.yml
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1105/T1105.md---
+name: FTP usage
+description: Matches against use of *FTP (TFTP, SFTP, etc) by inspecting the url scheme which indicates notable data transfer via PS.
+regex: ftp://[^\.]+\.[^\.]+
+basescore: 10
+tactic: TA0011
+technique: [T1105, T1071, T1048.003, T1059.001]
+reference:
+  - https://attack.mitre.org/detectionstrategies/DET0416/
+---
+name: Firewall rule creation
+description: Creation of Windows Firewall rules or filters via NetSecurity cmdlets.
+regex: new-netfirewall[\s\S]+(filter|rule)
+basescore: 8.7
+tactic: TA0005
+technique: [T1562.004, T1059.001]
+reference:
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1562.004/T1562.004.md
+  - https://learn.microsoft.com/en-us/powershell/module/netsecurity/new-netfirewallrule
+---
+name: Highly suspicious keywords
+description: |
+
+  Detects the presence of multiple high-risk PowerShell keywords and behavioral
+  primitives commonly associated with post-exploitation, credential access,
+  lateral movement, defense evasion, and payload staging.
+
+  This indicator aggregates a broad set of strongly suspicious strings into a
+  single multi-match regex to reduce rule sprawl and maintenance overhead. The
+  `maxmatch` parameter limits how many distinct keyword matches are evaluated per
+  event, enabling signal amplification when multiple independent indicators of
+  malicious intent co-occur.
+
+  The regex is intentionally extensive by design. Any individual string or
+  pattern that requires higher fidelity, different scoring, or independent
+  tuning should be promoted to its own dedicated indicator and removed from this
+  aggregate set.
+
+  This rule was initially inspired by, and later expanded beyond, multiple Sigma
+  detections covering malicious PowerShell tradecraft.
+  
+regex: (start|complete)-bitstransfer|mimik|metasp|psrecon|-persistence|AssemblyBuilderAccess|Reflection\.Assembly|spraying|shellcode|injection|BypassUAC|UACBypass|Rc4ByteStream|System\.Security\.Cryptography|\blsass|LastLoggedOn|hijack|BackupPrivilege|\bngrok|stage0|comsvcs|backdoor|Microsoft\.Exchange|brute.?force|Port.?Scan|Exfiltration|exploit|beacon|-dump|SeTcbPrivilege|GPPPassword|CommandAs|\.kirbi|ntds\.dit|ntdsutil|krbtgt|esentutl|procdump|(\b|\.)amsi|antimalware|Downloadstring|-adgroupmember|StringBuilder|\bsekurlsa|SimonTatham|\bksetup\s|amsiInitFailed|ASCIIEncoding|::ReadAllText|DumpCreds|-decrypt|Schedule\.Service|e46eead8-0c54-4489-9898-8fa79d059e0e|window\.location|EtwEventWriteNoRegistration|PasswordVault|ADDefaultDomainPasswordPolicy|TrustedForDelegation|ProtectedData|BeginConnect|\.SMBOpen|ConsentPromptBehaviorAdmin|Management\.Automation\.Host|Port-Scan|LocalAdminAccess|PowerShellWebAccess|BitConverter|PingStatus|set-variable[\s\S]+get-variable|clear-history|\bWinPwn|ComputerDetail|Port.?Scan|nishang|\[scriptblock\]|kernel32|e[^a-z0-9]{1,2}n[^a-z0-9]{1,2}c[^a-z0-9]{1,2}o[^a-z0-9]{1,2}d[^a-z0-9]{1,2}e[^a-z0-9]{1,2}d|c[^a-z0-9]{1,2}o[^a-z0-9]{1,2}m[^a-z0-9]{1,2}m[^a-z0-9]{1,2}a[^a-z0-9]{1,2}n[^a-z0-9]{1,2}d|System32[\\]+config[\\]+(sam|security)|\-encod\s|\S\.pfx|ReceiveBufferSize|ActiveXObject|Exchange\.Management\.PowerShell|System\.Drawing\.bitmap|\.GetPixel|InvokeScript
+max_match: 2
+basescore: 8.2
+tactic: TA0002
+technique: T1059.001
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_powershell_malicious_cmdlets.yml
+---
+name: HTTP/S usage
+description: Highlights commands containing a potential URL by matching against an HTTP/S reference. Consider filtering out URLs containing private/known addresses.
+regex: (https*)://
+basescore: 7.0
+tactic: [TA0011]
+technique: [T1059.001, T1071.001]
+reference:
+  - https://attack.mitre.org/techniques/T1071/001/
+---
+name: Invoke-Expression cmdlet
+description: Spots potential use of Invoke-Expression cmdlet and its alias.
+regex: Invoke-Expression|\biex\b
+basescore: 5.0
+tactic: TA0002
+technique: T1059.001
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_susp_web_request_cmd_and_cmdlets.yml
+---
+name: Local admin enumeration
+description: Potential commands aimed at enumerating members of the local administrators group.
+regex: EnumerateLocalAdmin|(Win32_Group|get-LocalGroupMember|get-ADGroupMember|net\s+localgroup).+administrators|Administrators\S+\.members\(
+basescore: 8.8
+tactic: [TA0007, TA0004]
+technique: [T1059.001, T1069.001, T1087, T1068]
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_module/posh_pm_susp_local_group_reco.yml
+  - https://www.reddit.com/r/PowerShell/comments/1b37wte/enumerating_localgroup_members/
+---
+name: Local user account creation
+description: Detects PowerShell creation of local user accounts, a common persistence and privilege-enablement technique used to establish or maintain access on a host.
+regex: New-LocalUser
+basescore: 10
+tactic: [TA0003]
+technique: [T1136.001]
+reference:
+  - https://attack.mitre.org/techniques/T1136/001/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_script/posh_ps_localuser.yml
+  - https://www.atomicredteam.io/atomic-red-team/atomics/T1136.001
+---
+name: Long base64 string
+description: Identifies long Base64 blobs embedded in PowerShell commands, a common technique for hiding payloads, configuration data, or staged execution logic without relying on -EncodedCommand. Make sure you disregard this one in case using detection modeling since the behavior might already be highlighted in another indicator.
+regex: [a-z0-9+/]{260,}={0,2}
+basescore: 9.3
+tactic: [TA0005, TA0002]
+technique: [T1027.001, T1059.001]
+reference:
+  - https://blogs.vmware.com/security/2023/03/how-to-detect-poshc2-powershell-implants.html
+  - https://gist.github.com/githubfoam/0f6691b47a71486b25502e4e456d735e
+---
+name: Loopback address URL reference
+description: Detects HTTP/HTTPS URLs referencing loopback targets (127.0.0.0/8, ::1, localhost). In malicious scripts this is often associated with local proxying/tunneling, accessing locally bound services, or chaining traffic through an internal relay on the same host.
+regex: https*://(127\.\d+\.\d+\.\d+|::1|localhost)
+basescore: 6.6
+tactic: [TA0011]
+technique: [T1090.001]
+reference:
+  - https://attack.mitre.org/techniques/T1090/001/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1090.001/T1090.001.md
+---
+name: Memory manipulation
+description: This indicator matches common in-memory execution primitives (allocation, protection changes, pointer marshalling, and reflective assembly loading) frequently used by fileless PowerShell payloads and injection-style tradecraft.
+regex: VirtualAlloc|ProcessMemory|VirtualProtect|PtrToStructure|Assembly::Load|MemoryStream|AllocHGlobal|Buffer\S+BlockCopy
+basescore: 9.4
+tactic: [TA0007]
+technique: [T1059.001, T1106]
+reference:
+  - https://github.com/PowerShellMafia/PowerSploit
+  - https://github.com/PowerShellMafia/PowerSploit/blob/master/CodeExecution/Invoke-ReflectivePEInjection.ps1
+  - https://github.com/BC-SECURITY/Empire
+---
+name: MS Defender exclusion path modification
+description: Detects attempts to add or modify Microsoft Defender exclusion paths.
+regex: (add|set)-MpPreference[\s\S]+ExclusionPath
+basescore: 9.4
+tactic: TA0005
+technique: [T1562.001, T1059.001]
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_script/posh_ps_win_defender_exclusions_added.yml
+  - https://research.splunk.com/endpoint/c148a894-dd93-11eb-bf2a-acde48001122/
+  - https://www.elastic.co/guide/en/security/current/windows-defender-exclusions-added-via-powershell.html
+  - https://www.huntress.com/blog/you-can-run-but-you-cant-hide-defender-exclusions
+  - https://learn.microsoft.com/en-us/powershell/module/defender/add-mppreference
+---
+name: MS Defender registry path reference
+description: Detects references to Microsoft Defender policy registry paths, which are commonly targeted to modify or disable Defender protections via configuration changes.
+regex: SOFTWARE[\\]+Policies[\\]+Microsoft[\\]+Windows Defender
+basescore: 9.2
+tactic: [TA0005]
+technique: [T1562.001]
+reference:
+  - https://attack.mitre.org/techniques/T1562/001/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/registry/registry_set/registry_set_windows_defender_tamper.yml
+  - https://www.atomicredteam.io/atomic-red-team/atomics/T1562.001
+---
+name: Named pipe activity
+description: Spots .NET named pipes for inter-process communication, often used for C2 or pivoting.
+regex: AnonymousPipeClientStream|NamedPipeServerStream|System\.IO\.Pipes
+basescore: 10
+tactic: TA0011
+technique: [T1059.001, T1559.001]
+reference:
+  - https://specterops.io/blog/2019/05/01/designing-peer-to-peer-command-and-control/
+  - https://www.lrqa.com/en/cyber-labs/extending-c2-lateral-movement-invoke-pbind/
+  - https://learn.microsoft.com/en-us/dotnet/api/system.io.pipes
+---
+name: Nested encoded command trace
+description: Identifies potential encoded PowerShell invocations that decode to a secondary PS command, a common obfuscation and staging technique. This regex is one of a VERY FEW recommended to be used in case-sensitive mode (refer to FAQ 3.2.1 entry).
+regex: (cABvAHcAZQByAHMAaABlAGwAbAA|cAB3AHMAaAA)[A-Za-z0-9+/]{20,}={0,2}
+basescore: 10
+tactic: TA0002
+technique: [T1059.001, T1027]
+reference:
+  - https://www.joesandbox.com/analysis/1720211/0/html
+---
+name: Net.Socket reference
+description: Detects explicit PowerShell usage of low-level .NET socket classes, which enables custom network communication outside standard application-layer protocols and is frequently used for bespoke C2 channels, tunneling, or covert data transfer.
+regex: Net\.Socket
+basescore: 10
+tactic: [TA0011]
+technique: [T1095]
+reference:
+  - https://somedieyoungzz.github.io/posts/kimsucky-2/
+  - https://attack.mitre.org/techniques/T1095/
+  - https://www.atomicredteam.io/atomic-red-team/atomics/T1095
+---
+name: Network reconnaissance related activity
+description: Detects PowerShell usage of network inspection and discovery primitives that enumerate connections, neighbors, or network configuration details, commonly used during host and network reconnaissance.
+regex: NetTCPConnection|Get-NetNeighbor|\.NetworkInformation
+basescore: 8
+tactic: [TA0007]
+technique: [T1046, T1016]
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_classic/posh_pc_susp_get_nettcpconnection.yml
+  - https://attack.mitre.org/techniques/T1046/
+  - https://attack.mitre.org/techniques/T1016/
+  - https://www.atomicredteam.io/atomic-red-team/atomics/T1046
+---
+name: Notable user account SID reference
+description: Detects references to high-value Windows security identifiers (SIDs) associated with privileged local groups, domain administrative groups, or built-in service accounts, which are commonly queried or checked during reconnaissance, privilege validation, or escalation logic.
+regex: \bS-1-5-(18|19|20|32-(544|548|549|550|551|573)|21-\d+-\d+-\d+-(500|512|516|518|519))\b
+basescore: 8
+tactic: [TA0007, TA0004]
+technique:
+  - T1069.001
+  - T1087.001
+reference:
+  - https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-identifiers
+  - https://attack.mitre.org/techniques/T1069/001/
+  - https://attack.mitre.org/techniques/T1087/001/
+---
+name: Notable file archive extension in URL
+description: Detects HTTP/HTTPS URLs that point to commonly abused archive or container formats used for payload delivery and staging, including RAR, ISO, 7z, and CAB.
+regex: https*://[^/]+/\S+\.(zip|rar|iso|7z|cab|img|arj|z|tar|tgz|(tar\.)*(bgx)z\d*)\b
+basescore: 8.8
+tactic: [TA0001, TA0002]
+technique: [T1566.001, T1105]
+reference:
+  - https://attack.mitre.org/techniques/T1566/001/
+  - https://attack.mitre.org/techniques/T1105/
+  - https://www.atomicredteam.io/atomic-red-team/atomics/T1105
+---
+name: Notable charset
+description: The idea is to spot unexpected charsets in the PS command payload. Adjust to your needs. Template detects Cyrillic. In SPL, simply use \p{Cyrillic} or \x notation. Please refer to FAQ 3.1 and reference below for other charset unicode ranges.
+regex: [\u0400-\u04FF\u0500-\u052F]
+basescore: 10
+tactic: [TA0002, TA0005]
+technique: [T1059.001, T1027]
+reference:
+  - https://www.knowyouradversary.ru/2025/08/239-thats-how-adversaries-abuse.html
+  - https://www.unicode.org/charts/
+  - https://www.regular-expressions.info/unicode.html
+  - https://www.compart.com/en/unicode/block/U+AC00 (Hangul)
+  - https://www.compart.com/en/unicode/block/U+4E00 (Han, CJK)
+  - https://github.com/avasero/psexposed/blob/main/FAQ.md#31-a-few-notes-to-consider-when-using-regex-in-splunkspl
+---
+name: Notable code construction
+description: >
+  Detects PowerShell code patterns commonly associated with dynamic command execution and basic obfuscation, output redirection for error suppression,
+  wildcard-based command discovery (Get-Alias/Get-Command), and indirect invocation techniques used to execute dynamically constructed code.
+
+  This might match on legitimate cases. So consider fine-tuning the score/regex to your needs. This regex will be later broke down into multiple smaller pieces focused on obfuscation techniques.
+regex: \b(gal|gcm)\s+\*|\(\s*gi\s+[\\]+W*|\$[0-9a-z_\[\]]+\s+(-b(x*or|and|not)|-sh[lr])\s+[\$0-9a-z_]{2,}|CreateObject\(.*Wscript.Shell.*\)\.Run|\$\w+\s*=\s*\(\s*\[char\]\s*\(
+basescore: 10
+tactic: [TA0005]
+technique: [T1059.001, T1027]
+reference:
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1027/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_script/posh_ps_invoke_expression.yml
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1059.001/T1059.001.md
+  - https://bazaar.abuse.ch/sample/7f92ce6ddf632dd49b6052f77857bd03e7e00f89965d9d6648c60773847ba6df/
+  - https://bazaar.abuse.ch/sample/785d8f70dea1a2cac7b63c00583c3f9fe6faa298a304eb2104a9cc0a73ce2e74/
+  - https://clickfix.carsonww.com/domains/tinavanleuven.com
+  - https://clickfix.carsonww.com/domains/adult.cheahpartners.com
+  - https://bazaar.abuse.ch/download/ec8c191ad171cf40461dc870b02f5c4e9904f9fec1191174d524b1fb3cbde47f/
+---
+name: Notable Computer or Machine account manipulation
+description: >
+  Detects PowerShell activity associated with the creation or manipulation of
+  computer (machine) accounts in Active Directory, including explicit setting
+  of SamAccountName or use of alternate credentials. This behavior is commonly
+  observed in lateral movement, persistence, and privilege escalation scenarios,
+  including abuse of machine account quota and rogue computer account creation.
+regex: new-adcomputer.+SamAccountName|add-computer.+credential
+basescore: 10
+tactic: [TA0003, TA0005, TA0008]
+technique: [T1136.002, T1098, T1021.002]
+reference:
+  # MITRE ATT&CK
+  - https://attack.mitre.org/techniques/T1136/002/
+  - https://attack.mitre.org/techniques/T1098/
+  - https://attack.mitre.org/techniques/T1021/002/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/builtin/security/win_security_add_remove_computer.yml
+  - https://www.atomicredteam.io/atomic-red-team/atomics/T1136.002
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1136.002/T1136.002.md
+---
+name: Notable PS console behavior
+description: Detects PowerShell usage that explicitly manipulates console foreground and background colors, a pattern often seen in interactive tooling, social-engineering scripts and PS attack frameworks.
+regex: (?=.*ForegroundColor)(?=.*BackgroundColor)
+basescore: 7.2
+tactic: [TA0005]
+technique: [T1059.001]
+reference:
+  - https://attack.mitre.org/techniques/T1059/001/
+---
+name: Notable credential reference
+description: Potential suspicious credential exposure or reuse.
+regex: \.CredentialCache|Net.ICredentials|Management.Automation.PSCredential
+basescore: 10
+tactic: [TA0006]
+technique: [T1059.001, T1003]
+reference:
+  - https://www.group-ib.com/blog/dark-pink-apt/
+  - https://www.ired.team/offensive-security-experiments/offensive-security-cheetsheets#http-powershell
+---
+name: Notable cryptographic reference
+description: Detects explicit PowerShell references to notable .NET cryptographic primitives (AES, hashing, key derivation, cipher modes, padding, CryptoStream), which are commonly used by malware to encrypt/decrypt payloads, protect configuration data, or implement encrypted C2 communications.
+regex: Cryptography\.(Aes|SHA|CipherMode|PaddingMode|CryptoStream|Rfc2898DeriveBytes)
+basescore: 10
+tactic: [TA0005]
+technique: [T1027, T1140]
+reference:
+  - https://0xtoxin.github.io/threat%20breakdown/ScrubCrypt-Rebirth-Of-Jlaive/
+  - https://www.fortinet.com/blog/threat-research/old-cyber-gang-uses-new-crypter-scrubcrypt
+  - https://gist.github.com/mthcht/e22174700cfc7959dac666ca7325c98f
+  - https://attack.mitre.org/techniques/T1027/
+  - https://attack.mitre.org/techniques/T1140/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1027/T1027.md
+---
+name: Notable data manipulation
+description: Detects PowerShell string and byte-level transformation techniques commonly used to dynamically reconstruct or modify data at runtime, including character casting, numeric conversion, slicing, joining, XOR operations, and regex-based extraction—patterns frequently associated with obfuscation, staged payload assembly, and evasion.
+regex: (convert|byte|length|xor|substring|join|toint|tostr).*\[char|\[char.*(convert|byte|length|xor|substring|join|toint|tostr)|regex.+::match|writeAllBytes|::ToString|System.Convert\S+ToString|Convert\.ToString|InvokeMember\S+ToString
+basescore: 8
+tactic: [TA0005]
+technique: [T1027, T1140]
+reference:
+  - https://archive.nullcon.net/website/archives/pdf/goa-2017/invoke-obfuscation-nullcon-2017.pdf
+  - https://attack.mitre.org/techniques/T1027/
+  - https://attack.mitre.org/techniques/T1140/
+  - https://www.knowyouradversary.ru/2025/08/239-thats-how-adversaries-abuse.html
+---
+name: Notable DLL file reference
+description: Detects explicit references to highly sensitive Windows system DLLs that are frequently abused in PowerShell-based post-exploitation activity, including credential dumping, AMSI bypass, native API invocation, and low-level process manipulation.
+regex: \b(comsvcs|kernel32|dbghelp|amsi|ntdll)\.dll
+basescore: 10
+tactic: [TA0005, TA0006]
+technique: [T1055, T1003.001]
+reference:
+  - https://attack.mitre.org/techniques/T1055/
+  - https://attack.mitre.org/techniques/T1003/001/
+  - https://medium.com/@0xHossam/powershell-exploits-modern-apts-and-their-malicious-scripting-tactics-7f98b0e8090c ---
+name: Notable ENV variable reference
+description: Detects PowerShell references to environment variables commonly used for staging paths, execution control, proxy awareness, or domain context, which are frequently leveraged in malicious scripts for portability and evasion.
+regex: env:(APPDATA|programdata|LOCALAPPDATA|public|comspec|systemdrive|PSExecutionPolicyPreference|HTTPS*_PROXY|NO_PROXY|.*PSLockdownPolicy|USERDNSDOMAIN)
+basescore: 7.6
+tactic: [TA0005, TA0007]
+technique: [T1027, T1082]
+reference:
+  - https://attack.mitre.org/techniques/T1027/
+  - https://attack.mitre.org/techniques/T1082/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1082/T1082.md
+---
+name: Notable EventLog query
+description: Detects PowerShell commands that use Get-WinEvent to query sensitive Windows event logs.
+regex: get-winevent.+(powershell/operational|security)
+basescore: 8.8
+tactic: TA0007
+technique: [T1059.001, T1082]
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_susp_eventlog_content_recon.yml
+  - https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.diagnostics/get-winevent
+---
+name: Notable file extension
+description: Flags potential references to file types frequently abused for execution, staging, or indirection in PowerShell tradecraft that are not massively common such as ps1 and other binary types (covered in other indicators).
+regex: \b[^\.]+\.(php|aspx|hta|scr)\b
+basescore: 10
+tactic: [TA0002, TA0005]
+technique: [T1059.001, T1204.002]
+reference:
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1204/002/
+---
+name: Notable Invoke-Expression
+description: Detects PowerShell code patterns commonly associated with dynamic command execution and basic obfuscation of Invoke-Expression (iex). This might match on legitimate cases. So consider fine-tuning the score/regex to your needs.
+regex: \b(iex|Invoke[-]Expression)\s+2>&1|\biex\s*\(|\.\s*'*iex'*|\biex\s*\(\s*irm\b|iex\s*\(\s*&\s*\(
+basescore: 10
+tactic: [TA0005]
+technique: [T1059.001, T1027]
+reference:
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1027/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_script/posh_ps_invoke_expression.yml
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1059.001/T1059.001.md
+  - https://bazaar.abuse.ch/sample/7f92ce6ddf632dd49b6052f77857bd03e7e00f89965d9d6648c60773847ba6df/
+  - https://bazaar.abuse.ch/sample/785d8f70dea1a2cac7b63c00583c3f9fe6faa298a304eb2104a9cc0a73ce2e74/
+  - https://clickfix.carsonww.com/domains/aaa-fxinvest.com
+  - https://clickfix.carsonww.com/domains/javsenpaiii.pages.dev
+  - https://clickfix.carsonww.com/domains/www.fitnesslife24.ch
+  - https://clickfix.carsonww.com/domains/whm.umeedshiksharath.org
+---
+name: Notable mailbox manipulation
+description: Spots suspicious mailbox configuration changes—forwarding rules, inbox manipulation, export requests, transport-rule modifications, and privilege or audit setting changes.
+regex: new-MailboxExportRequest|(new|set)-InboxRule .*(MoveToFolder|ForwardTo|RedirectTo|DeleteMessage)|mailbox.+(ForwardingSmtpAddress|ForwardingAddress|DeliverToMailboxAndForward)|AutoForwardEnabled.+true|(new|set)-TransportRule.+(BlindCopyTo|RedirectMessageTo|AddToRecipients)|Search-Mailbox.+TargetMailbox|MailboxPermission.+FullAccess|Mailbox.+(GrantSendOnBehalfTo|AuditEnabled.+false)
+basescore: 10
+tactic: [TA0006]
+technique: [T1098]
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/cloud/azure/identity_protection/azure_identity_protection_inbox_manipulation.yml
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/cloud/azure/identity_protection/azure_identity_protection_inbox_forwarding_rule.yml
+  - https://learn.microsoft.com/en-us/defender-xdr/alert-grading-playbook-inbox-manipulation-rules
+---
+name: Notable SCCM reference
+description: Detects common Microsoft Configuration Manager (SCCM/MECM) WMI namespaces, classes, services, and registry paths often seen in administrative tooling and software-deployment-driven execution/lateral movement.
+regex: (?:\b(?:mSSMS|CmRcService|connectionPoint|netbootserver|intellimirrorSCP|mSSMSManagementPoint|SMS_R_[A-Za-z0-9_]+)\b|root[\\/]+SMS[\\/]+site_[A-Za-z0-9_]+|HK(?:EY_LOCAL_MACHINE|LM)[\\/]+SOFTWARE[\\/]+Microsoft[\\/]+SMS)
+basescore: 8.2
+tactic: [TA0002,TA0008]
+technique: [T1072]
+reference:
+  - https://specterops.io/blog/2026/01/13/introducing-configmanbearpig-a-bloodhound-opengraph-collector-for-sccm/
+  - https://attack.mitre.org/techniques/T1072/
+  - https://learn.microsoft.com/en-us/intune/configmgr/core/clients/manage/client-health-checks
+  - https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/content-management/advanced-troubleshooting-tips---
+name: Notable script extension
+description: Detects PowerShell references to high-risk script container extensions commonly abused for payload staging and execution, including HTML Applications and Windows Script Files.
+regex: \S+\.(wsf|hta)
+basescore: 9.2
+tactic: [TA0005]
+technique: [T1059.005, T1218.005]
+reference:
+  - https://attack.mitre.org/techniques/T1059/005/
+  - https://attack.mitre.org/techniques/T1218/005/
+---
+name: Notable stream activity
+description: Detects PowerShell usage of .NET stream classes commonly leveraged for custom network communication, data transfer, or obfuscated payload delivery, including SSL streams and stream readers/writers.
+regex: SslStream|IO\.Stream(Reader|Writer)|WriteToStream
+basescore: 8.8
+tactic: [TA0011]
+technique: [T1071.001]
+reference:
+  - https://attack.mitre.org/techniques/T1071/001/
+  - https://www.atomicredteam.io/atomic-red-team/atomics/T1071.001
+---
+name: Notable subdirectory reference
+description: Highlights potential reference to a notable subdirectory
+regex: APPDATA%*[\\]+.*(Roaming|Temp)|%(public|programdata)%[\\]+|Windows[\\]+Temp[\\]+|Recycle\.Bin|Users[\\]+Public|[\\]+programdata|(Google[\\]+Chrome|Microsoft[\\]+Edge)[\\]+User Data[\\]+.+[\\]+(Cache|Cache_Data|GPUCache|Code Cache)|Mozilla[\\]+Firefox[\\]+Profiles.+[\\]+cache|Microsoft[\\]+Windows[\\]+(INetCache|Temporary Internet Files)
+basescore: 6.8
+tactic: TA0002
+technique: [T1059.001, T1204]
+reference:
+  - https://infosecwriteups.com/threat-hunting-series-the-threat-hunting-process-f76583f2475b
+---
+name: Potential obfuscated encoded command
+description: >
+  Detects the usage of encoded command in unusual or obfuscated forms, inclduing En/m Dash, Horizontal Bar
+  and others such as using / instead of hyphen (-). The multiple question marks are needed for disabling group matching.
+  Refer to FAQ entry 3.1 in the reference to use those unicode chars in Splunk/SPL (\x{NNNN}).
+regex: [\u2013\u2014\u2015/](?:ec|e(?:n(?:c(?:o(?:d(?:e(?:d(?:c(?:o(?:m(?:m(?:a(?:n(?:d)?)?)?)?)?)?)?)?)?)?)?)?)?)\s+[\"']*\s*[a-z0-9+/]{20,}={0,2}|e[^a-z0-9]{1,2}n[^a-z0-9]{1,2}c[^a-z0-9]{1,2}o[^a-z0-9]{1,2}d[^a-z0-9]{1,2}e[^a-z0-9]{1,2}d|c[^a-z0-9]{1,2}o[^a-z0-9]{1,2}m[^a-z0-9]{1,2}m[^a-z0-9]{1,2}a[^a-z0-9]{1,2}n[^a-z0-9]{1,2}d
+basescore: 10
+tactic: TA0002
+technique: [T1059.001, T1027]
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_powershell_base64_encoded_cmd_patterns.yml
+  - https://detect.fyi/malicious-encoded-powershell-detecting-decoding-modeling-321fd322c6ec
+  - https://github.com/avasero/psexposed/blob/main/FAQ.md#31-a-few-notes-to-consider-when-using-regex-in-splunkspl---
+name: Overly large base64 payload
+description: Detects extremely large Base64-encoded blobs embedded in PowerShell or command-line content, which are commonly used to inline payloads, shellcode, or secondary stages for in-memory execution, obfuscation and binary droppers.
+regex: [a-z0-9+/]{20000,}
+basescore: 10
+tactic: [TA0005]
+technique: [T1027, T1059.001]
+reference:
+  - https://attack.mitre.org/techniques/T1027/
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://bazaar.abuse.ch/sample/1343042d33c90838d40d4c631272359db5f4154523590242400c7f6eba2cc27b/
+---
+name: Plain encoded command usage
+description: >
+  Detects the usage of encoded command in multiple forms, excluding advanced obfuscation (refer to other indicators).
+  The multiple question marks are needed for disabling group matching.
+
+  Note that the unicodes below refer to Hyphen-Minus (ASCII hyphen) only, which is the standard format. En/m Dash, Horizontal Bar
+  and others are covered in other indicators and with advanced deobfuscation logic (API).
+# Simplified for Rust regex (original psexposed uses deep nesting; see reference for full pattern)
+regex: -(?:enc(?:odedcommand)?|encodedcommand)\s+["']*\s*[A-Za-z0-9+/]{20,}={0,2}
+basescore: 4.5
+tactic: TA0002
+technique: [T1059.001, T1027]
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_powershell_base64_encoded_cmd_patterns.yml
+  - https://detect.fyi/malicious-encoded-powershell-detecting-decoding-modeling-321fd322c6ec---
+name: Potential binary file download
+description: Detects HTTP or HTTPS URLs referencing executable or installer file types commonly used for payload delivery, staging, or tool transfer during post-exploitation.
+regex: https*://\S+\.\S+/\S+\.(exe|bin|dll|msi|scr|cpl|ocx|sys)
+basescore: 8.4
+tactic: [TA0001, TA0011]
+technique: [T1105, T1566.001]
+reference:
+  - https://attack.mitre.org/techniques/T1105/
+  - https://attack.mitre.org/techniques/T1566/001/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1105/T1105.md
+  - https://unit42.paloaltonetworks.com/lnk-malware/
+---
+name: Potential data staging behavior
+description: Detects PowerShell activity indicative of data staging, where directories are created and followed by bulk file enumeration or copying operations commonly used to prepare data for exfiltration.
+regex: (CreateDirectory|mkdir|(expand|compress)-Archive|-7*zip|ExtractToDirectory|(new-item|ni).+(i|ItemType)\s+Directory).+\b(cp|gci|Get-ChildItem|copy-item|robocopy|\S+::Copy|start-BitsTransfer)\s+
+basescore: 8.8
+tactic: [TA0009]
+technique: [T1074.001]
+reference:
+  - https://attack.mitre.org/techniques/T1074/001/
+  - https://www.atomicredteam.io/atomic-red-team/atomics/T1074.001
+---
+name: Potential Instant Messaging API communication
+description: Detects network or script references to core Instant Messaging backend API and transport domains (e.g., Discord, WhatsApp, Telegram, Slack, Teams, Signal, Facebook Messenger, Google Chat, WeChat, Skype). Access to these domains very reliably implies real-time messaging activity rather than generic web browsing and may indicate data exfiltration, C2 over IM, or unauthorized communications.
+regex: gateway\.discord\.gg|whatsapp\.net|api\.telegram\.org|slack-msgs\.com|msgapi\.teams\.microsoft\.com|chat\.signal\.org|mqtt-mini\.facebook\.com|chat\.googleapis\.com|wx\.qq\.com|client-s\.gateway\.messenger\.live\.com
+basescore: 10
+tactic: [TA0011]
+technique: [T1071.001]
+reference:
+  - https://www.group-ib.com/blog/dark-pink-apt/
+  - https://cloud.google.com/blog/topics/threat-intelligence/telegram-malware-iranian-espionage
+  - https://attack.mitre.org/techniques/T1071/001/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1071.001/T1071.001.md
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/network_connection/net_connection_win_susp_im_domains.yml
+---
+name: Potential in-memory data decompression
+description: Detects PowerShell references to in-memory decompression primitives (e.g., Decompress, DeflateStream), which are commonly used to unpack compressed payloads, configuration data, or second-stage code at runtime to evade static inspection.
+regex: ::Decompress|DeflateStreamIO
+basescore: 10
+tactic: [TA0005]
+technique: [T1027, T1140]
+reference:
+  - https://attack.mitre.org/techniques/T1027/
+  - https://attack.mitre.org/techniques/T1140/
+  - https://blackhat.com/docs/us-14/materials/us-14-Kazanciyan-Investigating-Powershell-Attacks.pdf
+  - https://fareedfauzi.github.io/2021/02/06/LemonDuck-Powershell.html
+  - https://www.elastic.co/guide/en/security/8.19/powershell-suspicious-payload-encoded-and-compressed.html
+---
+name: Potential Sysmon evasion activity
+description: Detects PowerShell or command-line activity querying Sysmon services, processes, configuration, event logs, or registry keys, which is commonly performed by attackers to assess monitoring coverage prior to disabling, bypassing, or evading Sysmon-based detection.
+regex: Get-(Service|Process|ItemProperty|WinEvent|wevutil(\.exe)*)\s+.+\bSysmon|CurrentControlSet.+Services.+Sysmon|Sysinternals.+System Monitor
+basescore: 10
+tactic: [TA0005]
+technique: [T1562.001, T1112]
+reference:
+  - https://www.ired.team/offensive-security/enumeration-and-discovery/detecting-sysmon-on-the-victim-host
+  - https://attack.mitre.org/techniques/T1562/001/
+  - https://attack.mitre.org/techniques/T1112/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_sysmon_service_manipulation.yml
+  - https://www.darkoperator.com/blog/2018/10/5/operating-offensively-against-sysmon
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_fltmc_unload_driver_sysmon.yml
+---
+name: Potential tampering with ETW
+description: Detects PowerShell attempts to disable or neuter ETW providers by modifying trace provider settings (e.g., disabling, setting level to 0, or zeroing keywords), which is commonly used for logging/telemetry evasion.
+regex: Set-EtwTraceProvider.+(Enabled:.+false|level\s+0|MatchAnyKeyword\s+0|0x11)
+basescore: 10
+tactic: [TA0005]
+technique: [T1562.006]
+reference:
+  - https://attack.mitre.org/techniques/T1562/006/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_script/posh_ps_etw_trace_evasion.yml
+  - https://www.atomicredteam.io/atomic-red-team/atomics/T1562.006
+---
+name: Potential tampering with MS Defender
+description: Spots potential attempts to tamper with MS Defender.
+regex: Set-MpPreference.+Disable(RealtimeMonitoring|BehaviorMonitoring|IOAVProtection|ScriptScanning|IntrusionPreventionSystem|AntiSpyware)|Set-MpPreference.+(EnableControlledFolderAccess\s+disabled|MAPSReporting\s+0|SubmitSamplesConsent\s+2)|MpCmdRun.+-RemoveDefinitions
+basescore: 10
+tactic: TA0005
+technique: [T1562.001, T1059.001]
+reference:
+  - https://github.com/mdecrevoisier/SIGMA-detection-rules/blob/main/windows-defender/defender-critical%20security%20components%20disabled%20(PowerShell).yaml
+---
+name: PowerShell script download
+description: Detects HTTP/HTTPS URLs referencing PowerShell script or module files (.ps1/.psm1), which are commonly used for remote payload delivery and staging.
+regex: https*://\S+\.\S+/\S+\.(ps1|psm1)
+basescore: 7.8
+tactic: [TA0011]
+technique: [T1105]
+reference:
+  - https://attack.mitre.org/techniques/T1105/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1105/T1105.md
+---
+name: Proxy configuration manipulation
+description: Detects PowerShell activity that creates, modifies, or references proxy configuration mechanisms (e.g., WebProxy objects, SOCKS proxies, or proxy-related registry/value changes), which are commonly used to reroute traffic, bypass network controls, or blend malicious communications into proxied environments.
+regex: WebProxy\(|\S+\.proxy\s*=|\bproxy(enable|server).*value|SocksProxy
+basescore: 8.2
+tactic: [TA0005, TA0011]
+technique: [T1090, T1562.001]
+reference:
+  - https://attack.mitre.org/techniques/T1090/
+  - https://attack.mitre.org/techniques/T1562/001/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_script/posh_ps_proxy_configuration.yml
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1090/T1090.md
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/linux/process_creation/proc_creation_lnx_proxy_connection.yml
+---
+name: PS-Remoting usage
+description: Detects PowerShell remoting constructs that establish or reference remote PowerShell sessions, which can be used for lateral movement, remote command execution, or distributed administration and are frequently abused post-compromise.
+regex: -PSSession|PSRemoting
+basescore: 7
+tactic: [TA0008]
+technique: [T1021.006]
+reference:
+  - https://learn.microsoft.com/en-us/powershell/scripting/security/remoting/running-remote-commands?view=powershell-7.5&viewFallbackFrom=powershell-6#windows-powershell-remoting
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_script/posh_ps_enable_psremoting.yml
+  - https://attack.mitre.org/techniques/T1021/006/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1021.006/T1021.006.md
+---
+name: Windows registry modification
+description: Detects PowerShell usage that creates or modifies Windows Registry keys or values via New-Item or Set-Item targeting registry provider paths (HKCU/HKLM/HKCR/HKU/HKCC), a common technique used for persistence, configuration tampering, or security control manipulation.
+regex: (New|set)-Item.+[-]path.+hk\S*:|\.RegWrite\s
+basescore: 5
+tactic: [TA0005, TA0003]
+technique: [T1112, T1547]
+reference:
+  - https://attack.mitre.org/techniques/T1112/
+  - https://attack.mitre.org/techniques/T1547/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_script/posh_ps_registry_modification.yml
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1112/T1112.md
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_script/posh_ps_vbscript_registry_modification.yml
+---
+name: Remarkably suspicious keywords
+description: This indicator holds a long list of keywords potentially linked to malicious activity. It's among the few pattern indicators with the highest base score (10). It was initially inspired and later expanded from a few Sigma detections (refer to references). Also refer to other indicators ending with 'keywords' as they also accomodate multiple keywords but for lower signals. Keywords might be removed and added to a more specific indicator in the future.
+regex: Invoke-(DllInjection|CredentialInjection|EnumerateLocalAdmin|Portscan|ShadowCopy|DllCanUnloadNow|Mimikatz|PrivescAudit|ReverseDnsLookup|WmiCommand|TokenManipulation|posh|ShadowCred|LDAPEnum|PassTheCert|sharefinder|RunAsSystem|NetStat|ADeleginator|ScriptSentry)|UnsafeNativeMethods|GuiltySpark|-Impersonate|PsMapExec|ksetup.+dumpstate|system32[\\]+microsoft[\\]+protect|wmiclass|Add-DnsClientNrptRule|TransformFinalBlock|Base64Transform|-AsByteStream|Get-CachedRDPConnection|Get-CurrentUserTokenGroupsid|Get-DFSshare|Get-DNSRecord|Get-DNSZone|Get-DomainPolicy|Find-AVSignature|Get-GPPAutologon|Get-GPPPassword|Get-HttpStatus|Get-MicrophoneAudio|Get-SecurityPackage|Get-VolumeShadowCopy|set-ADComputer|new-object.+DirectoryEntry|p0wned|Mount-VolumeShadowCopy|New-ElevatedPersistenceOption|New-UserPersistenceOption|New-VolumeShadowCopy|rdrleakdiag|Out-CompressedDll|Out-EncodedCommand|Out-EncryptedScript|PrivescAudit|Remove-VolumeShadowCopy|Set-CriticalProcess|Set-MasterBootRecord|powersploit|fltMC.+unload|BinaryWritableServices|\bunrar\.exe\b|DomainShare|DomainFileServer|DomainRecon|Get-ActiveDirectoryUserGroups|Add-DomainUserToLocalGroup|(get|add)-DomainUser|(get|add)-DomainComputer|Connect-FTP|Add-HostFileEntry|Connect-HTTP|InternetExplorerEnhancedSecurityConfiguration|PowerShellPowerUp|Connect-RDP|Get-RemoteConnection|Update-ScheduledTask|UserImpersonation|DomainSPNTicket|\S+-Interesting\S+|Add-ADGroupMember.+admin|NetRDPSession|termsrv\.dll|Get-Tcp4Connections|RDPSharedDrives|-Jitter\s|PasswordSpray|HostEnum|AVProcesses|-netuser|ActiveTCPConnections|-MachineAccount|Get-Process\s+-Name\s+lsass|PasswordNotRequired.*true|new-machineaccount|RegBackdoor|ScrnSaveBackdoor|-Backdoor|ADSBackdoor|BackdoorLNK|Invoke-ACLScanner|Mimikatz|SMBScanner|-PowerDump|ReflectivePEInjection|ARPScan|(nishang|Inveigh|WINspect)\.ps1|Install-ServiceBinary|AllowedToActOnBehalfOfOtherIdentity|DNSDiscovery|Invoke-PSInject|Invoke-PsUaCme|Out-Minidump|Invoke-NetRipper|Mimikittenz|psrecon|AmsiBypass|recurs.+pass.+cred|invoke-mass|-Vnc\b|CredentialInjection|BypassUAC|DowngradeAccount|VulnAutoRun|VulnSchTask|HoneyHash|TimedScreenshot|Kerberoast|CradleCrafter|Kittielocal|keylogger|-Locksmith|-nightmare|-attack\b|VolumeShadowCopyTools|invoke-dll|PingSweep|Reverse(Power)*Shell|CheckLocalAdminAccess|CaptureServer|PowerBreach|UserHunter|Invoke-ThunderStruck|WScriptBypassUAC|Invoke-VoiceTroll|Invoke-WinEnum|Invoke-Shellcode|Invoke-NinjaCopy|Invoke-Paranoia|Get-Screenshot|Get-Keystrokes|LSASecret|Get-PassHash|Get-ChromeDump|Get-FoxDump|Do-Exfiltration|Enabled-DuplicateToken|Exploit-|EventVwrBypass|Find-AllVulns|Add-Exfiltration|Add-Persistence|PersistenceSniper|sharefinder|Invoke-FileFinder|-smb\S+brute
+max_match: 1
+basescore: 10
+tactic: TA0002
+technique: T1059.001
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_powershell_malicious_cmdlets.yml
+---
+name: Remote command
+description: >
+  Detects PowerShell command lines that specify a remote target via common “remote host”
+  parameters (e.g., -ComputerName / -TargetName). This is frequently associated with
+  remote command execution and lateral movement using PowerShell remoting/WinRM
+  (e.g., Invoke-Command, Enter-PSSession, New-PSSession) and other cmdlets that accept
+  a remote computer target.
+
+  Note that the unicodes below refer to Hyphen-Minus (ASCII hyphen), En/m Dash and Horizontal Bar.
+  Refer to FAQ entry 3.1 in the reference to use those in Splunk/SPL.
+regex: \s+[\u002D\u2013\u2014\u2015](ComputerName|TargetName)\s+[^.\s]
+basescore: 6
+tactic: [TA0002, TA0008]
+technique: [T1059.001, T1021.006]
+reference:
+  - https://attack.mitre.org/techniques/T1021/006/
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_script/posh_ps_invoke_command_remote.yml
+  - https://www.atomicredteam.io/atomic-red-team/atomics/T1021.006
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1021.006/T1021.006.md
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1021.006/T1021.006.yaml
+  - https://github.com/avasero/psexposed/blob/main/FAQ.md#31-a-few-notes-to-consider-when-using-regex-in-splunkspl
+---
+name: Scheduled task activity
+description: Detects scheduled task activity via PowerShell, native utilities, WMI, or registry artifacts, which may indicate persistence or privilege escalation.
+regex: get-ScheduledTask|schtasks|Schedule\.Service|Win32_ScheduledJob|PS_ScheduledTask|Schedule.+TaskCache
+basescore: 3.8
+tactic: [TA0003, TA0004]
+technique: [T1053.005]
+reference:
+  - https://attack.mitre.org/techniques/T1053/005/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_script/posh_ps_cmdlet_scheduled_task.yml
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1053.005/T1053.005.md#atomic-test-4---powershell-cmdlet-scheduled-task
+---
+name: Scheduled Task modification
+description: Spots potential Windows Task creation/modification via the most common forms/cmdlets.
+regex: \bRegister-ScheduledTask|New-ScheduledTask(Trigger|Action|Setting)|Win32_ScheduledJob.+create|schtasks[\s\S]+\s/create|Schedule\.Service.+\.create
+basescore: 9.7
+tactic: [TA0003, TA0004]
+technique: [T1053.005, T1059.001]
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_script/posh_ps_cmdlet_scheduled_task.yml
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1053.005/T1053.005.md#atomic-test-4---powershell-cmdlet-scheduled-task
+---
+name: Screen manipulation
+description: Detects PowerShell usage of .NET screen capture primitives that can be used to capture the desktop for collection purposes, including CopyFromScreen and Windows.Forms.Screen. Initially inspired on a Sigma rule created by https://x.com/frack113.
+regex: CopyFromScreen|Windows\.Forms\.Screen|\.SendKeys|\.MainWindowTitle
+basescore: 8.8
+tactic: [TA0009]
+technique: [T1113]
+reference:
+  - https://attack.mitre.org/techniques/T1113/
+  - https://github.com/calinux-py/PowerShell/blob/main/Google%20Drive%20Pwn/drivepwn.ps1
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_script/posh_ps_capture_screenshots.yml
+  - https://www.atomicredteam.io/atomic-red-team/atomics/T1113
+---
+name: Potential script reference
+description: Detects references to common Windows script hosts/interpreters (wscript/cscript/JavaScript) or execution of script files (.bat/.cmd/.js/.vbs), which may indicate script-based execution.
+regex: wscript|cscript|javascript|\b\S+\.(bat|js|vbs|cmd)\b
+basescore: 6
+tactic: [TA0002]
+technique: [T1059.003, T1059.005, T1059.007]
+reference:
+  - https://attack.mitre.org/techniques/T1059/003/
+  - https://attack.mitre.org/techniques/T1059/005/
+  - https://attack.mitre.org/techniques/T1059/007/
+---
+name: Security agent enumeration
+description: Detects PowerShell enumeration of common EDR/AV/security agent names via service listing and filtering, a common precursor to defense evasion and tailored follow-on actions. Inspired by a Sigma rule in the references.
+regex: (Where-Object|get-service).+(CrowdStrike|Falcon|SentinelOne|Cylance|Carbon\s?Black|Sophos|Symantec|McAfee|Trellix|Trend\s?Micro|ESET|Kaspersk|Bitdefend|Cybereason|Tanium|Elastic|Cisco\s?AMP|Forti|Morphisec|Palo|FireEye|.*virus|avira)
+basescore: 10
+tactic: [TA0007]
+technique: [T1518.001]
+reference:
+  - https://attack.mitre.org/techniques/T1518/001/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_script/posh_ps_get_process_security_software_discovery.yml
+  - https://www.atomicredteam.io/atomic-red-team/atomics/T1518.001
+---
+name: Service creation
+description: Spots potential service creation via New-Service PS cmdlet and sc.exe.
+regex: \bnew-service\s|\bsc(.exe)*\s+create\s
+basescore: 7.6
+tactic: [TA0003, TA0004]
+technique: [T1543.003, T1059.001]
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_susp_service_creation.yml
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1543.003/T1543.003.md
+---
+name: Service manipulation
+description: Spots potential activity around Windows services (cmdlet or registry-based). Initially inspired on Sigma rulset.
+regex: \b(start|stop|get)-Service|SYSTEM[\\]+CurrentControlSet[\\]+Services
+basescore: 4.2
+tactic: [TA0003, TA0004, TA0005]
+technique: [T1543.003, T1059.001, T1569.002, T1489]
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_powershell_stop_service.yml
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1489/T1489.md
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1543.003/T1543.003.md
+---
+name: Service modification
+description: Spots potential service modification via Sew-Service PS cmdlet.
+regex: \bset-service
+basescore: 6.2
+tactic: [TA0003, TA0004]
+technique: [T1543.003, T1059.001]
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_susp_service_creation.yml
+---
+name: Sketchy file name
+description: Detects references to potential suspicious script/binary filenames commonly used for webshells, droppers, or staged payloads (e.g., short/random names, tmp/upload/download/admin/backdoor/beacon/tunnel/cmd/exfil/scan patterns) with some notable extensions.
+regex: \b['\"\\\/:!&@\$\s](\d{1,3}|[a-z]{1,2}|[a-z]\d{1,2}|[za]{2,}|tmp\d*|upload\d*|download\d*|admin\d*|backdoor\d*|beacon\d*|tunnel\d*|[^\.]*cmd\d*|command\d*|[^\.]*exfil.*|[^\.]*backdoor\d*|[^\.]*scan\d*)(\.(jpg|gif|png))*\.(php\d*|aspx*|pl|cgi|py|bat|cmd|vbs|js|dll|bin|txt)['\"\\\/:!&@\$\s]*\b
+basescore: 8.6
+tactic: [TA0002, TA0005]
+technique: [T1505.003, T1036]
+reference:
+  - https://bughra.dev/posts/file-upload/
+  - https://attack.mitre.org/techniques/T1505/003/
+  - https://attack.mitre.org/techniques/T1036/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1505.003/T1505.003.md
+---
+name: Slightly suspicious keywords
+description: This is a generic indicator to match against a list of keywords, absolutely not malicious on their own but used for contextual enrichment and weak-signal correlation. Also refer to other indicators ending with 'keywords' as they also accomodate multiple keywords but for higher signals. Keywords might be removed and added to a more specific indicator in the future.
+regex: silentlycontinue|Start\-Sleep|[-]verb\s+runas|Stop-Process\s.*-force|env:(TEMP|TMP|Path|USERNAME|COMPUTERNAME|SYSTEMROOT|WINDIR|HOMEDRIVE|HOMEPATH|USERPROFILE|SESSIONNAME|PROCESSOR_ARCHITECTURE)|-(whatif|UseBasicParsing)|get-MpPreference.+Exclusion
+basescore: 2.0
+max_match: 1
+tactic: TA0002
+technique: [T1059.001]
+reference:
+  - https://attack.mitre.org/techniques/T1059/001/
+---
+name: Suspicious cmdlet
+description: Highlights strings potentially linked to suspicious PS cmdlets. It was initially inspired on a Sigma rule (refer to references).
+regex: \b\S+-VM\b|Find-Fruit|Find-GPOLocation|Find-TrustedDocuments|Get-ApplicationHost|Get-IndexedItem|Get-RegAlwaysInstallElevated|Get-RegAutoLogon|Get-RickAstley|Get-SecurityPackages|Get-ServiceFilePermission|Get-ServicePermission|Get-ServiceUnquoted|Get-SiteListPassword|Get-System|Get-UnattendedInstallFile|Get-Unconstrained|Get-VaultCredential|HTTP-Login|Install-SSP|Invoke-AllChecks|Invoke-DCSync|Invoke-EgressCheck|Invoke-Inveigh|Invoke-InveighRelay|Invoke-PoshRat|Invoke-PostExfil|Invoke-PowerShellTCP|Invoke-PsExec|Invoke-ReverseDNSLookup|Invoke-RunAs|Invoke-SSHCommand|Invoke-Service|Invoke-Tater|Invoke-Token|MailRaider|PowerView|Remove-Update|Set-MacAttribute|Show-TargetScreen|(Computer|User)Property|CachedRDPConnection|invoke-\S+hunter|remoteps|Kerberos.*(policy|ticket)|Uninstall-Windows|Invoke-Interceptor|EXEonRemote|NetworkRelay|PowerShelludp|PowerShellIcmp|CreateShortcut|copy-vss|out-shortcut|Invoke-ShellCommand|SocksProxy|WdigestDowngrade|ProcessScan|-autoruns|LoginPrompt|-(ADDomain|ADComputer|MachineAccount)|-gppp|Resolve-DnsName|TokenManipulation|Invoke-PSImage
+max_match: 2
+basescore: 8.8
+tactic: TA0002
+technique: T1059.001
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_powershell_malicious_cmdlets.yml
+---
+name: Suspicious file link
+description: Detects PowerShell creation of a Windows shortcut (.lnk) that references high-risk LOLBins, DLL execution, or suspicious staging locations (e.g., ProgramData/AppData/Public), which is commonly used for stealthy persistence and proxy execution.
+regex: CreateShortcut\(.+(\S+\.dll|rundll32|script\.exe|mshta|msbuild|installutil|msiexec|programdata|appdata|users\S{1,3}public)
+basescore: 10
+tactic: [TA0005]
+technique: [T1218]
+reference:
+  - https://attack.mitre.org/techniques/T1218/
+  - https://www.knowyouradversary.ru/2025/11/314-adversaries-abuse-powershell-to.html
+---
+name: Suspicious TLD reference
+description: >
+  Detects URLs referencing high-risk or abuse-prone top-level domains and
+  dynamic DNS providers commonly used by malware, phishing, and C2 infrastructure.
+  These domains are frequently leveraged due to low cost, anonymity, and fast
+  rotation, making them attractive for command-and-control, payload hosting,
+  and phishing campaigns.
+regex: https*://\S+\.(ddns|dyndns|ml|ga|cf|cc|tk|top|xyz|biz|dynu|dnsdynamic|changeip|servebeer|noip\.me|no-ip\.biz|no-ip\.org|zapto\.org|no-ip\.info|duckdns\.org|hopto\.org|sytes\.net)
+basescore: 10
+tactic: [TA0011, TA0001]
+technique: [T1071.001, T1568.003]
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/web/proxy_generic/proxy_download_susp_tlds_blacklist.yml
+  - https://attack.mitre.org/techniques/T1071/001/
+  - https://attack.mitre.org/techniques/T1568/003/
+  - https://www.atomicredteam.io/atomic-red-team/atomics/T1071.001
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1071.001/T1071.001.md
+---
+name: System.Management.Automation reference
+description: Detects references to PowerShell’s System.Management.Automation runtime, which may indicate embedded or in-memory PowerShell execution outside the standard host.
+regex: (system\.management\.automation)
+basescore: 8.8
+tactic: [TA0002]
+technique: [T1059.001]
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/image_load/image_load_dll_system_management_automation_susp_load.yml
+---
+name: System.Reflection.Assembly reference
+description: Detects usage of System.Reflection.Assembly, a .NET component that enables dynamic assembly loading and execution, which may indicate in-memory or fileless execution techniques.
+regex: \b(?:System\.Reflection(?:\.Assembly)?|Reflection\.Assembly)\b
+basescore: 10
+tactic: [TA0002, TA0005]
+technique: [T1059.001, T1027, T1620]
+reference:
+  - https://red.infiltr8.io/redteam/weapon/code-and-process-injection/.net-reflective-assembly
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_powershell_base64_reflection_assembly_load.yml
+  - https://www.elastic.co/security-labs/hunting-memory-net-attacks
+  - https://redcanary.com/blog/testing-and-validation/gootloader-emulation/
+  - https://learn.microsoft.com/en-us/dotnet/api/system.reflection.assembly.load
+---
+name: TcpListener reference
+description: Uses .NET TcpListener, commonly seen in PowerShell tunneling or bind shell patterns.
+regex: tcplistener
+basescore: 10
+tactic: TA0011
+technique: [T1059.001, T1090]
+reference:
+  - https://www.sans.org/blog/threat-hunting-with-powershell-differential-analysis
+---
+name: Threads manipulation
+description: Tracks the creation or manipulation of execution threads, often used for injection attacks or detection evasion.
+regex: createthread|threading\.thread
+basescore: 10.0
+tactic: TA0005
+technique: [T1055, T1059.001]
+reference:
+  - https://www.ired.team/offensive-security/code-injection-process-injection/process-injection
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1055/T1055.md
+  - https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createthread
+---
+name: Uncommon alias reference
+description: Detects the use of less prevalent or abuse-prone PowerShell aliases observed in obfuscated or malicious scripts.
+regex: \b(sv|sal|nal|epal|ipal|sajb|rcjb|rjb|clv|clhy|sp|gp|ni|ri|mi|cp|sl|rv|gcm|gm)\s+[\$\w\\:.-]+\b
+basescore: 10
+tactic: [TA0002, TA0005]
+technique: [T1059.001, T1027]
+reference:
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://github.com/PowerShellMafia/PowerSploit
+---
+name: User added to administrators group
+description: Detects PowerShell or command-line activity that adds an account to the local Administrators group, a high-impact privilege escalation and persistence action often used during post-exploitation.
+regex: Add-LocalGroupMember.+administrators|net\s+localgroup\s+Administrators.+/add
+basescore: 8.4
+tactic: [TA0003, TA0004]
+technique: [T1098]
+reference:
+  - https://attack.mitre.org/techniques/T1098/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_susp_add_user_local_admin_group.yml
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1098/T1098.md
+---
+name: Virtual disk activity
+description: Detects PowerShell patterns consistent with mounting/handling virtual disk images (VHD/ISO via DiskImage-related switches) and creating mapped drives via New-PSDrive, which can be abused to stage/execute payloads from mounted containers (including MotW bypass tradecraft) or to interact with remote shares.
+regex: -(vhd|DiskImage)\s|New-PSDrive
+basescore: 5
+tactic: [TA0005, TA0008]
+technique: [T1553.005, T1021.002]
+reference:
+  - https://attack.mitre.org/techniques/T1553/005/
+  - https://attack.mitre.org/techniques/T1021/002/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_script/posh_ps_run_from_mount_diskimage.yml
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_script/posh_ps_susp_new_psdrive.yml
+  - https://www.atomicredteam.io/atomic-red-team/atomics/T1553.005
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1021.002/T1021.002.md
+---
+name: Web Client traces
+description: >
+  Spots potential attempts to use PS as a web client to access network resources. Initially inspired by the Sigma rule in the references.
+
+  Note that the unicodes below refer to Hyphen-Minus (ASCII hyphen), En/m Dash and Horizontal Bar.
+  Refer to FAQ entry 3.1 in the reference to use those in Splunk/SPL.
+regex: net\.http|RestMethod|[\.-]webclient|WebRequest|Net.Sockets.TcpClient|InternetExplorer\.Application|(win|Xml)Http|\b(curl|wget|iwr|irm)\s+|(InstallProduct\(|bitstransfer)[\s\S]+https*://|\b[\u002D\u2013\u2014\u2015](Uri|Url)\s*https*://
+basescore: 7.5
+tactic: TA0002
+technique: [T1105, T1059.001]
+reference:
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_susp_web_request_cmd_and_cmdlets.yml
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/process_creation/proc_creation_win_powershell_download_iex.yml
+  - https://github.com/avasero/psexposed/blob/main/FAQ.md#31-a-few-notes-to-consider-when-using-regex-in-splunkspl
+---
+name: Windows registry activity
+description: Indicates potential Windows registry activity based on common reg keywords.
+regex: Win32\.Registry|HK(LM|CU):.+[\\](Run|Policies|Services|System|Software|Environment)|HKEY_LOCAL_MACHINE|HKEY_CURRENT_USER|StdRegProv
+basescore: 5.6
+tactic: TA0002
+technique: [T1059.001, T1547.001]
+reference: https://attack.mitre.org/techniques/T1547/001/
+---
+name: WMI usage
+description: Detects general WMI usage by matching against common WMI code references.
+regex: WmiCommand|wmiclass|PowerShellWMI|wmiobject|WMIMethod|RemoteWMI|Win32_Process|(iwmi|gwmi)\s+
+basescore: 5
+tactic: [TA0002]
+technique: [T1047]
+reference:
+  - https://attack.mitre.org/techniques/T1047/
+---
+name: Uncommon Start-Sleep time
+description: Detects unusually long PowerShell sleep intervals specified via Start-Sleep with large numeric values, a common sandbox- and analysis-evasion technique used to delay execution until security tooling times out.
+regex: start-sleep\b(?:\s+-s(?:econds)?\s+(?:6\d{2,}|[7-9]\d{2,}|\d{4,})|\s+-m(?:inutes)?\s+(?:1\d+|[2-9]\d*)|\s+(?:6\d{2,}|[7-9]\d{2,}|\d{4,}))
+basescore: 10
+tactic: [TA0005]
+technique: [T1497.003]
+reference:
+  - https://securitylabs.datadoghq.com/articles/mut-9332-malicious-solidity-vscode-extensions/
+  - https://www.esentire.com/blog/esentire-threat-intelligence-malware-analysis-purple-fox
+  - https://attack.mitre.org/techniques/T1497/003/
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/powershell/powershell_script/posh_ps_long_sleep.yml
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1497.003/T1497.003.md

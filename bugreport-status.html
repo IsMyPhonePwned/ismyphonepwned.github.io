@@ -103,6 +103,43 @@
             border-color: var(--accent);
         }
 
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .lang-switcher {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.25rem;
+        }
+
+        .lang-switcher button {
+            padding: 0.35rem 0.6rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            background: transparent;
+            color: var(--text-secondary);
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .lang-switcher button:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .lang-switcher button.active {
+            background: var(--accent);
+            color: white;
+        }
+
         .last-updated {
             text-align: center;
             padding: 0.75rem 1rem;
@@ -351,6 +388,9 @@
                 gap: 0.75rem;
                 margin-bottom: 1.25rem;
             }
+            .header-actions {
+                flex-wrap: wrap;
+            }
             .logo-text {
                 font-size: 1.2rem;
             }
@@ -412,27 +452,34 @@
     <div class="container">
         <header>
             <div>
-                <h1 class="logo-text">Bugreport Analysis — Status & Capabilities</h1>
-                <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.875rem;">Rules, parsers, and detection reference • <span style="font-weight: 500;">v0.1.0</span> • Updated Jan 2026</p>
+                <h1 class="logo-text" data-i18n="pageTitle">Bugreport Analysis — Status & Capabilities</h1>
+                <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.875rem;" data-i18n="pageSubtitle">Rules, parsers, and detection reference • <span style="font-weight: 500;">v0.1.0</span> • Updated Feb 2026</p>
             </div>
-            <button class="theme-toggle" onclick="toggleTheme()">
-                <span id="theme-icon">🌙</span>
-                <span id="theme-text">Dark</span>
-            </button>
+            <div class="header-actions">
+                <div class="lang-switcher" role="group" aria-label="Language">
+                    <button type="button" data-lang="en" class="active" onclick="setLang('en')">EN</button>
+                    <button type="button" data-lang="fr" onclick="setLang('fr')">FR</button>
+                    <button type="button" data-lang="zh" onclick="setLang('zh')">中文</button>
+                </div>
+                <button class="theme-toggle" onclick="toggleTheme()">
+                    <span id="theme-icon">🌙</span>
+                    <span id="theme-text" data-i18n="themeDark">Dark</span>
+                </button>
+            </div>
         </header>
 
         <div class="last-updated">
-            <strong>Last updated:</strong> <span id="status-timestamp"></span>
+            <strong data-i18n="lastUpdated">Last updated:</strong> <span id="status-timestamp"></span>
         </div>
 
         <!-- Rules supported -->
         <section class="section">
-            <h2>📋 Rules supported</h2>
-            <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">
+            <h2 data-i18n="rulesSupported">📋 Rules supported</h2>
+            <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;" data-i18n="rulesIntro">
                 The analysis pipeline evaluates <strong>Sigma</strong> rules (YAML) against log entries extracted from parser outputs. Rules are user-provided; multiple documents can be concatenated with <code>---</code>.
             </p>
-            <h3>Sigma rule format</h3>
-            <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+            <h3 data-i18n="sigmaFormat">Sigma rule format</h3>
+            <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.5rem;" data-i18n="sigmaFields">
                 Rules follow the Sigma schema. Supported fields include <code>title</code>, <code>id</code>, <code>description</code>, <code>status</code>, <code>level</code> (critical / high / medium / low), and detection <code>selection</code> / <code>condition</code>.
             </p>
             <div class="rule-format">
@@ -449,24 +496,24 @@ detection:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;contains: "su"<br>
 &nbsp;&nbsp;condition: selection
             </div>
-            <h3>Rule levels</h3>
+            <h3 data-i18n="ruleLevels">Rule levels</h3>
             <ul style="margin-left: 1.25rem; font-size: 0.875rem;">
-                <li><span class="badge badge-critical">critical</span> — Critical security events (e.g. root access)</li>
-                <li><span class="badge badge-high">high</span> — High-risk behaviour (e.g. suspicious installs, exfiltration)</li>
-                <li><span class="badge badge-medium">medium</span> — Medium-risk (e.g. system modification attempts)</li>
-                <li><span class="badge badge-low">low</span> — Low-risk or informational</li>
+                <li><span class="badge badge-critical">critical</span> <span data-i18n="levelCritical">— Critical security events (e.g. root access)</span></li>
+                <li><span class="badge badge-high">high</span> <span data-i18n="levelHigh">— High-risk behaviour (e.g. suspicious installs, exfiltration)</span></li>
+                <li><span class="badge badge-medium">medium</span> <span data-i18n="levelMedium">— Medium-risk (e.g. system modification attempts)</span></li>
+                <li><span class="badge badge-low">low</span> <span data-i18n="levelLow">— Low-risk or informational</span></li>
             </ul>
 
-            <h3>Rules list</h3>
-            <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
-                Rules are auto-loaded from <code>/rules/novispy.yml</code> and <code>/rules/cellebrite.yml</code>.
+            <h3 data-i18n="rulesListTitle">Rules list</h3>
+            <p id="rules-list-desc" style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+                Rules are auto-loaded from <code>/rules/</code> (20 files: NSO, Cellebrite, Novispy, FinFisher, Donot, Cytrox, CVE, and others). The analysis page fetches and concatenates them for Sigma evaluation.
             </p>
             <div id="fetch-status" class="fetch-status" style="display: none;"></div>
             <div id="rules-list-wrapper" style="display: none;">
                 <div class="rules-list-container">
                     <div class="rules-list-header">
-                        <span style="font-weight: 600; font-size: 0.875rem;">Fetched rules</span>
-                        <button type="button" id="toggle-rules-list-btn" class="secondary" onclick="toggleRulesList()">Hide list</button>
+                        <span style="font-weight: 600; font-size: 0.875rem;" data-i18n="fetchedRules">Fetched rules</span>
+                        <button type="button" id="toggle-rules-list-btn" class="secondary" onclick="toggleRulesList()" data-i18n="hideList">Hide list</button>
                     </div>
                     <div id="rules-list-body" class="rules-list-body">
                         <!-- filled by JS -->
@@ -477,8 +524,8 @@ detection:<br>
 
         <!-- Parsers and extraction -->
         <section class="section">
-            <h2>🔧 Parsers &amp; extracted data</h2>
-            <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">
+            <h2 data-i18n="parsersTitle">🔧 Parsers &amp; extracted data</h2>
+            <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;" data-i18n="parsersIntro">
                 Each parser reads specific parts of the bugreport and produces structured output. The fields below are those used in the UI and for Sigma detection.
             </p>
 
@@ -583,31 +630,179 @@ detection:<br>
 
         <!-- Detection -->
         <section class="section">
-            <h2>🔍 Detection</h2>
-            <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">
+            <h2 data-i18n="detectionTitle">🔍 Detection</h2>
+            <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;" data-i18n="detectionIntro">
                 Detection is based on <strong>Sigma</strong>. Log entries are built from parser outputs via <code>extract_all_log_entries</code>; the Sigma engine evaluates each rule against these entries. Matches produce <code>rule_id</code>, <code>rule_title</code>, <code>level</code>, and <code>matched_log</code> (the log fields that matched).
             </p>
-            <h3>What is evaluated</h3>
+            <h3 data-i18n="detectionWhat">What is evaluated</h3>
             <ul style="margin-left: 1.25rem; font-size: 0.875rem;">
-                <li>Structured log entries derived from Header, Battery, Package, Process, Power, Network, Bluetooth, USB, and Crash parser results</li>
-                <li>Rule conditions (selection/condition) are applied to the key–value fields of each entry</li>
-                <li>Rules are supplied at analysis time as YAML (single or multiple documents separated by <code>---</code>)</li>
+                <li data-i18n="detectionEval1">Structured log entries derived from Header, Battery, Package, Process, Power, Network, Bluetooth, USB, and Crash parser results</li>
+                <li data-i18n="detectionEval2">Rule conditions (selection/condition) are applied to the key–value fields of each entry</li>
+                <li id="detection-eval3-li">Rules are supplied at analysis time as YAML (single or multiple documents separated by <code>---</code>)</li>
             </ul>
-            <h3>Match output</h3>
-            <p style="font-size: 0.875rem; color: var(--text-secondary);">
+            <h3 data-i18n="matchOutput">Match output</h3>
+            <p style="font-size: 0.875rem; color: var(--text-secondary);" data-i18n="matchOutputDesc">
                 Each match includes the rule identifier, title, severity level, and the actual log payload (<code>matched_log</code>) so analysts can see exactly which data triggered the rule.
             </p>
         </section>
 
         <div class="nav-links">
-            <a href="bugreport.html">Bugreport analysis</a>
-            <a href="bugreport-example.html">Example results</a>
+            <a href="bugreport.html" data-i18n="navBugreport">Bugreport analysis</a>
+            <a href="bugreport-example.html" data-i18n="navExample">Example results</a>
         </div>
     </div>
 
     <script>
         // Timestamp: update this when the status page content or capabilities change
-        const STATUS_LAST_UPDATED = '2025-01-24T12:00:00Z';
+        const STATUS_LAST_UPDATED = '2026-02-02T12:00:00Z';
+
+        const TRANSLATIONS = {
+            en: {
+                pageTitle: 'Bugreport Analysis — Status & Capabilities',
+                pageSubtitle: 'Rules, parsers, and detection reference • v0.1.0 • Updated Feb 2026',
+                themeDark: 'Dark',
+                themeLight: 'Light',
+                lastUpdated: 'Last updated:',
+                rulesSupported: '📋 Rules supported',
+                rulesIntro: 'The analysis pipeline evaluates Sigma rules (YAML) against log entries extracted from parser outputs. Rules are user-provided; multiple documents can be concatenated with ---.',
+                sigmaFormat: 'Sigma rule format',
+                sigmaFields: 'Rules follow the Sigma schema. Supported fields include title, id, description, status, level (critical / high / medium / low), and detection selection / condition.',
+                rulesListTitle: 'Rules list',
+                rulesListDesc: 'Rules are auto-loaded from /rules/ (20 files: NSO, Cellebrite, Novispy, FinFisher, Donot, Cytrox, CVE, and others). The analysis page fetches and concatenates them for Sigma evaluation.',
+                ruleLevels: 'Rule levels',
+                levelCritical: '— Critical security events (e.g. root access)',
+                levelHigh: '— High-risk behaviour (e.g. suspicious installs, exfiltration)',
+                levelMedium: '— Medium-risk (e.g. system modification attempts)',
+                levelLow: '— Low-risk or informational',
+                fetchedRules: 'Fetched rules',
+                hideList: 'Hide list',
+                showList: 'Show list',
+                showContent: 'Show content',
+                hideContent: 'Hide content',
+                parsersTitle: '🔧 Parsers & extracted data',
+                parsersIntro: 'Each parser reads specific parts of the bugreport and produces structured output. The fields below are those used in the UI and for Sigma detection.',
+                detectionTitle: '🔍 Detection',
+                detectionIntro: 'Detection is based on Sigma. Log entries are built from parser outputs via extract_all_log_entries; the Sigma engine evaluates each rule against these entries. Matches produce rule_id, rule_title, level, and matched_log (the log fields that matched).',
+                detectionWhat: 'What is evaluated',
+                detectionEval1: 'Structured log entries derived from Header, Battery, Package, Process, Power, Network, Bluetooth, USB, and Crash parser results',
+                detectionEval2: 'Rule conditions (selection/condition) are applied to the key–value fields of each entry',
+                detectionEval3: 'Rules are supplied at analysis time as YAML (single or multiple documents separated by ---)',
+                matchOutput: 'Match output',
+                matchOutputDesc: 'Each match includes the rule identifier, title, severity level, and the actual log payload (matched_log) so analysts can see exactly which data triggered the rule.',
+                navBugreport: 'Bugreport analysis',
+                navExample: 'Example results',
+                loadingRules: 'Loading rules…',
+                loadedRules: 'Loaded {count} rule(s) from {sources}.',
+                loadedRulesPartial: 'Loaded {count} rule(s). Failed: {failed}.'
+            },
+            fr: {
+                pageTitle: 'Analyse de bugreport — État & capacités',
+                pageSubtitle: 'Référence règles, parseurs et détection • v0.1.0 • Mis à jour févr. 2026',
+                themeDark: 'Sombre',
+                themeLight: 'Clair',
+                lastUpdated: 'Dernière mise à jour :',
+                rulesSupported: '📋 Règles prises en charge',
+                rulesIntro: 'Le pipeline évalue les règles Sigma (YAML) sur les entrées de log extraites des parseurs. Les règles sont fournies par l\'utilisateur ; plusieurs documents peuvent être concaténés avec ---.',
+                sigmaFormat: 'Format de règle Sigma',
+                sigmaFields: 'Les règles suivent le schéma Sigma. Champs supportés : title, id, description, status, level (critical / high / medium / low), et détection selection / condition.',
+                rulesListTitle: 'Liste des règles',
+                rulesListDesc: 'Les règles sont chargées automatiquement depuis /rules/ (20 fichiers : NSO, Cellebrite, Novispy, FinFisher, Donot, Cytrox, CVE, etc.). La page d\'analyse les récupère et les concatène pour l\'évaluation Sigma.',
+                ruleLevels: 'Niveaux de règle',
+                levelCritical: '— Événements de sécurité critiques (ex. accès root)',
+                levelHigh: '— Comportement à haut risque (ex. installations suspectes, exfiltration)',
+                levelMedium: '— Risque moyen (ex. tentatives de modification système)',
+                levelLow: '— Faible risque ou informatif',
+                fetchedRules: 'Règles récupérées',
+                hideList: 'Masquer la liste',
+                showList: 'Afficher la liste',
+                showContent: 'Afficher le contenu',
+                hideContent: 'Masquer le contenu',
+                parsersTitle: '🔧 Parseurs & données extraites',
+                parsersIntro: 'Chaque parseur lit des parties du bugreport et produit une sortie structurée. Les champs ci-dessous sont utilisés dans l\'interface et pour la détection Sigma.',
+                detectionTitle: '🔍 Détection',
+                detectionIntro: 'La détection repose sur Sigma. Les entrées de log sont construites à partir des parseurs via extract_all_log_entries ; le moteur Sigma évalue chaque règle. Les correspondances produisent rule_id, rule_title, level et matched_log.',
+                detectionWhat: 'Ce qui est évalué',
+                detectionEval1: 'Entrées de log structurées issues des parseurs Header, Battery, Package, Process, Power, Network, Bluetooth, USB et Crash',
+                detectionEval2: 'Les conditions de règle (selection/condition) sont appliquées aux champs clé-valeur de chaque entrée',
+                detectionEval3: 'Les règles sont fournies au moment de l\'analyse en YAML (un ou plusieurs documents séparés par ---)',
+                matchOutput: 'Sortie des correspondances',
+                matchOutputDesc: 'Chaque correspondance inclut l\'identifiant de règle, le titre, le niveau de sévérité et le payload (matched_log) pour voir quelles données ont déclenché la règle.',
+                navBugreport: 'Analyse bugreport',
+                navExample: 'Résultats exemple',
+                loadingRules: 'Chargement des règles…',
+                loadedRules: '{count} règle(s) chargée(s) depuis {sources}.',
+                loadedRulesPartial: '{count} règle(s) chargée(s). Échecs : {failed}.'
+            },
+            zh: {
+                pageTitle: 'Bugreport 分析 — 状态与能力',
+                pageSubtitle: '规则、解析器与检测参考 • v0.1.0 • 更新于 2026年2月',
+                themeDark: '深色',
+                themeLight: '浅色',
+                lastUpdated: '最后更新：',
+                rulesSupported: '📋 支持的规则',
+                rulesIntro: '分析流程使用 Sigma 规则（YAML）对从解析器输出中提取的日志条目进行评估。规则由用户提供；多个文档可用 --- 连接。',
+                sigmaFormat: 'Sigma 规则格式',
+                sigmaFields: '规则遵循 Sigma 架构。支持的字段包括 title、id、description、status、level（critical / high / medium / low）以及检测 selection / condition。',
+                rulesListTitle: '规则列表',
+                rulesListDesc: '规则从 /rules/ 自动加载（20 个文件：NSO、Cellebrite、Novispy、FinFisher、Donot、Cytrox、CVE 等）。分析页会获取并拼接它们以进行 Sigma 评估。',
+                ruleLevels: '规则级别',
+                levelCritical: '— 严重安全事件（如 root 访问）',
+                levelHigh: '— 高风险行为（如可疑安装、外泄）',
+                levelMedium: '— 中风险（如系统篡改尝试）',
+                levelLow: '— 低风险或信息性',
+                fetchedRules: '已获取规则',
+                hideList: '隐藏列表',
+                showList: '显示列表',
+                showContent: '显示内容',
+                hideContent: '隐藏内容',
+                parsersTitle: '🔧 解析器与提取数据',
+                parsersIntro: '每个解析器读取 bugreport 的特定部分并产生结构化输出。以下字段用于界面和 Sigma 检测。',
+                detectionTitle: '🔍 检测',
+                detectionIntro: '检测基于 Sigma。日志条目由解析器输出通过 extract_all_log_entries 构建；Sigma 引擎对每条规则进行评估。匹配产生 rule_id、rule_title、level 和 matched_log（匹配的日志字段）。',
+                detectionWhat: '评估内容',
+                detectionEval1: '来自 Header、Battery、Package、Process、Power、Network、Bluetooth、USB 和 Crash 解析器结果的结构化日志条目',
+                detectionEval2: '规则条件（selection/condition）应用于每条条目的键值字段',
+                detectionEval3: '规则在分析时以 YAML 提供（单个或多个文档，用 --- 分隔）',
+                matchOutput: '匹配输出',
+                matchOutputDesc: '每条匹配包含规则标识、标题、严重级别和实际日志 payload（matched_log），便于分析人员查看触发规则的数据。',
+                navBugreport: 'Bugreport 分析',
+                navExample: '示例结果',
+                loadingRules: '正在加载规则…',
+                loadedRules: '已加载 {count} 条规则，来源：{sources}。',
+                loadedRulesPartial: '已加载 {count} 条规则。失败：{failed}。'
+            }
+        };
+
+        let currentLang = localStorage.getItem('lang') || 'en';
+
+        function setLang(lang) {
+            currentLang = lang;
+            localStorage.setItem('lang', lang);
+            document.documentElement.lang = (lang === 'zh' ? 'zh' : lang === 'fr' ? 'fr' : 'en');
+            document.querySelectorAll('.lang-switcher button').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
+            });
+            applyLang(lang);
+        }
+
+        function applyLang(lang) {
+            const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (t[key] !== undefined) el.textContent = t[key];
+            });
+            const rulesDesc = document.getElementById('rules-list-desc');
+            if (rulesDesc && t.rulesListDesc) rulesDesc.innerHTML = t.rulesListDesc.replace(/\/rules\//g, '<code>/rules/</code>');
+            const eval3 = document.getElementById('detection-eval3-li');
+            if (eval3 && t.detectionEval3) eval3.innerHTML = t.detectionEval3.replace('---', '<code>---</code>');
+            const themeText = document.getElementById('theme-text');
+            if (themeText) {
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                themeText.textContent = isDark ? t.themeLight : t.themeDark;
+            }
+            const toggleBtn = document.getElementById('toggle-rules-list-btn');
+            if (toggleBtn && t.hideList && t.showList) toggleBtn.textContent = fetchedRulesVisible ? t.hideList : t.showList;
+        }
 
         function formatTimestamp(iso) {
             const d = new Date(iso);
@@ -623,6 +818,7 @@ detection:<br>
         }
 
         document.getElementById('status-timestamp').textContent = formatTimestamp(STATUS_LAST_UPDATED);
+        setLang(currentLang);
 
         function toggleTheme() {
             const html = document.documentElement;
@@ -630,14 +826,14 @@ detection:<br>
             const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
             html.setAttribute('data-theme', newTheme);
             document.getElementById('theme-icon').textContent = newTheme === 'dark' ? '☀️' : '🌙';
-            document.getElementById('theme-text').textContent = newTheme === 'dark' ? 'Light' : 'Dark';
+            const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
+            document.getElementById('theme-text').textContent = newTheme === 'dark' ? t.themeLight : t.themeDark;
             localStorage.setItem('theme', newTheme);
         }
 
         const savedTheme = localStorage.getItem('theme') || 'light';
         document.documentElement.setAttribute('data-theme', savedTheme);
         document.getElementById('theme-icon').textContent = savedTheme === 'dark' ? '☀️' : '🌙';
-        document.getElementById('theme-text').textContent = savedTheme === 'dark' ? 'Light' : 'Dark';
 
         let fetchedRulesVisible = true;
         let lastFetchedRules = [];
@@ -649,7 +845,29 @@ detection:<br>
             return d.innerHTML;
         }
 
-        const DEFAULT_RULES_URLS = ['/rules/novispy.yml', '/rules/cellebrite.yml'];
+        // Same rule set as bugreport.html (ismyphonepwned.github.io/rules)
+        const DEFAULT_RULES_URLS = [
+            '/rules/2018_08_01_nso.yml',
+            '/rules/2018_12_19_best_practice.yml',
+            '/rules/2019_03_06_egypt_oauth.yml',
+            '/rules/2019_08_16_evolving_phishing.yml',
+            '/rules/2019_10_10_nso_morocco.yml',
+            '/rules/2020_03_12_uzbekistan.yml',
+            '/rules/2020_06_15_india.yml',
+            '/rules/2020_09_25_finfisher.yml',
+            '/rules/2021_02_24_vietnam.yml',
+            '/rules/2021_05_28_qatar.yml',
+            '/rules/2021_07_18_nso.yml',
+            '/rules/2021_10_07_donot.yml',
+            '/rules/2021_12_16_cytrox.yml',
+            '/rules/2023_03_29_android_campaign.yml',
+            '/rules/2024_05_02_wintego_helios.yml',
+            '/rules/2024_12_16_serbia_novispy.yml',
+            '/rules/cellebrite.yml',
+            '/rules/novispy.yml',
+            '/rules/test.yml',
+            '/rules/CVE/CVE-2025-21055.yaml'
+        ];
 
         function parseRulesFromYaml(text, source) {
             const rules = [];
@@ -682,9 +900,12 @@ detection:<br>
             const el = document.getElementById('rule-content-' + idx);
             const btn = document.getElementById('rule-toggle-btn-' + idx);
             if (!el || !btn) return;
+            const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
+            const hideContent = t.hideContent || 'Hide content';
+            const showContent = t.showContent || 'Show content';
             const hidden = el.style.display === 'none';
             el.style.display = hidden ? 'block' : 'none';
-            btn.textContent = hidden ? 'Hide content' : 'Show content';
+            btn.textContent = hidden ? hideContent : showContent;
         }
 
         function renderRulesList(rules, rawText) {
@@ -711,7 +932,8 @@ detection:<br>
                     if (r.level) html += ' &middot; <span class="badge ' + levelClass(r.level) + '">' + escapeHtml(r.level) + '</span>';
                     if (r.source) html += ' &middot; <span style="color: var(--text-secondary);">' + escapeHtml(r.source) + '</span>';
                     html += '</div></div>';
-                    if (content) html += '<button type="button" id="rule-toggle-btn-' + idx + '" class="secondary rule-content-toggle" onclick="toggleRuleContent(' + idx + ')">Show content</button>';
+                    const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
+                    if (content) html += '<button type="button" id="rule-toggle-btn-' + idx + '" class="secondary rule-content-toggle" onclick="toggleRuleContent(' + idx + ')">' + (t.showContent || 'Show content') + '</button>';
                     html += '</div>';
                     if (content) {
                         html += '<div id="rule-content-' + idx + '" class="rule-content" style="display: none;"><pre class="rule-content-pre">' + escapeHtml(content) + '</pre></div>';
@@ -725,26 +947,27 @@ detection:<br>
         }
 
         function toggleRulesList() {
-            const wrapper = document.getElementById('rules-list-wrapper');
             const btn = document.getElementById('toggle-rules-list-btn');
             fetchedRulesVisible = !fetchedRulesVisible;
             const listBody = document.getElementById('rules-list-body');
+            const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
             if (fetchedRulesVisible) {
                 listBody.style.display = '';
-                btn.textContent = 'Hide list';
+                btn.textContent = t.hideList || 'Hide list';
             } else {
                 listBody.style.display = 'none';
-                btn.textContent = 'Show list';
+                btn.textContent = t.showList || 'Show list';
             }
         }
 
         async function fetchAutoRules() {
             const statusEl = document.getElementById('fetch-status');
             const wrapper = document.getElementById('rules-list-wrapper');
+            const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
 
             statusEl.style.display = 'block';
             statusEl.className = 'fetch-status';
-            statusEl.textContent = 'Loading rules from ' + DEFAULT_RULES_URLS.join(', ') + '…';
+            statusEl.textContent = t.loadingRules || ('Loading rules from ' + DEFAULT_RULES_URLS.length + ' sources…');
 
             const allRules = [];
             const results = { ok: [], err: [] };
@@ -770,11 +993,16 @@ detection:<br>
             document.getElementById('toggle-rules-list-btn').textContent = 'Hide list';
             fetchedRulesVisible = true;
 
+            const t2 = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
             if (results.err.length) {
-                statusEl.textContent = 'Loaded ' + allRules.length + ' rule(s) from ' + results.ok.map(o => o.url).join(', ') + '. Failed: ' + results.err.map(e => e.url + ' (' + e.msg + ')').join('; ');
+                statusEl.textContent = (t2.loadedRulesPartial || 'Loaded {count} rule(s). Failed: {failed}.')
+                    .replace('{count}', allRules.length)
+                    .replace('{failed}', results.err.map(e => e.url + ' (' + e.msg + ')').join('; '));
                 statusEl.classList.add('error');
             } else {
-                statusEl.textContent = 'Loaded ' + allRules.length + ' rule(s) from ' + results.ok.map(o => o.url + ' (' + o.count + ')').join(', ') + '.';
+                statusEl.textContent = (t2.loadedRules || 'Loaded {count} rule(s) from {sources}.')
+                    .replace('{count}', allRules.length)
+                    .replace('{sources}', results.ok.map(o => o.url + ' (' + o.count + ')').join(', '));
                 statusEl.classList.add('success');
             }
         }

@@ -64,6 +64,31 @@
         .adb-advanced .diagnostics-details[open] > summary::before { content: '▾ '; }
         .adb-advanced .diagnostics-summary-hint { font-weight: 400; font-size: 0.8rem; color: var(--text-secondary); margin-left: 0.35rem; }
         .adb-advanced .diagnostics-details .diagnostics-inner { margin-top: 0.75rem; }
+        .adb-advanced .bugreport-full-detail {
+            display: none;
+            margin: 1rem 0;
+            padding: 1rem 1.1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+        .adb-advanced .bugreport-full-detail h4 { font-size: 1rem; margin: 0 0 0.5rem 0; color: var(--text-primary); }
+        .adb-advanced .bugreport-full-detail .bugreport-elapsed {
+            margin: 0 0 0.75rem 0;
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--accent);
+            font-variant-numeric: tabular-nums;
+        }
+        .adb-advanced .bugreport-full-detail ul {
+            margin: 0;
+            padding-left: 1.25rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            line-height: 1.55;
+        }
+        .adb-advanced .bugreport-full-detail code { font-size: 0.8em; }
     </style>
 </head>
 <body class="adb-advanced">
@@ -369,6 +394,18 @@
             
             <div id="bugreportProgress" class="progress">
                 <div id="bugreportProgressBar" class="progress-bar">0%</div>
+            </div>
+
+            <div id="bugreportFullDetail" class="bugreport-full-detail" aria-live="polite" aria-atomic="true">
+                <h4>Full bugreport running</h4>
+                <p id="bugreportElapsed" class="bugreport-elapsed">Elapsed: 0:00</p>
+                <ul>
+                    <li>The phone is collecting logs and system dumps (<code>bugreportz</code>). Busy devices often need <strong>about 5–15 minutes</strong> before data is ready.</li>
+                    <li>Keep USB connected; avoid running desktop <code>adb</code> or Android Studio against the same device while this runs.</li>
+                    <li>Leaving this browser tab visible can reduce throttling; the screen may dim but try not to put the phone in deep sleep.</li>
+                    <li>When the device finishes, the ZIP is transferred over WebUSB — very large reports add more minutes after the spinner on the phone stops.</li>
+                    <li>The progress bar is only a rough visual guide; <strong>completion</strong> is when you see the success message and download size below.</li>
+                </ul>
             </div>
 
             <div id="bugreportInfo" class="file-info">
@@ -1896,52 +1933,86 @@
             const progressBar = document.getElementById('bugreportProgressBar');
             const output = document.getElementById('bugreportOutput');
             const info = document.getElementById('bugreportInfo');
-            
+            const detail = document.getElementById('bugreportFullDetail');
+            const elapsedEl = document.getElementById('bugreportElapsed');
+
+            let progressInterval = null;
+            let elapsedInterval = null;
+            const t0 = Date.now();
+
+            const stopTimers = () => {
+                if (progressInterval) {
+                    clearInterval(progressInterval);
+                    progressInterval = null;
+                }
+                if (elapsedInterval) {
+                    clearInterval(elapsedInterval);
+                    elapsedInterval = null;
+                }
+            };
+
+            const tickElapsed = () => {
+                const sec = Math.floor((Date.now() - t0) / 1000);
+                const m = Math.floor(sec / 60);
+                const s = sec % 60;
+                elapsedEl.textContent = `Elapsed: ${m}:${s.toString().padStart(2, '0')}`;
+            };
+
             try {
                 btn.disabled = true;
-                btn.textContent = 'Generating... (this may take 2-5 minutes)';
+                btn.textContent = 'Generating… (typically 5–15 min)';
                 progress.classList.add('show');
                 progressBar.style.width = '10%';
-                progressBar.textContent = '10%';
+                progressBar.textContent = 'Starting…';
                 output.style.display = 'none';
-                
-                showWarning('Generating full bugreport. This can take several minutes. Please wait...');
-                
-                // Simulate progress (we can't get real progress from ADB)
-                const progressInterval = setInterval(() => {
-                    const current = parseInt(progressBar.style.width);
-                    if (current < 90) {
-                        const next = current + 5;
+                detail.style.display = 'block';
+                tickElapsed();
+                elapsedInterval = setInterval(tickElapsed, 1000);
+
+                showWarning(
+                    'Full bugreport started. The phone collects diagnostics for several minutes, then the ZIP is downloaded. See the details below.'
+                );
+
+                // Approximate progress only — ADB does not expose real percentages
+                progressInterval = setInterval(() => {
+                    const current = parseInt(progressBar.style.width, 10) || 0;
+                    if (current < 88) {
+                        const next = Math.min(88, current + 4);
                         progressBar.style.width = next + '%';
                         progressBar.textContent = next + '%';
                     }
-                }, 3000);
-                
+                }, 4000);
+
                 const reportData = await queueOperation(async () => {
                     return await adb.bugreport();
                 });
-                
-                clearInterval(progressInterval);
+
+                stopTimers();
                 progressBar.style.width = '100%';
                 progressBar.textContent = '100%';
-                
+
                 currentReport = new Blob([reportData], { type: 'application/zip' });
-                
+
                 info.classList.add('show');
                 document.getElementById('reportSize').textContent = formatBytes(reportData.byteLength);
                 document.getElementById('reportFormat').textContent = 'ZIP Archive';
-                
-                showSuccess('Full bugreport generated successfully!');
-                
+
+                const elapsedMs = Date.now() - t0;
+                showSuccess(
+                    `Full bugreport ready — ${formatBytes(reportData.byteLength)} in ${formatDuration(elapsedMs)}. You can download below.`
+                );
+
                 setTimeout(() => {
                     progress.classList.remove('show');
                 }, 2000);
             } catch (error) {
+                stopTimers();
                 showError('Failed to generate bugreport: ' + error);
                 progress.classList.remove('show');
             } finally {
+                detail.style.display = 'none';
                 btn.disabled = false;
-                btn.textContent = 'Generate Full Report (Slow)';
+                btn.textContent = 'Generate Full Report (Very Slow ~5-10min)';
             }
         }
 

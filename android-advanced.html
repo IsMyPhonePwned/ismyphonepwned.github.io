@@ -50,6 +50,20 @@
         .adb-advanced .warning { background: rgba(255, 152, 0, 0.12); border-left: 4px solid var(--warning); padding: 1rem; margin: 1rem 0; border-radius: 6px; color: var(--text-primary); font-size: 0.875rem; }
         .adb-advanced .success-inline { background: rgba(76, 175, 80, 0.12); border-left: 4px solid var(--success); padding: 1rem; margin: 1rem 0; border-radius: 6px; color: var(--text-primary); font-size: 0.875rem; }
         .adb-advanced .error-inline { background: rgba(244, 67, 54, 0.12); border-left: 4px solid var(--error); padding: 1rem; margin: 1rem 0; border-radius: 6px; color: var(--text-primary); font-size: 0.875rem; }
+        .adb-advanced .diagnostics-details { margin: 0; }
+        .adb-advanced .diagnostics-details > summary {
+            cursor: pointer;
+            list-style: none;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            padding: 0.25rem 0;
+        }
+        .adb-advanced .diagnostics-details > summary::-webkit-details-marker { display: none; }
+        .adb-advanced .diagnostics-details > summary::before { content: '▸ '; color: var(--text-secondary); }
+        .adb-advanced .diagnostics-details[open] > summary::before { content: '▾ '; }
+        .adb-advanced .diagnostics-summary-hint { font-weight: 400; font-size: 0.8rem; color: var(--text-secondary); margin-left: 0.35rem; }
+        .adb-advanced .diagnostics-details .diagnostics-inner { margin-top: 0.75rem; }
     </style>
 </head>
 <body class="adb-advanced">
@@ -59,7 +73,7 @@
                 <img src="logo.png" alt="IsMyPhonePwned Logo" class="logo" onerror="this.style.display='none';">
                 <div style="display: flex; flex-direction: column; gap: 0.25rem;">
                     <h1 class="logo-text">IsMyPhonePwned ?</h1>
-                    <p class="page-subtitle"><strong>Android Advanced</strong> — WebUSB ADB: bugreports, shell, file manager, logcat, and diagnostics. For parsed bugreport analysis use <a href="android.html">Android (analyzer)</a>.</p>
+                    <p class="page-subtitle"><strong>Android Advanced</strong> — WebUSB ADB: bugreports, shell, file manager, and logcat. For parsed bugreport analysis use <a href="android.html">Android (analyzer)</a>.</p>
                 </div>
             </div>
             <div class="header-actions">
@@ -91,33 +105,37 @@
             <button id="resetQueueBtn" onclick="resetQueue()" style="background: #f44336; display: none;" title="Reset stuck queue">🔄 Reset Queue</button>
         </div>
 
-        <!-- Connection Diagnostics Section -->
+        <!-- Optional: stream / health troubleshooting (collapsed by default) -->
         <div class="section" style="background: #f0f8ff; border-left: 4px solid #2196F3;">
-            <h2>🔍 Connection Diagnostics</h2>
-            <p>Monitor ADB connection health and manage streams.</p>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
-                <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="color: #666; font-size: 12px; margin-bottom: 5px;">Active Streams</div>
-                    <div style="font-size: 28px; font-weight: bold; color: #2196F3;" id="streamCount">0</div>
+            <details class="diagnostics-details">
+                <summary>
+                    🔍 Connection diagnostics
+                    <span class="diagnostics-summary-hint">Optional — only if something seems stuck</span>
+                </summary>
+                <div class="diagnostics-inner">
+                    <p style="color: var(--text-secondary); font-size: 0.875rem; margin: 0 0 1rem 0;">ADB stream count, a quick <code style="font-size: 0.8em;">echo ping</code> check, and stale-stream cleanup. Not needed for normal use.</p>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
+                        <div style="background: var(--bg-card); padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.06); border: 1px solid var(--border);">
+                            <div style="color: var(--text-secondary); font-size: 12px; margin-bottom: 5px;">Active Streams</div>
+                            <div style="font-size: 28px; font-weight: bold; color: #2196F3;" id="streamCount">0</div>
+                        </div>
+                        <div style="background: var(--bg-card); padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.06); border: 1px solid var(--border);">
+                            <div style="color: var(--text-secondary); font-size: 12px; margin-bottom: 5px;">Connection Health</div>
+                            <div style="font-size: 24px; font-weight: bold; color: #999;" id="healthStatus">Unknown</div>
+                        </div>
+                        <div style="background: var(--bg-card); padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.06); border: 1px solid var(--border);">
+                            <div style="color: var(--text-secondary); font-size: 12px; margin-bottom: 5px;">Stale Cleaned</div>
+                            <div style="font-size: 28px; font-weight: bold; color: #FF9800;" id="cleanedCount">0</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button id="healthCheckBtn" disabled style="background: #4CAF50;">Check Health</button>
+                        <button id="cleanupStreamsBtn" disabled style="background: #FF9800;">Cleanup Stale</button>
+                        <button id="refreshDiagnosticsBtn" disabled style="background: #2196F3;">Refresh</button>
+                    </div>
+                    <div id="diagnosticsLog" style="margin-top: 15px; padding: 10px; background: var(--bg-card); border-radius: 5px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; display: none; border: 1px solid var(--border);"></div>
                 </div>
-                <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="color: #666; font-size: 12px; margin-bottom: 5px;">Connection Health</div>
-                    <div style="font-size: 24px; font-weight: bold; color: #999;" id="healthStatus">Unknown</div>
-                </div>
-                <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="color: #666; font-size: 12px; margin-bottom: 5px;">Stale Cleaned</div>
-                    <div style="font-size: 28px; font-weight: bold; color: #FF9800;" id="cleanedCount">0</div>
-                </div>
-            </div>
-            
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button id="healthCheckBtn" disabled style="background: #4CAF50;">Check Health</button>
-                <button id="cleanupStreamsBtn" disabled style="background: #FF9800;">Cleanup Stale</button>
-                <button id="refreshDiagnosticsBtn" disabled style="background: #2196F3;">Refresh</button>
-            </div>
-            
-            <div id="diagnosticsLog" style="margin-top: 15px; padding: 10px; background: white; border-radius: 5px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; display: none;"></div>
+            </details>
         </div>
 
         <!-- Shell Terminal Section -->

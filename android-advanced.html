@@ -1,0 +1,2389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>IsMyPhonePwned · Android Advanced (WebADB)</title>
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="stylesheet" href="assets/site.css">
+    <script>(function(){ if (localStorage.getItem("theme") === "dark") document.documentElement.setAttribute("data-theme","dark"); })();</script>
+    <style>
+        /* Scoped overrides: site.css uses button { width: 100% } for the analyzer UI */
+        .adb-advanced .controls { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
+        .adb-advanced #adb-workspace button { width: auto; }
+        .adb-advanced #adb-workspace .logcat-controls { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
+        .adb-advanced #adb-workspace .logcat-controls input { width: auto; min-width: 7rem; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-secondary); color: var(--text-primary); font-size: 0.875rem; }
+        .adb-advanced #status.status { display: block !important; margin-bottom: 1rem; padding: 0.75rem 1rem; border-radius: 6px; font-size: 0.875rem; font-weight: 500; border: 1px solid var(--border); }
+        .adb-advanced .status.disconnected { background: rgba(244, 67, 54, 0.1); color: var(--error); border-color: var(--error); }
+        .adb-advanced .status.connected { background: rgba(76, 175, 80, 0.1); color: var(--success); border-color: var(--success); }
+        .adb-advanced .status.working { background: rgba(255, 152, 0, 0.12); color: var(--warning); border-color: var(--warning); }
+        .adb-advanced .page-subtitle { color: var(--text-secondary); font-size: 0.9rem; margin: 0 0 1rem 0; max-width: 42rem; }
+        .adb-advanced .output { background: var(--bg-secondary); color: var(--text-primary); padding: 1rem; border-radius: 8px; font-family: ui-monospace, monospace; font-size: 0.8125rem; max-height: 24rem; overflow-y: auto; white-space: pre-wrap; word-break: break-word; margin-top: 0.75rem; border: 1px solid var(--border); }
+        .adb-advanced .file-list { max-height: 18rem; overflow-y: auto; background: var(--bg-secondary); padding: 0.5rem; border-radius: 6px; margin: 0.5rem 0; border: 1px solid var(--border); }
+        .adb-advanced .file-item { padding: 0.5rem; margin: 0.35rem 0; background: var(--bg-card); border-radius: 6px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); }
+        .adb-advanced .file-item:hover { background: var(--bg-secondary); }
+        .adb-advanced .progress { width: 100%; height: 1.75rem; background: var(--bg-secondary); border-radius: 8px; overflow: hidden; margin: 0.75rem 0; display: none; border: 1px solid var(--border); }
+        .adb-advanced .progress.show { display: block; }
+        .adb-advanced .progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.75rem; }
+        .adb-advanced .file-info { background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin: 0.75rem 0; display: none; border: 1px solid var(--border); }
+        .adb-advanced .file-info.show { display: block; }
+        .adb-advanced .file-info h3 { color: var(--text-primary); margin-bottom: 0.5rem; font-size: 1rem; }
+        .adb-advanced .file-info p { color: var(--text-secondary); margin: 0.25rem 0; font-size: 0.875rem; }
+        .adb-advanced .download-btn { background: var(--success); }
+        .adb-advanced .download-btn:hover:not(:disabled) { filter: brightness(1.05); }
+        .adb-advanced #fileTable tbody tr { border-bottom: 1px solid var(--border); }
+        .adb-advanced #fileTable tbody tr:hover { background: var(--bg-secondary); }
+        .adb-advanced #fileTable tbody tr.selected { background: rgba(33, 150, 243, 0.12) !important; }
+        .adb-advanced #fileTable thead { background: var(--bg-secondary); }
+        .adb-advanced #fileDropZone { display: none !important; }
+        .adb-advanced #fileDropZone.active { display: flex !important; }
+        .adb-advanced .flash-msg { padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.875rem; }
+        .adb-advanced .flash-msg.success { background: rgba(76, 175, 80, 0.12); color: var(--success); border: 1px solid var(--success); }
+        .adb-advanced .flash-msg.warning { background: rgba(255, 152, 0, 0.12); color: var(--warning); border: 1px solid var(--warning); }
+        .adb-advanced .flash-msg.error { background: rgba(244, 67, 54, 0.12); color: var(--error); border: 1px solid var(--error); }
+        .adb-advanced .terminal-section { background: var(--bg-card) !important; color: var(--text-primary) !important; border-left: 4px solid var(--accent) !important; }
+        .adb-advanced .terminal-section h2 { color: var(--text-primary) !important; }
+        .adb-advanced .terminal-section p { color: var(--text-secondary) !important; }
+        .adb-advanced #terminalOutput { background: #0d1117 !important; color: #3fb950 !important; border-color: var(--border) !important; }
+        .adb-advanced #shellInput { background: #0d1117 !important; color: #3fb950 !important; border-color: var(--border) !important; }
+        .adb-advanced .warning { background: rgba(255, 152, 0, 0.12); border-left: 4px solid var(--warning); padding: 1rem; margin: 1rem 0; border-radius: 6px; color: var(--text-primary); font-size: 0.875rem; }
+        .adb-advanced .success-inline { background: rgba(76, 175, 80, 0.12); border-left: 4px solid var(--success); padding: 1rem; margin: 1rem 0; border-radius: 6px; color: var(--text-primary); font-size: 0.875rem; }
+        .adb-advanced .error-inline { background: rgba(244, 67, 54, 0.12); border-left: 4px solid var(--error); padding: 1rem; margin: 1rem 0; border-radius: 6px; color: var(--text-primary); font-size: 0.875rem; }
+    </style>
+</head>
+<body class="adb-advanced">
+    <div class="container adb-advanced">
+        <header>
+            <div class="logo-container">
+                <img src="logo.png" alt="IsMyPhonePwned Logo" class="logo" onerror="this.style.display='none';">
+                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <h1 class="logo-text">IsMyPhonePwned ?</h1>
+                    <p class="page-subtitle"><strong>Android Advanced</strong> — WebUSB ADB: bugreports, shell, file manager, logcat, and diagnostics. For parsed bugreport analysis use <a href="android.html">Android (analyzer)</a>.</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button type="button" class="theme-toggle" onclick="toggleTheme()">
+                    <span id="theme-icon">🌙</span>
+                    <span id="theme-text">Dark</span>
+                </button>
+            </div>
+        </header>
+
+        <nav class="page-nav" aria-label="Pages">
+            <a href="index.html">Home</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="android.html">Android (analyzer)</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <span style="color: var(--text-primary); font-weight: 600;">Advanced ADB</span>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="iphone.html">iPhone (sysdiagnose)</a>
+        </nav>
+
+        <div id="status" class="status disconnected">
+            Status: Disconnected
+        </div>
+
+        <div id="adb-workspace">
+        <div class="controls">
+            <button id="connectBtn" disabled>Connect to Device</button>
+            <button id="disconnectBtn" disabled>Disconnect</button>
+            <button id="resetQueueBtn" onclick="resetQueue()" style="background: #f44336; display: none;" title="Reset stuck queue">🔄 Reset Queue</button>
+        </div>
+
+        <!-- Connection Diagnostics Section -->
+        <div class="section" style="background: #f0f8ff; border-left: 4px solid #2196F3;">
+            <h2>🔍 Connection Diagnostics</h2>
+            <p>Monitor ADB connection health and manage streams.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
+                <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="color: #666; font-size: 12px; margin-bottom: 5px;">Active Streams</div>
+                    <div style="font-size: 28px; font-weight: bold; color: #2196F3;" id="streamCount">0</div>
+                </div>
+                <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="color: #666; font-size: 12px; margin-bottom: 5px;">Connection Health</div>
+                    <div style="font-size: 24px; font-weight: bold; color: #999;" id="healthStatus">Unknown</div>
+                </div>
+                <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="color: #666; font-size: 12px; margin-bottom: 5px;">Stale Cleaned</div>
+                    <div style="font-size: 28px; font-weight: bold; color: #FF9800;" id="cleanedCount">0</div>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button id="healthCheckBtn" disabled style="background: #4CAF50;">Check Health</button>
+                <button id="cleanupStreamsBtn" disabled style="background: #FF9800;">Cleanup Stale</button>
+                <button id="refreshDiagnosticsBtn" disabled style="background: #2196F3;">Refresh</button>
+            </div>
+            
+            <div id="diagnosticsLog" style="margin-top: 15px; padding: 10px; background: white; border-radius: 5px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; display: none;"></div>
+        </div>
+
+        <!-- Shell Terminal Section -->
+        <div class="section terminal-section">
+            <h2>💻 Shell Terminal</h2>
+            <p>Execute commands on the Android device.</p>
+            
+            <!-- Quick Commands -->
+            <div style="margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 8px;">
+                <button id="shellCmdLs" style="background: #2d2d2d; color: #00ff00; border: 1px solid #00ff00; padding: 6px 12px; font-size: 12px;">ls -la</button>
+                <button id="shellCmdPwd" style="background: #2d2d2d; color: #00ff00; border: 1px solid #00ff00; padding: 6px 12px; font-size: 12px;">pwd</button>
+                <button id="shellCmdDf" style="background: #2d2d2d; color: #00ff00; border: 1px solid #00ff00; padding: 6px 12px; font-size: 12px;">df -h</button>
+                <button id="shellCmdPs" style="background: #2d2d2d; color: #00ff00; border: 1px solid #00ff00; padding: 6px 12px; font-size: 12px;">ps</button>
+                <button id="shellCmdVersion" style="background: #2d2d2d; color: #00ff00; border: 1px solid #00ff00; padding: 6px 12px; font-size: 12px;">version</button>
+                <button id="shellCmdUname" style="background: #2d2d2d; color: #00ff00; border: 1px solid #00ff00; padding: 6px 12px; font-size: 12px;">uname</button>
+                <button id="shellCmdClear" style="background: #2d2d2d; color: #ff6b6b; border: 1px solid #ff6b6b; padding: 6px 12px; font-size: 12px;">clear</button>
+            </div>
+            
+            <!-- Terminal Output -->
+            <div id="terminalOutput" style="
+                background: #000000;
+                color: #00ff00;
+                font-family: 'Courier New', monospace;
+                font-size: 13px;
+                padding: 15px;
+                border-radius: 5px;
+                height: 400px;
+                overflow-y: auto;
+                margin-bottom: 10px;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                border: 2px solid #00ff00;
+            ">$ <span style="color: #888;">Connected. Type a command or use quick buttons above.</span></div>
+            
+            <!-- Command Input -->
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <span style="color: #00ff00; font-family: 'Courier New', monospace; font-size: 14px; font-weight: bold;">$</span>
+                <input 
+                    type="text" 
+                    id="shellInput" 
+                    placeholder="Enter command (e.g., ls -la, df -h, ps)" 
+                    disabled
+                    style="
+                        flex: 1;
+                        background: #000000;
+                        color: #00ff00;
+                        border: 2px solid #00ff00;
+                        padding: 10px;
+                        font-family: 'Courier New', monospace;
+                        font-size: 14px;
+                        border-radius: 5px;
+                    "
+                />
+                <button 
+                    id="shellExecuteBtn" 
+                    disabled
+                    style="background: #00ff00; color: #000; padding: 10px 20px; font-weight: bold;">
+                    Execute
+                </button>
+            </div>
+            
+            <div style="margin-top: 10px; color: #888; font-size: 12px;">
+                💡 Tips: Use ↑/↓ arrows for command history | Ctrl+C to stop | Ctrl+L to clear
+            </div>
+        </div>
+
+        <!-- File Manager Section -->
+        <div class="section" style="background: #f5f5f5; border-left: 4px solid #FF9800;">
+            <h2>📁 File Manager</h2>
+            <p>Browse, upload, download, and manage files on your Android device.</p>
+            
+            <!-- Toolbar -->
+            <div style="background: white; padding: 15px; border-radius: 5px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <!-- Breadcrumb Navigation -->
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                    <button id="fileNavBack" disabled style="background: #666; padding: 6px 12px;">← Back</button>
+                    <button id="fileNavUp" disabled style="background: #666; padding: 6px 12px;">↑ Up</button>
+                    <div id="breadcrumbNav" style="flex: 1; display: flex; align-items: center; gap: 5px; padding: 8px; background: #f9f9f9; border-radius: 3px; font-family: monospace; font-size: 13px; overflow-x: auto;">
+                        <span style="color: #666;">Loading...</span>
+                    </div>
+                    <button id="fileRefresh" disabled style="background: #2196F3; padding: 6px 12px;">🔄 Refresh</button>
+                </div>
+                
+                <!-- Quick Paths -->
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
+                    <button class="quickPath" data-path="/sdcard" disabled style="background: #4CAF50; color: white; padding: 4px 10px; font-size: 12px;">📱 SD Card</button>
+                    <button class="quickPath" data-path="/sdcard/Download" disabled style="background: #4CAF50; color: white; padding: 4px 10px; font-size: 12px;">📥 Downloads</button>
+                    <button class="quickPath" data-path="/sdcard/DCIM" disabled style="background: #4CAF50; color: white; padding: 4px 10px; font-size: 12px;">📷 Camera</button>
+                    <button class="quickPath" data-path="/data/local/tmp" disabled style="background: #4CAF50; color: white; padding: 4px 10px; font-size: 12px;">🔧 Tmp</button>
+                    <button class="quickPath" data-path="/" disabled style="background: #4CAF50; color: white; padding: 4px 10px; font-size: 12px;">🏠 Root</button>
+                </div>
+                
+                <!-- Actions -->
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button id="fileUploadBtn" disabled style="background: #FF9800;">⬆️ Upload Files</button>
+                    <input type="file" id="fileUploadInput" multiple style="display: none;">
+                    <button id="fileNewFolderBtn" disabled style="background: #9C27B0; color: white;">📁 New Folder</button>
+                    <button id="fileSelectAllBtn" disabled style="background: #666;">Select All</button>
+                    <button id="fileDeselectAllBtn" disabled style="background: #666;">Deselect All</button>
+                </div>
+            </div>
+            
+            <!-- File List Container -->
+            <div style="background: white; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
+                <div id="fileListContainer" style="max-height: 500px; overflow-y: auto;">
+                    <table id="fileTable" style="width: 100%; border-collapse: collapse;">
+                        <thead style="position: sticky; top: 0; background: #f5f5f5; z-index: 10;">
+                            <tr>
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; cursor: pointer; user-select: none;" data-sort="name">
+                                    <input type="checkbox" id="selectAllCheckbox" style="margin-right: 8px;">
+                                    📄 Name <span id="sortNameIndicator">▼</span>
+                                </th>
+                                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd; cursor: pointer; user-select: none; width: 120px;" data-sort="size">
+                                    💾 Size <span id="sortSizeIndicator"></span>
+                                </th>
+                                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; width: 100px;">
+                                    📋 Type
+                                </th>
+                                <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd; width: 100px;">
+                                    ⚙️ Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="fileTableBody">
+                            <tr>
+                                <td colspan="4" style="padding: 40px; text-align: center; color: #999;">
+                                    Connect to a device to browse files
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Drop Zone Overlay -->
+            <div id="fileDropZone" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 152, 0, 0.9); z-index: 9999; align-items: center; justify-content: center;">
+                <div style="text-align: center; color: white;">
+                    <div style="font-size: 72px; margin-bottom: 20px;">📤</div>
+                    <div style="font-size: 32px; font-weight: bold;">Drop files here to upload</div>
+                    <div style="font-size: 18px; margin-top: 10px;" id="dropZonePath"></div>
+                </div>
+            </div>
+            
+            <!-- Context Menu -->
+            <div id="fileContextMenu" style="display: none; position: fixed; background: white; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 10000; min-width: 180px;">
+                <div class="context-menu-item" data-action="open" style="padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #eee;">
+                    📂 Open
+                </div>
+                <div class="context-menu-item" data-action="download" style="padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #eee;">
+                    📥 Download
+                </div>
+                <div class="context-menu-item" data-action="rename" style="padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #eee;">
+                    ✏️ Rename
+                </div>
+                <div class="context-menu-item" data-action="delete" style="padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #eee; color: #f44336;">
+                    🗑️ Delete
+                </div>
+                <div class="context-menu-item" data-action="copypath" style="padding: 10px 15px; cursor: pointer;">
+                    📋 Copy Path
+                </div>
+            </div>
+        </div>
+
+        <!-- Modals -->
+        <div id="fileManagerModals">
+            <!-- Rename Modal -->
+            <div id="renameModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10001; align-items: center; justify-content: center;">
+                <div style="background: white; padding: 25px; border-radius: 8px; min-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                    <h3 style="margin-top: 0;">✏️ Rename</h3>
+                    <input type="text" id="renameInput" placeholder="New name" style="width: 100%; padding: 10px; font-size: 14px; border: 2px solid #ddd; border-radius: 4px; margin-bottom: 15px;">
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        <button onclick="closeRenameModal()" style="background: #999; padding: 8px 20px;">Cancel</button>
+                        <button onclick="confirmRename()" style="background: #2196F3; padding: 8px 20px;">Rename</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- New Folder Modal -->
+            <div id="newFolderModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10001; align-items: center; justify-content: center;">
+                <div style="background: white; padding: 25px; border-radius: 8px; min-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                    <h3 style="margin-top: 0;">📁 Create New Folder</h3>
+                    <input type="text" id="newFolderInput" placeholder="Folder name" style="width: 100%; padding: 10px; font-size: 14px; border: 2px solid #ddd; border-radius: 4px; margin-bottom: 15px;">
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        <button onclick="closeNewFolderModal()" style="background: #999; padding: 8px 20px;">Cancel</button>
+                        <button onclick="confirmNewFolder()" style="background: #9C27B0; color: white; padding: 8px 20px;">Create</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Delete Confirm Modal -->
+            <div id="deleteConfirmModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10001; align-items: center; justify-content: center;">
+                <div style="background: white; padding: 25px; border-radius: 8px; min-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                    <h3 style="margin-top: 0; color: #f44336;">🗑️ Confirm Delete</h3>
+                    <p id="deleteConfirmText">Are you sure you want to delete this item?</p>
+                    <div class="warning" style="margin: 15px 0;">
+                        <strong>⚠️ Warning:</strong> This action cannot be undone!
+                    </div>
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        <button onclick="closeDeleteConfirmModal()" style="background: #999; padding: 8px 20px;">Cancel</button>
+                        <button onclick="confirmDelete()" style="background: #f44336; padding: 8px 20px;">Delete</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Upload Progress Modal -->
+            <div id="uploadProgressModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10001; align-items: center; justify-content: center;">
+                <div style="background: white; padding: 25px; border-radius: 8px; min-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                    <h3 style="margin-top: 0;">⬆️ Uploading Files</h3>
+                    <div id="uploadFileName" style="margin-bottom: 10px; font-weight: bold;">file.txt</div>
+                    <div style="background: #eee; border-radius: 10px; height: 24px; overflow: hidden; margin-bottom: 10px;">
+                        <div id="uploadProgressBar" style="background: linear-gradient(90deg, #FF9800, #FFC107); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                    </div>
+                    <div id="uploadProgressText" style="text-align: center; color: #666; font-size: 14px;">0%</div>
+                    <div id="uploadStatus" style="margin-top: 10px; font-size: 12px; color: #666; text-align: center;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bugreport Section -->
+        <div class="section">
+            <h2>📋 Bug Reports</h2>
+            <p>Access device diagnostic reports for troubleshooting.</p>
+            
+            <div class="warning">
+                <strong>💡 Tip:</strong> Check "Available Bugreports" below first to download existing reports instantly!
+                Generating a new report takes 5-10 minutes (2-5 min generation + 1-5 min download for large files).
+            </div>
+
+            <button id="bugreportLiteBtn" disabled>Generate Lite Report (Fast ~30s)</button>
+            <button id="bugreportFullBtn" disabled>Generate Full Report (Very Slow ~5-10min)</button>
+            
+            <div id="bugreportProgress" class="progress">
+                <div id="bugreportProgressBar" class="progress-bar">0%</div>
+            </div>
+
+            <div id="bugreportInfo" class="file-info">
+                <h3>Report Generated</h3>
+                <p><strong>Size:</strong> <span id="reportSize">-</span></p>
+                <p><strong>Format:</strong> <span id="reportFormat">-</span></p>
+                <button id="downloadReportBtn" class="download-btn">Download Report</button>
+                <button id="viewReportBtn">View Report</button>
+            </div>
+
+            <div id="bugreportOutput" class="output" style="display: none;"></div>
+
+            <!-- Available Bugreports -->
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #eee; background: #f9f9f9; padding: 20px; border-radius: 8px;">
+                <h3>⚡ Available Bugreports on Device (Recommended)</h3>
+                <p style="color: #666; margin-bottom: 15px;">
+                    <strong>Fastest option:</strong> Download previously generated bugreports instantly.<br>
+                    If you recently ran "adb bugreportz" or generated a report, it will appear here.
+                </p>
+                <button id="listBugreportsBtn" disabled style="background: #4CAF50;">List Available Bugreports</button>
+                <div id="bugreportsList" class="output" style="display: none;"></div>
+                
+                <!-- Download Debug Panel -->
+                <div id="downloadDebug" style="display: none; margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 8px; font-family: monospace; font-size: 12px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <strong style="color: #2196F3;">📊 Download Progress</strong>
+                        <span id="downloadStatus" style="color: #666;">Idle</span>
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <div style="background: #ddd; border-radius: 10px; height: 20px; overflow: hidden;">
+                            <div id="downloadProgressBar" style="background: linear-gradient(90deg, #4CAF50, #45a049); height: 100%; width: 0%; transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 11px;"></div>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                        <div>📁 <strong>File:</strong> <span id="debugFile">-</span></div>
+                        <div>📦 <strong>Size:</strong> <span id="debugSize">-</span></div>
+                        <div>⏱️ <strong>Elapsed:</strong> <span id="debugTime">0s</span></div>
+                        <div>⚡ <strong>Speed:</strong> <span id="debugSpeed">-</span></div>
+                    </div>
+                    <div style="margin-top: 10px; padding: 8px; background: white; border-radius: 4px;">
+                        <div style="color: #666; font-size: 11px; margin-bottom: 5px;">Console Log:</div>
+                        <div id="debugLog" style="max-height: 100px; overflow-y: auto; color: #333;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logcat Section -->
+        <div class="section">
+            <h2>📝 Logcat</h2>
+            <p>View device logs for debugging and troubleshooting.</p>
+
+            <div class="logcat-controls">
+                <input type="number" id="logcatLines" value="100" min="10" max="10000" placeholder="Lines">
+                <button id="logcatBtn" disabled>Get Logcat</button>
+                <button id="logcatClearBtn" disabled>Clear Logcat</button>
+                <button id="downloadLogBtn" class="download-btn" disabled>Download Log</button>
+            </div>
+
+            <div id="logcatOutput" class="output"></div>
+        </div>
+
+        <!-- File Browser Section -->
+        <div class="section">
+            <h2>📁 File Browser</h2>
+            <p>Browse and download files from your device.</p>
+
+            <div class="logcat-controls">
+                <input type="text" id="filePath" value="/sdcard" placeholder="Path">
+                <button id="listBtn" disabled>List Directory</button>
+                <button id="statBtn" disabled>Get File Info</button>
+            </div>
+
+            <div id="fileList" class="file-list" style="display: none;"></div>
+            
+            <div id="fileStatOutput" class="output" style="display: none;"></div>
+        </div>
+
+        <!-- Screen Recording (future) -->
+        <div class="section">
+            <h2>🎥 Advanced Operations</h2>
+            <p>Additional diagnostic and data collection tools.</p>
+
+            <button id="screenshotBtn" disabled>Capture Screenshot</button>
+            <button id="dumpStateBtn" disabled>Dump System State</button>
+            <button id="packageListBtn" disabled>List All Packages</button>
+            
+            <div id="advancedOutput" class="output"></div>
+        </div>
+        </div>
+
+    </div>
+
+    <script>
+        window.toggleTheme = function () {
+            const html = document.documentElement;
+            const cur = html.getAttribute('data-theme');
+            const next = cur === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            const ic = document.getElementById('theme-icon');
+            const tx = document.getElementById('theme-text');
+            if (ic) ic.textContent = next === 'dark' ? '☀️' : '🌙';
+            if (tx) tx.textContent = next === 'dark' ? 'Light' : 'Dark';
+            localStorage.setItem('theme', next);
+        };
+        document.addEventListener('DOMContentLoaded', function () {
+            if (document.documentElement.getAttribute('data-theme') === 'dark') {
+                const ic = document.getElementById('theme-icon');
+                const tx = document.getElementById('theme-text');
+                if (ic) ic.textContent = '☀️';
+                if (tx) tx.textContent = 'Light';
+            }
+        });
+    </script>
+    <script type="module">
+        import init, { Adb, generate_keypair, has_keypair } from './pkg/ismyphonepwned_wasm.js';
+
+        let adb = null;
+        let currentReport = null;
+        let currentLog = null;
+
+        const ADB_USB_FILTERS = Object.freeze([
+            { classCode: 0xff, subclassCode: 0x42, protocolCode: 0x01 },
+        ]);
+
+        async function requestAdbUsbDeviceFromUser() {
+            if (!navigator.usb) {
+                throw new Error('WebUSB is not supported. Use Chrome or Edge on desktop over HTTPS.');
+            }
+            return navigator.usb.requestDevice({ filters: ADB_USB_FILTERS });
+        }
+        
+        // Operation queue to prevent concurrent access
+        let operationQueue = [];
+        let isProcessingQueue = false;
+        let queueProcessingStartTime = null;
+        let queueWatchdogInterval = null;
+        
+        // Watchdog to detect stuck queues
+        function startQueueWatchdog() {
+            if (queueWatchdogInterval) {
+                clearInterval(queueWatchdogInterval);
+            }
+            
+            queueWatchdogInterval = setInterval(() => {
+                if (isProcessingQueue && queueProcessingStartTime) {
+                    const stuckTime = Date.now() - queueProcessingStartTime;
+                    // If queue has been processing for more than 10 minutes, something is wrong
+                    if (stuckTime > 10 * 60 * 1000) {
+                        console.error(`[Queue] WARNING: Queue appears to be stuck! Processing for ${formatDuration(stuckTime)}`);
+                        console.error(`[Queue] Queue state: isProcessing=${isProcessingQueue}, queueLength=${operationQueue.length}, resetting...`);
+                        resetQueue();
+                    } else if (stuckTime > 2 * 60 * 1000) {
+                        // Warn after 2 minutes
+                        console.warn(`[Queue] Queue has been processing for ${formatDuration(stuckTime)}. This might be normal for long operations.`);
+                    }
+                } else if (isProcessingQueue && !queueProcessingStartTime) {
+                    // Queue says it's processing but we don't have a start time - reset
+                    console.error(`[Queue] WARNING: Queue state inconsistent! isProcessing=true but no start time. Resetting...`);
+                    resetQueue();
+                }
+            }, 30000); // Check every 30 seconds
+        }
+        
+        function stopQueueWatchdog() {
+            if (queueWatchdogInterval) {
+                clearInterval(queueWatchdogInterval);
+                queueWatchdogInterval = null;
+            }
+        }
+        
+        // Reset queue state (emergency recovery)
+        function resetQueue() {
+            console.error(`[Queue] RESET: Resetting queue state`);
+            const queueLength = operationQueue.length;
+            
+            // Reject all pending operations
+            operationQueue.forEach((item, index) => {
+                try {
+                    if (item && item.reject) {
+                        item.reject(new Error('Queue was reset due to stuck state'));
+                    }
+                } catch (e) {
+                    console.error(`[Queue] Error rejecting queued operation ${index}:`, e);
+                }
+            });
+            
+            operationQueue = [];
+            isProcessingQueue = false;
+            queueProcessingStartTime = null;
+            stopQueueWatchdog();
+            
+            // Hide reset button
+            const resetBtn = document.getElementById('resetQueueBtn');
+            if (resetBtn) {
+                resetBtn.style.display = 'none';
+            }
+            
+            console.error(`[Queue] RESET: Cleared ${queueLength} pending operations. Queue is now empty and ready.`);
+            if (queueLength > 0) {
+                showError(`Queue was reset. ${queueLength} pending operation(s) were cancelled. Please try again.`);
+            } else {
+                showSuccess('Queue reset successfully.');
+            }
+        }
+        
+        // Expose reset function globally for manual recovery
+        window.resetQueue = resetQueue;
+        
+        // Show/hide reset button based on queue state
+        function updateResetButtonVisibility() {
+            const resetBtn = document.getElementById('resetQueueBtn');
+            if (resetBtn) {
+                if (isProcessingQueue || operationQueue.length > 0) {
+                    resetBtn.style.display = 'inline-block';
+                } else {
+                    resetBtn.style.display = 'none';
+                }
+            }
+        }
+        
+        // Helper function to format duration in human-readable format
+        function formatDuration(ms) {
+            if (ms < 1000) {
+                return `${ms.toFixed(2)}ms`;
+            }
+            const seconds = Math.floor(ms / 1000);
+            const milliseconds = Math.floor(ms % 1000);
+            if (seconds < 60) {
+                return `${seconds}s ${milliseconds}ms (${ms.toFixed(2)}ms)`;
+            }
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes}m ${remainingSeconds}s ${milliseconds}ms (${ms.toFixed(2)}ms)`;
+        }
+        
+        function kickProcessQueue() {
+            queueMicrotask(() => {
+                if (!isProcessingQueue && operationQueue.length > 0) {
+                    void processQueue();
+                }
+            });
+        }
+
+        async function queueOperation(operation) {
+            const queueId = Math.random().toString(36).substr(2, 9);
+            const queueLengthBefore = operationQueue.length;
+            console.debug(
+                `[Queue] enqueue ${queueId} (depth ${queueLengthBefore}→${queueLengthBefore + 1})`
+            );
+            return new Promise((resolve, reject) => {
+                operationQueue.push({ operation, resolve, reject, queueId });
+                const queueLengthAfter = operationQueue.length;
+                console.debug(
+                    `[Queue] queued ${queueId}, length=${queueLengthAfter}, processing=${isProcessingQueue}`
+                );
+
+                updateResetButtonVisibility();
+
+                if (isProcessingQueue) {
+                    // Expected when a second action starts while list_dir / shell / etc. is still running.
+                    console.debug(
+                        `[Queue] ${queueId} waiting behind current ADB op (serialized; not an error)`
+                    );
+                    if (queueProcessingStartTime) {
+                        const processingTime = Date.now() - queueProcessingStartTime;
+                        if (processingTime > 5 * 60 * 1000) {
+                            console.warn(
+                                `[Queue] WARNING: Queue has been busy for ${formatDuration(processingTime)} — possible stuck ADB call. Use "Reset Queue" if needed.`
+                            );
+                            const resetBtn = document.getElementById('resetQueueBtn');
+                            if (resetBtn) resetBtn.style.display = 'inline-block';
+                        }
+                    }
+                } else {
+                    console.debug(`[Queue] schedule drain (${queueId})`);
+                }
+
+                kickProcessQueue();
+            });
+        }
+        
+        async function processQueue() {
+            if (isProcessingQueue) {
+                console.debug('[Queue] skip duplicate processQueue runner');
+                return;
+            }
+            if (operationQueue.length === 0) {
+                return;
+            }
+
+            isProcessingQueue = true;
+            queueProcessingStartTime = Date.now();
+            let processed = 0;
+
+            try {
+                startQueueWatchdog();
+                updateResetButtonVisibility();
+                console.debug(`[Queue] drain start, ${operationQueue.length} pending`);
+
+                const maxIterations = 1000;
+                let iterations = 0;
+
+                try {
+                    while (operationQueue.length > 0 && iterations < maxIterations) {
+                        iterations++;
+                        const queueItem = operationQueue.shift();
+                        if (!queueItem) {
+                            console.warn('[Queue] Shifted empty queue item, breaking');
+                            break;
+                        }
+
+                        const { operation, resolve, reject, queueId } = queueItem;
+                        processed++;
+                        const totalOps = processed + operationQueue.length;
+                        const itemId = queueId || `op-${processed}`;
+                        console.debug(
+                            `[Queue] run ${processed}/${totalOps} (${itemId}, ${operationQueue.length} waiting)`
+                        );
+                        const startTime = performance.now();
+
+                        let timeoutId = null;
+                        try {
+                            const operationPromise = Promise.resolve(operation());
+                            const operationStr = operation.toString();
+                            const isLongOperation =
+                                operationStr.includes('bugreport') ||
+                                operationStr.includes('Bugreport') ||
+                                operationStr.includes('bugreport()');
+                            const isShellish =
+                                operationStr.includes('.shell(') || operationStr.includes('adb.shell');
+                            let timeoutMs = 5 * 60 * 1000;
+                            if (isLongOperation) timeoutMs = 15 * 60 * 1000;
+                            else if (isShellish) timeoutMs = 3 * 60 * 1000;
+
+                            const timeoutPromise = new Promise((_, timeoutReject) => {
+                                timeoutId = setTimeout(() => {
+                                    timeoutReject(new Error(`Operation timeout after ${formatDuration(timeoutMs)}`));
+                                }, timeoutMs);
+                            });
+
+                            const result = await Promise.race([operationPromise, timeoutPromise]);
+
+                            if (timeoutId) {
+                                clearTimeout(timeoutId);
+                                timeoutId = null;
+                            }
+
+                            const duration = performance.now() - startTime;
+                            console.debug(`[Queue] done ${itemId} in ${formatDuration(duration)}`);
+                            try {
+                                resolve(result);
+                            } catch (resolveError) {
+                                console.error(`[Queue] resolve error (id: ${itemId}):`, resolveError);
+                            }
+                        } catch (error) {
+                            if (timeoutId) {
+                                clearTimeout(timeoutId);
+                                timeoutId = null;
+                            }
+                            const duration = performance.now() - startTime;
+                            console.error(`[Queue] Operation ${processed} (id: ${itemId}) failed after ${formatDuration(duration)}:`, error);
+                            try {
+                                reject(error);
+                            } catch (rejectError) {
+                                console.error(`[Queue] reject error:`, rejectError);
+                            }
+                        }
+
+                        if (operationQueue.length > 0) {
+                            await new Promise((r) => setTimeout(r, 0));
+                        }
+                    }
+
+                    if (iterations >= maxIterations) {
+                        console.error(`[Queue] Max iterations (${maxIterations}), stopping`);
+                    }
+                    if (operationQueue.length > 0) {
+                        console.warn(`[Queue] ${operationQueue.length} operation(s) still queued after loop stop`);
+                    }
+
+                    const processingDuration = queueProcessingStartTime ? Date.now() - queueProcessingStartTime : 0;
+                    console.debug(
+                        `[Queue] drain pass done, ${processed} op(s) in ${formatDuration(processingDuration)}`
+                    );
+                } catch (error) {
+                    console.error('[Queue] Fatal error in drain loop:', error);
+                    if (error && error.stack) console.error(error.stack);
+                    showError(`Queue processing error: ${error.message}. Pending work was cleared.`);
+                    operationQueue.forEach((item) => {
+                        try {
+                            if (item && item.reject) item.reject(error);
+                        } catch (e) {
+                            /* ignore */
+                        }
+                    });
+                    operationQueue = [];
+                }
+            } finally {
+                isProcessingQueue = false;
+                queueProcessingStartTime = null;
+                stopQueueWatchdog();
+                updateResetButtonVisibility();
+
+                if (operationQueue.length > 0) {
+                    console.debug(
+                        `[Queue] ${operationQueue.length} still pending — schedule next drain`
+                    );
+                    kickProcessQueue();
+                } else {
+                    console.debug('[Queue] idle');
+                }
+            }
+        }
+        
+        // Shell state
+        let commandHistory = [];
+        let historyIndex = -1;
+        let isExecuting = false;
+
+        // Shell functions
+        async function executeShellCommand() {
+            const input = document.getElementById('shellInput');
+            const output = document.getElementById('terminalOutput');
+            const command = input.value.trim();
+            
+            console.log(`[Shell] executeShellCommand called with command: "${command}"`);
+            
+            if (!command) {
+                console.log('[Shell] Empty command, returning');
+                return;
+            }
+            if (isExecuting) {
+                console.log('[Shell] Already executing, returning');
+                return;
+            }
+            
+            // Add to history
+            if (commandHistory.length === 0 || commandHistory[commandHistory.length - 1] !== command) {
+                commandHistory.push(command);
+            }
+            historyIndex = commandHistory.length;
+            
+            // Display command
+            appendTerminal(`$ ${command}\n`, '#00ff00');
+            input.value = '';
+            input.disabled = true;
+            isExecuting = true;
+            
+            const startTime = performance.now();
+            console.log(`[Shell] Executing command: "${command}"`);
+            
+            try {
+                const result = await queueOperation(async () => {
+                    console.log(`[Shell] Calling adb.shell("${command}")`);
+                    const shellResult = await adb.shell(command);
+                    console.log(`[Shell] Command completed, result length: ${shellResult.length} chars`);
+                    return shellResult;
+                });
+                const duration = performance.now() - startTime;
+                console.log(`[Shell] Command executed successfully in ${formatDuration(duration)}`);
+                appendTerminal(result + '\n', '#d4d4d4');
+            } catch (error) {
+                const duration = performance.now() - startTime;
+                console.error(`[Shell] Command failed after ${formatDuration(duration)}:`, error);
+                appendTerminal(`Error: ${error}\n`, '#ff6b6b');
+            } finally {
+                input.disabled = false;
+                input.focus();
+                isExecuting = false;
+            }
+        }
+        
+        function executeQuickCommand(command) {
+            const input = document.getElementById('shellInput');
+            input.value = command;
+            executeShellCommand();
+        }
+        
+        function appendTerminal(text, color = '#d4d4d4') {
+            const output = document.getElementById('terminalOutput');
+            const span = document.createElement('span');
+            span.style.color = color;
+            span.textContent = text;
+            output.appendChild(span);
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        function clearTerminal() {
+            const output = document.getElementById('terminalOutput');
+            output.innerHTML = '$ <span style="color: #888;">Terminal cleared. Ready for commands.</span>';
+        }
+        
+        function handleShellKeydown(event) {
+            const input = document.getElementById('shellInput');
+            
+            // Enter key
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                executeShellCommand();
+                return;
+            }
+            
+            // Up arrow - previous command
+            if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    input.value = commandHistory[historyIndex];
+                }
+                return;
+            }
+            
+            // Down arrow - next command
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    input.value = commandHistory[historyIndex];
+                } else {
+                    historyIndex = commandHistory.length;
+                    input.value = '';
+                }
+                return;
+            }
+            
+            // Ctrl+C - clear input
+            if (event.ctrlKey && event.key === 'c') {
+                event.preventDefault();
+                input.value = '';
+                return;
+            }
+            
+            // Ctrl+L - clear terminal
+            if (event.ctrlKey && event.key === 'l') {
+                event.preventDefault();
+                clearTerminal();
+                return;
+            }
+        }
+
+        // File Manager State
+        let currentPath = '/sdcard';
+        let fileList = [];
+        let selectedFiles = new Set();
+        let fileHistory = [];
+        let fileHistoryIndex = -1;
+        let contextMenuTarget = null;
+        let renameTarget = null;
+        let sortBy = 'name';
+        let sortAsc = true;
+
+        // File Manager Functions
+        async function navigateToPath(path) {
+            try {
+                currentPath = path;
+                fileHistory.push(path);
+                fileHistoryIndex = fileHistory.length - 1;
+                await refreshFileList();
+                updateNavigationButtons();
+            } catch (error) {
+                showError('Failed to navigate: ' + error);
+            }
+        }
+
+        async function refreshFileList() {
+            console.log(`[FileManager] refreshFileList called for path: ${currentPath}`);
+            const startTime = performance.now();
+            try {
+                const entries = await queueOperation(async () => {
+                    console.log(`[FileManager] Calling adb.list_directory("${currentPath}")`);
+                    const result = await adb.list_directory(currentPath);
+                    console.log(`[FileManager] Received ${result.length} directory entries`);
+                    return result;
+                });
+                const duration = performance.now() - startTime;
+                console.log(`[FileManager] Directory listing completed in ${formatDuration(duration)}`);
+                fileList = entries;
+                selectedFiles.clear();
+                renderFileList();
+                renderBreadcrumb();
+            } catch (error) {
+                const duration = performance.now() - startTime;
+                console.error(`[FileManager] Failed after ${formatDuration(duration)}:`, error);
+                showError('Failed to list directory: ' + error);
+                document.getElementById('fileTableBody').innerHTML = `
+                    <tr><td colspan="4" style="padding: 40px; text-align: center; color: #f44336;">
+                        Error loading directory: ${error}
+                    </td></tr>
+                `;
+            }
+        }
+
+        function renderFileList() {
+            const tbody = document.getElementById('fileTableBody');
+            const sortedList = sortFileList([...fileList]);
+            
+            if (sortedList.length === 0) {
+                tbody.innerHTML = `
+                    <tr><td colspan="4" style="padding: 40px; text-align: center; color: #999;">
+                        This directory is empty
+                    </td></tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = sortedList.map((entry, index) => {
+                const isDir = entry.is_directory;
+                const icon = getFileIcon(entry);
+                const size = isDir ? '-' : formatFileSize(entry.size);
+                const type = isDir ? 'Folder' : getFileType(entry.name);
+                const fullPath = currentPath.endsWith('/') ? currentPath + entry.name : currentPath + '/' + entry.name;
+                const isSelected = selectedFiles.has(fullPath);
+                
+                return `
+                    <tr class="${isSelected ? 'selected' : ''}" data-path="${fullPath}" data-index="${index}">
+                        <td>
+                            <div class="file-row-name">
+                                <input type="checkbox" class="file-checkbox" data-path="${fullPath}" ${isSelected ? 'checked' : ''} onclick="toggleFileSelection('${fullPath}', event)">
+                                <span class="file-icon-large">${icon}</span>
+                                <span onclick="handleFileClick('${fullPath}', ${isDir})" style="flex: 1; cursor: pointer;">${entry.name}</span>
+                            </div>
+                        </td>
+                        <td style="text-align: right;">${size}</td>
+                        <td>${type}</td>
+                        <td style="text-align: center;">
+                            <button onclick="handleFileAction('${fullPath}', '${isDir ? 'open' : 'download'}')" style="background: #2196F3; color: white; padding: 4px 12px; font-size: 12px;">
+                                ${isDir ? '📂 Open' : '📥 Download'}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Add right-click listeners
+            tbody.querySelectorAll('tr[data-path]').forEach(row => {
+                row.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    showContextMenu(e, row.dataset.path);
+                });
+            });
+        }
+
+        function renderBreadcrumb() {
+            const nav = document.getElementById('breadcrumbNav');
+            const parts = currentPath.split('/').filter(p => p);
+            
+            let html = '<span class="breadcrumb-part" onclick="navigateToPath(\'/\')">🏠 root</span>';
+            let path = '';
+            
+            parts.forEach((part, index) => {
+                path += '/' + part;
+                const currentPath = path;
+                html += `<span class="breadcrumb-separator">/</span>`;
+                html += `<span class="breadcrumb-part" onclick="navigateToPath('${currentPath}')">${part}</span>`;
+            });
+            
+            nav.innerHTML = html;
+        }
+
+        function sortFileList(list) {
+            return list.sort((a, b) => {
+                // Folders first
+                if (a.is_directory && !b.is_directory) return -1;
+                if (!a.is_directory && b.is_directory) return 1;
+                
+                // Then by sort field
+                let aVal, bVal;
+                if (sortBy === 'name') {
+                    aVal = a.name.toLowerCase();
+                    bVal = b.name.toLowerCase();
+                } else if (sortBy === 'size') {
+                    aVal = a.size || 0;
+                    bVal = b.size || 0;
+                }
+                
+                if (aVal < bVal) return sortAsc ? -1 : 1;
+                if (aVal > bVal) return sortAsc ? 1 : -1;
+                return 0;
+            });
+        }
+
+        function getFileIcon(entry) {
+            if (entry.is_directory) return '📁';
+            
+            const ext = entry.name.split('.').pop().toLowerCase();
+            const iconMap = {
+                // Images
+                'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️', 'webp': '🖼️', 'bmp': '🖼️',
+                // Videos
+                'mp4': '🎬', 'avi': '🎬', 'mkv': '🎬', 'mov': '🎬', 'wmv': '🎬',
+                // Audio
+                'mp3': '🎵', 'wav': '🎵', 'm4a': '🎵', 'flac': '🎵', 'ogg': '🎵',
+                // Documents
+                'pdf': '📄', 'doc': '📄', 'docx': '📄', 'txt': '📝', 'log': '📝',
+                // Archives
+                'zip': '📦', 'rar': '📦', 'tar': '📦', 'gz': '📦', '7z': '📦', 'apk': '📦',
+                // Code
+                'js': '📜', 'html': '📜', 'css': '📜', 'json': '📜', 'xml': '📜',
+            };
+            
+            return iconMap[ext] || '📄';
+        }
+
+        function getFileType(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const typeMap = {
+                'jpg': 'Image', 'jpeg': 'Image', 'png': 'Image', 'gif': 'Image',
+                'mp4': 'Video', 'avi': 'Video', 'mkv': 'Video',
+                'mp3': 'Audio', 'wav': 'Audio', 'm4a': 'Audio',
+                'pdf': 'PDF', 'txt': 'Text', 'log': 'Log',
+                'zip': 'Archive', 'apk': 'APK',
+            };
+            return typeMap[ext] || 'File';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        async function handleFileClick(path, isDirectory) {
+            if (isDirectory) {
+                await navigateToPath(path);
+            } else {
+                await downloadFile(path);
+            }
+        }
+
+        async function handleFileAction(path, action) {
+            if (action === 'open') {
+                await navigateToPath(path);
+            } else if (action === 'download') {
+                await downloadFile(path);
+            }
+        }
+
+        async function downloadFile(path) {
+            try {
+                showSuccess('Downloading: ' + path.split('/').pop());
+                const data = await queueOperation(async () => {
+                    return await adb.pull_file(path);
+                });
+                const blob = new Blob([data]);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = path.split('/').pop();
+                a.click();
+                URL.revokeObjectURL(url);
+                showSuccess('Downloaded: ' + path.split('/').pop());
+            } catch (error) {
+                showError('Download failed: ' + error);
+            }
+        }
+
+        async function uploadFiles(files) {
+            const modal = document.getElementById('uploadProgressModal');
+            const fileName = document.getElementById('uploadFileName');
+            const progressBar = document.getElementById('uploadProgressBar');
+            const progressText = document.getElementById('uploadProgressText');
+            const status = document.getElementById('uploadStatus');
+            
+            modal.style.display = 'flex';
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                fileName.textContent = `${file.name} (${i + 1}/${files.length})`;
+                status.textContent = 'Reading file...';
+                
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const data = new Uint8Array(arrayBuffer);
+                    
+                    status.textContent = 'Uploading...';
+                    const remotePath = currentPath.endsWith('/') ? 
+                        currentPath + file.name : 
+                        currentPath + '/' + file.name;
+                    
+                    // wasm-bindgen automatically converts Uint8Array to Vec<u8>
+                    await queueOperation(async () => {
+                        return await adb.push_file(data, remotePath);
+                    });
+                    
+                    progressBar.style.width = ((i + 1) / files.length * 100) + '%';
+                    progressText.textContent = Math.round((i + 1) / files.length * 100) + '%';
+                    status.textContent = 'Complete!';
+                    
+                } catch (error) {
+                    showError('Upload failed for ' + file.name + ': ' + error);
+                    break;
+                }
+            }
+            
+            setTimeout(() => {
+                modal.style.display = 'none';
+                progressBar.style.width = '0%';
+                refreshFileList();
+            }, 1000);
+        }
+
+        function toggleFileSelection(path, event) {
+            if (event) event.stopPropagation();
+            
+            if (selectedFiles.has(path)) {
+                selectedFiles.delete(path);
+            } else {
+                selectedFiles.add(path);
+            }
+            
+            renderFileList();
+        }
+
+        function selectAllFiles() {
+            fileList.forEach(entry => {
+                const path = currentPath.endsWith('/') ? currentPath + entry.name : currentPath + '/' + entry.name;
+                selectedFiles.add(path);
+            });
+            renderFileList();
+        }
+
+        function deselectAllFiles() {
+            selectedFiles.clear();
+            renderFileList();
+        }
+
+        function showContextMenu(event, path) {
+            const menu = document.getElementById('fileContextMenu');
+            contextMenuTarget = path;
+            
+            menu.style.display = 'block';
+            menu.style.left = event.pageX + 'px';
+            menu.style.top = event.pageY + 'px';
+        }
+
+        function hideContextMenu() {
+            document.getElementById('fileContextMenu').style.display = 'none';
+        }
+
+        async function handleContextMenuAction(action) {
+            hideContextMenu();
+            
+            if (!contextMenuTarget) return;
+            
+            const entry = fileList.find(e => {
+                const path = currentPath.endsWith('/') ? currentPath + e.name : currentPath + '/' + e.name;
+                return path === contextMenuTarget;
+            });
+            
+            switch (action) {
+                case 'open':
+                    if (entry && entry.is_directory) {
+                        await navigateToPath(contextMenuTarget);
+                    }
+                    break;
+                case 'download':
+                    await downloadFile(contextMenuTarget);
+                    break;
+                case 'rename':
+                    showRenameDialog(contextMenuTarget);
+                    break;
+                case 'delete':
+                    showDeleteConfirm(contextMenuTarget);
+                    break;
+                case 'copypath':
+                    navigator.clipboard.writeText(contextMenuTarget);
+                    showSuccess('Path copied to clipboard');
+                    break;
+            }
+        }
+
+        function showRenameDialog(path) {
+            renameTarget = path;
+            const name = path.split('/').pop();
+            document.getElementById('renameInput').value = name;
+            document.getElementById('renameModal').style.display = 'flex';
+            document.getElementById('renameInput').focus();
+            document.getElementById('renameInput').select();
+        }
+
+        function closeRenameModal() {
+            document.getElementById('renameModal').style.display = 'none';
+            renameTarget = null;
+        }
+
+        async function confirmRename() {
+            const newName = document.getElementById('renameInput').value.trim();
+            if (!newName || !renameTarget) return;
+            
+            const parentPath = renameTarget.substring(0, renameTarget.lastIndexOf('/'));
+            const newPath = parentPath + '/' + newName;
+            
+            try {
+                await queueOperation(async () => {
+                    return await adb.rename_file(renameTarget, newPath);
+                });
+                showSuccess('Renamed successfully');
+                closeRenameModal();
+                await refreshFileList();
+            } catch (error) {
+                showError('Rename failed: ' + error);
+            }
+        }
+
+        function showNewFolderDialog() {
+            document.getElementById('newFolderInput').value = '';
+            document.getElementById('newFolderModal').style.display = 'flex';
+            document.getElementById('newFolderInput').focus();
+        }
+
+        function closeNewFolderModal() {
+            document.getElementById('newFolderModal').style.display = 'none';
+        }
+
+        async function confirmNewFolder() {
+            const name = document.getElementById('newFolderInput').value.trim();
+            if (!name) return;
+            
+            const newPath = currentPath.endsWith('/') ? currentPath + name : currentPath + '/' + name;
+            
+            try {
+                await queueOperation(async () => {
+                    return await adb.create_directory(newPath);
+                });
+                showSuccess('Folder created');
+                closeNewFolderModal();
+                await refreshFileList();
+            } catch (error) {
+                showError('Create folder failed: ' + error);
+            }
+        }
+
+        function showDeleteConfirm(path) {
+            const name = path.split('/').pop();
+            document.getElementById('deleteConfirmText').textContent = 
+                `Are you sure you want to delete "${name}"?`;
+            document.getElementById('deleteConfirmModal').style.display = 'flex';
+            contextMenuTarget = path;
+        }
+
+        function closeDeleteConfirmModal() {
+            document.getElementById('deleteConfirmModal').style.display = 'none';
+        }
+
+        async function confirmDelete() {
+            if (!contextMenuTarget) return;
+            
+            try {
+                await queueOperation(async () => {
+                    return await adb.delete_path(contextMenuTarget);
+                });
+                showSuccess('Deleted successfully');
+                closeDeleteConfirmModal();
+                await refreshFileList();
+            } catch (error) {
+                showError('Delete failed: ' + error);
+            }
+        }
+
+        // Inline onclick / innerHTML handlers run in global scope; `type="module"` keeps these local.
+        window.toggleFileSelection = toggleFileSelection;
+        window.handleFileClick = handleFileClick;
+        window.handleFileAction = handleFileAction;
+        window.navigateToPath = navigateToPath;
+        window.closeRenameModal = closeRenameModal;
+        window.confirmRename = confirmRename;
+        window.closeNewFolderModal = closeNewFolderModal;
+        window.confirmNewFolder = confirmNewFolder;
+        window.closeDeleteConfirmModal = closeDeleteConfirmModal;
+        window.confirmDelete = confirmDelete;
+
+        function updateNavigationButtons() {
+            document.getElementById('fileNavBack').disabled = fileHistoryIndex <= 0;
+            document.getElementById('fileNavUp').disabled = currentPath === '/';
+        }
+
+        async function navigateBack() {
+            if (fileHistoryIndex > 0) {
+                fileHistoryIndex--;
+                currentPath = fileHistory[fileHistoryIndex];
+                await refreshFileList();
+                updateNavigationButtons();
+            }
+        }
+
+        async function navigateUp() {
+            if (currentPath === '/') return;
+            const parent = currentPath.substring(0, currentPath.lastIndexOf('/')) || '/';
+            await navigateToPath(parent);
+        }
+
+        function setupFileManagerListeners() {
+            // Navigation
+            document.getElementById('fileNavBack').addEventListener('click', navigateBack);
+            document.getElementById('fileNavUp').addEventListener('click', navigateUp);
+            document.getElementById('fileRefresh').addEventListener('click', refreshFileList);
+            
+            // Quick paths
+            document.querySelectorAll('.quickPath').forEach(btn => {
+                btn.addEventListener('click', () => navigateToPath(btn.dataset.path));
+            });
+            
+            // Upload
+            document.getElementById('fileUploadBtn').addEventListener('click', () => {
+                document.getElementById('fileUploadInput').click();
+            });
+            
+            document.getElementById('fileUploadInput').addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    uploadFiles(Array.from(e.target.files));
+                    e.target.value = '';
+                }
+            });
+            
+            // New folder
+            document.getElementById('fileNewFolderBtn').addEventListener('click', showNewFolderDialog);
+            
+            // Selection
+            document.getElementById('fileSelectAllBtn').addEventListener('click', selectAllFiles);
+            document.getElementById('fileDeselectAllBtn').addEventListener('click', deselectAllFiles);
+            
+            // Context menu
+            document.querySelectorAll('.context-menu-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    handleContextMenuAction(item.dataset.action);
+                });
+            });
+            
+            // Hide context menu on click outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('#fileContextMenu')) {
+                    hideContextMenu();
+                }
+            });
+            
+            // Drag and drop
+            const dropZone = document.getElementById('fileDropZone');
+            
+            document.addEventListener('dragenter', (e) => {
+                if (e.dataTransfer.types.includes('Files')) {
+                    e.preventDefault();
+                    dropZone.classList.add('active');
+                    document.getElementById('dropZonePath').textContent = currentPath;
+                }
+            });
+            
+            dropZone.addEventListener('dragleave', (e) => {
+                if (e.target === dropZone) {
+                    dropZone.classList.remove('active');
+                }
+            });
+            
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
+            
+            dropZone.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('active');
+                
+                const files = Array.from(e.dataTransfer.files);
+                if (files.length > 0) {
+                    await uploadFiles(files);
+                }
+            });
+            
+            // Sorting
+            document.querySelector('th[data-sort="name"]').addEventListener('click', () => {
+                if (sortBy === 'name') {
+                    sortAsc = !sortAsc;
+                } else {
+                    sortBy = 'name';
+                    sortAsc = true;
+                }
+                document.getElementById('sortNameIndicator').textContent = sortAsc ? '▼' : '▲';
+                document.getElementById('sortSizeIndicator').textContent = '';
+                renderFileList();
+            });
+            
+            document.querySelector('th[data-sort="size"]').addEventListener('click', () => {
+                if (sortBy === 'size') {
+                    sortAsc = !sortAsc;
+                } else {
+                    sortBy = 'size';
+                    sortAsc = true;
+                }
+                document.getElementById('sortSizeIndicator').textContent = sortAsc ? '▼' : '▲';
+                document.getElementById('sortNameIndicator').textContent = '';
+                renderFileList();
+            });
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                // Only handle if no modal is open
+                if (document.querySelector('.modal[style*="flex"]')) return;
+                
+                if (e.key === 'F5') {
+                    e.preventDefault();
+                    refreshFileList();
+                }
+                
+                if (e.key === 'Delete' && selectedFiles.size > 0) {
+                    e.preventDefault();
+                    const firstPath = Array.from(selectedFiles)[0];
+                    showDeleteConfirm(firstPath);
+                }
+                
+                if (e.key === 'Backspace' && currentPath !== '/') {
+                    e.preventDefault();
+                    navigateUp();
+                }
+            });
+            
+            // Enter key for rename modal
+            document.getElementById('renameInput').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    confirmRename();
+                } else if (e.key === 'Escape') {
+                    closeRenameModal();
+                }
+            });
+            
+            // Enter key for new folder modal
+            document.getElementById('newFolderInput').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    confirmNewFolder();
+                } else if (e.key === 'Escape') {
+                    closeNewFolderModal();
+                }
+            });
+        }
+
+        async function enableFileManager() {
+            // Enable all file manager buttons
+            document.querySelectorAll('.quickPath').forEach(btn => btn.disabled = false);
+            document.getElementById('fileNavBack').disabled = false;
+            document.getElementById('fileNavUp').disabled = false;
+            document.getElementById('fileRefresh').disabled = false;
+            document.getElementById('fileUploadBtn').disabled = false;
+            document.getElementById('fileNewFolderBtn').disabled = false;
+            document.getElementById('fileSelectAllBtn').disabled = false;
+            document.getElementById('fileDeselectAllBtn').disabled = false;
+            
+            // Load initial directory
+            await navigateToPath('/sdcard');
+        }
+
+        function disableFileManager() {
+            // Disable all file manager buttons
+            document.querySelectorAll('.quickPath').forEach(btn => btn.disabled = true);
+            document.getElementById('fileNavBack').disabled = true;
+            document.getElementById('fileNavUp').disabled = true;
+            document.getElementById('fileRefresh').disabled = true;
+            document.getElementById('fileUploadBtn').disabled = true;
+            document.getElementById('fileNewFolderBtn').disabled = true;
+            document.getElementById('fileSelectAllBtn').disabled = true;
+            document.getElementById('fileDeselectAllBtn').disabled = true;
+            
+            // Clear file list
+            document.getElementById('fileTableBody').innerHTML = `
+                <tr><td colspan="4" style="padding: 40px; text-align: center; color: #999;">
+                    Connect to a device to browse files
+                </td></tr>
+            `;
+            document.getElementById('breadcrumbNav').innerHTML = '<span style="color: #666;">Not connected</span>';
+        }
+
+        async function main() {
+            await init();
+
+            if (!await has_keypair()) {
+                await generate_keypair();
+            }
+
+            adb = new Adb();
+
+            setupEventListeners();
+            document.getElementById('connectBtn').disabled = false;
+        }
+
+        function setupEventListeners() {
+            document.getElementById('connectBtn').addEventListener('click', connect);
+            document.getElementById('disconnectBtn').addEventListener('click', disconnect);
+            
+            // Diagnostics
+            document.getElementById('healthCheckBtn').addEventListener('click', performHealthCheck);
+            document.getElementById('cleanupStreamsBtn').addEventListener('click', cleanupStaleStreams);
+            document.getElementById('refreshDiagnosticsBtn').addEventListener('click', refreshDiagnostics);
+            
+            // Bugreport
+            document.getElementById('bugreportLiteBtn').addEventListener('click', generateLiteBugreport);
+            document.getElementById('bugreportFullBtn').addEventListener('click', generateFullBugreport);
+            document.getElementById('downloadReportBtn').addEventListener('click', downloadReport);
+            document.getElementById('viewReportBtn').addEventListener('click', viewReport);
+            document.getElementById('listBugreportsBtn').addEventListener('click', listAvailableBugreports);
+            
+            // Logcat
+            document.getElementById('logcatBtn').addEventListener('click', getLogcat);
+            document.getElementById('logcatClearBtn').addEventListener('click', clearLogcat);
+            document.getElementById('downloadLogBtn').addEventListener('click', downloadLog);
+            
+            // Files
+            document.getElementById('listBtn').addEventListener('click', listDirectory);
+            document.getElementById('statBtn').addEventListener('click', statFile);
+            
+            // Advanced
+            document.getElementById('screenshotBtn').addEventListener('click', captureScreenshot);
+            document.getElementById('dumpStateBtn').addEventListener('click', dumpState);
+            document.getElementById('packageListBtn').addEventListener('click', listPackages);
+            
+            // Shell
+            document.getElementById('shellInput').addEventListener('keydown', handleShellKeydown);
+            document.getElementById('shellExecuteBtn').addEventListener('click', executeShellCommand);
+            
+            // Shell quick commands
+            document.getElementById('shellCmdLs').addEventListener('click', () => executeQuickCommand('ls -la'));
+            document.getElementById('shellCmdPwd').addEventListener('click', () => executeQuickCommand('pwd'));
+            document.getElementById('shellCmdDf').addEventListener('click', () => executeQuickCommand('df -h'));
+            document.getElementById('shellCmdPs').addEventListener('click', () => executeQuickCommand('ps'));
+            document.getElementById('shellCmdVersion').addEventListener('click', () => executeQuickCommand('getprop | grep version'));
+            document.getElementById('shellCmdUname').addEventListener('click', () => executeQuickCommand('uname -a'));
+            document.getElementById('shellCmdClear').addEventListener('click', clearTerminal);
+            
+            // File Manager
+            setupFileManagerListeners();
+        }
+
+        async function connect() {
+            console.log('[Connect] Starting connection...');
+            const startTime = performance.now();
+            try {
+                updateStatus('working', 'Connecting...');
+                console.log('[Connect] Requesting device and connecting...');
+                // WebUSB: `requestDevice` must run in the user-gesture turn. First await here is
+                // `requestAdbUsbDeviceFromUser()`, not `adb.connect()` (WASM would defer WebUSB).
+                console.log('[Connect] requestDevice (JS) then adb.connectWithUsbDevice()');
+                const usbDevice = await requestAdbUsbDeviceFromUser();
+                const deviceInfo = await adb.connectWithUsbDevice(usbDevice);
+                console.log('[Connect] connectWithUsbDevice completed, device info:', deviceInfo);
+                const duration = performance.now() - startTime;
+                console.log(`[Connect] Connection successful in ${formatDuration(duration)}`);
+                updateStatus('connected', 'Connected');
+                enableButtons();
+                console.log('[Connect] Buttons enabled, refreshing diagnostics...');
+                await refreshDiagnostics();
+                
+                // Show terminal welcome
+                clearTerminal();
+                appendTerminal('='.repeat(60) + '\n', '#00ff00');
+                appendTerminal('  Android Device Shell - WebADB\n', '#00ff00');
+                appendTerminal('='.repeat(60) + '\n', '#00ff00');
+                
+                try {
+                    // Try to get properties via get_properties API
+                    let model = 'Unknown';
+                    let android = 'Unknown';
+                    let build = 'Unknown';
+                    
+                    try {
+                        const props = await queueOperation(async () => {
+                            return await adb.get_properties();
+                        });
+                        
+                        // Properties are returned as a JavaScript object from HashMap via serde_wasm_bindgen
+                        // The object should be directly accessible
+                        if (props && typeof props === 'object') {
+                            // Access properties using bracket notation (HashMap keys with dots)
+                            model = props['ro.product.model'] || props['ro.product.name'] || model;
+                            android = props['ro.build.version.release'] || props['ro.build.version.sdk'] || android;
+                            build = props['ro.build.id'] || props['ro.build.display.id'] || build;
+                        }
+                    } catch (propError) {
+                        console.warn('get_properties failed, trying shell fallback:', propError);
+                    }
+                    
+                    // Fallback: if properties are still unknown, try shell commands
+                    if (model === 'Unknown' || android === 'Unknown' || build === 'Unknown') {
+                        try {
+                            if (model === 'Unknown') {
+                                const modelResult = await queueOperation(async () => {
+                                    return await adb.shell('getprop ro.product.model');
+                                });
+                                model = modelResult.trim() || 'Unknown';
+                            }
+                            if (android === 'Unknown') {
+                                const androidResult = await queueOperation(async () => {
+                                    return await adb.shell('getprop ro.build.version.release');
+                                });
+                                android = androidResult.trim() || 'Unknown';
+                            }
+                            if (build === 'Unknown') {
+                                const buildResult = await queueOperation(async () => {
+                                    return await adb.shell('getprop ro.build.id');
+                                });
+                                build = buildResult.trim() || 'Unknown';
+                            }
+                        } catch (shellError) {
+                            console.warn('Shell fallback failed:', shellError);
+                        }
+                    }
+                    
+                    appendTerminal(`\n Device: ${model}\n`, '#d4d4d4');
+                    appendTerminal(` Android: ${android}\n`, '#d4d4d4');
+                    appendTerminal(` Build: ${build}\n\n`, '#d4d4d4');
+                } catch (e) {
+                    console.error('Error getting device info:', e);
+                    appendTerminal('\n Device connected!\n\n', '#d4d4d4');
+                }
+                
+                appendTerminal('$ ', '#00ff00');
+                
+                // Enable file manager
+                await enableFileManager();
+            } catch (error) {
+                updateStatus('disconnected', 'Connection failed');
+                alert('Failed to connect: ' + error);
+            }
+        }
+
+        async function waitForQueueIdle(maxMs) {
+            const t0 = Date.now();
+            while (isProcessingQueue && Date.now() - t0 < maxMs) {
+                await new Promise((r) => setTimeout(r, 40));
+            }
+            if (isProcessingQueue) {
+                console.warn('[Disconnect] Queue still marked busy after wait; forcing resetQueue()');
+                resetQueue();
+            }
+        }
+
+        async function disconnect() {
+            console.log('[Disconnect] Starting disconnect...');
+            const startTime = performance.now();
+            const btn = document.getElementById('disconnectBtn');
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Disconnecting...';
+
+                const pending = operationQueue.splice(0);
+                console.log(`[Disconnect] Rejecting ${pending.length} queued (not yet running) operation(s)`);
+                pending.forEach((item) => {
+                    try {
+                        if (item && item.reject) {
+                            item.reject(new Error('Disconnected from device'));
+                        }
+                    } catch (e) {
+                        /* ignore */
+                    }
+                });
+
+                console.log('[Disconnect] Waiting for in-flight ADB queue to finish (or reset)...');
+                await waitForQueueIdle(15000);
+
+                if (adb) {
+                    console.log('[Disconnect] Calling adb.disconnect()');
+                    try {
+                        await adb.disconnect();
+                        console.log('[Disconnect] adb.disconnect() completed successfully');
+                    } catch (disconnectError) {
+                        console.warn('[Disconnect] Disconnect error (may be already disconnected):', disconnectError);
+                    }
+                } else {
+                    console.log('[Disconnect] adb is null, skipping disconnect call');
+                }
+
+                stopQueueWatchdog();
+                isProcessingQueue = false;
+                queueProcessingStartTime = null;
+                operationQueue = [];
+                
+                const duration = performance.now() - startTime;
+                console.log(`[Disconnect] Disconnect completed in ${formatDuration(duration)}`);
+                updateStatus('disconnected', 'Disconnected');
+                disableButtons();
+                disableFileManager();
+                
+                // Clear terminal
+                clearTerminal();
+                
+            } catch (error) {
+                const duration = performance.now() - startTime;
+                console.error(`[Disconnect] Disconnect failed after ${formatDuration(duration)}:`, error);
+                alert('Failed to disconnect: ' + error);
+                // Still try to reset state
+                isProcessingQueue = false;
+                operationQueue = [];
+                disableButtons();
+                disableFileManager();
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Disconnect';
+            }
+        }
+
+        // Diagnostics functions
+        async function refreshDiagnostics() {
+            try {
+                if (!adb) return;
+                // Intentionally not queued: lightweight read; avoids stacking work right after connect.
+                const count = adb.active_stream_count();
+                document.getElementById('streamCount').textContent = count;
+                
+                const log = document.getElementById('diagnosticsLog');
+                log.style.display = 'block';
+                const time = new Date().toLocaleTimeString();
+                log.innerHTML = `<div style="color: #2196F3;">[${time}] Refreshed - ${count} active stream(s)</div>` + log.innerHTML;
+            } catch (error) {
+                showError('Refresh failed: ' + error);
+            }
+        }
+        
+        async function performHealthCheck() {
+            const btn = document.getElementById('healthCheckBtn');
+            const status = document.getElementById('healthStatus');
+            const log = document.getElementById('diagnosticsLog');
+            
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Checking...';
+                status.textContent = '...';
+                status.style.color = '#FF9800';
+                
+                const healthy = await queueOperation(async () => {
+                    return await adb.health_check();
+                });
+                
+                const time = new Date().toLocaleTimeString();
+                log.style.display = 'block';
+                
+                if (healthy) {
+                    status.textContent = '✓ Healthy';
+                    status.style.color = '#4CAF50';
+                    log.innerHTML = `<div style="color: #4CAF50;">[${time}] Health check PASSED</div>` + log.innerHTML;
+                    showSuccess('Device is responding');
+                } else {
+                    status.textContent = '✗ Unhealthy';
+                    status.style.color = '#f44336';
+                    log.innerHTML = `<div style="color: #f44336;">[${time}] Health check FAILED</div>` + log.innerHTML;
+                    showWarning('Device not responding properly');
+                }
+                
+                await refreshDiagnostics();
+            } catch (error) {
+                status.textContent = '✗ Error';
+                status.style.color = '#f44336';
+                showError('Health check error: ' + error);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Check Health';
+            }
+        }
+        
+        async function cleanupStaleStreams() {
+            const btn = document.getElementById('cleanupStreamsBtn');
+            const countEl = document.getElementById('cleanedCount');
+            const log = document.getElementById('diagnosticsLog');
+            
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Cleaning...';
+                
+                const cleaned = await queueOperation(async () => {
+                    return await adb.cleanup_stale_streams();
+                });
+                const total = parseInt(countEl.textContent) + cleaned;
+                countEl.textContent = total;
+                
+                const time = new Date().toLocaleTimeString();
+                log.style.display = 'block';
+                log.innerHTML = `<div style="color: #FF9800;">[${time}] Cleaned ${cleaned} stale stream(s)</div>` + log.innerHTML;
+                
+                if (cleaned > 0) {
+                    showSuccess(`Cleaned ${cleaned} stale stream(s)`);
+                } else {
+                    showSuccess('No stale streams found');
+                }
+                
+                await refreshDiagnostics();
+            } catch (error) {
+                showError('Cleanup failed: ' + error);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Cleanup Stale';
+            }
+        }
+
+        async function generateLiteBugreport() {
+            const btn = document.getElementById('bugreportLiteBtn');
+            const output = document.getElementById('bugreportOutput');
+            const info = document.getElementById('bugreportInfo');
+            
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Generating...';
+                output.style.display = 'block';
+                output.textContent = 'Generating lite bugreport...';
+                
+                const report = await queueOperation(async () => {
+                    return await adb.bugreport_lite();
+                });
+                
+                currentReport = new Blob([report], { type: 'text/plain' });
+                
+                output.textContent = report;
+                info.classList.add('show');
+                document.getElementById('reportSize').textContent = formatBytes(report.length);
+                document.getElementById('reportFormat').textContent = 'Text';
+                
+                showSuccess('Lite bugreport generated successfully!');
+            } catch (error) {
+                output.textContent = 'Error: ' + error;
+                showError('Failed to generate bugreport: ' + error);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Generate Lite Report (Fast)';
+            }
+        }
+
+        async function generateFullBugreport() {
+            const btn = document.getElementById('bugreportFullBtn');
+            const progress = document.getElementById('bugreportProgress');
+            const progressBar = document.getElementById('bugreportProgressBar');
+            const output = document.getElementById('bugreportOutput');
+            const info = document.getElementById('bugreportInfo');
+            
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Generating... (this may take 2-5 minutes)';
+                progress.classList.add('show');
+                progressBar.style.width = '10%';
+                progressBar.textContent = '10%';
+                output.style.display = 'none';
+                
+                showWarning('Generating full bugreport. This can take several minutes. Please wait...');
+                
+                // Simulate progress (we can't get real progress from ADB)
+                const progressInterval = setInterval(() => {
+                    const current = parseInt(progressBar.style.width);
+                    if (current < 90) {
+                        const next = current + 5;
+                        progressBar.style.width = next + '%';
+                        progressBar.textContent = next + '%';
+                    }
+                }, 3000);
+                
+                const reportData = await queueOperation(async () => {
+                    return await adb.bugreport();
+                });
+                
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
+                progressBar.textContent = '100%';
+                
+                currentReport = new Blob([reportData], { type: 'application/zip' });
+                
+                info.classList.add('show');
+                document.getElementById('reportSize').textContent = formatBytes(reportData.byteLength);
+                document.getElementById('reportFormat').textContent = 'ZIP Archive';
+                
+                showSuccess('Full bugreport generated successfully!');
+                
+                setTimeout(() => {
+                    progress.classList.remove('show');
+                }, 2000);
+            } catch (error) {
+                showError('Failed to generate bugreport: ' + error);
+                progress.classList.remove('show');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Generate Full Report (Slow)';
+            }
+        }
+
+        function downloadReport() {
+            if (!currentReport) return;
+            
+            const url = URL.createObjectURL(currentReport);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'bugreport-' + new Date().getTime() + 
+                         (currentReport.type.includes('zip') ? '.zip' : '.txt');
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function viewReport() {
+            const output = document.getElementById('bugreportOutput');
+            if (currentReport && currentReport.type === 'text/plain') {
+                output.style.display = 'block';
+                currentReport.text().then(text => {
+                    output.textContent = text;
+                });
+            } else {
+                alert('Binary reports cannot be viewed in browser. Please download.');
+            }
+        }
+
+        async function listAvailableBugreports() {
+            const btn = document.getElementById('listBugreportsBtn');
+            const output = document.getElementById('bugreportsList');
+            
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Searching...';
+                output.style.display = 'block';
+                output.textContent = 'Searching for bugreports on device...';
+                
+                const paths = await queueOperation(async () => {
+                    return await adb.list_bugreports();
+                });
+                
+                if (paths.length === 0) {
+                    output.innerHTML = '<span style="color: #999;">No bugreports found on device.</span>';
+                    showWarning('No bugreports found. Generate one first using "Generate Full Report".');
+                    return;
+                }
+                
+                let html = `<div style="color: #4CAF50; margin-bottom: 15px;">Found ${paths.length} bugreport(s):</div>`;
+                
+                paths.forEach((path, index) => {
+                    const filename = path.split('/').pop();
+                    const isZip = path.endsWith('.zip');
+                    const icon = isZip ? '📦' : '📄';
+                    // Escape HTML attributes
+                    const escapedPath = path.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                    
+                    html += `
+                        <div style="background: #2a2a2a; margin: 10px 0; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <div style="color: #d4d4d4; margin-bottom: 8px;">
+                                ${icon} <strong>${filename}</strong>
+                            </div>
+                            <div style="color: #888; font-size: 12px; margin-bottom: 10px;">
+                                ${path}
+                            </div>
+                            <button 
+                                class="download-bugreport-btn"
+                                data-path="${escapedPath}"
+                                style="background: #667eea; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 14px;">
+                                Download
+                            </button>
+                        </div>
+                    `;
+                });
+                
+                output.innerHTML = html;
+                
+                // Attach event listeners to download buttons
+                document.querySelectorAll('.download-bugreport-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        let path = this.getAttribute('data-path');
+                        // Decode HTML entities
+                        path = path.replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+                        downloadExistingBugreport(path);
+                    });
+                });
+                
+                showSuccess(`Found ${paths.length} bugreport(s) on device.`);
+                
+            } catch (error) {
+                output.innerHTML = `<span style="color: #f44336;">Error: ${error}</span>`;
+                showError('Failed to list bugreports: ' + error);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'List Available Bugreports';
+            }
+        }
+
+        async function downloadExistingBugreport(path) {
+            const filename = path.split('/').pop();
+            const debugPanel = document.getElementById('downloadDebug');
+            const debugStatus = document.getElementById('downloadStatus');
+            const debugFile = document.getElementById('debugFile');
+            const debugSize = document.getElementById('debugSize');
+            const debugTime = document.getElementById('debugTime');
+            const debugSpeed = document.getElementById('debugSpeed');
+            const debugLog = document.getElementById('debugLog');
+            const progressBar = document.getElementById('downloadProgressBar');
+            
+            function addLog(msg) {
+                const time = new Date().toLocaleTimeString();
+                debugLog.innerHTML += `<div>[${time}] ${msg}</div>`;
+                debugLog.scrollTop = debugLog.scrollHeight;
+                console.log(`[Download] ${msg}`);
+            }
+            
+            try {
+                // Show debug panel
+                debugPanel.style.display = 'block';
+                debugStatus.textContent = 'Starting...';
+                debugStatus.style.color = '#FF9800';
+                debugFile.textContent = filename;
+                debugSize.textContent = '...';
+                debugTime.textContent = '0s';
+                debugSpeed.textContent = '...';
+                debugLog.innerHTML = '';
+                progressBar.style.width = '0%';
+                progressBar.textContent = '';
+                
+                addLog(`Starting download: ${filename}`);
+                addLog(`Path: ${path}`);
+                
+                showWarning(`Downloading ${filename}... Please wait.`);
+                
+                const startTime = Date.now();
+                debugStatus.textContent = 'Downloading...';
+                debugStatus.style.color = '#2196F3';
+                progressBar.style.width = '30%';
+                progressBar.textContent = '30%';
+                
+                // Start timer
+                const timerInterval = setInterval(() => {
+                    const elapsedMs = Date.now() - startTime;
+                    debugTime.textContent = formatDuration(elapsedMs);
+                }, 100);
+                
+                addLog('Requesting file from device...');
+                
+                const data = await queueOperation(async () => {
+                    return await adb.download_bugreport(path);
+                });
+                
+                clearInterval(timerInterval);
+                
+                const endTime = Date.now();
+                const durationMs = endTime - startTime;
+                const sizeStr = formatBytes(data.byteLength);
+                const durationSeconds = durationMs / 1000;
+                const speed = formatBytes(data.byteLength / (durationSeconds || 1)) + '/s';
+                
+                debugSize.textContent = sizeStr;
+                debugTime.textContent = formatDuration(durationMs);
+                debugSpeed.textContent = speed;
+                progressBar.style.width = '100%';
+                progressBar.textContent = '100%';
+                
+                addLog(`Download complete!`);
+                addLog(`Size: ${sizeStr} (${data.byteLength} bytes)`);
+                addLog(`Duration: ${formatDuration(durationMs)}`);
+                addLog(`Average speed: ${speed}`);
+                
+                debugStatus.textContent = 'Saving...';
+                debugStatus.style.color = '#4CAF50';
+                
+                const blob = new Blob([data], { 
+                    type: path.endsWith('.zip') ? 'application/zip' : 'text/plain' 
+                });
+                
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                debugStatus.textContent = 'Complete ✓';
+                debugStatus.style.color = '#4CAF50';
+                addLog('File saved successfully!');
+                
+                showSuccess(`Downloaded ${filename} (${sizeStr}) in ${formatDuration(durationMs)} at ${speed}`);
+                
+                // Hide debug panel after 5 seconds
+                setTimeout(() => {
+                    debugPanel.style.display = 'none';
+                }, 5000);
+                
+            } catch (error) {
+                debugStatus.textContent = 'Failed ✗';
+                debugStatus.style.color = '#f44336';
+                progressBar.style.width = '100%';
+                progressBar.style.background = '#f44336';
+                progressBar.textContent = 'ERROR';
+                
+                addLog(`ERROR: ${error}`);
+                console.error(`[Download] Failed:`, error);
+                showError(`Failed to download ${filename}: ${error}`);
+            }
+        }
+
+        async function getLogcat() {
+            const lines = parseInt(document.getElementById('logcatLines').value);
+            const output = document.getElementById('logcatOutput');
+            const downloadBtn = document.getElementById('downloadLogBtn');
+            const btn = document.getElementById('logcatBtn');
+            
+            console.log(`[Logcat] getLogcat called with ${lines} lines`);
+            const startTime = performance.now();
+            
+            try {
+                btn.disabled = true;
+                output.textContent = 'Fetching logcat...';
+                
+                const log = await queueOperation(async () => {
+                    console.log(`[Logcat] Calling adb.logcat(${lines})`);
+                    const result = await adb.logcat(lines);
+                    console.log(`[Logcat] Received ${result.length} characters of logcat`);
+                    return result;
+                });
+                
+                const duration = performance.now() - startTime;
+                console.log(`[Logcat] Logcat retrieved in ${formatDuration(duration)}`);
+                currentLog = log;
+                output.textContent = log;
+                downloadBtn.disabled = false;
+            } catch (error) {
+                const duration = performance.now() - startTime;
+                console.error(`[Logcat] Failed after ${formatDuration(duration)}:`, error);
+                output.textContent = 'Error: ' + error;
+                showError('Failed to get logcat: ' + error);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function clearLogcat() {
+            const btn = document.getElementById('logcatClearBtn');
+            try {
+                btn.disabled = true;
+                await queueOperation(async () => {
+                    return await adb.logcat_clear();
+                });
+                document.getElementById('logcatOutput').textContent = 'Logcat cleared.';
+                showSuccess('Logcat buffer cleared');
+            } catch (error) {
+                showError('Failed to clear logcat: ' + error);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function downloadLog() {
+            if (!currentLog) return;
+            
+            const blob = new Blob([currentLog], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'logcat-' + new Date().getTime() + '.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        async function listDirectory() {
+            const path = document.getElementById('filePath').value;
+            const fileList = document.getElementById('fileList');
+            
+            try {
+                fileList.innerHTML = 'Loading...';
+                fileList.style.display = 'block';
+                
+                const entries = await queueOperation(async () => {
+                    return await adb.list_directory(path);
+                });
+                
+                fileList.innerHTML = '';
+                entries.forEach(entry => {
+                    const div = document.createElement('div');
+                    div.className = 'file-item';
+                    
+                    const icon = entry.is_directory ? '📁' : '📄';
+                    const size = entry.is_directory ? '' : ` (${formatBytes(entry.size)})`;
+                    
+                    div.innerHTML = `
+                        <span><span class="file-icon">${icon}</span>${entry.name}${size}</span>
+                        <button onclick="pullFile('${path}/${entry.name}')">Download</button>
+                    `;
+                    
+                    fileList.appendChild(div);
+                });
+            } catch (error) {
+                fileList.textContent = 'Error: ' + error;
+                showError('Failed to list directory: ' + error);
+            }
+        }
+
+        async function statFile() {
+            const path = document.getElementById('filePath').value;
+            const output = document.getElementById('fileStatOutput');
+            
+            try {
+                output.style.display = 'block';
+                output.textContent = 'Getting file info...';
+                
+                const stat = await queueOperation(async () => {
+                    return await adb.stat_file(path);
+                });
+                
+                output.textContent = `File: ${path}
+Type: ${stat.is_directory ? 'Directory' : 'File'}
+Size: ${formatBytes(stat.size)}
+Mode: ${stat.mode.toString(8)}
+Modified: ${new Date(stat.mtime * 1000).toLocaleString()}`;
+            } catch (error) {
+                output.textContent = 'Error: ' + error;
+                showError('Failed to stat file: ' + error);
+            }
+        }
+
+        window.pullFile = async function(path) {
+            try {
+                showWarning('Downloading file: ' + path);
+                const data = await queueOperation(async () => {
+                    return await adb.pull_file(path);
+                });
+                
+                const blob = new Blob([data]);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = path.split('/').pop();
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                showSuccess('File downloaded successfully');
+            } catch (error) {
+                showError('Failed to pull file: ' + error);
+            }
+        };
+
+        async function captureScreenshot() {
+            const output = document.getElementById('advancedOutput');
+            try {
+                output.textContent = 'Capturing screenshot...';
+                const result = await queueOperation(async () => {
+                    return await adb.shell('screencap -p /sdcard/screenshot.png && echo "Screenshot saved to /sdcard/screenshot.png"');
+                });
+                output.textContent = result;
+                showSuccess('Screenshot captured! Pull /sdcard/screenshot.png to download');
+            } catch (error) {
+                output.textContent = 'Error: ' + error;
+            }
+        }
+
+        async function dumpState() {
+            const output = document.getElementById('advancedOutput');
+            try {
+                output.textContent = 'Dumping system state...';
+                const result = await queueOperation(async () => {
+                    return await adb.shell('dumpsys -l');
+                });
+                output.textContent = result;
+            } catch (error) {
+                output.textContent = 'Error: ' + error;
+            }
+        }
+
+        async function listPackages() {
+            const output = document.getElementById('advancedOutput');
+            try {
+                output.textContent = 'Listing packages...';
+                const result = await queueOperation(async () => {
+                    return await adb.shell('pm list packages');
+                });
+                output.textContent = result;
+            } catch (error) {
+                output.textContent = 'Error: ' + error;
+            }
+        }
+
+        function updateStatus(state, text) {
+            const statusEl = document.getElementById('status');
+            statusEl.className = 'status ' + state;
+            statusEl.textContent = 'Status: ' + text;
+        }
+
+        function enableButtons() {
+            document.querySelectorAll('#adb-workspace button:not(#connectBtn)').forEach(btn => {
+                if (btn.id !== 'downloadReportBtn' && btn.id !== 'viewReportBtn' && btn.id !== 'downloadLogBtn') {
+                    btn.disabled = false;
+                }
+            });
+            document.getElementById('connectBtn').disabled = true;
+            
+            // Explicitly enable disconnect button
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            if (disconnectBtn) {
+                disconnectBtn.disabled = false;
+            }
+            
+            // Enable shell
+            document.getElementById('shellInput').disabled = false;
+            document.getElementById('shellExecuteBtn').disabled = false;
+            document.getElementById('shellInput').focus();
+        }
+
+        function disableButtons() {
+            document.querySelectorAll('#adb-workspace button:not(#connectBtn)').forEach(btn => {
+                btn.disabled = true;
+            });
+            document.getElementById('connectBtn').disabled = false;
+            
+            // Disable shell
+            document.getElementById('shellInput').disabled = true;
+            document.getElementById('shellExecuteBtn').disabled = true;
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function showSuccess(message) {
+            showMessage(message, 'success');
+        }
+
+        function showWarning(message) {
+            showMessage(message, 'warning');
+        }
+
+        function showError(message) {
+            showMessage(message, 'error');
+        }
+
+        function showMessage(message, type) {
+            const div = document.createElement('div');
+            div.className = 'flash-msg ' + type;
+            div.textContent = message;
+            const status = document.getElementById('status');
+            const ws = document.getElementById('adb-workspace');
+            if (status && status.parentNode) {
+                status.parentNode.insertBefore(div, status.nextSibling);
+            } else if (ws && ws.parentNode) {
+                ws.parentNode.insertBefore(div, ws);
+            }
+            setTimeout(() => div.remove(), 5000);
+        }
+
+        main().catch(console.error);
+    </script>
+</body>
+</html>

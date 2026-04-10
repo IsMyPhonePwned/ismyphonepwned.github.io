@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Bugreport Analysis - Example Results</title>
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="stylesheet" href="assets/site.css">
     <style>
         * {
             margin: 0;
@@ -377,7 +380,7 @@
         <header>
             <div>
                 <h1 class="logo-text">IsMyPhonePwned ?</h1>
-                <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.875rem;">Example Results Page • <span style="font-weight: 500;">v0.1.0</span> • Updated Jan 2026</p>
+                <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.875rem;">Example Results Page • <span style="font-weight: 500;">v0.2.0</span> • Updated Apr 2026</p>
             </div>
             <button class="theme-toggle" onclick="toggleTheme()">
                 <span id="theme-icon">🌙</span>
@@ -387,8 +390,7 @@
 
         <div class="info-banner">
             <strong>📋 Example Page</strong><br>
-            This page demonstrates how the bugreport analysis results would look for an end user. 
-            All data shown here is sample data for demonstration purposes.
+            Sample layout matching the live <a href="android.html" style="color: var(--accent); font-weight: 600;">Android analyzer</a>: extended system statistics, <strong>Packages installed by user</strong> (non-system apps with install metadata, sorted by latest install/update), full package cards, extra parsers (memory, policy, ADB, auth, VPN, privacy), and <strong>Full Data (JSON)</strong> at the bottom. All values are fictional.
         </div>
 
         <!-- Results -->
@@ -508,6 +510,58 @@
                             <div class="result-item-label">Unique Packages</div>
                             <div class="result-item-value" id="stats-packages">-</div>
                         </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Apps in battery stats</div>
+                            <div class="result-item-value" id="stats-battery-apps">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Package detail records</div>
+                            <div class="result-item-value" id="stats-package-details">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Install history entries</div>
+                            <div class="result-item-value" id="stats-install-history">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Power history events</div>
+                            <div class="result-item-value" id="stats-power-events">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Network interfaces</div>
+                            <div class="result-item-value" id="stats-network-ifaces">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Network statistics rows</div>
+                            <div class="result-item-value" id="stats-network-stats-rows">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Socket entries</div>
+                            <div class="result-item-value" id="stats-sockets">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Bluetooth devices</div>
+                            <div class="result-item-value" id="stats-bluetooth-devices">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">USB devices (log)</div>
+                            <div class="result-item-value" id="stats-usb-devices">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Sigma rules loaded</div>
+                            <div class="result-item-value" id="stats-sigma-rules">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Sigma matches</div>
+                            <div class="result-item-value" id="stats-sigma-matches">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">ANR files</div>
+                            <div class="result-item-value" id="stats-anr-files">-</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">Crash tombstones</div>
+                            <div class="result-item-value" id="stats-tombstones">-</div>
+                        </div>
                     </div>
                 </div>
 
@@ -572,17 +626,36 @@
                     </div>
                 </div>
 
+                <!-- Packages installed by user -->
+                <div class="result-card" id="package-details-user-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>📲 Packages installed by user</h3>
+                        <span class="count-badge" id="package-details-user-count-badge">0</span>
+                    </div>
+                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('package-details-user')">▼</button>
+                    <div class="section-content collapsed" id="package-details-user-content">
+                        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.75rem;">
+                            Same non-system rules as below (flags/paths), plus installation metadata. Sorted by latest install/update (newest first).
+                        </p>
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="package-details-user-search-input" placeholder="Search by package name, path, installer…">
+                        </div>
+                        <div id="package-details-user-list"></div>
+                    </div>
+                </div>
+
                 <!-- Package Details -->
                 <div class="result-card" id="package-details-card" style="display: none;">
                     <div class="section-header">
                         <h3>📱 Package Details</h3>
                         <span class="count-badge" id="package-details-count-badge">0</span>
                     </div>
-                    <button class="section-toggle collapsed" onclick="toggleSection('package-details')">▼</button>
+                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('package-details')">▼</button>
                     <div class="section-content collapsed" id="package-details-content">
                         <div class="search-box">
-                            <span>🔍</span>
-                            <input type="text" id="package-details-search-input" placeholder="Search packages by name...">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="package-details-search-input" placeholder="Search by package name, path, installer…">
                         </div>
                         <div id="package-details-list"></div>
                     </div>
@@ -717,6 +790,62 @@
                     </div>
                 </div>
 
+                <!-- Memory parser -->
+                <div class="result-card" id="parser-memory-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>🧠 Memory parser</h3>
+                    </div>
+                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('parser-memory')">▼</button>
+                    <div class="section-content collapsed" id="parser-memory-content">
+                        <div id="parser-memory-body" class="parser-structured-body"></div>
+                    </div>
+                </div>
+                <div class="result-card" id="parser-device-policy-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>📜 Device policy parser</h3>
+                    </div>
+                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('parser-device-policy')">▼</button>
+                    <div class="section-content collapsed" id="parser-device-policy-content">
+                        <div id="parser-device-policy-body" class="parser-structured-body"></div>
+                    </div>
+                </div>
+                <div class="result-card" id="parser-adb-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>🔧 ADB parser</h3>
+                    </div>
+                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('parser-adb')">▼</button>
+                    <div class="section-content collapsed" id="parser-adb-content">
+                        <div id="parser-adb-body" class="parser-structured-body"></div>
+                    </div>
+                </div>
+                <div class="result-card" id="parser-authentication-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>🔑 Authentication parser</h3>
+                    </div>
+                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('parser-authentication')">▼</button>
+                    <div class="section-content collapsed" id="parser-authentication-content">
+                        <div id="parser-authentication-body" class="parser-structured-body"></div>
+                    </div>
+                </div>
+                <div class="result-card" id="parser-vpn-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>🔒 VPN parser</h3>
+                    </div>
+                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('parser-vpn')">▼</button>
+                    <div class="section-content collapsed" id="parser-vpn-content">
+                        <div id="parser-vpn-body" class="parser-structured-body"></div>
+                    </div>
+                </div>
+                <div class="result-card" id="parser-privacy-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>🛡️ Privacy parser</h3>
+                    </div>
+                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('parser-privacy')">▼</button>
+                    <div class="section-content collapsed" id="parser-privacy-content">
+                        <div id="parser-privacy-body" class="parser-structured-body"></div>
+                    </div>
+                </div>
+
                 <!-- Full Data (JSON) -->
                 <div class="result-card">
                     <div class="section-header">
@@ -772,6 +901,411 @@
             return div.innerHTML;
         }
 
+        function deepPlainForJson(x) {
+            if (x == null) return x;
+            if (typeof x === 'bigint') return x.toString();
+            if (x instanceof Map) {
+                const o = {};
+                x.forEach(function (v, k) { o[k] = deepPlainForJson(v); });
+                return o;
+            }
+            if (Array.isArray(x)) return x.map(deepPlainForJson);
+            if (typeof x === 'object') {
+                return Object.fromEntries(Object.keys(x).map(function (k) {
+                    return [k, deepPlainForJson(x[k])];
+                }));
+            }
+            return x;
+        }
+
+        function mapPlainTop(x) {
+            if (x && typeof x === 'object' && x instanceof Map) return Object.fromEntries(x);
+            return x;
+        }
+
+        function parserCellValue(v) {
+            if (v === null || v === undefined) {
+                return '<span style="color:var(--text-secondary)">—</span>';
+            }
+            if (typeof v === 'boolean') return escapeHtml(String(v));
+            if (typeof v === 'number') return escapeHtml(String(v));
+            if (typeof v === 'string') {
+                const t = v.length > 160 ? v.slice(0, 160) + '…' : v;
+                return '<code style="font-size:0.75rem;word-break:break-word">' + escapeHtml(t) + '</code>';
+            }
+            if (Array.isArray(v)) {
+                if (v.length === 0) return '<span style="color:var(--text-secondary)">[]</span>';
+                if (v.every(function (x) { return typeof x === 'string'; })) {
+                    return escapeHtml(v.join(', '));
+                }
+                const j = JSON.stringify(v);
+                const short = j.length > 180 ? j.slice(0, 180) + '…' : j;
+                return '<code style="font-size:0.7rem;word-break:break-all">' + escapeHtml(short) + '</code>';
+            }
+            if (typeof v === 'object') {
+                const j = JSON.stringify(v);
+                const short = j.length > 180 ? j.slice(0, 180) + '…' : j;
+                return '<code style="font-size:0.7rem;word-break:break-all">' + escapeHtml(short) + '</code>';
+            }
+            return escapeHtml(String(v));
+        }
+
+        function renderKeyValueTableFromObject(obj) {
+            if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return '';
+            const keys = Object.keys(obj).sort();
+            if (!keys.length) return '';
+            const rows = keys.map(function (k) {
+                return '<tr><td style="width:34%;font-weight:600;color:var(--text-secondary);vertical-align:top">' +
+                    escapeHtml(k) + '</td><td>' + parserCellValue(obj[k]) + '</td></tr>';
+            }).join('');
+            return '<table class="info-table" style="margin-top:0.35rem">' + rows + '</table>';
+        }
+
+        function collectObjectArrayKeys(rows) {
+            const s = {};
+            rows.forEach(function (r) {
+                const x = mapPlainTop(r) || r;
+                if (x && typeof x === 'object' && !Array.isArray(x)) {
+                    Object.keys(x).forEach(function (k) { s[k] = true; });
+                }
+            });
+            return Object.keys(s).sort();
+        }
+
+        function renderObjectArrayTable(rows) {
+            if (!Array.isArray(rows) || rows.length === 0) {
+                return '<p style="color:var(--text-secondary)">Empty list</p>';
+            }
+            const plainRows = rows.map(function (r) { return mapPlainTop(r) || r; });
+            const keys = collectObjectArrayKeys(plainRows);
+            if (keys.length === 0) {
+                return '<code style="font-size:0.75rem">' + escapeHtml(JSON.stringify(plainRows)) + '</code>';
+            }
+            const head = keys.map(function (k) { return '<th>' + escapeHtml(k) + '</th>'; }).join('');
+            const body = plainRows.map(function (r) {
+                return '<tr>' + keys.map(function (k) {
+                    return '<td>' + parserCellValue(r && r[k]) + '</td>';
+                }).join('') + '</tr>';
+            }).join('');
+            return '<div class="data-table-container" style="max-height:22rem"><table class="data-table"><thead><tr>' + head +
+                '</tr></thead><tbody>' + body + '</tbody></table></div>';
+        }
+
+        function renderMemoryParser(el, data) {
+            if (!Array.isArray(data) || data.length === 0) {
+                el.innerHTML = '<p style="color:var(--text-secondary)">No <code>MEMORY INFO (/proc/meminfo)</code> snapshots in this bugreport.</p>';
+                return;
+            }
+            el.innerHTML = data.map(function (snap, i) {
+                const o = mapPlainTop(snap) || snap;
+                if (!o || typeof o !== 'object') return '';
+                const rows = Object.keys(o).sort().map(function (k) {
+                    const v = o[k];
+                    let disp;
+                    if (typeof v === 'number') {
+                        disp = v.toLocaleString() + ' <span style="color:var(--text-secondary);font-size:0.8rem">kB</span>';
+                    } else {
+                        disp = parserCellValue(v);
+                    }
+                    return '<tr><td style="font-weight:600;color:var(--text-secondary)">' + escapeHtml(k) + '</td><td>' + disp + '</td></tr>';
+                }).join('');
+                return '<div class="detail-section" style="margin-bottom:1rem"><strong>Snapshot ' + (i + 1) +
+                    '</strong><table class="info-table" style="margin-top:0.35rem">' + rows + '</table></div>';
+            }).join('');
+        }
+
+        function renderDevicePolicySectionValue(v) {
+            if (v === null || v === undefined) return '<p>—</p>';
+            if (Array.isArray(v)) {
+                if (v.length === 0) return '<p style="color:var(--text-secondary)">Empty list</p>';
+                const first = mapPlainTop(v[0]) || v[0];
+                if (first && typeof first === 'object' && !Array.isArray(first)) {
+                    return renderObjectArrayTable(v);
+                }
+                return '<ul style="margin:0.35rem 0 0 1.1rem;font-size:0.85rem">' +
+                    v.map(function (item) { return '<li>' + parserCellValue(item) + '</li>'; }).join('') + '</ul>';
+            }
+            if (typeof v === 'object') return renderKeyValueTableFromObject(v);
+            return '<p>' + parserCellValue(v) + '</p>';
+        }
+
+        function renderDevicePolicyParser(el, data) {
+            if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).length === 0) {
+                el.innerHTML = '<p style="color:var(--text-secondary)">No <code>DUMP OF SERVICE device_policy</code> section found.</p>';
+                return;
+            }
+            el.innerHTML = Object.keys(data).sort().map(function (sk) {
+                return '<div class="detail-section" style="margin-bottom:1rem"><strong style="word-break:break-all">' +
+                    escapeHtml(sk) + '</strong>' + renderDevicePolicySectionValue(data[sk]) + '</div>';
+            }).join('');
+        }
+
+        function renderAdbParser(el, data) {
+            if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
+                el.innerHTML = '<p style="color:var(--text-secondary)">No <code>DUMP OF SERVICE adb</code> section found.</p>';
+                return;
+            }
+            const parts = [];
+            if (data.service_pid != null || data.threads_in_use != null || (data.client_pids && data.client_pids.length)) {
+                let g = '<div class="result-grid">';
+                if (data.service_pid != null) {
+                    g += '<div class="result-item"><div class="result-item-label">Service host PID</div><div class="result-item-value">' +
+                        escapeHtml(String(data.service_pid)) + '</div></div>';
+                }
+                if (data.threads_in_use != null) {
+                    g += '<div class="result-item"><div class="result-item-label">Threads in use</div><div class="result-item-value">' +
+                        escapeHtml(String(data.threads_in_use)) + '</div></div>';
+                }
+                if (Array.isArray(data.client_pids) && data.client_pids.length) {
+                    g += '<div class="result-item" style="grid-column:1/-1"><div class="result-item-label">Client PIDs</div><div class="result-item-value"><code>' +
+                        escapeHtml(data.client_pids.join(', ')) + '</code></div></div>';
+                }
+                g += '</div>';
+                parts.push(g);
+            }
+            const dm = mapPlainTop(data.debugging_manager) || data.debugging_manager;
+            if (dm && typeof dm === 'object') {
+                let block = '<div class="detail-section" style="margin-top:0.75rem"><strong>Debugging manager</strong>';
+                const skip = { user_keys: true, keystore: true };
+                const sub = {};
+                Object.keys(dm).forEach(function (k) {
+                    if (!skip[k]) sub[k] = dm[k];
+                });
+                if (Object.keys(sub).length) block += renderKeyValueTableFromObject(sub);
+                if (Array.isArray(dm.user_keys_parsed) && dm.user_keys_parsed.length) {
+                    block += '<div style="margin-top:0.5rem"><strong>Authorized keys (parsed)</strong>' +
+                        renderObjectArrayTable(dm.user_keys_parsed) + '</div>';
+                }
+                if (dm.keystore_parsed && typeof dm.keystore_parsed === 'object') {
+                    block += '<div style="margin-top:0.5rem"><strong>Keystore hints</strong>' +
+                        renderKeyValueTableFromObject(dm.keystore_parsed) + '</div>';
+                }
+                block += '</div>';
+                parts.push(block);
+            }
+            const rest = {};
+            Object.keys(data).forEach(function (k) {
+                if (k !== 'debugging_manager' && k !== 'service_pid' && k !== 'threads_in_use' && k !== 'client_pids') {
+                    rest[k] = data[k];
+                }
+            });
+            if (Object.keys(rest).length) {
+                parts.push('<div class="detail-section"><strong>Other ADB fields</strong>' +
+                    renderKeyValueTableFromObject(rest) + '</div>');
+            }
+            el.innerHTML = parts.length ? parts.join('') : '<p style="color:var(--text-secondary)">Empty ADB result.</p>';
+        }
+
+        function renderAuthenticationParser(el, data) {
+            const events = Array.isArray(data.events) ? data.events : (Array.isArray(data) ? data : []);
+            const total = data.total_events != null ? data.total_events : events.length;
+            if (!events.length) {
+                el.innerHTML = '<p style="color:var(--text-secondary)">No keystore unlock or PowerManager <code>wakeUp</code> events found in SYSTEM LOG.</p>';
+                return;
+            }
+            let html = '<p style="font-size:0.85rem;color:var(--text-secondary);margin:0 0 0.5rem 0">Total events: <strong>' +
+                escapeHtml(String(total)) + '</strong></p>';
+            const rows = events.map(function (ev) {
+                const e = mapPlainTop(ev) || ev;
+                const msg = String(e.raw_message || '');
+                const msgShort = msg.length > 140 ? msg.slice(0, 140) + '…' : msg;
+                return '<tr><td style="white-space:nowrap;font-size:0.75rem">' + escapeHtml(String(e.timestamp || '')) +
+                    '</td><td>' + (e.success ? '✓' : '✗') + '</td><td>' + escapeHtml(String(e.auth_type || '—')) +
+                    '</td><td>' + escapeHtml(e.user_id != null ? String(e.user_id) : '—') +
+                    '</td><td style="font-size:0.75rem">' + escapeHtml(String(e.event_source || '—')) +
+                    '</td><td style="font-size:0.75rem">' + escapeHtml(String(e.wake_reason || '—')) +
+                    '</td><td style="font-size:0.72rem;max-width:280px;word-break:break-word">' + escapeHtml(msgShort) + '</td></tr>';
+            }).join('');
+            html += '<div class="data-table-container" style="max-height:28rem"><table class="data-table"><thead><tr>' +
+                '<th>Time</th><th>OK</th><th>Type</th><th>User</th><th>Source</th><th>Wake</th><th>Message</th></tr></thead><tbody>' +
+                rows + '</tbody></table></div>';
+            el.innerHTML = html;
+        }
+
+        function renderVpnParser(el, data) {
+            const cv = data && data.current_vpns && typeof data.current_vpns === 'object' ? data.current_vpns : {};
+            const np = data && data.network_properties && typeof data.network_properties === 'object' ? data.network_properties : {};
+            const vpnKeys = Object.keys(cv);
+            const npKeys = Object.keys(np);
+            let html = '';
+            if (vpnKeys.length === 0 && npKeys.length === 0) {
+                el.innerHTML = '<p style="color:var(--text-secondary)">No <code>SecurityControllerImpl</code> VPN or network property data found.</p>';
+                return;
+            }
+            if (vpnKeys.length === 0) {
+                html += '<p style="color:var(--text-secondary)">No VPN entries (<code>mCurrentVpns</code> empty).</p>';
+            } else {
+                html += '<div class="detail-section" style="margin-bottom:1rem"><strong>Current VPNs</strong>';
+                html += '<div class="data-table-container" style="max-height:16rem;margin-top:0.35rem"><table class="data-table"><thead><tr>' +
+                    '<th>ID</th><th>User</th><th>Package</th><th>Interface</th><th>Addresses</th><th>DNS</th><th>Raw</th></tr></thead><tbody>';
+                vpnKeys.sort().forEach(function (id) {
+                    const v = mapPlainTop(cv[id]) || cv[id] || {};
+                    html += '<tr><td><code>' + escapeHtml(id) + '</code></td><td>' +
+                        escapeHtml(v.user_id != null ? String(v.user_id) : '—') + '</td><td>' +
+                        escapeHtml(String(v.package_name || '—')) + '</td><td>' +
+                        escapeHtml(String(v.interface || '—')) + '</td><td style="font-size:0.72rem;word-break:break-all">' +
+                        escapeHtml(String(v.addresses || '—')) + '</td><td style="font-size:0.72rem">' +
+                        escapeHtml(String(v.dns_servers || '—')) + '</td><td style="font-size:0.68rem;max-width:200px;word-break:break-all">' +
+                        escapeHtml(String(v.raw_data || '')) + '</td></tr>';
+                });
+                html += '</tbody></table></div></div>';
+            }
+            if (npKeys.length === 0) {
+                html += '<p style="color:var(--text-secondary);margin-top:0.5rem">No <code>mNetworkProperties</code> entries.</p>';
+            } else {
+                html += '<div class="detail-section"><strong>Network properties</strong>';
+                html += '<div class="data-table-container" style="max-height:16rem;margin-top:0.35rem"><table class="data-table"><thead><tr>' +
+                    '<th>Network</th><th>Value</th><th>Raw</th></tr></thead><tbody>';
+                npKeys.sort().forEach(function (k) {
+                    const p = mapPlainTop(np[k]) || np[k] || {};
+                    html += '<tr><td><code>' + escapeHtml(k) + '</code></td><td>' +
+                        escapeHtml(String(p.value != null ? p.value : '—')) + '</td><td style="font-size:0.72rem;word-break:break-all">' +
+                        escapeHtml(String(p.raw_data || '')) + '</td></tr>';
+                });
+                html += '</tbody></table></div></div>';
+            }
+            el.innerHTML = html;
+        }
+
+        function renderPrivacyParser(el, data) {
+            const root = data && data.privacy && typeof data.privacy === 'object' ? data.privacy : data;
+            const providers = root && root.location_providers;
+            if (!Array.isArray(providers) || providers.length === 0) {
+                el.innerHTML = '<p style="color:var(--text-secondary)">No fused / location provider blocks found.</p>';
+                return;
+            }
+            el.innerHTML = providers.map(function (p, idx) {
+                const prov = mapPlainTop(p) || p;
+                let h = '<div class="detail-section" style="margin-bottom:1rem"><strong>Location provider ' + (idx + 1) + '</strong>';
+                if (prov.type) {
+                    h += '<p style="font-size:0.85rem;color:var(--text-secondary);margin:0.25rem 0">' + escapeHtml(String(prov.type)) + '</p>';
+                }
+                if (prov.last_availability !== undefined && prov.last_availability !== null) {
+                    h += '<p style="margin:0.25rem 0">Last availability: <strong>' + (prov.last_availability ? 'true' : 'false') + '</strong></p>';
+                }
+                if (Array.isArray(prov.listeners) && prov.listeners.length) {
+                    h += '<div style="margin-top:0.5rem"><strong>Listeners</strong>' + renderObjectArrayTable(prov.listeners) + '</div>';
+                }
+                ['source', 'last_location_fine', 'last_location_coarse'].forEach(function (field) {
+                    if (!prov[field]) return;
+                    const label = field.replace(/_/g, ' ');
+                    if (typeof prov[field] === 'object' && !Array.isArray(prov[field])) {
+                        h += '<div style="margin-top:0.5rem"><strong>' + escapeHtml(label) + '</strong>' +
+                            renderKeyValueTableFromObject(prov[field]) + '</div>';
+                    } else {
+                        h += '<div style="margin-top:0.5rem"><strong>' + escapeHtml(label) + '</strong><p>' +
+                            parserCellValue(prov[field]) + '</p></div>';
+                    }
+                });
+                h += '</div>';
+                return h;
+            }).join('');
+        }
+
+        function renderParserStructured(key, el, data) {
+            if (!el) return;
+            try {
+                switch (key) {
+                    case 'memory':
+                        renderMemoryParser(el, data);
+                        break;
+                    case 'device_policy':
+                        renderDevicePolicyParser(el, data);
+                        break;
+                    case 'adb':
+                        renderAdbParser(el, data);
+                        break;
+                    case 'authentication':
+                        renderAuthenticationParser(el, data);
+                        break;
+                    case 'vpn':
+                        renderVpnParser(el, data);
+                        break;
+                    case 'privacy':
+                        renderPrivacyParser(el, data);
+                        break;
+                    default:
+                        el.innerHTML = '<pre class="json-viewer" style="max-height:20rem;overflow:auto;font-size:0.75rem">' +
+                            escapeHtml(JSON.stringify(data, null, 2)) + '</pre>';
+                }
+            } catch (err) {
+                console.error('renderParserStructured', key, err);
+                el.innerHTML = '<p style="color:var(--error)">Could not render this section. See Full Data (JSON) at the bottom.</p>';
+            }
+        }
+
+        function fillSystemStatistics(data) {
+            const n = function (a) { return Array.isArray(a) ? a.length : 0; };
+            const set = function (id, v) {
+                const el = document.getElementById(id);
+                if (el) el.textContent = v;
+            };
+            set('stats-processes', data.process_count != null ? String(data.process_count) : '0');
+            set('stats-packages', data.package_count != null ? String(data.package_count) : '0');
+            set('stats-battery-apps', String(n(data.battery_apps)));
+            set('stats-package-details', String(n(data.package_details)));
+            set('stats-install-history', String(n(data.packages)));
+            set('stats-power-events', String(n(data.power_history)));
+            set('stats-network-ifaces', String(n(data.network_info)));
+            set('stats-network-stats-rows', String(n(data.network_stats)));
+            set('stats-sockets', String(n(data.sockets)));
+            const sri = data.sigma_rules_info;
+            set('stats-sigma-rules', String(Array.isArray(sri) ? sri.length : 0));
+            const sm = data.sigma_matches;
+            set('stats-sigma-matches', String(Array.isArray(sm) ? sm.length : 0));
+            let anrFiles = 0;
+            let tombstones = 0;
+            if (data.crash_info && typeof data.crash_info === 'object') {
+                const ci = mapPlainTop(data.crash_info);
+                const af = mapPlainTop(ci.anr_files);
+                if (af && Array.isArray(af.files)) anrFiles = af.files.length;
+                if (Array.isArray(ci.tombstones)) tombstones = ci.tombstones.length;
+            }
+            set('stats-anr-files', String(anrFiles));
+            set('stats-tombstones', String(tombstones));
+            const bi = data.bluetooth_info ? mapPlainTop(data.bluetooth_info) : null;
+            set('stats-bluetooth-devices', String(bi && Array.isArray(bi.devices) ? bi.devices.length : 0));
+            const ui = data.usb_info ? mapPlainTop(data.usb_info) : null;
+            set('stats-usb-devices', String(ui && Array.isArray(ui.connected_devices) ? ui.connected_devices.length : 0));
+        }
+
+        function displayAdditionalParsers(data) {
+            const specs = [
+                { key: 'memory', cardId: 'parser-memory-card', bodyId: 'parser-memory-body' },
+                { key: 'device_policy', cardId: 'parser-device-policy-card', bodyId: 'parser-device-policy-body' },
+                { key: 'adb', cardId: 'parser-adb-card', bodyId: 'parser-adb-body' },
+                { key: 'authentication', cardId: 'parser-authentication-card', bodyId: 'parser-authentication-body' },
+                { key: 'vpn', cardId: 'parser-vpn-card', bodyId: 'parser-vpn-body' },
+                { key: 'privacy', cardId: 'parser-privacy-card', bodyId: 'parser-privacy-body' }
+            ];
+            let ap = data.additional_parsers;
+            if (ap && ap instanceof Map) ap = Object.fromEntries(ap);
+            const hasMap = ap && typeof ap === 'object' && !Array.isArray(ap);
+
+            specs.forEach(function (spec) {
+                const card = document.getElementById(spec.cardId);
+                const bodyEl = document.getElementById(spec.bodyId);
+                if (!card || !bodyEl) return;
+                const raw = hasMap ? ap[spec.key] : null;
+                if (raw == null) {
+                    card.style.display = 'none';
+                    bodyEl.innerHTML = '';
+                    return;
+                }
+                card.style.display = 'block';
+                const plain = deepPlainForJson(raw);
+                renderParserStructured(spec.key, bodyEl, plain);
+            });
+        }
+
+        function escapeAttr(text) {
+            if (text == null || text === '') return '';
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;');
+        }
+
         window.togglePackageSection = function(sectionId) {
             const section = document.getElementById(sectionId);
             const icon = document.getElementById(sectionId + '-icon');
@@ -785,7 +1319,22 @@
                     icon.textContent = '▶';
                 }
             }
-        }
+        };
+
+        window.togglePackageCard = function (index, idPrefix) {
+            const p = idPrefix != null && idPrefix !== '' ? String(idPrefix) : '';
+            const body = document.getElementById(p + 'pkg-card-body-' + index);
+            const icon = document.getElementById(p + 'pkg-card-icon-' + index);
+            const item = body && body.closest('.package-detail-item');
+            const head = item && item.querySelector('.package-detail-card-head');
+            if (!body || !icon) return;
+            const isOpen = body.style.display !== 'none';
+            body.style.display = isOpen ? 'none' : 'block';
+            icon.textContent = isOpen ? '▶' : '▼';
+            if (item) item.classList.toggle('package-detail-open', !isOpen);
+            if (head) head.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+        };
+
 
         function formatDate(timestamp) {
             if (!timestamp) return '-';
@@ -869,9 +1418,7 @@
                 document.getElementById('battery-voltage').textContent = data.battery_info.voltage ? data.battery_info.voltage.toFixed(2) + 'V' : '-';
             }
 
-            // Stats
-            document.getElementById('stats-processes').textContent = data.process_count || 0;
-            document.getElementById('stats-packages').textContent = data.package_count || 0;
+            fillSystemStatistics(data);
 
             // Sigma rules
             const sigmaEl = document.getElementById('sigma-rules-container');
@@ -1151,6 +1698,7 @@
             displayNetworkSockets(data);
             displayBluetoothInfo(data);
             displayUsbInfo(data);
+            displayAdditionalParsers(data);
 
             // Display JSON
             document.getElementById('json-output').textContent = JSON.stringify(data, null, 2);
@@ -1311,187 +1859,465 @@
             });
         }
 
+        function packageFlagsCombined(pkg) {
+            return [pkg.flags, pkg.pkg_flags, pkg.private_flags].filter(Boolean).join(' ');
+        }
+
+        function packageIsSystemLike(pkg) {
+            const f = packageFlagsCombined(pkg);
+            if (/\bSYSTEM\b/.test(f)) return true;
+            if (/\bUPDATED_SYSTEM_APP\b/.test(f)) return true;
+            const cp = String(pkg.code_path || pkg.resource_path || '').toLowerCase();
+            if (/^\/system\//.test(cp) || /^\/vendor\//.test(cp) || /^\/product\//.test(cp) ||
+                /^\/system_ext\//.test(cp) || /^\/odm\//.test(cp)) return true;
+            if (/\/apex\//i.test(cp)) return true;
+            return false;
+        }
+
+        function nonemptyStr(v) {
+            return v != null && String(v).trim() !== '';
+        }
+
+        /** True when bugreport includes at least one installation-related field (otherwise treat as system-only stub). */
+        function packageHasInstallDetails(pkg) {
+            const p = mapPlainTop(pkg) || pkg;
+            if (nonemptyStr(p.installer_package_name)) return true;
+            if (nonemptyStr(p.initiating_package_name)) return true;
+            if (nonemptyStr(p.originating_package_name)) return true;
+            if (nonemptyStr(p.package_source)) return true;
+            if (nonemptyStr(p.first_install_time)) return true;
+            if (nonemptyStr(p.last_update_time)) return true;
+            if (nonemptyStr(p.time_stamp)) return true;
+            if (p.install_logs && Array.isArray(p.install_logs) && p.install_logs.length > 0) return true;
+            if (p.users && Array.isArray(p.users)) {
+                for (var i = 0; i < p.users.length; i++) {
+                    var u = mapPlainTop(p.users[i]) || p.users[i];
+                    if (!u) continue;
+                    if (nonemptyStr(u.first_install_time)) return true;
+                    if (u.install_reason != null && String(u.install_reason).trim() !== '') return true;
+                }
+            }
+            return false;
+        }
+
+        function packageIsUserInstalled(pkg) {
+            const p = mapPlainTop(pkg) || pkg;
+            return !packageIsSystemLike(p) && packageHasInstallDetails(p);
+        }
+
+        function parseBugreportTimeMs(v) {
+            if (v == null || v === '') return NaN;
+            if (typeof v === 'number' && isFinite(v)) {
+                if (v > 1e15) return NaN;
+                return v < 1e12 ? v * 1000 : v;
+            }
+            const s = String(v).trim();
+            if (s === '') return NaN;
+            if (/^-?\d+(\.\d+)?$/.test(s)) {
+                const n = parseFloat(s);
+                if (!isFinite(n)) return NaN;
+                return n < 1e12 ? n * 1000 : n;
+            }
+            const d = Date.parse(s);
+            return isNaN(d) ? NaN : d;
+        }
+
+        /** Latest known install/update moment (ms); used for sorting newest first. */
+        function packageLatestInstallOrUpdateMs(pkg) {
+            const p = mapPlainTop(pkg) || pkg;
+            const times = [];
+            function add(v) {
+                const ms = parseBugreportTimeMs(v);
+                if (isFinite(ms)) times.push(ms);
+            }
+            add(p.last_update_time);
+            add(p.first_install_time);
+            add(p.time_stamp);
+            if (p.users && Array.isArray(p.users)) {
+                p.users.forEach(function (u) {
+                    const uu = mapPlainTop(u) || u;
+                    if (uu) add(uu.first_install_time);
+                });
+            }
+            if (p.install_logs && Array.isArray(p.install_logs)) {
+                p.install_logs.forEach(function (log) {
+                    const lg = mapPlainTop(log) || log;
+                    if (lg) add(lg.timestamp);
+                });
+            }
+            if (times.length === 0) return 0;
+            var m = times[0];
+            for (var i = 1; i < times.length; i++) {
+                if (times[i] > m) m = times[i];
+            }
+            return m;
+        }
+
+        function sortPackagesByLatestInstallDesc(a, b) {
+            const db = packageLatestInstallOrUpdateMs(b) - packageLatestInstallOrUpdateMs(a);
+            if (db !== 0) return db;
+            const na = String((mapPlainTop(a) || a).package_name || '');
+            const nb = String((mapPlainTop(b) || b).package_name || '');
+            return na.localeCompare(nb);
+        }
+
         function displayPackageDetails(data) {
             const packageDetailsCard = document.getElementById('package-details-card');
             const packageDetailsListEl = document.getElementById('package-details-list');
             const countBadge = document.getElementById('package-details-count-badge');
+            const packageDetailsUserCard = document.getElementById('package-details-user-card');
+            const packageDetailsUserListEl = document.getElementById('package-details-user-list');
+            const userCountBadge = document.getElementById('package-details-user-count-badge');
 
             if (!data.package_details || !Array.isArray(data.package_details) || data.package_details.length === 0) {
                 packageDetailsCard.style.display = 'none';
+                if (packageDetailsUserCard) packageDetailsUserCard.style.display = 'none';
                 return;
             }
 
             packageDetailsCard.style.display = 'block';
             countBadge.textContent = data.package_details.length;
 
-            let html = '';
+            const sortedDetails = data.package_details.slice().sort(sortPackagesByLatestInstallDesc);
+            const userPkgs = sortedDetails.filter(packageIsUserInstalled);
+            if (packageDetailsUserCard && packageDetailsUserListEl && userCountBadge) {
+                if (userPkgs.length === 0) {
+                    packageDetailsUserCard.style.display = 'none';
+                } else {
+                    packageDetailsUserCard.style.display = 'block';
+                    userCountBadge.textContent = userPkgs.length;
+                    packageDetailsUserListEl.innerHTML = buildPackageDetailCardsHtml(userPkgs, 'user-', 'pkg-user-');
+                }
+            }
+
+            packageDetailsListEl.innerHTML = buildPackageDetailCardsHtml(sortedDetails, '', 'pkg-');
+
+            const searchInputUser = document.getElementById('package-details-user-search-input');
+            if (searchInputUser) {
+                searchInputUser.oninput = function (e) {
+                    const query = (e.target.value || '').toLowerCase().trim();
+                    document.querySelectorAll('#package-details-user-list .package-detail-item').forEach(function (item) {
+                        const hay = item.getAttribute('data-search-text') || item.getAttribute('data-package-name') || '';
+                        item.style.display = !query || hay.includes(query) ? 'block' : 'none';
+                    });
+                };
+            }
+
+            const searchInput = document.getElementById('package-details-search-input');
+            searchInput.oninput = function (e) {
+                const query = (e.target.value || '').toLowerCase().trim();
+                document.querySelectorAll('#package-details-list .package-detail-item').forEach(function (item) {
+                    const hay = item.getAttribute('data-search-text') || item.getAttribute('data-package-name') || '';
+                    const match = !query || hay.includes(query);
+                    item.style.display = match ? 'block' : 'none';
+                });
+            };
+        }
+
+        function buildPackageDetailCardsHtml(packages, cardPrefix, sectionPrefix) {
+            let html = '<div class="package-details-container">';
             
-            data.package_details.forEach((pkg, index) => {
-                html += `<div class="package-item" data-package-name="${pkg.package_name.toLowerCase()}" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-bottom: 1rem;">`;
-                html += `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">`;
-                html += `<h4 style="font-family: monospace; font-size: 0.875rem; font-weight: 600; color: var(--text-primary);">${escapeHtml(pkg.package_name)}</h4>`;
+            packages.forEach((pkg, index) => {
+                const cp = cardPrefix;
+                const sp = sectionPrefix;
+                const tc = cardPrefix === 'user-' ? 'togglePackageCard(' + index + ', \'user-\')' : 'togglePackageCard(' + index + ')';
+                const searchParts = [
+                    pkg.package_name,
+                    pkg.version_name,
+                    pkg.version_code,
+                    pkg.installer_package_name,
+                    pkg.initiating_package_name,
+                    pkg.code_path,
+                    pkg.data_dir,
+                    pkg.category,
+                    pkg.primary_cpu_abi
+                ].filter(function (x) { return x != null && x !== ''; });
+                const searchText = escapeAttr(searchParts.join(' ').toLowerCase());
+                const hintParts = [];
+                if (pkg.target_sdk != null) hintParts.push('target SDK ' + pkg.target_sdk);
+                if (pkg.min_sdk != null) hintParts.push('min SDK ' + pkg.min_sdk);
+                if (pkg.installer_package_name) {
+                    const ins = pkg.installer_package_name;
+                    hintParts.push(ins.length > 32 ? ins.slice(0, 29) + '…' : ins);
+                }
+                const hintLine = hintParts.join(' · ');
+                html += `<div class="package-detail-item package-detail-app-card" data-package-name="${pkg.package_name.toLowerCase()}" data-search-text="${searchText}">`;
+                html += `<div class="package-detail-card-head" role="button" tabindex="0" aria-expanded="false" aria-controls="${cp}pkg-card-body-${index}" onclick="${tc}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${tc};}">`;
+                html += `<div class="package-detail-card-title">`;
+                html += `<h4>${escapeHtml(pkg.package_name)}</h4>`;
                 if (pkg.version_name) {
-                    html += `<span style="padding: 0.25rem 0.5rem; background: var(--bg-secondary); border-radius: 4px; font-size: 0.75rem;">v${escapeHtml(pkg.version_name)}</span>`;
+                    html += `<span class="version-badge">v${escapeHtml(pkg.version_name)}</span>`;
+                }
+                if (hintLine) {
+                    html += `<span class="package-detail-card-hint">${escapeHtml(hintLine)}</span>`;
                 }
                 html += `</div>`;
-                
-                // Basic Information Section
-                html += `<div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.75rem;">`;
-                html += `<div onclick="togglePackageSection('pkg-ex-${index}-basic')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">`;
-                html += `<strong style="font-size: 0.85rem;">📊 Basic Information</strong>`;
-                html += `<span class="toggle-icon" id="pkg-ex-${index}-basic-icon">▼</span>`;
+                html += `<span class="package-detail-chevron" id="${cp}pkg-card-icon-${index}" aria-hidden="true">▶</span>`;
                 html += `</div>`;
-                html += `<div id="pkg-ex-${index}-basic" style="margin-top: 0.5rem;">`;
-                html += `<table class="data-table" style="font-size: 0.85rem;">`;
-                if (pkg.version_code) html += `<tr><td style="color: var(--text-secondary);">Version Code:</td><td>${pkg.version_code}</td></tr>`;
-                if (pkg.app_id) html += `<tr><td style="color: var(--text-secondary);">App ID:</td><td>${pkg.app_id}</td></tr>`;
-                if (pkg.target_sdk) html += `<tr><td style="color: var(--text-secondary);">Target SDK:</td><td>${pkg.target_sdk}</td></tr>`;
-                if (pkg.min_sdk) html += `<tr><td style="color: var(--text-secondary);">Min SDK:</td><td>${pkg.min_sdk}</td></tr>`;
-                if (pkg.primary_cpu_abi) html += `<tr><td style="color: var(--text-secondary);">Primary CPU ABI:</td><td><code>${escapeHtml(pkg.primary_cpu_abi)}</code></td></tr>`;
-                html += `</table>`;
-                html += `</div></div>`;
-                
-                // Paths Section
-                html += `<div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.75rem;">`;
-                html += `<div onclick="togglePackageSection('pkg-ex-${index}-paths')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">`;
-                html += `<strong style="font-size: 0.85rem;">📁 Paths</strong>`;
-                html += `<span class="toggle-icon" id="pkg-ex-${index}-paths-icon">▼</span>`;
+                html += `<div id="${cp}pkg-card-body-${index}" class="package-detail-body" style="display:none" role="region" aria-label="Details for ${escapeAttr(pkg.package_name)}">`;
+                html += `<div class="package-detail-meta">`;
+                if (pkg.version_code != null && pkg.version_code !== '') {
+                    html += `<span class="pkg-badge pkg-badge-app" title="versionCode">${escapeHtml(String(pkg.version_code))}</span>`;
+                }
+                if (pkg.target_sdk != null) {
+                    html += `<span class="pkg-badge pkg-badge-sdk" title="targetSdkVersion">target SDK ${pkg.target_sdk}</span>`;
+                }
+                if (pkg.min_sdk != null) {
+                    html += `<span class="pkg-badge pkg-badge-sdk" title="minSdkVersion">min SDK ${pkg.min_sdk}</span>`;
+                }
+                if (pkg.app_id != null) {
+                    html += `<span class="pkg-badge pkg-badge-app" title="appId">appId ${pkg.app_id}</span>`;
+                }
+                if (pkg.primary_cpu_abi) {
+                    html += `<span class="pkg-badge pkg-badge-sdk">${escapeHtml(pkg.primary_cpu_abi)}</span>`;
+                }
                 html += `</div>`;
-                html += `<div id="pkg-ex-${index}-paths" style="margin-top: 0.5rem;">`;
-                html += `<table class="data-table" style="font-size: 0.85rem;">`;
-                if (pkg.code_path) html += `<tr><td style="color: var(--text-secondary);">Code Path:</td><td><code style="word-break: break-all; font-size: 0.75rem;">${escapeHtml(pkg.code_path)}</code></td></tr>`;
-                if (pkg.data_dir) html += `<tr><td style="color: var(--text-secondary);">Data Dir:</td><td><code style="word-break: break-all; font-size: 0.75rem;">${escapeHtml(pkg.data_dir)}</code></td></tr>`;
-                html += `</table>`;
-                html += `</div></div>`;
+                if (pkg.installer_package_name) {
+                    html += `<dl class="pkg-detail-dl"><dt>Installer</dt><dd>${escapeHtml(pkg.installer_package_name)}</dd></dl>`;
+                }
                 
-                // Installation Info Section
-                html += `<div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.75rem;">`;
-                html += `<div onclick="togglePackageSection('pkg-ex-${index}-install')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">`;
-                html += `<strong style="font-size: 0.85rem;">📦 Installation Info</strong>`;
-                html += `<span class="toggle-icon" id="pkg-ex-${index}-install-icon">▼</span>`;
+                html += `<div class="package-detail-content">`;
+                const _permEntries = pkg.permissions
+                    ? (pkg.permissions instanceof Map ? Array.from(pkg.permissions.entries()) : Object.entries(pkg.permissions))
+                    : [];
+                
+                // Basic Info
+                html += `<div class="detail-section">`;
+                html += `<div class="section-header" onclick="togglePackageSection('${sp}${index}-basic')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">`;
+                html += `<strong>📊 Basic Information</strong>`;
+                html += `<span class="toggle-icon" id="${sp}${index}-basic-icon">▶</span>`;
                 html += `</div>`;
-                html += `<div id="pkg-ex-${index}-install" style="margin-top: 0.5rem;">`;
-                html += `<table class="data-table" style="font-size: 0.85rem;">`;
-                if (pkg.installer_package_name) html += `<tr><td style="color: var(--text-secondary);">Installer:</td><td>${escapeHtml(pkg.installer_package_name)}</td></tr>`;
-                if (pkg.initiating_package_name) html += `<tr><td style="color: var(--text-secondary);">Initiating Package:</td><td>${escapeHtml(pkg.initiating_package_name)}</td></tr>`;
-                if (pkg.originating_package_name) html += `<tr><td style="color: var(--text-secondary);">Originating Package:</td><td>${escapeHtml(pkg.originating_package_name)}</td></tr>`;
-                if (pkg.last_update_time) html += `<tr><td style="color: var(--text-secondary);">Last Update:</td><td>${formatDate(pkg.last_update_time)}</td></tr>`;
-                if (pkg.time_stamp) html += `<tr><td style="color: var(--text-secondary);">Time Stamp:</td><td>${formatDate(pkg.time_stamp)}</td></tr>`;
-                if (pkg.package_source) html += `<tr><td style="color: var(--text-secondary);">Package Source:</td><td>${escapeHtml(pkg.package_source)}</td></tr>`;
-                if (pkg.flags) html += `<tr><td style="color: var(--text-secondary);">Flags:</td><td><code style="font-size: 0.75rem;">${escapeHtml(pkg.flags)}</code></td></tr>`;
-                if (pkg.signatures) html += `<tr><td style="color: var(--text-secondary);">Signatures:</td><td><code style="font-size: 0.75rem; word-break: break-all;">${escapeHtml(pkg.signatures)}</code></td></tr>`;
-                if (pkg.apk_signing_version) html += `<tr><td style="color: var(--text-secondary);">APK Signing:</td><td>v${escapeHtml(pkg.apk_signing_version)}</td></tr>`;
+                html += `<div id="${sp}${index}-basic" class="section-collapsible" style="display:none">`;
+                html += `<table class="detail-table">`;
+                if (pkg.version_code) {
+                    html += `<tr><td>Version Code:</td><td>${pkg.version_code}</td></tr>`;
+                }
+                if (pkg.app_id) {
+                    html += `<tr><td>App ID:</td><td>${pkg.app_id}</td></tr>`;
+                }
+                if (pkg.target_sdk) {
+                    html += `<tr><td>Target SDK:</td><td>${pkg.target_sdk}</td></tr>`;
+                }
+                if (pkg.min_sdk) {
+                    html += `<tr><td>Min SDK:</td><td>${pkg.min_sdk}</td></tr>`;
+                }
+                if (pkg.category) {
+                    html += `<tr><td>Category:</td><td>${escapeHtml(pkg.category)}</td></tr>`;
+                }
                 html += `</table>`;
-                html += `</div></div>`;
-
-                // Package-level Permissions
-                if (pkg.permissions) {
-                    const permEntries = pkg.permissions instanceof Map 
-                        ? Array.from(pkg.permissions.entries()) 
-                        : Object.entries(pkg.permissions);
-                    
-                    if (permEntries.length > 0) {
-                        const grantedPerms = permEntries.filter(([_, p]) => {
-                            if (p instanceof Map) return p.get('granted') === true;
-                            return p && typeof p === 'object' && p.granted === true;
-                        });
-                        const deniedPerms = permEntries.filter(([_, p]) => {
-                            if (p instanceof Map) return p.get('granted') === false;
-                            return p && typeof p === 'object' && p.granted === false;
-                        });
-                        
-                        html += `<div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.75rem;">`;
-                        html += `<div onclick="togglePackageSection('pkg-ex-${index}-permissions')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">`;
-                        html += `<div><strong style="font-size: 0.85rem;">🔐 Package Permissions</strong>`;
-                        html += `<span style="margin-left: 0.5rem; color: var(--text-secondary); font-size: 0.75rem;">(${grantedPerms.length} granted, ${deniedPerms.length} denied)</span></div>`;
-                        html += `<span class="toggle-icon" id="pkg-ex-${index}-permissions-icon">▼</span>`;
+                html += `</div>`;
+                html += `</div>`;
+                
+                // Paths
+                html += `<div class="detail-section">`;
+                html += `<div class="section-header" onclick="togglePackageSection('${sp}${index}-paths')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">`;
+                html += `<strong>📁 Paths</strong>`;
+                html += `<span class="toggle-icon" id="${sp}${index}-paths-icon">▶</span>`;
+                html += `</div>`;
+                html += `<div id="${sp}${index}-paths" class="section-collapsible" style="display:none">`;
+                html += `<table class="detail-table">`;
+                if (pkg.code_path) {
+                    html += `<tr><td>Code Path:</td><td><code>${escapeHtml(pkg.code_path)}</code></td></tr>`;
+                }
+                if (pkg.resource_path) {
+                    html += `<tr><td>Resource Path:</td><td><code>${escapeHtml(pkg.resource_path)}</code></td></tr>`;
+                }
+                if (pkg.primary_cpu_abi) {
+                    html += `<tr><td>Primary CPU ABI:</td><td>${escapeHtml(pkg.primary_cpu_abi)}</td></tr>`;
+                }
+                html += `</table>`;
+                html += `</div>`;
+                html += `</div>`;
+                
+                // Flags
+                if (pkg.flags || pkg.pkg_flags || pkg.private_flags) {
+                    html += `<div class="detail-section">`;
+                    html += `<div class="section-header" onclick="togglePackageSection('${sp}${index}-flags')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">`;
+                    html += `<strong>🏴 Flags & Signatures</strong>`;
+                    html += `<span class="toggle-icon" id="${sp}${index}-flags-icon">▶</span>`;
+                    html += `</div>`;
+                    html += `<div id="${sp}${index}-flags" class="section-collapsible" style="display:none">`;
+                    html += `<table class="detail-table">`;
+                    if (pkg.flags) {
+                        html += `<tr><td>Flags:</td><td><code>${escapeHtml(pkg.flags)}</code></td></tr>`;
+                    }
+                    if (pkg.pkg_flags) {
+                        html += `<tr><td>Package Flags:</td><td><code>${escapeHtml(pkg.pkg_flags)}</code></td></tr>`;
+                    }
+                    if (pkg.private_flags) {
+                        html += `<tr><td>Private Flags:</td><td><code>${escapeHtml(pkg.private_flags)}</code></td></tr>`;
+                    }
+                    if (pkg.signatures) {
+                        html += `<tr><td>Signatures:</td><td><code style="word-break: break-all; font-size: 0.8rem;">${escapeHtml(pkg.signatures)}</code></td></tr>`;
+                    }
+                    if (pkg.apk_signing_version) {
+                        html += `<tr><td>APK Signing:</td><td>v${escapeHtml(pkg.apk_signing_version)}</td></tr>`;
+                    }
+                    html += `</table>`;
+                    html += `</div>`;
+                    html += `</div>`;
+                }
+                
+                // Installer & Timestamps
+                html += `<div class="detail-section">`;
+                html += `<div class="section-header" onclick="togglePackageSection('${sp}${index}-install-info')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">`;
+                html += `<strong>📦 Installation Info</strong>`;
+                html += `<span class="toggle-icon" id="${sp}${index}-install-info-icon">▶</span>`;
+                html += `</div>`;
+                html += `<div id="${sp}${index}-install-info" class="section-collapsible" style="display:none">`;
+                html += `<table class="detail-table">`;
+                if (pkg.installer_package_name) {
+                    html += `<tr><td>Installer:</td><td>${escapeHtml(pkg.installer_package_name)}</td></tr>`;
+                }
+                if (pkg.initiating_package_name) {
+                    html += `<tr><td>Initiating Package:</td><td>${escapeHtml(pkg.initiating_package_name)}</td></tr>`;
+                }
+                if (pkg.originating_package_name) {
+                    html += `<tr><td>Originating Package:</td><td>${escapeHtml(pkg.originating_package_name)}</td></tr>`;
+                }
+                if (pkg.package_source) {
+                    html += `<tr><td>Package Source:</td><td>${escapeHtml(pkg.package_source)}</td></tr>`;
+                }
+                if (pkg.first_install_time) {
+                    html += `<tr><td>First Install:</td><td>${escapeHtml(pkg.first_install_time)}</td></tr>`;
+                }
+                if (pkg.last_update_time) {
+                    html += `<tr><td>Last Update:</td><td>${escapeHtml(pkg.last_update_time)}</td></tr>`;
+                }
+                if (pkg.time_stamp) {
+                    html += `<tr><td>Time Stamp:</td><td>${escapeHtml(pkg.time_stamp)}</td></tr>`;
+                }
+                if (pkg.data_dir) {
+                    html += `<tr><td>Data Directory:</td><td><code style="word-break: break-all; font-size: 0.85rem;">${escapeHtml(pkg.data_dir)}</code></td></tr>`;
+                }
+                html += `<tr><td>Users:</td><td>${pkg.user_count}</td></tr>`;
+                html += `</table>`;
+                html += `</div>`;
+                html += `</div>`;
+                
+                if (_permEntries.length > 0) {
+                    const manifestRows = [];
+                    _permEntries.forEach(function ([permName, p]) {
+                        const o = p instanceof Map ? Object.fromEntries(p.entries()) : (p || {});
+                        const isDeclInstall = o.type === 'declared' || o.type === 'install';
+                        const protOnly = o.protection != null && o.granted === undefined;
+                        if (!isDeclInstall && !protOnly) return;
+                        const bits = [];
+                        if (o.type) bits.push(escapeHtml(String(o.type)));
+                        if (o.protection) bits.push(escapeHtml(String(o.protection)));
+                        if (o.granted === true) bits.push('granted');
+                        if (o.granted === false) bits.push('denied');
+                        const sub = bits.length ? ' — ' + bits.join(' · ') : '';
+                        manifestRows.push(
+                            '<span class="declared-perm-chip permission-full" title="' + escapeAttr(permName) + '"><strong>' + escapeHtml(permName) + '</strong>' + sub + '</span>'
+                        );
+                    });
+                    if (manifestRows.length > 0) {
+                        html += `<div class="detail-section">`;
+                        html += `<div class="section-header" onclick="togglePackageSection('${sp}${index}-manifest-perms')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">`;
+                        html += `<strong>📜 Declared / install-time permissions</strong>`;
+                        html += `<span class="toggle-icon" id="${sp}${index}-manifest-perms-icon">▶</span>`;
                         html += `</div>`;
-                        html += `<div id="pkg-ex-${index}-permissions" style="margin-top: 0.75rem;">`;
-                        
-                        if (grantedPerms.length > 0) {
-                            html += `<div style="margin-top: 0.5rem;">`;
-                            html += `<div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">✓ Granted:</div>`;
-                            grantedPerms.forEach(([perm, _]) => {
-                                const shortPerm = perm.split('.').pop();
-                                html += `<span style="display: inline-block; margin: 0.25rem 0.25rem 0 0; padding: 0.25rem 0.5rem; background: #10b98133; color: #10b981; border: 1px solid #10b98166; border-radius: 4px; font-size: 0.7rem; font-family: monospace;">${escapeHtml(shortPerm)}</span>`;
-                            });
-                            html += `</div>`;
-                        }
-                        
-                        if (deniedPerms.length > 0) {
-                            html += `<div style="margin-top: 0.5rem;">`;
-                            html += `<div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">✗ Denied:</div>`;
-                            deniedPerms.forEach(([perm, _]) => {
-                                const shortPerm = perm.split('.').pop();
-                                html += `<span style="display: inline-block; margin: 0.25rem 0.25rem 0 0; padding: 0.25rem 0.5rem; background: #ef444433; color: #ef4444; border: 1px solid #ef444466; border-radius: 4px; font-size: 0.7rem; font-family: monospace;">${escapeHtml(shortPerm)}</span>`;
-                            });
-                            html += `</div>`;
-                        }
-                        html += `</div></div>`;
+                        html += `<div id="${sp}${index}-manifest-perms" class="section-collapsible" style="display:none"><div class="declared-perms-grid">`;
+                        html += manifestRows.join('');
+                        html += `</div></div></div>`;
                     }
                 }
 
-                // Install Logs
-                if (pkg.install_logs && Array.isArray(pkg.install_logs) && pkg.install_logs.length > 0) {
-                    html += `<div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.75rem;">`;
-                    html += `<div onclick="togglePackageSection('pkg-ex-${index}-install-logs')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">`;
-                    html += `<strong style="font-size: 0.85rem;">📜 Installation History (${pkg.install_logs.length} events)</strong>`;
-                    html += `<span class="toggle-icon" id="pkg-ex-${index}-install-logs-icon">▼</span>`;
-                    html += `</div>`;
-                    html += `<div id="pkg-ex-${index}-install-logs" style="margin-top: 0.5rem;">`;
-                    html += `<div style="margin-top: 0.5rem; max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem;">`;
-                    pkg.install_logs.forEach((log, logIdx) => {
-                        const getVal = (obj, key) => obj instanceof Map ? obj.get(key) : obj[key];
-                        
-                        const event_type = getVal(log, 'event_type');
-                        const timestamp = getVal(log, 'timestamp');
-                        const pkg_name = getVal(log, 'pkg');
-                        const versionCode = getVal(log, 'versionCode');
-                        const request_from = getVal(log, 'request_from');
-                        const stagedDir = getVal(log, 'stagedDir');
-                        const observer = getVal(log, 'observer');
-                        
-                        const isInstall = event_type && event_type.includes('INSTALL');
-                        const isDelete = event_type && event_type.includes('DELETE');
-                        const bgColor = isInstall ? '#3b82f622' : (isDelete ? '#ef444422' : 'var(--bg-secondary)');
-                        const borderColor = isInstall ? '#3b82f666' : (isDelete ? '#ef444466' : 'var(--border)');
-                        
-                        html += `<div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 4px; padding: 0.5rem;">`;
-                        html += `<div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">`;
-                        html += `<span style="font-weight: 600; font-size: 0.8rem;">${escapeHtml(event_type || 'Unknown Event')}</span>`;
-                        if (timestamp) html += `<span style="color: var(--text-secondary); font-size: 0.7rem;">${escapeHtml(timestamp)}</span>`;
-                        html += `</div>`;
-                        html += `<div style="font-size: 0.75rem; color: var(--text-secondary);">`;
-                        if (pkg_name) html += `<div style="margin-top: 0.2rem;">Package: <code style="font-size: 0.7rem;">${escapeHtml(pkg_name)}</code></div>`;
-                        if (versionCode) html += `<div style="margin-top: 0.2rem;">Version: ${versionCode}</div>`;
-                        if (request_from) html += `<div style="margin-top: 0.2rem;">From: ${escapeHtml(request_from)}</div>`;
-                        if (stagedDir) html += `<div style="margin-top: 0.2rem;">Staged: <code style="font-size: 0.65rem;">${escapeHtml(stagedDir)}</code></div>`;
-                        if (observer) html += `<div style="margin-top: 0.2rem;">Observer: ${observer}</div>`;
-                        html += `</div>`;
-                        html += `</div>`;
+                // Package-level Permissions (runtime grant state)
+                if (_permEntries.length > 0) {
+                    const grantedPerms = _permEntries.filter(([_, p]) => {
+                        if (p instanceof Map) {
+                            return p.get('granted') === true;
+                        }
+                        return p && typeof p === 'object' && p.granted === true;
                     });
-                    html += `</div></div></div>`;
+                    const deniedPerms = _permEntries.filter(([_, p]) => {
+                        if (p instanceof Map) {
+                            return p.get('granted') === false;
+                        }
+                        return p && typeof p === 'object' && p.granted === false;
+                    });
+                    if (grantedPerms.length > 0 || deniedPerms.length > 0) {
+                        html += `<div class="detail-section">`;
+                        html += `<div class="section-header" onclick="togglePackageSection('${sp}${index}-permissions')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">`;
+                        html += `<div><strong>🔐 Runtime permissions</strong>`;
+                        html += `<span style="margin-left: 0.5rem; color: var(--text-secondary); font-size: 0.85rem;">(${grantedPerms.length} granted, ${deniedPerms.length} denied)</span></div>`;
+                        html += `<span class="toggle-icon" id="${sp}${index}-permissions-icon">▶</span>`;
+                        html += `</div>`;
+                        html += `<div id="${sp}${index}-permissions" class="section-collapsible" style="margin-top:0.75rem;display:none">`;
+                        
+                        if (grantedPerms.length > 0) {
+                            html += `<div style="margin-bottom: 0.75rem;">`;
+                            html += `<div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-weight: 600;">✓ Granted (${grantedPerms.length}):</div>`;
+                            html += `<div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">`;
+                            grantedPerms.forEach(([perm, _]) => {
+                                const shortPerm = perm.split('.').pop();
+                                html += `<span class="permission-full" style="padding: 0.375rem 0.625rem; background: #10b98133; color: #10b981; border: 1px solid #10b98166; border-radius: 4px; font-size: 0.8rem; font-family: monospace;" title="${escapeAttr(perm)}">${escapeHtml(shortPerm)}</span>`;
+                            });
+                            html += `</div></div>`;
+                        }
+                        
+                        if (deniedPerms.length > 0) {
+                            html += `<div>`;
+                            html += `<div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-weight: 600;">✗ Denied (${deniedPerms.length}):</div>`;
+                            html += `<div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">`;
+                            deniedPerms.forEach(([perm, _]) => {
+                                const shortPerm = perm.split('.').pop();
+                                html += `<span class="permission-full" style="padding: 0.375rem 0.625rem; background: #ef444433; color: #ef4444; border: 1px solid #ef444466; border-radius: 4px; font-size: 0.8rem; font-family: monospace;" title="${escapeAttr(perm)}">${escapeHtml(shortPerm)}</span>`;
+                            });
+                            html += `</div></div>`;
+                        }
+                        
+                        html += `</div>`;
+                        html += `</div>`;
+                    }
                 }
-
+                
                 // Users Information
-                if (pkg.users && pkg.users.length > 0) {
-                    html += `<div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.75rem;">`;
-                    html += `<div onclick="togglePackageSection('pkg-ex-${index}-users')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">`;
-                    html += `<strong style="font-size: 0.85rem;">👥 Users (${pkg.users.length})</strong>`;
-                    html += `<span class="toggle-icon" id="pkg-ex-${index}-users-icon">▼</span>`;
+                if (pkg.users && Array.isArray(pkg.users) && pkg.users.length > 0) {
+                    html += `<div class="detail-section">`;
+                    html += `<div class="section-header" onclick="togglePackageSection('${sp}${index}-users')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">`;
+                    html += `<strong>👥 Users (${pkg.users.length})</strong>`;
+                    html += `<span class="toggle-icon" id="${sp}${index}-users-icon">▶</span>`;
                     html += `</div>`;
-                    html += `<div id="pkg-ex-${index}-users" style="margin-top: 0.5rem;">`;
-                    pkg.users.forEach(user => {
-                        html += `<div style="margin-top: 0.5rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 4px; font-size: 0.8rem;">`;
-                        html += `<div style="font-weight: 600;">User ${user.user_id !== null ? user.user_id : 'Unknown'}`;
-                        if (user.installed !== null) {
-                            const statusColor = user.installed ? '#10b981' : '#ef4444';
-                            html += ` <span style="padding: 0.125rem 0.375rem; background: ${statusColor}33; color: ${statusColor}; border-radius: 3px; font-size: 0.7rem;">${user.installed ? 'Installed' : 'Not Installed'}</span>`;
+                    html += `<div id="${sp}${index}-users" class="section-collapsible" style="display:none">`;
+                    html += `<div class="users-container">`;
+                    
+                    pkg.users.forEach((user, userIdx) => {
+                        html += `<div class="user-entry">`;
+                        html += `<div class="user-header">`;
+                        html += `<span class="user-id">User ${user.user_id !== null && user.user_id !== undefined ? user.user_id : 'Unknown'}</span>`;
+                        if (user.installed !== null && user.installed !== undefined) {
+                            html += `<span class="user-status ${user.installed ? 'installed' : 'not-installed'}">${user.installed ? '✓ Installed' : '✗ Not Installed'}</span>`;
                         }
                         html += `</div>`;
-                        if (user.first_install_time) html += `<div style="color: var(--text-secondary); margin-top: 0.25rem; font-size: 0.75rem;">First Install: ${formatDate(user.first_install_time)}</div>`;
-                        if (user.stopped !== null) html += `<div style="margin-top: 0.25rem; font-size: 0.75rem;">Stopped: ${user.stopped ? 'Yes' : 'No'}</div>`;
-                        if (user.enabled !== null && user.enabled !== undefined) html += `<div style="margin-top: 0.25rem; font-size: 0.75rem;">Enabled: ${user.enabled}</div>`;
+                        html += `<table class="detail-table">`;
+                        if (user.first_install_time) {
+                            html += `<tr><td>First Install Time:</td><td>${escapeHtml(user.first_install_time)}</td></tr>`;
+                        }
+                        if (user.last_disabled_caller) {
+                            html += `<tr><td>Last Disabled By:</td><td>${escapeHtml(user.last_disabled_caller)}</td></tr>`;
+                        }
+                        if (user.data_dir) {
+                            html += `<tr><td>Data Directory:</td><td><code>${escapeHtml(user.data_dir)}</code></td></tr>`;
+                        }
+                        if (user.enabled !== null && user.enabled !== undefined) {
+                            html += `<tr><td>Enabled:</td><td>${user.enabled === 0 ? 'Yes' : 'No'}</td></tr>`;
+                        }
+                        if (user.stopped !== null && user.stopped !== undefined) {
+                            html += `<tr><td>Stopped:</td><td>${user.stopped ? 'Yes' : 'No'}</td></tr>`;
+                        }
+                        if (user.suspended !== null && user.suspended !== undefined) {
+                            html += `<tr><td>Suspended:</td><td>${user.suspended ? 'Yes' : 'No'}</td></tr>`;
+                        }
+                        if (user.hidden !== null && user.hidden !== undefined) {
+                            html += `<tr><td>Hidden:</td><td>${user.hidden ? 'Yes' : 'No'}</td></tr>`;
+                        }
+                        if (user.install_reason !== null && user.install_reason !== undefined) {
+                            html += `<tr><td>Install Reason:</td><td>${user.install_reason}</td></tr>`;
+                        }
+                        html += `</table>`;
                         
                         // User-specific permissions
                         if (user.permissions) {
@@ -1508,67 +2334,119 @@
                                 return p && p.granted === false;
                             });
                             
-                            if (userGranted.length > 0 || userDenied.length > 0) {
-                                html += `<div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border);">`;
-                                html += `<div style="font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem;">🔐 User Permissions</div>`;
-                            }
+                            html += `<div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">`;
+                            html += `<div style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">🔐 User Permissions</div>`;
+                            html += `<div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem;">${userGranted.length} granted, ${userDenied.length} denied</div>`;
                             
                             if (userGranted.length > 0) {
-                                html += `<div style="margin-top: 0.25rem;">`;
-                                html += `<div style="font-size: 0.7rem; color: var(--text-secondary);">✓ Granted (${userGranted.length}):</div>`;
+                                html += `<div style="margin-bottom: 0.5rem;">`;
+                                html += `<div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.375rem;">✓ Granted:</div>`;
+                                html += `<div style="display: flex; flex-wrap: wrap; gap: 0.375rem;">`;
                                 userGranted.forEach(([perm, permData]) => {
                                     const shortPerm = perm.split('.').pop();
                                     const flags = permData instanceof Map ? permData.get('flags') : permData.flags;
-                                    html += `<span style="display: inline-block; margin: 0.25rem 0.25rem 0 0; padding: 0.2rem 0.4rem; background: #10b98133; color: #10b981; border: 1px solid #10b98166; border-radius: 3px; font-size: 0.65rem; font-family: monospace;">${escapeHtml(shortPerm)}`;
+                                    html += `<span style="padding: 0.25rem 0.5rem; background: #10b98133; color: #10b981; border: 1px solid #10b98166; border-radius: 3px; font-size: 0.7rem; font-family: monospace;">${escapeHtml(shortPerm)}`;
                                     if (flags && flags.length > 0) {
-                                        html += ` <span style="color: #10b98199; font-size: 0.6rem;">⚑</span>`;
+                                        const flagsArray = Array.isArray(flags) ? flags : [flags];
+                                        html += ` <span style="color: #10b98199; font-size: 0.65rem;" title="${flagsArray.join(', ')}">⚑</span>`;
                                     }
                                     html += `</span>`;
                                 });
-                                html += `</div>`;
+                                html += `</div></div>`;
                             }
                             
                             if (userDenied.length > 0) {
-                                html += `<div style="margin-top: 0.25rem;">`;
-                                html += `<div style="font-size: 0.7rem; color: var(--text-secondary);">✗ Denied (${userDenied.length}):</div>`;
+                                html += `<div>`;
+                                html += `<div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.375rem;">✗ Denied:</div>`;
+                                html += `<div style="display: flex; flex-wrap: wrap; gap: 0.375rem;">`;
                                 userDenied.forEach(([perm, permData]) => {
                                     const shortPerm = perm.split('.').pop();
                                     const flags = permData instanceof Map ? permData.get('flags') : permData.flags;
-                                    html += `<span style="display: inline-block; margin: 0.25rem 0.25rem 0 0; padding: 0.2rem 0.4rem; background: #ef444433; color: #ef4444; border: 1px solid #ef444466; border-radius: 3px; font-size: 0.65rem; font-family: monospace;">${escapeHtml(shortPerm)}`;
+                                    html += `<span style="padding: 0.25rem 0.5rem; background: #ef444433; color: #ef4444; border: 1px solid #ef444466; border-radius: 3px; font-size: 0.7rem; font-family: monospace;">${escapeHtml(shortPerm)}`;
                                     if (flags && flags.length > 0) {
-                                        html += ` <span style="color: #ef444499; font-size: 0.6rem;">⚑</span>`;
+                                        const flagsArray = Array.isArray(flags) ? flags : [flags];
+                                        html += ` <span style="color: #ef444499; font-size: 0.65rem;" title="${flagsArray.join(', ')}">⚑</span>`;
                                     }
                                     html += `</span>`;
                                 });
-                                html += `</div>`;
+                                html += `</div></div>`;
                             }
                             
-                            if (userGranted.length > 0 || userDenied.length > 0) {
-                                html += `</div>`;
-                            }
+                            html += `</div>`;
                         }
+                        
                         html += `</div>`;
                     });
-                    html += `</div></div>`;
+                    
+                    html += `</div>`;
+                    html += `</div>`;
+                    html += `</div>`;
                 }
+                
+                // Install Logs
+                if (pkg.install_logs && Array.isArray(pkg.install_logs) && pkg.install_logs.length > 0) {
+                    html += `<div class="detail-section">`;
+                    html += `<div class="section-header" onclick="togglePackageSection('${sp}${index}-install-logs')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">`;
+                    html += `<strong>📜 Installation History (${pkg.install_logs.length} events)</strong>`;
+                    html += `<span class="toggle-icon" id="${sp}${index}-install-logs-icon">▶</span>`;
+                    html += `</div>`;
+                    html += `<div id="${sp}${index}-install-logs" class="section-collapsible" style="display:none">`;
+                    html += `<div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">`;
+                    
+                    // Display all install logs chronologically
+                    pkg.install_logs.forEach((log, logIdx) => {
+                        // Helper to get value from either Map or plain object
+                        const getVal = (obj, key) => obj instanceof Map ? obj.get(key) : obj[key];
+                        
+                        const event_type = getVal(log, 'event_type');
+                        const timestamp = getVal(log, 'timestamp');
+                        const pkg_name = getVal(log, 'pkg');
+                        const versionCode = getVal(log, 'versionCode');
+                        const request_from = getVal(log, 'request_from');
+                        const stagedDir = getVal(log, 'stagedDir');
+                        const observer = getVal(log, 'observer');
+                        const caller = getVal(log, 'caller');
+                        const user = getVal(log, 'user');
+                        const flags = getVal(log, 'flags');
+                        
+                        const isInstall = event_type && event_type.includes('INSTALL');
+                        const isDelete = event_type && event_type.includes('DELETE');
+                        const bgColor = isInstall ? '#3b82f622' : (isDelete ? '#ef444422' : 'var(--bg-secondary)');
+                        const borderColor = isInstall ? '#3b82f666' : (isDelete ? '#ef444466' : 'var(--border)');
+                        
+                        html += `<div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 4px; padding: 0.75rem;">`;
+                        html += `<div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">`;
+                        html += `<span style="font-weight: 600; font-size: 0.85rem;">${escapeHtml(event_type || 'Unknown Event')}</span>`;
+                        if (timestamp) {
+                            html += `<span style="color: var(--text-secondary); font-size: 0.75rem;">${escapeHtml(timestamp)}</span>`;
+                        }
+                        html += `</div>`;
+                        
+                        html += `<div style="font-size: 0.8rem; color: var(--text-secondary);">`;
+                        if (pkg_name) html += `<div style="margin-top: 0.25rem;">Package: <code style="font-size: 0.75rem;">${escapeHtml(pkg_name)}</code></div>`;
+                        if (versionCode) html += `<div style="margin-top: 0.25rem;">Version: ${versionCode}</div>`;
+                        if (request_from) html += `<div style="margin-top: 0.25rem;">From: ${escapeHtml(request_from)}</div>`;
+                        if (stagedDir) html += `<div style="margin-top: 0.25rem;">Staged: <code style="font-size: 0.7rem;">${escapeHtml(stagedDir)}</code></div>`;
+                        if (observer) html += `<div style="margin-top: 0.25rem;">Observer: ${observer}</div>`;
+                        if (caller) html += `<div style="margin-top: 0.25rem;">Caller: ${caller}</div>`;
+                        if (user !== undefined) html += `<div style="margin-top: 0.25rem;">User: ${user}</div>`;
+                        if (flags !== undefined) html += `<div style="margin-top: 0.25rem;">Flags: ${flags}</div>`;
+                        html += `</div>`;
+                        html += `</div>`;
+                    });
+                    
+                    html += `</div>`;
+                    html += `</div>`;
+                    html += `</div>`;
+                }
+                
+                html += `</div>`;
+                html += `</div>`;
                 html += `</div>`;
             });
-
-            packageDetailsListEl.innerHTML = html;
-
-            const searchInput = document.getElementById('package-details-search-input');
-            searchInput.addEventListener('input', (e) => {
-                const query = e.target.value.toLowerCase();
-                const items = document.querySelectorAll('.package-item');
-                items.forEach(item => {
-                    const packageName = item.getAttribute('data-package-name');
-                    if (packageName && packageName.includes(query)) {
-                        item.style.display = 'block';
-                    } else {
-                        item.style.display = 'none';
-                    }
-                });
-            });
+            
+            html += '</div>';
+            return html;
         }
 
         function displayPowerHistory(data) {
@@ -2323,6 +3201,11 @@
                         { event_type: "START_INSTALL", timestamp: "2024-01-10T08:30:00Z", versionCode: 120, request_from: "com.android.vending", stagedDir: "/data/app-staging/com.android.chrome" },
                         { event_type: "INSTALL_SUCCEEDED", timestamp: "2024-01-10T08:30:45Z" }
                     ],
+                    permissions: {
+                        "android.permission.CAMERA": { granted: true },
+                        "android.permission.RECORD_AUDIO": { granted: false },
+                        "android.permission.INTERNET": { type: "install", protection: "normal" }
+                    },
                     user_count: 1,
                     users: [
                         {
@@ -2363,6 +3246,51 @@
                             installed: true
                         }
                     ]
+                },
+                {
+                    package_name: "com.example.newest",
+                    version_code: 7,
+                    version_name: "1.2.0",
+                    app_id: 10299,
+                    target_sdk: 34,
+                    min_sdk: 26,
+                    code_path: "/data/app/~~abc/com.example.newest/base.apk",
+                    resource_path: "/data/app/~~abc/com.example.newest/base.apk",
+                    flags: "hasCode",
+                    pkg_flags: "0x00000000",
+                    primary_cpu_abi: "arm64-v8a",
+                    installer_package_name: "com.android.packageinstaller",
+                    last_update_time: "2024-01-15T14:22:00Z",
+                    time_stamp: "2024-01-15T14:22:00Z",
+                    category: "tools",
+                    install_logs: [
+                        { event_type: "INSTALL_SUCCEEDED", timestamp: "2024-01-15T14:22:00Z", versionCode: 7 }
+                    ],
+                    user_count: 1,
+                    users: [
+                        {
+                            user_id: 0,
+                            first_install_time: "2024-01-15T14:22:00Z",
+                            data_dir: "/data/user/0/com.example.newest",
+                            enabled: 0,
+                            installed: true
+                        }
+                    ]
+                },
+                {
+                    package_name: "com.example.stub",
+                    version_code: 1,
+                    version_name: "1.0",
+                    app_id: 10300,
+                    target_sdk: 33,
+                    min_sdk: 24,
+                    code_path: "/data/app/~~stub/com.example.stub/base.apk",
+                    resource_path: "/data/app/~~stub/com.example.stub/base.apk",
+                    flags: "hasCode",
+                    pkg_flags: "0x00000000",
+                    primary_cpu_abi: "arm64-v8a",
+                    user_count: 0,
+                    users: []
                 }
             ],
             power_history: [
@@ -2568,6 +3496,49 @@
                         ]
                     }
                 ]
+            },
+            additional_parsers: {
+                memory: [
+                    { MemTotal: 11534336, MemFree: 1234567, MemAvailable: 4567890, SwapTotal: 2097152, SwapFree: 1048576 },
+                    { MemTotal: 11534336, MemFree: 987654, MemAvailable: 4321000, SwapTotal: 2097152, SwapFree: 1048000 }
+                ],
+                device_policy: {
+                    "Active admin": [{ package: "com.android.work.profile", component: "AdminReceiver" }],
+                    "Password quality": "NUMERIC"
+                },
+                adb: {
+                    service_pid: 812,
+                    threads_in_use: 3,
+                    client_pids: [1234, 5678],
+                    debugging_manager: { usb_enabled: true, wireless_enabled: false }
+                },
+                authentication: {
+                    total_events: 2,
+                    events: [
+                        { timestamp: "2024-01-15T09:00:01Z", success: true, auth_type: "fingerprint", user_id: 0, event_source: "BiometricService", wake_reason: "—", raw_message: "Biometric auth success" },
+                        { timestamp: "2024-01-15T08:55:00Z", success: false, auth_type: "pin", user_id: 0, event_source: "LockSettings", wake_reason: "—", raw_message: "PIN mismatch" }
+                    ]
+                },
+                vpn: {
+                    current_vpns: {
+                        "100": { user_id: 0, package_name: "com.example.vpn", interface: "tun0", addresses: "10.8.0.2/32", dns_servers: "1.1.1.1", raw_data: "mUserId=0" }
+                    },
+                    network_properties: {
+                        "101": { value: "VPN", raw_data: "type=VPN" }
+                    }
+                },
+                privacy: {
+                    privacy: {
+                        location_providers: [
+                            {
+                                type: "fused",
+                                last_availability: true,
+                                listeners: [{ uid: 10123, packageName: "com.android.chrome", permission: "fine" }],
+                                last_location_fine: { latitude: "48.85", longitude: "2.35" }
+                            }
+                        ]
+                    }
+                }
             }
         };
 

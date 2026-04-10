@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>IsMyPhonePwned · iPhone</title>
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-container">
+                <img src="logo.png" alt="IsMyPhonePwned Logo" class="logo" onerror="this.style.display='none';">
+                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <h1 class="logo-text">IsMyPhonePwned ?</h1>
+                    <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400;" data-i18n="pageSubtitle">iPhone · sysdiagnose</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="lang-switcher" role="group" aria-label="Language">
+                    <button type="button" data-lang="en" class="active" onclick="window.setLang('en')">EN</button>
+                    <button type="button" data-lang="fr" onclick="window.setLang('fr')">FR</button>
+                    <button type="button" data-lang="zh" onclick="window.setLang('zh')">中文</button>
+                </div>
+                <span id="wasm-status" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px;" data-i18n="wasmLoading">⏳ Loading...</span>
+                <button class="theme-toggle" onclick="toggleTheme()">
+                    <span id="theme-icon">🌙</span>
+                    <span id="theme-text" data-i18n="themeDark">Dark</span>
+                </button>
+            </div>
+        </header>
+
+        <nav class="page-nav" aria-label="Pages">
+            <a href="index.html" data-i18n="navHome">Home</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="android.html" data-i18n="navAndroidPage">Android (bugreport)</a>
+        </nav>
+
+        <div id="status" class="status"></div>
+        <div id="progress" class="progress"><div class="progress-bar"></div></div>
+        <div id="loading-spinner" class="loading-spinner">
+            <div class="spinner"></div>
+            <div class="loading-text" data-i18n="analyzingWait">Working…</div>
+        </div>
+
+        <div class="section">
+            <h2 data-i18n="iphoneTitle">Sysdiagnose archive</h2>
+            <p data-i18n="sysdiagnoseDesc">Upload an Apple sysdiagnose archive (.tar.gz). Parsing runs in your browser via sysdiagnose-extractor-library (WASM): metadata, per-parser status, and full JSON below.</p>
+            <div class="upload-zone" id="sysdiagnose-upload-zone" onclick="document.getElementById('sysdiagnose-file-input').click()">
+                <div class="upload-icon">🍎</div>
+                <div data-i18n="sysdiagnoseDrop">Click or drag sysdiagnose .tar.gz here</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;" data-i18n="sysdiagnoseFormats">Typically named sysdiagnose_*.tar.gz</div>
+            </div>
+            <input type="file" id="sysdiagnose-file-input" accept=".tar.gz,.tgz,application/gzip" onchange="window.handleSysdiagnoseFileSelect(event)">
+            <button id="btn-analyze-sysdiagnose" class="hidden" onclick="window.analyzeSysdiagnoseFile()" data-i18n="analyzeSysdiagnoseBtn">Analyze sysdiagnose</button>
+        </div>
+
+        <div id="results" class="results">
+            <div id="sysdiagnose-parsed-wrap" class="section" style="display: none;">
+                <h2 data-i18n="resultsSectionTitle">Analysis results</h2>
+                <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;" data-i18n="resultsSectionBlurb">SAF-aligned analysers summarize the archive; the table lists per-parser status. Use Full Data (JSON) below to download or copy the complete payload.</p>
+                <table class="detail-table" id="sysdiagnose-meta-table" style="margin-bottom: 1.25rem;">
+                    <tbody id="sysdiagnose-summary-body"></tbody>
+                </table>
+                <h3 class="sysdiagnose-cards-heading" style="margin-top: 0.5rem; margin-bottom: 0.5rem; font-size: 1.05rem;" data-i18n="analyserSectionTitle">Analyser summaries</h3>
+                <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 1rem;" data-i18n="analyserSectionBlurb">Built-in analysers (sdx-cli --run-analysers): apps, summary, coverage, etc. Expand a card for the structured view.</p>
+                <div id="sysdiagnose-analyser-cards"></div>
+                <h3 class="sysdiagnose-cards-heading" style="margin-top: 1.75rem; margin-bottom: 0.5rem; font-size: 1.05rem;" data-i18n="parserModulesTitle">Parser modules</h3>
+                <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 1rem;" data-i18n="parserModulesBlurb">One row per SAF parser module. Parser payloads are included in Full Data (JSON) below.</p>
+                <div class="data-table-container">
+                    <table class="data-table" id="sysdiagnose-parser-table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="colParser">Parser</th>
+                                <th data-i18n="colStatus">Status</th>
+                                <th data-i18n="colDuration">Duration (ms)</th>
+                                <th data-i18n="colNote">Note</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sysdiagnose-parser-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="result-card">
+                <div class="section-header">
+                    <h3 data-i18n="fullDataJsonTitle">📋 Full Data (JSON)</h3>
+                </div>
+                <button type="button" class="section-toggle collapsed" onclick="toggleSection('json-output')">▼</button>
+                <div class="section-content collapsed" id="json-output-content">
+                    <div class="json-viewer" id="json-output" style="min-height: 4rem;">—</div>
+                </div>
+            </div>
+            <div id="results-actions" style="margin-top: 1.5rem; display: none; gap: 0.5rem; flex-wrap: wrap;">
+                <button type="button" onclick="window.downloadIphoneResults()" style="background: #4CAF50; color: white;" data-i18n="btnDownloadJson">📥 Download JSON</button>
+                <button type="button" onclick="window.copyIphoneResults()" style="background: var(--accent); color: white;" data-i18n="btnCopyClipboard">📋 Copy to Clipboard</button>
+            </div>
+        </div>
+
+        <footer style="text-align: center; padding: 1.5rem 0; color: var(--text-secondary); font-size: 0.813rem;">
+            <div style="margin-bottom: 0.75rem;">
+                <a href="https://github.com/IsMyPhonePwned/sysdiagnose-extractor-library" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;">sysdiagnose-extractor-library</a>
+            </div>
+            <p style="margin-top: 0.5rem; font-size: 0.8rem;">
+                <a href="https://github.com/IsMyPhonePwned/" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;" data-i18n="navGitHub">GitHub</a>
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        window.IPHONE_I18N = {
+            en: {
+                pageSubtitle: 'iPhone · sysdiagnose',
+                wasmLoading: '⏳ Loading...',
+                wasmReady: '✓ Ready',
+                wasmFailed: '❌ Failed to load',
+                themeDark: 'Dark',
+                themeLight: 'Light',
+                analyzingWait: 'Analyzing…',
+                navHome: 'Home',
+                navAndroidPage: 'Android (bugreport)',
+                iphoneTitle: 'Sysdiagnose archive',
+                sysdiagnoseDesc: 'Upload an Apple sysdiagnose archive (.tar.gz). Parsing runs in your browser via sysdiagnose-extractor-library (WASM): metadata, built-in analyser summaries, per-parser status, and full JSON below.',
+                sysdiagnoseDrop: 'Click or drag sysdiagnose .tar.gz here',
+                sysdiagnoseFormats: 'Typically named sysdiagnose_*.tar.gz',
+                analyzeSysdiagnoseBtn: 'Analyze sysdiagnose',
+                fullDataJsonTitle: '📋 Full Data (JSON)',
+                btnDownloadJson: '📥 Download JSON',
+                btnCopyClipboard: '📋 Copy to Clipboard',
+                navGitHub: 'GitHub',
+                resultsSectionTitle: 'Analysis results',
+                resultsSectionBlurb:
+                    'SAF-aligned analysers summarize the archive; the table lists per-parser status. Use Full Data (JSON) below to download or copy the complete payload.',
+                analyserSectionTitle: 'Analyser summaries',
+                analyserSectionBlurb:
+                    'Built-in analysers (sdx-cli --run-analysers): apps, summary, coverage, etc. Expand a card for the structured view.',
+                parserModulesTitle: 'Parser modules',
+                parserModulesBlurb:
+                    'One row per SAF parser module. Parser payloads are included in Full Data (JSON) below.',
+                colParser: 'Parser',
+                colStatus: 'Status',
+                colDuration: 'Duration (ms)',
+                colNote: 'Note',
+                labelEngine: 'Engine',
+                labelBundle: 'Bundle folder',
+                labelAcquisition: 'Acquisition (from name)',
+                labelFileCount: 'Files in archive',
+                labelParsersOk: 'Parsers OK',
+                labelParsersErr: 'Parsers failed',
+                labelAnalysersOk: 'Analysers OK',
+                labelAnalysersErr: 'Analysers failed',
+                statusOk: 'OK',
+                statusErr: 'Error',
+                jsonBuilding: 'Building JSON preview (large archives can take a moment)…',
+                jsonStringifyError: 'Could not build JSON text in the browser.',
+                jsonStringifyHint: 'Use “Download JSON” if the button works, or inspect `currentResults` from the console.',
+                analysersMissing:
+                    'No analyser output in this build (rebuild the site WASM with the latest website crate).',
+                analyserDesc_apps: 'Installed applications on the device.',
+                analyserDesc_coverage: 'Coverage report for parsers.',
+                analyserDesc_file_stats: 'File statistics for the archive.',
+                analyserDesc_mcstateshared: 'MCState shared profile summary.',
+                analyserDesc_plist: 'Plist-related findings.',
+                analyserDesc_ps_everywhere: 'Processes found across multiple sources.',
+                analyserDesc_ps_matrix: 'Matrix comparing ps, psthread, and taskinfo.',
+                analyserDesc_summary: 'Cross-parser summary.',
+                analyserDesc_wifi_geolocation: 'GPX from Wi‑Fi geolocation data.',
+                analyserDesc_wifi_geolocation_kml: 'KML from Wi‑Fi geolocation data.',
+                analyzeDoneStatus: 'Done · {parsersOk} parsers OK · {analysersOk} analysers OK',
+                countUnknown: '—',
+                labelUploadedFile: 'Uploaded file',
+                labelFileSize: 'File size',
+                labelSha256: 'SHA-256',
+                analyserDownloadGpx: 'Download .gpx',
+                analyserDownloadKml: 'Download .kml',
+                analyserGeoPointCount: '{n} points',
+                analyserShowingFirst: 'Showing first {n} of {total}.',
+                analyserXmlParseError: 'Could not parse XML in the browser.',
+                appsColBundleId: 'Bundle ID',
+                appsColSources: 'Seen in parsers',
+                covColParserTypes: 'Parser types (defined)',
+                covColParsedKeys: 'Keys in this run',
+                covColArchiveFiles: 'Archive files',
+                covListPresent: 'Present in map',
+                covListMissing: 'Defined but not in map',
+                fileColSegment: 'Top-level folder',
+                fileColCount: 'Files',
+                fileColExtension: 'Extension',
+                plistColPath: 'Path',
+                plistColKind: 'Kind',
+                plistColKeys: 'Top keys',
+                mcColPath: 'Path',
+                mcColChars: 'Chars',
+                mcColLines: 'Lines',
+                mcColPreview: 'Preview',
+                psColMessage: 'Command / name',
+                psColSource: 'Source',
+                mtxColPid: 'PID',
+                mtxColPs: 'ps',
+                mtxColPt: 'psthread',
+                mtxColTi: 'taskinfo',
+                mtxColOk: 'PID ok',
+                mtxColSources: 'Sources',
+                mtxColPsCmd: 'ps command',
+                mtxColPtCmd: 'psthread cmd',
+                mtxColTiName: 'taskinfo name',
+                colName: 'Name',
+                colLat: 'Latitude',
+                colLon: 'Longitude',
+                colTime: 'Time',
+                valYes: 'Yes',
+                valNo: 'No',
+                labelArchiveFileTotal: '{n} files in archive',
+                labelBundleCount: '{n} bundle(s)',
+                statusNoResultsDownload: '⚠️ No results to download',
+                statusNoResultsCopy: '⚠️ No results to copy',
+                statusDownloadOk: '✓ Results downloaded!',
+                statusCopiedOk: '✓ Results copied to clipboard!',
+                statusCopyFailed: '❌ Failed to copy'
+            },
+            fr: {
+                pageSubtitle: 'iPhone · sysdiagnose',
+                wasmLoading: '⏳ Chargement...',
+                wasmReady: '✓ Prêt',
+                wasmFailed: '❌ Échec du chargement',
+                themeDark: 'Sombre',
+                themeLight: 'Clair',
+                analyzingWait: 'Analyse…',
+                navHome: 'Accueil',
+                navAndroidPage: 'Android (bug report)',
+                iphoneTitle: 'Archive sysdiagnose',
+                sysdiagnoseDesc:
+                    'Envoyez une archive sysdiagnose Apple (.tar.gz). L’analyse s’exécute dans le navigateur via sysdiagnose-extractor-library (WASM) : métadonnées, résumés des analyseurs intégrés, statut par parseur et JSON complet ci-dessous.',
+                sysdiagnoseDrop: 'Cliquez ou déposez le .tar.gz ici',
+                sysdiagnoseFormats: 'Souvent nommé sysdiagnose_*.tar.gz',
+                analyzeSysdiagnoseBtn: 'Analyser sysdiagnose',
+                fullDataJsonTitle: '📋 Données complètes (JSON)',
+                btnDownloadJson: '📥 Télécharger JSON',
+                btnCopyClipboard: '📋 Copier',
+                navGitHub: 'GitHub',
+                resultsSectionTitle: 'Résultats d’analyse',
+                resultsSectionBlurb:
+                    'Les analyseurs SAF résument l’archive ; le tableau liste le statut par parseur. Utilisez Données complètes (JSON) ci-dessous pour télécharger ou copier la charge utile complète.',
+                analyserSectionTitle: 'Résumés des analyseurs',
+                analyserSectionBlurb:
+                    'Analyseurs intégrés (sdx-cli --run-analysers) : apps, summary, coverage, etc. Déployez une carte pour la vue structurée.',
+                parserModulesTitle: 'Modules parseurs',
+                parserModulesBlurb:
+                    'Une ligne par module SAF. Les données des parseurs sont incluses dans Données complètes (JSON) ci-dessous.',
+                colParser: 'Parseur',
+                colStatus: 'Statut',
+                colDuration: 'Durée (ms)',
+                colNote: 'Note',
+                labelEngine: 'Moteur',
+                labelBundle: 'Dossier bundle',
+                labelAcquisition: 'Acquisition (nom)',
+                labelFileCount: 'Fichiers dans l’archive',
+                labelParsersOk: 'Parseurs OK',
+                labelParsersErr: 'Parseurs en échec',
+                labelAnalysersOk: 'Analyseurs OK',
+                labelAnalysersErr: 'Analyseurs en échec',
+                statusOk: 'OK',
+                statusErr: 'Erreur',
+                jsonBuilding: 'Génération de l’aperçu JSON (gros volumes : cela peut prendre un moment)…',
+                jsonStringifyError: 'Impossible de construire le JSON dans le navigateur.',
+                jsonStringifyHint: 'Utilisez « Télécharger JSON » si le bouton fonctionne, ou inspectez `currentResults` dans la console.',
+                analysersMissing:
+                    'Aucune sortie d’analyseur (recompilez le WASM du site avec la dernière version du crate website).',
+                analyserDesc_apps: 'Applications installées sur l’appareil.',
+                analyserDesc_coverage: 'Rapport de couverture des parseurs.',
+                analyserDesc_file_stats: 'Statistiques sur les fichiers de l’archive.',
+                analyserDesc_mcstateshared: 'Profil MCState partagé.',
+                analyserDesc_plist: 'Éléments liés aux plist.',
+                analyserDesc_ps_everywhere: 'Processus repérés dans plusieurs sources.',
+                analyserDesc_ps_matrix: 'Matrice comparant ps, psthread et taskinfo.',
+                analyserDesc_summary: 'Résumé croisé des parseurs.',
+                analyserDesc_wifi_geolocation: 'GPX à partir des géolocalisations Wi‑Fi.',
+                analyserDesc_wifi_geolocation_kml: 'KML à partir des géolocalisations Wi‑Fi.',
+                analyzeDoneStatus: 'Terminé · {parsersOk} parseurs OK · {analysersOk} analyseurs OK',
+                countUnknown: '—',
+                labelUploadedFile: 'Fichier envoyé',
+                labelFileSize: 'Taille du fichier',
+                labelSha256: 'SHA-256',
+                analyserDownloadGpx: 'Télécharger .gpx',
+                analyserDownloadKml: 'Télécharger .kml',
+                analyserGeoPointCount: '{n} points',
+                analyserShowingFirst: 'Affichage des {n} premiers sur {total}.',
+                analyserXmlParseError: 'Impossible d’analyser le XML dans le navigateur.',
+                appsColBundleId: 'Bundle ID',
+                appsColSources: 'Vu dans les parseurs',
+                covColParserTypes: 'Types de parseurs (définis)',
+                covColParsedKeys: 'Clés dans cette exécution',
+                covColArchiveFiles: 'Fichiers dans l’archive',
+                covListPresent: 'Présentes dans la map',
+                covListMissing: 'Définies mais absentes de la map',
+                fileColSegment: 'Dossier racine',
+                fileColCount: 'Fichiers',
+                fileColExtension: 'Extension',
+                plistColPath: 'Chemin',
+                plistColKind: 'Type',
+                plistColKeys: 'Clés racine',
+                mcColPath: 'Chemin',
+                mcColChars: 'Car.',
+                mcColLines: 'Lignes',
+                mcColPreview: 'Aperçu',
+                psColMessage: 'Commande / nom',
+                psColSource: 'Source',
+                mtxColPid: 'PID',
+                mtxColPs: 'ps',
+                mtxColPt: 'psthread',
+                mtxColTi: 'taskinfo',
+                mtxColOk: 'PID ok',
+                mtxColSources: 'Sources',
+                mtxColPsCmd: 'Commande ps',
+                mtxColPtCmd: 'Cmd psthread',
+                mtxColTiName: 'Nom taskinfo',
+                colName: 'Nom',
+                colLat: 'Latitude',
+                colLon: 'Longitude',
+                colTime: 'Heure',
+                valYes: 'Oui',
+                valNo: 'Non',
+                labelArchiveFileTotal: '{n} fichiers dans l’archive',
+                labelBundleCount: '{n} bundle(s)',
+                statusNoResultsDownload: '⚠️ Aucun résultat à télécharger',
+                statusNoResultsCopy: '⚠️ Aucun résultat à copier',
+                statusDownloadOk: '✓ Téléchargement effectué !',
+                statusCopiedOk: '✓ Résultats copiés dans le presse-papiers !',
+                statusCopyFailed: '❌ Échec de la copie'
+            },
+            zh: {
+                pageSubtitle: 'iPhone · sysdiagnose',
+                wasmLoading: '⏳ 加载中...',
+                wasmReady: '✓ 就绪',
+                wasmFailed: '❌ 加载失败',
+                themeDark: '深色',
+                themeLight: '浅色',
+                analyzingWait: '分析中…',
+                navHome: '首页',
+                navAndroidPage: 'Android（bugreport）',
+                iphoneTitle: 'Sysdiagnose 归档',
+                sysdiagnoseDesc:
+                    '上传 Apple sysdiagnose 归档（.tar.gz）。解析在浏览器内通过 sysdiagnose-extractor-library（WASM）完成：元数据、内置分析器摘要、各解析器状态与下方完整 JSON。',
+                sysdiagnoseDrop: '点击或拖拽 .tar.gz 到此处',
+                sysdiagnoseFormats: '通常为 sysdiagnose_*.tar.gz',
+                analyzeSysdiagnoseBtn: '分析 sysdiagnose',
+                fullDataJsonTitle: '📋 完整数据（JSON）',
+                btnDownloadJson: '📥 下载 JSON',
+                btnCopyClipboard: '📋 复制',
+                navGitHub: 'GitHub',
+                resultsSectionTitle: '分析结果',
+                resultsSectionBlurb:
+                    'SAF 分析器汇总归档内容；表格列出各解析器状态。在下方「完整数据（JSON）」中可下载或复制完整载荷。',
+                analyserSectionTitle: '分析器摘要',
+                analyserSectionBlurb:
+                    '内置分析器（sdx-cli --run-analysers）：apps、summary、coverage 等。展开卡片查看结构化内容。',
+                parserModulesTitle: '解析器模块',
+                parserModulesBlurb: '每个 SAF 解析器一行。解析器载荷包含在下方「完整数据（JSON）」中。',
+                colParser: '解析器',
+                colStatus: '状态',
+                colDuration: '耗时 (ms)',
+                colNote: '说明',
+                labelEngine: '引擎',
+                labelBundle: '包目录名',
+                labelAcquisition: '采集时间（自目录名）',
+                labelFileCount: '归档内文件数',
+                labelParsersOk: '成功',
+                labelParsersErr: '失败',
+                labelAnalysersOk: '分析器成功',
+                labelAnalysersErr: '分析器失败',
+                statusOk: '成功',
+                statusErr: '失败',
+                jsonBuilding: '正在生成 JSON 预览（归档较大时可能需要一点时间）…',
+                jsonStringifyError: '无法在浏览器中生成完整 JSON 文本。',
+                jsonStringifyHint: '如可用请使用「下载 JSON」，或在控制台查看 `currentResults`。',
+                analysersMissing: '当前构建无分析器输出（请用最新 website crate 重新构建 WASM）。',
+                analyserDesc_apps: '设备上已安装的应用。',
+                analyserDesc_coverage: '解析器覆盖情况报告。',
+                analyserDesc_file_stats: '归档内文件统计。',
+                analyserDesc_mcstateshared: 'MCState 共享配置摘要。',
+                analyserDesc_plist: '与 plist 相关的结果。',
+                analyserDesc_ps_everywhere: '在多处来源中发现的进程。',
+                analyserDesc_ps_matrix: '对比 ps、psthread 与 taskinfo 的矩阵。',
+                analyserDesc_summary: '跨解析器摘要。',
+                analyserDesc_wifi_geolocation: '由 Wi‑Fi 定位数据生成 GPX。',
+                analyserDesc_wifi_geolocation_kml: '由 Wi‑Fi 定位数据生成 KML。',
+                analyzeDoneStatus: '完成 · 解析器成功 {parsersOk} · 分析器成功 {analysersOk}',
+                countUnknown: '—',
+                labelUploadedFile: '上传文件',
+                labelFileSize: '文件大小',
+                labelSha256: 'SHA-256',
+                analyserDownloadGpx: '下载 .gpx',
+                analyserDownloadKml: '下载 .kml',
+                analyserGeoPointCount: '{n} 个点',
+                analyserShowingFirst: '显示前 {n} 条，共 {total} 条。',
+                analyserXmlParseError: '无法在浏览器中解析该 XML。',
+                appsColBundleId: 'Bundle ID',
+                appsColSources: '出现的解析器',
+                covColParserTypes: '解析器类型（定义）',
+                covColParsedKeys: '本次运行中的键',
+                covColArchiveFiles: '归档内文件数',
+                covListPresent: '映射中已有',
+                covListMissing: '已定义但不在映射中',
+                fileColSegment: '顶层目录',
+                fileColCount: '文件数',
+                fileColExtension: '扩展名',
+                plistColPath: '路径',
+                plistColKind: '类型',
+                plistColKeys: '顶层键',
+                mcColPath: '路径',
+                mcColChars: '字符',
+                mcColLines: '行数',
+                mcColPreview: '预览',
+                psColMessage: '命令 / 名称',
+                psColSource: '来源',
+                mtxColPid: 'PID',
+                mtxColPs: 'ps',
+                mtxColPt: 'psthread',
+                mtxColTi: 'taskinfo',
+                mtxColOk: 'PID 一致',
+                mtxColSources: '来源',
+                mtxColPsCmd: 'ps 命令',
+                mtxColPtCmd: 'psthread 命令',
+                mtxColTiName: 'taskinfo 名称',
+                colName: '名称',
+                colLat: '纬度',
+                colLon: '经度',
+                colTime: '时间',
+                valYes: '是',
+                valNo: '否',
+                labelArchiveFileTotal: '归档内共 {n} 个文件',
+                labelBundleCount: '{n} 个 bundle',
+                statusNoResultsDownload: '⚠️ 没有可下载的结果',
+                statusNoResultsCopy: '⚠️ 没有可复制的结果',
+                statusDownloadOk: '✓ 已下载！',
+                statusCopiedOk: '✓ 已复制到剪贴板！',
+                statusCopyFailed: '❌ 复制失败'
+            }
+        };
+        window.currentLang = localStorage.getItem('lang') || 'en';
+        function applyLang(lang) {
+            var t = window.IPHONE_I18N[lang] || window.IPHONE_I18N.en;
+            document.documentElement.lang = (lang === 'zh' ? 'zh' : lang === 'fr' ? 'fr' : 'en');
+            document.querySelectorAll('[data-i18n]').forEach(function (el) {
+                var key = el.getAttribute('data-i18n');
+                if (t[key] !== undefined) el.textContent = t[key];
+            });
+            var themeText = document.getElementById('theme-text');
+            if (themeText) {
+                var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                themeText.textContent = isDark ? t.themeLight : t.themeDark;
+            }
+        }
+        window.setLang = function (lang) {
+            window.currentLang = lang;
+            localStorage.setItem('lang', lang);
+            document.querySelectorAll('.lang-switcher button').forEach(function (btn) {
+                btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
+            });
+            applyLang(lang);
+        };
+        window.toggleTheme = function () {
+            var html = document.documentElement;
+            var cur = html.getAttribute('data-theme');
+            var next = cur === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            document.getElementById('theme-icon').textContent = next === 'dark' ? '☀️' : '🌙';
+            applyLang(window.currentLang);
+            localStorage.setItem('theme', next);
+        };
+        window.toggleSection = function (id) {
+            var content = document.getElementById(id + '-content');
+            var btn = event.target;
+            if (!content || !btn) return;
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                btn.classList.remove('collapsed');
+            } else {
+                content.classList.add('collapsed');
+                btn.classList.add('collapsed');
+            }
+        };
+        document.addEventListener('DOMContentLoaded', function () {
+            if (localStorage.getItem('theme') === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                var ic = document.getElementById('theme-icon');
+                if (ic) ic.textContent = '☀️';
+            }
+            applyLang(window.currentLang);
+            document.querySelectorAll('.lang-switcher button').forEach(function (btn) {
+                btn.classList.toggle('active', btn.getAttribute('data-lang') === window.currentLang);
+            });
+        });
+    </script>
+
+    <script type="module">
+        import init, { analyzeSysdiagnose } from './pkg/ismyphonepwned_wasm.js';
+
+        let sysdiagnoseFile = null;
+        let currentResults = null;
+
+        function trIphone(key) {
+            var t = window.IPHONE_I18N[window.currentLang] || window.IPHONE_I18N.en;
+            return t[key] !== undefined ? t[key] : key;
+        }
+
+        function addSummaryRow(tbody, label, value) {
+            var tr = document.createElement('tr');
+            var td0 = document.createElement('td');
+            td0.textContent = label;
+            var td1 = document.createElement('td');
+            var v = value;
+            td1.textContent = v === undefined || v === null || v === '' ? '—' : String(v);
+            tr.appendChild(td0);
+            tr.appendChild(td1);
+            tbody.appendChild(tr);
+        }
+
+        /**
+         * serde_wasm_bindgen often deserializes JSON objects as JS Map; `out.ok` / `out.parsers`
+         * are then undefined on the Map instance (only .get('ok') works).
+         */
+        function sysdiagnoseRootPlain(out) {
+            if (out == null) return out;
+            if (typeof Map !== 'undefined' && out instanceof Map) {
+                return Object.fromEntries(out);
+            }
+            return out;
+        }
+
+        function sysdiagnoseResultOk(out) {
+            var o = sysdiagnoseRootPlain(out);
+            if (!o || typeof o !== 'object') return false;
+            var v = o.ok;
+            if (v === false || v === 0 || v === 'false') return false;
+            if (v === true || v === 1) return true;
+            if (typeof v === 'bigint') return v !== 0n;
+            return false;
+        }
+
+        function parserEntryOk(pp) {
+            if (pp == null || typeof pp !== 'object') return false;
+            var v = pp.ok;
+            if (v === false || v === 0) return false;
+            if (v === true || v === 1) return true;
+            if (typeof v === 'bigint') return v !== 0n;
+            return false;
+        }
+
+        function sysdiagnosePick(obj, key) {
+            if (obj == null) return undefined;
+            if (typeof Map !== 'undefined' && obj instanceof Map) return obj.get(key);
+            return obj[key];
+        }
+
+        function sysdiagnoseParserEntries(parsers) {
+            if (parsers == null || typeof parsers !== 'object') return [];
+            if (typeof Map !== 'undefined' && parsers instanceof Map) {
+                return Array.from(parsers.entries()).sort(function (a, b) {
+                    return String(a[0]).localeCompare(String(b[0]));
+                });
+            }
+            return Object.keys(parsers).sort().map(function (name) {
+                return [name, parsers[name]];
+            });
+        }
+
+        function jsonStringifySysdiagnose(obj) {
+            var s = JSON.stringify(obj, function (_key, value) {
+                return typeof value === 'bigint' ? value.toString() : value;
+            }, 2);
+            return s === undefined ? 'null' : s;
+        }
+
+        function mapPlainTop(x) {
+            if (x && typeof x === 'object' && typeof Map !== 'undefined' && x instanceof Map) {
+                return Object.fromEntries(x);
+            }
+            return x;
+        }
+
+        /** After JSON.parse(WASM string), parser entries are plain objects — do not deep-clone. */
+        function parserEntryPlain(p) {
+            return mapPlainTop(p) || {};
+        }
+
+        function parserEntryData(pp) {
+            if (pp == null || typeof pp !== 'object') return undefined;
+            var d = pp.data !== undefined ? pp.data : pp.Data;
+            if (typeof d === 'string') {
+                var t = d.trim();
+                if ((t.charAt(0) === '{' && t.charAt(t.length - 1) === '}') || (t.charAt(0) === '[' && t.charAt(t.length - 1) === ']')) {
+                    try {
+                        return JSON.parse(d);
+                    } catch (e) {
+                        return d;
+                    }
+                }
+            }
+            return d;
+        }
+
+        async function calculateHashIphone(data) {
+            try {
+                var buffer = data.buffer || data;
+                var hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+                var hashArray = Array.from(new Uint8Array(hashBuffer));
+                return hashArray
+                    .map(function (b) {
+                        return b.toString(16).padStart(2, '0');
+                    })
+                    .join('');
+            } catch (error) {
+                console.error('[SYSDIAGNOSE] Hash calculation failed:', error);
+                return 'Error calculating hash';
+            }
+        }
+
+        function parseSysdiagnoseWasmResult(raw) {
+            if (typeof raw === 'string') {
+                return JSON.parse(raw);
+            }
+            if (raw != null && typeof raw === 'object') {
+                console.warn(
+                    '[SYSDIAGNOSE] Expected a JSON string from analyzeSysdiagnose; rebuild website/pkg with wasm-pack. Using object as-is.'
+                );
+                return sysdiagnoseRootPlain(raw);
+            }
+            throw new Error('analyzeSysdiagnose: unexpected return type ' + typeof raw);
+        }
+
+        function countParsersOkFromEntries(entries) {
+            var n = 0;
+            for (var i = 0; i < entries.length; i++) {
+                if (parserEntryOk(parserEntryPlain(entries[i][1]))) n++;
+            }
+            return n;
+        }
+
+        function formatDurationMs(pp) {
+            var d = pp.duration_ms;
+            if (d == null) return '—';
+            if (typeof d === 'bigint') d = Number(d);
+            if (typeof d === 'number' && !isNaN(d)) return d.toFixed(1);
+            return String(d);
+        }
+
+        var ANALYSER_UI_MAX_ROWS = 120;
+
+        function analyserTruncate(s, max) {
+            if (s == null) return '';
+            var t = String(s);
+            if (t.length <= max) return t;
+            return t.slice(0, max) + '…';
+        }
+
+        function analyserJsonishCell(v) {
+            if (v == null) return '—';
+            if (typeof v === 'string') return analyserTruncate(v, 140);
+            if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+            if (typeof v === 'bigint') return v.toString();
+            try {
+                return analyserTruncate(jsonStringifySysdiagnose(v), 160);
+            } catch (e) {
+                return '—';
+            }
+        }
+
+        function analyserYn(b) {
+            return b ? trIphone('valYes') : trIphone('valNo');
+        }
+
+        function buildAnalyserScrollTable(headers, rows) {
+            var wrap = document.createElement('div');
+            wrap.className = 'data-table-container';
+            wrap.style.maxHeight = 'min(55vh, 22rem)';
+            wrap.style.overflow = 'auto';
+            wrap.style.marginBottom = '0.5rem';
+            var table = document.createElement('table');
+            table.className = 'data-table';
+            var thead = document.createElement('thead');
+            var trh = document.createElement('tr');
+            for (var h = 0; h < headers.length; h++) {
+                var th = document.createElement('th');
+                th.textContent = headers[h];
+                trh.appendChild(th);
+            }
+            thead.appendChild(trh);
+            table.appendChild(thead);
+            var tbody = document.createElement('tbody');
+            for (var r = 0; r < rows.length; r++) {
+                var tr = document.createElement('tr');
+                var row = rows[r];
+                for (var c = 0; c < row.length; c++) {
+                    var td = document.createElement('td');
+                    td.textContent = row[c] == null ? '' : String(row[c]);
+                    td.style.wordBreak = 'break-word';
+                    td.style.fontSize = '0.8125rem';
+                    tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+            }
+            table.appendChild(tbody);
+            wrap.appendChild(table);
+            return wrap;
+        }
+
+        function analyserSortedCountMap(obj) {
+            if (!obj || typeof obj !== 'object') return [];
+            var pairs = [];
+            for (var k in obj) {
+                if (!Object.prototype.hasOwnProperty.call(obj, k)) continue;
+                var n = obj[k];
+                if (typeof n === 'number' && !isNaN(n)) pairs.push([k, n]);
+                else if (typeof n === 'string' && /^\d+$/.test(n)) pairs.push([k, parseInt(n, 10)]);
+            }
+            pairs.sort(function (a, b) {
+                return b[1] - a[1] || String(a[0]).localeCompare(String(b[0]));
+            });
+            return pairs;
+        }
+
+        function analyserAppendDl(parent, label, value) {
+            if (value === undefined || value === null || value === '') return;
+            var dt = document.createElement('dt');
+            dt.textContent = label;
+            dt.style.fontWeight = '600';
+            dt.style.fontSize = '0.8125rem';
+            var dd = document.createElement('dd');
+            dd.style.margin = '0 0 0.35rem 0';
+            dd.style.fontSize = '0.8125rem';
+            dd.textContent = String(value);
+            parent.appendChild(dt);
+            parent.appendChild(dd);
+        }
+
+        function analyserDeviceBlock(device) {
+            if (!device || typeof device !== 'object') return null;
+            var dl = document.createElement('dl');
+            dl.style.margin = '0 0 0.75rem 0';
+            analyserAppendDl(dl, 'OS', device.os_version != null ? String(device.os_version) : device.OSVersion);
+            analyserAppendDl(dl, 'Build', device.build != null ? String(device.build) : device.BuildVersion);
+            analyserAppendDl(dl, 'Product', device.product_name != null ? String(device.product_name) : device.ProductName);
+            analyserAppendDl(dl, 'Product type', device.product_type != null ? String(device.product_type) : device.ProductType);
+            analyserAppendDl(dl, 'Serial', device.serial_number != null ? String(device.serial_number) : device.SerialNumber);
+            analyserAppendDl(dl, 'UDID', device.unique_device_id != null ? String(device.unique_device_id) : device.UniqueDeviceID);
+            return dl.childNodes.length ? dl : null;
+        }
+
+        function analyserSplitMdRow(line) {
+            if (!line || line.trim().charAt(0) !== '|') return null;
+            var parts = line.split('|');
+            if (parts.length < 3) return null;
+            return parts.slice(1, -1).map(function (c) {
+                return c.trim();
+            });
+        }
+
+        function analyserIsMdTableSep(line) {
+            if (!line) return false;
+            var t = line.trim();
+            if (t.charAt(0) !== '|') return false;
+            return /^[\s|:\-]+$/.test(t.replace(/[^|\-:\s]/g, '')) && t.indexOf('-') >= 0;
+        }
+
+        function renderSummaryMarkdownToDom(md) {
+            var root = document.createElement('div');
+            root.className = 'analyser-summary-md';
+            root.style.cssText = 'font-size: 0.8125rem; line-height: 1.45; color: var(--text-primary);';
+            if (typeof md !== 'string' || !md) return root;
+            var lines = md.split('\n');
+            var i = 0;
+            while (i < lines.length) {
+                var line = lines[i];
+                var trimmed = line.trim();
+                if (trimmed.indexOf('```') === 0) {
+                    i++;
+                    var buf = [];
+                    while (i < lines.length && lines[i].trim().indexOf('```') !== 0) {
+                        buf.push(lines[i]);
+                        i++;
+                    }
+                    var pre = document.createElement('pre');
+                    pre.className = 'json-viewer';
+                    pre.style.maxHeight = '14rem';
+                    pre.style.fontSize = '0.75rem';
+                    pre.style.margin = '0.35rem 0';
+                    pre.textContent = buf.join('\n');
+                    root.appendChild(pre);
+                    if (i < lines.length) i++;
+                    continue;
+                }
+                if (trimmed.indexOf('## ') === 0) {
+                    var hx = document.createElement('h4');
+                    hx.style.cssText = 'margin: 0.85rem 0 0.35rem; font-size: 0.95rem;';
+                    hx.textContent = line.replace(/^#+\s*/, '').trim();
+                    root.appendChild(hx);
+                    i++;
+                    continue;
+                }
+                var hdr = analyserSplitMdRow(line);
+                if (hdr && hdr.length >= 2 && i + 1 < lines.length && analyserIsMdTableSep(lines[i + 1])) {
+                    var wrap = document.createElement('div');
+                    wrap.className = 'data-table-container';
+                    wrap.style.overflow = 'auto';
+                    wrap.style.margin = '0.35rem 0';
+                    var table = document.createElement('table');
+                    table.className = 'data-table';
+                    var thead = document.createElement('thead');
+                    var trh = document.createElement('tr');
+                    for (var hi = 0; hi < hdr.length; hi++) {
+                        var th = document.createElement('th');
+                        th.textContent = hdr[hi];
+                        trh.appendChild(th);
+                    }
+                    thead.appendChild(trh);
+                    table.appendChild(thead);
+                    var tbody = document.createElement('tbody');
+                    i += 2;
+                    while (i < lines.length) {
+                        var cells = analyserSplitMdRow(lines[i]);
+                        if (!cells || cells.length !== hdr.length) break;
+                        var tr = document.createElement('tr');
+                        for (var ci = 0; ci < cells.length; ci++) {
+                            var td = document.createElement('td');
+                            td.textContent = cells[ci];
+                            td.style.wordBreak = 'break-word';
+                            tr.appendChild(td);
+                        }
+                        tbody.appendChild(tr);
+                        i++;
+                    }
+                    table.appendChild(tbody);
+                    wrap.appendChild(table);
+                    root.appendChild(wrap);
+                    continue;
+                }
+                if (trimmed.indexOf('- ') === 0) {
+                    var ul = document.createElement('ul');
+                    ul.style.margin = '0.35rem 0';
+                    ul.style.paddingLeft = '1.25rem';
+                    while (i < lines.length && lines[i].trim().indexOf('- ') === 0) {
+                        var li = document.createElement('li');
+                        li.textContent = lines[i].trim().slice(2);
+                        ul.appendChild(li);
+                        i++;
+                    }
+                    root.appendChild(ul);
+                    continue;
+                }
+                if (trimmed === '') {
+                    i++;
+                    continue;
+                }
+                var p = document.createElement('p');
+                p.style.margin = '0.35rem 0';
+                p.textContent = line;
+                root.appendChild(p);
+                i++;
+            }
+            return root;
+        }
+
+        function renderWifiGeoStructured(payload, kind) {
+            var xml = payload.xml;
+            if (typeof xml !== 'string' || !xml) return null;
+            var frag = document.createDocumentFragment();
+            var doc = new DOMParser().parseFromString(xml, 'text/xml');
+            if (doc.querySelector('parsererror')) {
+                var pe = document.createElement('p');
+                pe.style.color = 'var(--error)';
+                pe.style.fontSize = '0.8125rem';
+                pe.textContent = trIphone('analyserXmlParseError');
+                frag.appendChild(pe);
+                return frag;
+            }
+            var nodes =
+                kind === 'gpx'
+                    ? doc.querySelectorAll('wpt')
+                    : doc.querySelectorAll('Placemark');
+            var n = nodes.length;
+            var meta = document.createElement('p');
+            meta.style.cssText = 'font-size: 0.8125rem; margin: 0 0 0.5rem;';
+            meta.textContent = trIphone('analyserGeoPointCount').replace('{n}', String(n));
+            frag.appendChild(meta);
+            var dlLink = document.createElement('a');
+            dlLink.style.cssText =
+                'display: inline-block; margin-bottom: 0.65rem; padding: 0.35rem 0.75rem; background: var(--accent); color: white; border-radius: 6px; text-decoration: none; font-size: 0.8125rem;';
+            dlLink.href = URL.createObjectURL(
+                new Blob([xml], {
+                    type: kind === 'gpx' ? 'application/gpx+xml' : 'application/vnd.google-earth.kml+xml'
+                })
+            );
+            dlLink.download = kind === 'gpx' ? 'wifi-geolocation.gpx' : 'wifi-geolocation.kml';
+            dlLink.textContent = kind === 'gpx' ? trIphone('analyserDownloadGpx') : trIphone('analyserDownloadKml');
+            frag.appendChild(dlLink);
+            var lim = Math.min(50, n);
+            var headers =
+                kind === 'gpx'
+                    ? [
+                          trIphone('colName'),
+                          trIphone('colLat'),
+                          trIphone('colLon'),
+                          trIphone('colTime')
+                      ]
+                    : [trIphone('colName'), trIphone('colLon'), trIphone('colLat')];
+            var rows = [];
+            for (var k = 0; k < lim; k++) {
+                var pt = nodes[k];
+                if (kind === 'gpx') {
+                    var lat = pt.getAttribute('lat') || '—';
+                    var lon = pt.getAttribute('lon') || '—';
+                    var nmEl = pt.querySelector('name');
+                    var tmEl = pt.querySelector('time');
+                    rows.push([
+                        nmEl ? nmEl.textContent : '—',
+                        lat,
+                        lon,
+                        tmEl ? tmEl.textContent : '—'
+                    ]);
+                } else {
+                    var nm = pt.querySelector('name');
+                    var coord = pt.querySelector('coordinates');
+                    var tcoord = coord ? coord.textContent.trim() : '';
+                    var pr = tcoord.split(',');
+                    rows.push([nm ? nm.textContent : '—', pr[0] || '—', pr[1] || '—']);
+                }
+            }
+            if (rows.length) frag.appendChild(buildAnalyserScrollTable(headers, rows));
+            if (n > lim) {
+                var note = document.createElement('p');
+                note.style.cssText = 'font-size: 0.75rem; color: var(--text-secondary); margin: 0.35rem 0 0;';
+                note.textContent = trIphone('analyserShowingFirst')
+                    .replace('{n}', String(lim))
+                    .replace('{total}', String(n));
+                frag.appendChild(note);
+            }
+            return frag;
+        }
+
+        function buildAnalyserStructuredView(analyserId, payload) {
+            var id = String(analyserId);
+            var root = document.createElement('div');
+            root.className = 'analyser-structured-view';
+            root.style.marginBottom = '0.65rem';
+
+            if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+                return root;
+            }
+            if (payload.error != null) {
+                return root;
+            }
+
+            if (id === 'apps' && payload.apps && typeof payload.apps === 'object') {
+                var apps = payload.apps;
+                var ids = Object.keys(apps).sort();
+                var count = payload.count != null ? payload.count : ids.length;
+                var head = document.createElement('p');
+                head.style.cssText = 'font-size: 0.8125rem; margin: 0 0 0.5rem; font-weight: 600;';
+                head.textContent = trIphone('labelBundleCount').replace('{n}', String(count));
+                root.appendChild(head);
+                var cap = Math.min(ids.length, ANALYSER_UI_MAX_ROWS);
+                var rows = [];
+                for (var a = 0; a < cap; a++) {
+                    var bid = ids[a];
+                    var entry = apps[bid];
+                    var found = [];
+                    if (entry && typeof entry === 'object' && entry.found) {
+                        var f = entry.found;
+                        if (Array.isArray(f)) {
+                            for (var fi = 0; fi < f.length; fi++) found.push(String(f[fi]));
+                        }
+                    }
+                    rows.push([bid, found.join(', ') || '—']);
+                }
+                root.appendChild(
+                    buildAnalyserScrollTable([trIphone('appsColBundleId'), trIphone('appsColSources')], rows)
+                );
+                if (ids.length > cap) {
+                    var more = document.createElement('p');
+                    more.style.cssText = 'font-size: 0.75rem; color: var(--text-secondary);';
+                    more.textContent = trIphone('analyserShowingFirst')
+                        .replace('{n}', String(cap))
+                        .replace('{total}', String(ids.length));
+                    root.appendChild(more);
+                }
+                return root;
+            }
+
+            if (id === 'coverage') {
+                var grid = document.createElement('div');
+                grid.style.cssText =
+                    'display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0.5rem 1rem; font-size: 0.8125rem; margin-bottom: 0.5rem;';
+                var mk = function (lbl, val) {
+                    var d = document.createElement('div');
+                    var lb = document.createElement('div');
+                    lb.style.fontWeight = '600';
+                    lb.textContent = lbl;
+                    var vv = document.createElement('div');
+                    vv.style.color = 'var(--text-secondary)';
+                    vv.textContent = val == null ? '—' : String(val);
+                    d.appendChild(lb);
+                    d.appendChild(vv);
+                    return d;
+                };
+                grid.appendChild(
+                    mk(trIphone('covColParserTypes'), payload.parser_types_total)
+                );
+                grid.appendChild(mk(trIphone('covColParsedKeys'), payload.parsed_keys_count));
+                grid.appendChild(mk(trIphone('covColArchiveFiles'), payload.archive_file_count));
+                root.appendChild(grid);
+                var two = document.createElement('div');
+                two.style.cssText =
+                    'display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; align-items: start;';
+                var col = function (title, arr) {
+                    var box = document.createElement('div');
+                    var ht = document.createElement('div');
+                    ht.style.cssText = 'font-weight: 600; font-size: 0.8125rem; margin-bottom: 0.35rem;';
+                    ht.textContent = title;
+                    box.appendChild(ht);
+                    var ul = document.createElement('ul');
+                    ul.style.cssText =
+                        'margin: 0; padding-left: 1.1rem; max-height: 12rem; overflow: auto; font-size: 0.75rem; color: var(--text-secondary);';
+                    var list = Array.isArray(arr) ? arr : [];
+                    var mx = Math.min(list.length, 200);
+                    for (var u = 0; u < mx; u++) {
+                        var li = document.createElement('li');
+                        li.textContent = String(list[u]);
+                        ul.appendChild(li);
+                    }
+                    if (list.length > mx) {
+                        var li2 = document.createElement('li');
+                        li2.textContent = '… +' + (list.length - mx);
+                        ul.appendChild(li2);
+                    }
+                    box.appendChild(ul);
+                    return box;
+                };
+                two.appendChild(col(trIphone('covListPresent'), payload.parser_keys_present));
+                two.appendChild(col(trIphone('covListMissing'), payload.parser_types_not_in_map));
+                root.appendChild(two);
+                return root;
+            }
+
+            if (id === 'file_stats') {
+                var dev = analyserDeviceBlock(payload.device);
+                if (dev) root.appendChild(dev);
+                var tot = document.createElement('p');
+                tot.style.cssText = 'font-size: 0.8125rem; margin: 0 0 0.5rem;';
+                tot.textContent = trIphone('labelArchiveFileTotal').replace(
+                    '{n}',
+                    payload.archive_total_files != null ? String(payload.archive_total_files) : '—'
+                );
+                root.appendChild(tot);
+                var byTop = analyserSortedCountMap(payload.by_top_level_segment);
+                var ext = analyserSortedCountMap(payload.extensions);
+                if (byTop.length) {
+                    var h1 = document.createElement('div');
+                    h1.style.cssText = 'font-weight: 600; font-size: 0.8125rem; margin: 0.5rem 0 0.25rem;';
+                    h1.textContent = trIphone('fileColSegment');
+                    root.appendChild(h1);
+                    var r1 = [];
+                    var c1 = Math.min(byTop.length, ANALYSER_UI_MAX_ROWS);
+                    for (var b = 0; b < c1; b++) r1.push([byTop[b][0], String(byTop[b][1])]);
+                    root.appendChild(
+                        buildAnalyserScrollTable([trIphone('fileColSegment'), trIphone('fileColCount')], r1)
+                    );
+                }
+                if (ext.length) {
+                    var h2 = document.createElement('div');
+                    h2.style.cssText = 'font-weight: 600; font-size: 0.8125rem; margin: 0.5rem 0 0.25rem;';
+                    h2.textContent = trIphone('fileColExtension');
+                    root.appendChild(h2);
+                    var r2 = [];
+                    var c2 = Math.min(ext.length, ANALYSER_UI_MAX_ROWS);
+                    for (var e = 0; e < c2; e++) r2.push([ext[e][0], String(ext[e][1])]);
+                    root.appendChild(
+                        buildAnalyserScrollTable([trIphone('fileColExtension'), trIphone('fileColCount')], r2)
+                    );
+                }
+                return root;
+            }
+
+            if (id === 'mcstateshared' && Array.isArray(payload.rows)) {
+                if (payload.note) {
+                    var nt = document.createElement('p');
+                    nt.style.cssText = 'font-size: 0.75rem; color: var(--text-secondary); margin: 0 0 0.5rem;';
+                    nt.textContent = String(payload.note);
+                    root.appendChild(nt);
+                }
+                var rs = payload.rows;
+                var cap2 = Math.min(rs.length, ANALYSER_UI_MAX_ROWS);
+                var trows = [];
+                for (var m = 0; m < cap2; m++) {
+                    var row = rs[m];
+                    if (!row || typeof row !== 'object') continue;
+                    trows.push([
+                        String(row.path != null ? row.path : '—'),
+                        row.char_count != null ? String(row.char_count) : '—',
+                        row.line_count != null ? String(row.line_count) : '—',
+                        analyserTruncate(row.preview != null ? row.preview : analyserJsonishCell(row.value), 180)
+                    ]);
+                }
+                root.appendChild(
+                    buildAnalyserScrollTable(
+                        [
+                            trIphone('mcColPath'),
+                            trIphone('mcColChars'),
+                            trIphone('mcColLines'),
+                            trIphone('mcColPreview')
+                        ],
+                        trows
+                    )
+                );
+                if (rs.length > cap2) {
+                    var mn = document.createElement('p');
+                    mn.style.cssText = 'font-size: 0.75rem; color: var(--text-secondary);';
+                    mn.textContent = trIphone('analyserShowingFirst')
+                        .replace('{n}', String(cap2))
+                        .replace('{total}', String(rs.length));
+                    root.appendChild(mn);
+                }
+                return root;
+            }
+
+            if (id === 'plist') {
+                var pc = document.createElement('p');
+                pc.style.cssText = 'font-size: 0.8125rem; margin: 0 0 0.5rem;';
+                pc.textContent =
+                    (payload.plist_files_parsed != null ? String(payload.plist_files_parsed) : '0') +
+                    ' plist file(s) scanned';
+                root.appendChild(pc);
+                var ev = payload.events;
+                if (Array.isArray(ev) && ev.length) {
+                    var pr = [];
+                    for (var x = 0; x < ev.length; x++) {
+                        var evr = ev[x];
+                        if (!evr || typeof evr !== 'object') continue;
+                        var keys = evr.keys;
+                        var kstr = Array.isArray(keys) ? keys.join(', ') : analyserJsonishCell(keys);
+                        pr.push([
+                            String(evr.source != null ? evr.source : '—'),
+                            String(evr.kind != null ? evr.kind : '—'),
+                            analyserTruncate(kstr, 200)
+                        ]);
+                    }
+                    if (pr.length)
+                        root.appendChild(
+                            buildAnalyserScrollTable(
+                                [trIphone('plistColPath'), trIphone('plistColKind'), trIphone('plistColKeys')],
+                                pr
+                            )
+                        );
+                }
+                return root;
+            }
+
+            if (id === 'ps_everywhere' && Array.isArray(payload.entries)) {
+                var ent = payload.entries;
+                var c3 = Math.min(ent.length, ANALYSER_UI_MAX_ROWS);
+                var er = [];
+                for (var y = 0; y < c3; y++) {
+                    var en = ent[y];
+                    if (!en || typeof en !== 'object') continue;
+                    er.push([
+                        analyserTruncate(String(en.message != null ? en.message : '—'), 200),
+                        String(en.source != null ? en.source : '—')
+                    ]);
+                }
+                root.appendChild(buildAnalyserScrollTable([trIphone('psColMessage'), trIphone('psColSource')], er));
+                if (payload.count != null) {
+                    var cnt = document.createElement('p');
+                    cnt.style.cssText = 'font-size: 0.75rem; color: var(--text-secondary); margin: 0.35rem 0 0;';
+                    cnt.textContent = 'count: ' + String(payload.count);
+                    root.appendChild(cnt);
+                }
+                if (ent.length > c3) {
+                    var em = document.createElement('p');
+                    em.style.cssText = 'font-size: 0.75rem; color: var(--text-secondary);';
+                    em.textContent = trIphone('analyserShowingFirst')
+                        .replace('{n}', String(c3))
+                        .replace('{total}', String(ent.length));
+                    root.appendChild(em);
+                }
+                return root;
+            }
+
+            if (id === 'ps_matrix' && Array.isArray(payload.rows)) {
+                if (payload.note) {
+                    var pn = document.createElement('p');
+                    pn.style.cssText = 'font-size: 0.75rem; color: var(--text-secondary); margin: 0 0 0.5rem;';
+                    pn.textContent = String(payload.note);
+                    root.appendChild(pn);
+                }
+                var mxr = payload.rows;
+                var c4 = Math.min(mxr.length, ANALYSER_UI_MAX_ROWS);
+                var mr = [];
+                for (var z = 0; z < c4; z++) {
+                    var rw = mxr[z];
+                    if (!rw || typeof rw !== 'object') continue;
+                    mr.push([
+                        String(rw.pid != null ? rw.pid : '—'),
+                        analyserYn(!!rw.in_ps),
+                        analyserYn(!!rw.in_psthread),
+                        analyserYn(!!rw.in_taskinfo),
+                        analyserYn(!!rw.pid_field_consistent),
+                        String(rw.sources_present != null ? rw.sources_present : '—'),
+                        analyserJsonishCell(rw.ps_command),
+                        analyserJsonishCell(rw.psthread_command),
+                        analyserJsonishCell(rw.taskinfo_name)
+                    ]);
+                }
+                root.appendChild(
+                    buildAnalyserScrollTable(
+                        [
+                            trIphone('mtxColPid'),
+                            trIphone('mtxColPs'),
+                            trIphone('mtxColPt'),
+                            trIphone('mtxColTi'),
+                            trIphone('mtxColOk'),
+                            trIphone('mtxColSources'),
+                            trIphone('mtxColPsCmd'),
+                            trIphone('mtxColPtCmd'),
+                            trIphone('mtxColTiName')
+                        ],
+                        mr
+                    )
+                );
+                if (mxr.length > c4) {
+                    var zm = document.createElement('p');
+                    zm.style.cssText = 'font-size: 0.75rem; color: var(--text-secondary);';
+                    zm.textContent = trIphone('analyserShowingFirst')
+                        .replace('{n}', String(c4))
+                        .replace('{total}', String(mxr.length));
+                    root.appendChild(zm);
+                }
+                return root;
+            }
+
+            if (id === 'summary' && payload.format === 'markdown' && typeof payload.content === 'string') {
+                root.appendChild(renderSummaryMarkdownToDom(payload.content));
+                return root;
+            }
+
+            if (id === 'wifi_geolocation' && payload.format === 'gpx') {
+                var gpxFrag = renderWifiGeoStructured(payload, 'gpx');
+                if (gpxFrag) root.appendChild(gpxFrag);
+                return root;
+            }
+
+            if (id === 'wifi_geolocation_kml' && payload.format === 'kml') {
+                var kmlFrag = renderWifiGeoStructured(payload, 'kml');
+                if (kmlFrag) root.appendChild(kmlFrag);
+                return root;
+            }
+
+            var dl = document.createElement('dl');
+            dl.style.margin = '0';
+            var keys = Object.keys(payload).sort();
+            for (var ki = 0; ki < keys.length; ki++) {
+                var key = keys[ki];
+                if (key === 'analyser') continue;
+                var val = payload[key];
+                if (val == null) {
+                    analyserAppendDl(dl, key, 'null');
+                    continue;
+                }
+                var tp = typeof val;
+                if (tp === 'string') {
+                    if (val.length > 240) continue;
+                    analyserAppendDl(dl, key, val);
+                } else if (tp === 'number' || tp === 'boolean') {
+                    analyserAppendDl(dl, key, String(val));
+                } else if (tp === 'bigint') {
+                    analyserAppendDl(dl, key, val.toString());
+                }
+            }
+            if (dl.childNodes.length) root.appendChild(dl);
+            return root;
+        }
+
+        function renderSysdiagnoseAnalyserCards(out) {
+            var host = document.getElementById('sysdiagnose-analyser-cards');
+            if (!host) return;
+            host.textContent = '';
+            var root = sysdiagnoseRootPlain(out);
+            var block =
+                root && root.analysers != null && root.analysers !== undefined
+                    ? root.analysers
+                    : root && root._analysers != null
+                      ? root._analysers
+                      : null;
+            if (!block || typeof block !== 'object' || Array.isArray(block)) {
+                var miss = document.createElement('p');
+                miss.style.cssText = 'color: var(--text-secondary); font-size: 0.875rem;';
+                miss.textContent = trIphone('analysersMissing');
+                host.appendChild(miss);
+                return;
+            }
+            var names = Object.keys(block).sort();
+            for (var i = 0; i < names.length; i++) {
+                (function (idx) {
+                    var name = names[idx];
+                    var payload = block[name];
+                    var sid = 'sd-analyser-' + idx + '-' + String(name).replace(/[^a-zA-Z0-9_-]/g, '_');
+                    var descKey = 'analyserDesc_' + String(name).replace(/-/g, '_');
+                    var desc = trIphone(descKey);
+                    if (desc === descKey) desc = '';
+                    var isErr =
+                        payload &&
+                        typeof payload === 'object' &&
+                        !Array.isArray(payload) &&
+                        payload.error != null;
+
+                    var card = document.createElement('div');
+                    card.className = 'result-card';
+                    card.style.marginBottom = '0.75rem';
+
+                    var header = document.createElement('div');
+                    header.className = 'section-header';
+                    header.style.cssText =
+                        'display: flex; justify-content: space-between; align-items: flex-start; width: 100%; gap: 0.5rem; flex-wrap: nowrap;';
+
+                    var leftCol = document.createElement('div');
+                    leftCol.style.cssText = 'flex: 1; min-width: 0;';
+
+                    var h3 = document.createElement('h3');
+                    h3.style.cssText =
+                        'margin: 0; font-size: 1rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;';
+                    var codeEl = document.createElement('code');
+                    codeEl.style.fontSize = '0.875rem';
+                    codeEl.textContent = name;
+                    h3.appendChild(codeEl);
+                    var badge = document.createElement('span');
+                    badge.style.fontSize = '0.75rem';
+                    badge.style.fontWeight = '600';
+                    if (isErr) {
+                        badge.style.color = 'var(--error)';
+                        badge.textContent = trIphone('statusErr');
+                    } else {
+                        badge.style.color = 'var(--success)';
+                        badge.textContent = trIphone('statusOk');
+                    }
+                    h3.appendChild(badge);
+                    leftCol.appendChild(h3);
+                    if (desc) {
+                        var sub = document.createElement('div');
+                        sub.style.cssText =
+                            'font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; line-height: 1.35;';
+                        sub.textContent = desc;
+                        leftCol.appendChild(sub);
+                    }
+
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'section-toggle collapsed';
+                    btn.setAttribute('aria-expanded', 'false');
+                    btn.textContent = '▼';
+                    btn.addEventListener('click', function (ev) {
+                        var content = document.getElementById(sid + '-content');
+                        var b = ev.currentTarget;
+                        if (!content || !b) return;
+                        var open = content.classList.contains('collapsed');
+                        if (open) {
+                            content.classList.remove('collapsed');
+                            b.classList.remove('collapsed');
+                            b.setAttribute('aria-expanded', 'true');
+                        } else {
+                            content.classList.add('collapsed');
+                            b.classList.add('collapsed');
+                            b.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+
+                    header.appendChild(leftCol);
+                    header.appendChild(btn);
+
+                    var section = document.createElement('div');
+                    section.className = 'section-content collapsed';
+                    section.id = sid + '-content';
+
+                    var body = document.createElement('div');
+                    body.className = 'parser-structured-body';
+
+                    if (isErr) {
+                        var preErr = document.createElement('pre');
+                        preErr.className = 'json-viewer';
+                        preErr.style.maxHeight = 'min(70vh, 28rem)';
+                        preErr.style.color = 'var(--error)';
+                        preErr.textContent = String(payload.error);
+                        body.appendChild(preErr);
+                    } else {
+                        body.appendChild(buildAnalyserStructuredView(name, payload));
+                    }
+                    section.appendChild(body);
+
+                    card.appendChild(header);
+                    card.appendChild(section);
+                    host.appendChild(card);
+                })(i);
+            }
+        }
+
+        function renderSysdiagnoseParsed(out) {
+            var wrap = document.getElementById('sysdiagnose-parsed-wrap');
+            var sumBody = document.getElementById('sysdiagnose-summary-body');
+            var tbody = document.getElementById('sysdiagnose-parser-tbody');
+            var analyserHost = document.getElementById('sysdiagnose-analyser-cards');
+            if (!wrap || !sumBody || !tbody) return { okCount: 0, entries: [] };
+            sumBody.textContent = '';
+            tbody.textContent = '';
+            if (analyserHost) analyserHost.textContent = '';
+            out = sysdiagnoseRootPlain(out);
+            var parsers =
+                out &&
+                (out.parsers != null && out.parsers !== undefined
+                    ? out.parsers
+                    : out.Parsers != null
+                      ? out.Parsers
+                      : null);
+            if (!sysdiagnoseResultOk(out) || parsers == null) {
+                wrap.style.display = 'none';
+                return { okCount: 0, entries: [] };
+            }
+            wrap.style.display = 'block';
+            var fi = out.file_info;
+            if (fi) {
+                addSummaryRow(sumBody, trIphone('labelUploadedFile'), fi.path || '—');
+                addSummaryRow(
+                    sumBody,
+                    trIphone('labelFileSize'),
+                    fi.size_mb != null
+                        ? fi.size_mb + ' MB (' + Number(fi.size_bytes).toLocaleString() + ' bytes)'
+                        : fi.size_bytes != null
+                          ? Number(fi.size_bytes).toLocaleString() + ' bytes'
+                          : '—'
+                );
+                addSummaryRow(sumBody, trIphone('labelSha256'), fi.sha256 || '—');
+            }
+            var meta = mapPlainTop(out.meta);
+            addSummaryRow(sumBody, trIphone('labelEngine'), out.parser);
+            addSummaryRow(
+                sumBody,
+                trIphone('labelBundle'),
+                meta && (meta.bundle_dir_name != null ? meta.bundle_dir_name : meta.bundleDirName)
+            );
+            addSummaryRow(sumBody, trIphone('labelAcquisition'), meta && meta.acquisition);
+            addSummaryRow(
+                sumBody,
+                trIphone('labelFileCount'),
+                meta && (meta.file_count != null ? meta.file_count : meta.fileCount)
+            );
+
+            var entries = sysdiagnoseParserEntries(parsers);
+            var okN = countParsersOkFromEntries(entries);
+            var errN = entries.length - okN;
+            addSummaryRow(sumBody, trIphone('labelParsersOk'), okN);
+            addSummaryRow(sumBody, trIphone('labelParsersErr'), errN);
+            var st = mapPlainTop(out.stats);
+            if (st) {
+                if (st.analysers_ok != null) addSummaryRow(sumBody, trIphone('labelAnalysersOk'), st.analysers_ok);
+                if (st.analysers_error != null)
+                    addSummaryRow(sumBody, trIphone('labelAnalysersErr'), st.analysers_error);
+            }
+
+            renderSysdiagnoseAnalyserCards(out);
+
+            for (var i = 0; i < entries.length; i++) {
+                var name = entries[i][0];
+                var pp = parserEntryPlain(entries[i][1]);
+                var tr = document.createElement('tr');
+                var tdName = document.createElement('td');
+                var code = document.createElement('code');
+                code.style.fontSize = '0.8125rem';
+                code.textContent = name;
+                tdName.appendChild(code);
+                var tdSt = document.createElement('td');
+                var span = document.createElement('span');
+                span.style.fontWeight = '600';
+                if (parserEntryOk(pp)) {
+                    span.style.color = 'var(--success)';
+                    span.textContent = trIphone('statusOk');
+                } else {
+                    span.style.color = 'var(--error)';
+                    span.textContent = trIphone('statusErr');
+                }
+                tdSt.appendChild(span);
+                var tdDur = document.createElement('td');
+                tdDur.textContent = formatDurationMs(pp) === '—' ? '—' : formatDurationMs(pp);
+                var tdNote = document.createElement('td');
+                tdNote.style.fontSize = '0.8125rem';
+                tdNote.style.color = 'var(--text-secondary)';
+                tdNote.style.wordBreak = 'break-word';
+                if (!parserEntryOk(pp) && pp.error) {
+                    var err = String(pp.error);
+                    tdNote.title = err;
+                    tdNote.textContent = err.length > 120 ? err.slice(0, 120) + '…' : err;
+                } else {
+                    tdNote.textContent = '—';
+                }
+                tr.appendChild(tdName);
+                tr.appendChild(tdSt);
+                tr.appendChild(tdDur);
+                tr.appendChild(tdNote);
+                tbody.appendChild(tr);
+            }
+
+            return { okCount: okN, entries: entries };
+        }
+
+        function showStatus(msg, type) {
+            var el = document.getElementById('status');
+            el.textContent = msg;
+            el.className = 'status ' + (type || 'info');
+        }
+        function hideStatus() {
+            document.getElementById('status').className = 'status';
+        }
+        function showProgress() {
+            document.getElementById('progress').classList.add('show');
+        }
+        function hideProgress() {
+            document.getElementById('progress').classList.remove('show');
+        }
+        function showSpinner() {
+            document.getElementById('loading-spinner').classList.add('show');
+        }
+        function hideSpinner() {
+            document.getElementById('loading-spinner').classList.remove('show');
+        }
+
+        window.handleSysdiagnoseFileSelect = function (event) {
+            var file = event.target.files[0];
+            if (file) {
+                sysdiagnoseFile = file;
+                document.getElementById('btn-analyze-sysdiagnose').classList.remove('hidden');
+                var mb = (file.size / 1024 / 1024).toFixed(2);
+                showStatus('✓ ' + file.name + ' (' + mb + ' MB)', 'success');
+                console.log('[SYSDIAGNOSE] File selected', { name: file.name, size_bytes: file.size });
+            }
+        };
+
+        var sdZone = document.getElementById('sysdiagnose-upload-zone');
+        sdZone.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            sdZone.classList.add('dragover');
+        });
+        sdZone.addEventListener('dragleave', function () {
+            sdZone.classList.remove('dragover');
+        });
+        sdZone.addEventListener('drop', function (e) {
+            e.preventDefault();
+            sdZone.classList.remove('dragover');
+            var file = e.dataTransfer.files[0];
+            if (file) {
+                sysdiagnoseFile = file;
+                document.getElementById('btn-analyze-sysdiagnose').classList.remove('hidden');
+                var mb = (file.size / 1024 / 1024).toFixed(2);
+                showStatus('✓ ' + file.name + ' (' + mb + ' MB)', 'success');
+                console.log('[SYSDIAGNOSE] File dropped', { name: file.name, size_bytes: file.size });
+            }
+        });
+
+        window.analyzeSysdiagnoseFile = async function () {
+            if (!sysdiagnoseFile) {
+                showStatus('Choose a .tar.gz file first', 'error');
+                return;
+            }
+            var _t = window.IPHONE_I18N[window.currentLang] || window.IPHONE_I18N.en;
+            document.querySelector('.loading-text').textContent = _t.analyzingWait;
+            showSpinner();
+            showProgress();
+            try {
+                console.log('[SYSDIAGNOSE] Starting analysis', {
+                    name: sysdiagnoseFile.name,
+                    size_bytes: sysdiagnoseFile.size
+                });
+                var tRead = performance.now();
+                var buf = await sysdiagnoseFile.arrayBuffer();
+                var u8 = new Uint8Array(buf);
+                console.log('[SYSDIAGNOSE] arrayBuffer() done', { ms: (performance.now() - tRead).toFixed(1) });
+                var hashPromise = calculateHashIphone(u8);
+                var tWasm = performance.now();
+                var rawWasm = analyzeSysdiagnose(u8);
+                var out = parseSysdiagnoseWasmResult(rawWasm);
+                var hashHex = await hashPromise;
+                var sizeMB = (u8.byteLength / 1024 / 1024).toFixed(2);
+                out.file_info = {
+                    path: sysdiagnoseFile.name,
+                    size_bytes: u8.byteLength,
+                    size_mb: sizeMB,
+                    sha256: hashHex
+                };
+                if (out.parsers) {
+                    var pk = Object.keys(out.parsers);
+                    if (pk.length > 0) {
+                        var sampleName = pk[0];
+                        var sample = out.parsers[sampleName];
+                        console.log('[SYSDIAGNOSE] first parser sample', sampleName, {
+                            keys: sample && typeof sample === 'object' ? Object.keys(sample) : [],
+                            hasData: sample && 'data' in sample,
+                            dataType: sample && sample.data != null ? typeof sample.data : 'missing'
+                        });
+                    }
+                }
+                console.log('[SYSDIAGNOSE] analyzeSysdiagnose() done', {
+                    wasm_ms: (performance.now() - tWasm).toFixed(1),
+                    wasmReturnType: typeof rawWasm,
+                    ok: out && out.ok,
+                    parserCount: out && out.parsers ? Object.keys(out.parsers).length : 0,
+                    sha256: hashHex
+                });
+                currentResults = out;
+                var sdSummary = renderSysdiagnoseParsed(out);
+                var resultsEl = document.getElementById('results');
+                var jsonOut = document.getElementById('json-output');
+                var actionsEl = document.getElementById('results-actions');
+                resultsEl.classList.add('show');
+                actionsEl.style.display = 'flex';
+                jsonOut.textContent = trIphone('jsonBuilding');
+                setTimeout(function () {
+                    try {
+                        jsonOut.textContent = jsonStringifySysdiagnose(currentResults);
+                    } catch (stringifyErr) {
+                        console.error('[SYSDIAGNOSE] JSON.stringify failed:', stringifyErr);
+                        jsonOut.textContent =
+                            trIphone('jsonStringifyError') +
+                            '\n\n' +
+                            String(stringifyErr && stringifyErr.message ? stringifyErr.message : stringifyErr) +
+                            '\n\n' +
+                            trIphone('jsonStringifyHint');
+                    }
+                }, 0);
+                if (out && out.ok === false) {
+                    console.warn('[SYSDIAGNOSE] Archive / parse hook returned ok=false', out);
+                    showStatus(out.error || 'Could not read archive', 'error');
+                } else {
+                    var doneOk = sdSummary && sdSummary.okCount != null ? sdSummary.okCount : 0;
+                    var stDone = out && out.stats ? mapPlainTop(out.stats) : null;
+                    var anOk =
+                        stDone && stDone.analysers_ok != null
+                            ? stDone.analysers_ok
+                            : trIphone('countUnknown');
+                    showStatus(
+                        trIphone('analyzeDoneStatus')
+                            .replace('{parsersOk}', String(doneOk))
+                            .replace('{analysersOk}', String(anOk)),
+                        'success'
+                    );
+                }
+            } catch (err) {
+                console.error('[SYSDIAGNOSE] Analysis failed:', err);
+                showStatus(String(err && err.message ? err.message : err), 'error');
+            } finally {
+                hideProgress();
+                hideSpinner();
+            }
+        };
+
+        window.downloadIphoneResults = function () {
+            if (currentResults == null) {
+                showStatus(trIphone('statusNoResultsDownload'), 'error');
+                return;
+            }
+            var text;
+            try {
+                text = jsonStringifySysdiagnose(currentResults);
+            } catch (e) {
+                showStatus(
+                    trIphone('jsonStringifyError') +
+                        ' ' +
+                        (e && e.message ? e.message : e),
+                    'error'
+                );
+                return;
+            }
+            var blob = new Blob([text], { type: 'application/json' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            a.download = 'sysdiagnose-analysis-' + ts + '.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            showStatus(trIphone('statusDownloadOk'), 'success');
+        };
+
+        window.copyIphoneResults = async function () {
+            if (currentResults == null) {
+                showStatus(trIphone('statusNoResultsCopy'), 'error');
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(jsonStringifySysdiagnose(currentResults));
+                showStatus(trIphone('statusCopiedOk'), 'success');
+            } catch (e) {
+                console.error('[SYSDIAGNOSE] Copy failed:', e);
+                showStatus(
+                    trIphone('statusCopyFailed') + ': ' + (e && e.message ? e.message : e),
+                    'error'
+                );
+            }
+        };
+
+        async function boot() {
+            var statusEl = document.getElementById('wasm-status');
+            var _t = window.IPHONE_I18N[window.currentLang] || window.IPHONE_I18N.en;
+            try {
+                statusEl.textContent = _t.wasmLoading;
+                await init();
+                statusEl.textContent = _t.wasmReady;
+                statusEl.style.background = 'rgba(76, 175, 80, 0.1)';
+                statusEl.style.color = 'var(--success)';
+                console.log('🔍 [SYSDIAGNOSE] WebAssembly initialized (Rust log:: → console via console_log, same as bugreport path)');
+            } catch (e) {
+                console.error('[SYSDIAGNOSE] WASM init failed:', e);
+                statusEl.textContent = _t.wasmFailed;
+                statusEl.style.background = 'rgba(244, 67, 54, 0.1)';
+                statusEl.style.color = 'var(--error)';
+            }
+        }
+        boot();
+    </script>
+</body>
+</html>

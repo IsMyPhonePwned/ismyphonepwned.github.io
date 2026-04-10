@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Bugreport Analysis — Status & Capabilities</title>
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" href="logo.png">
     <style>
         * {
             margin: 0;
@@ -451,9 +453,12 @@
 <body>
     <div class="container">
         <header>
-            <div>
+            <div style="display: flex; align-items: center; gap: 1rem; min-width: 0;">
+                <img src="logo.png" alt="" width="48" height="48" style="flex-shrink: 0; object-fit: contain;" onerror="this.style.display='none'">
+                <div style="min-width: 0;">
                 <h1 class="logo-text" data-i18n="pageTitle">Bugreport Analysis — Status & Capabilities</h1>
                 <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.875rem;" data-i18n="pageSubtitle">Rules, parsers, and detection reference • <span style="font-weight: 500;">v0.1.0</span> • Updated Feb 2026</p>
+                </div>
             </div>
             <div class="header-actions">
                 <div class="lang-switcher" role="group" aria-label="Language">
@@ -624,6 +629,54 @@ detection:<br>
                     <li>anr_trace: subject, header, process_info, threads (name, tid, status, stack_trace with method/file_loc/line_number or address/library/details)</li>
                     <li>tombstones: array of native crash objects (process_name, signal, code, timestamp, pid, tid, thread_name, fault_addr, backtrace)</li>
                     <li>Output: <code>crash_info</code> (anr_files, anr_trace, tombstones)</li>
+                </ul>
+            </div>
+
+            <div class="parser-card">
+                <h4>🧠 Memory parser</h4>
+                <p>Memory-related dumpsys excerpts from the bugreport.</p>
+                <ul>
+                    <li>Output: <code>additional_parsers.memory</code> in JSON export; on the Android page each extra parser has its own collapsible card when data is present.</li>
+                </ul>
+            </div>
+
+            <div class="parser-card">
+                <h4>📜 Device policy parser</h4>
+                <p>Device owner / profile owner and policy-related state.</p>
+                <ul>
+                    <li>Output: <code>additional_parsers.device_policy</code></li>
+                </ul>
+            </div>
+
+            <div class="parser-card">
+                <h4>🔧 ADB parser</h4>
+                <p>ADB daemon and USB debugging–related lines where present.</p>
+                <ul>
+                    <li>Output: <code>additional_parsers.adb</code></li>
+                </ul>
+            </div>
+
+            <div class="parser-card">
+                <h4>🔑 Authentication parser</h4>
+                <p>Lock screen, biometrics, and credential-related excerpts.</p>
+                <ul>
+                    <li>Output: <code>additional_parsers.authentication</code></li>
+                </ul>
+            </div>
+
+            <div class="parser-card">
+                <h4>🔒 VPN parser</h4>
+                <p>VPN service and network tunnel state from the bugreport.</p>
+                <ul>
+                    <li>Output: <code>additional_parsers.vpn</code></li>
+                </ul>
+            </div>
+
+            <div class="parser-card">
+                <h4>🛡️ Privacy parser</h4>
+                <p>Privacy dashboard / permission indicator–related sections where parsed.</p>
+                <ul>
+                    <li>Output: <code>additional_parsers.privacy</code></li>
                 </ul>
             </div>
         </section>

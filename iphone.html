@@ -7,6 +7,7 @@
     <link rel="icon" href="favicon.ico" sizes="any">
     <link rel="apple-touch-icon" href="logo.png">
     <link rel="stylesheet" href="assets/site.css">
+    <script src="assets/timeline-view.js" defer></script>
 </head>
 <body>
     <div class="container">
@@ -64,6 +65,14 @@
                 <table class="detail-table" id="sysdiagnose-meta-table" style="margin-bottom: 1.25rem;">
                     <tbody id="sysdiagnose-summary-body"></tbody>
                 </table>
+                <div id="sysdiagnose-timeline-section" class="sysdiagnose-timeline-card" style="display: none; margin-bottom: 1.25rem;">
+                    <h3 class="sysdiagnose-cards-heading" style="margin-top: 0; margin-bottom: 0.35rem; font-size: 1.05rem;" data-i18n="timelineSectionTitle">Timeline</h3>
+                    <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.65rem;" data-i18n="timelineSectionBlurb">
+                        Visual band by parser; search and category filters apply. Drag, wheel, and +/− zoom; Shift+drag pans when zoomed.
+                    </p>
+                    <div id="sysdiagnose-timeline-dl-row"></div>
+                    <div id="sysdiagnose-timeline-mount"></div>
+                </div>
                 <h3 class="sysdiagnose-cards-heading" style="margin-top: 0.5rem; margin-bottom: 0.5rem; font-size: 1.05rem;" data-i18n="analyserSectionTitle">Analyser summaries</h3>
                 <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 1rem;" data-i18n="analyserSectionBlurb">Built-in analysers (sdx-cli --run-analysers): apps, summary, coverage, etc. Expand a card for the structured view.</p>
                 <div id="sysdiagnose-analyser-cards"></div>
@@ -92,9 +101,10 @@
                     <div class="json-viewer" id="json-output" style="min-height: 4rem;">—</div>
                 </div>
             </div>
-            <div id="results-actions" style="margin-top: 1.5rem; display: none; gap: 0.5rem; flex-wrap: wrap;">
+            <div id="results-actions" style="margin-top: 1.5rem; display: none; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
                 <button type="button" onclick="window.downloadIphoneResults()" style="background: #4CAF50; color: white;" data-i18n="btnDownloadJson">📥 Download JSON</button>
                 <button type="button" onclick="window.copyIphoneResults()" style="background: var(--accent); color: white;" data-i18n="btnCopyClipboard">📋 Copy to Clipboard</button>
+                <span id="copy-json-feedback" class="copy-json-feedback" hidden aria-live="polite"></span>
             </div>
         </div>
 
@@ -157,14 +167,16 @@
                 jsonStringifyHint: 'Use “Download JSON” if the button works, or inspect `currentResults` from the console.',
                 analysersMissing:
                     'No analyser output in this build (rebuild the site WASM with the latest website crate).',
-                analyserDesc_apps: 'Installed applications on the device.',
+                analyserDesc_apps:
+                    'Bundle IDs aggregated across parsers, with per-app evidence hits (SQLite rows, plist paths, brctl context, log lines). The table also shows log timestamps/messages when present, the latest hit when there is more than one, and a compact row or context sample.',
                 analyserDesc_coverage: 'Coverage report for parsers.',
                 analyserDesc_file_stats: 'File statistics for the archive.',
                 analyserDesc_mcstateshared: 'MCState shared profile summary.',
                 analyserDesc_plist: 'Plist-related findings.',
                 analyserDesc_ps_everywhere: 'Processes found across multiple sources.',
                 analyserDesc_ps_matrix: 'Matrix comparing ps, psthread, and taskinfo.',
-                analyserDesc_summary: 'Cross-parser summary.',
+                analyserDesc_summary:
+                    'Cross-parser summary: device, lockdown/calendar plists, transparency, security-sysdiagnose highlights, shutdown clients, MCState stubs; see SAF note below when present.',
                 analyserDesc_wifi_geolocation: 'GPX from Wi‑Fi geolocation data.',
                 analyserDesc_wifi_geolocation_kml: 'KML from Wi‑Fi geolocation data.',
                 analyzeDoneStatus: 'Done · {parsersOk} parsers OK · {analysersOk} analysers OK',
@@ -179,6 +191,58 @@
                 analyserXmlParseError: 'Could not parse XML in the browser.',
                 appsColBundleId: 'Bundle ID',
                 appsColSources: 'Seen in parsers',
+                appsSearchPlaceholder: 'Filter by bundle ID, parser, table, path, or JSON fields…',
+                appsSearchAriaLabel: 'Filter applications',
+                appsListSummary: 'Showing {shown} of {total} applications',
+                appsColHits: 'Hits',
+                appsColFirstEvidence: 'First evidence',
+                appsColTimeOrLog: 'Log time / message',
+                appsColLastEvidence: 'Latest evidence',
+                appsColRowOrContext: 'Row / context sample',
+                appsLastEvidenceSame: '—',
+                appsHitsCapNote:
+                    'Evidence list is capped at {n} hits per bundle in JSON (oldest hits may be dropped once the cap is reached).',
+                summarySafComparisonLabel: 'SAF comparison',
+                analyserDesc_timesketch:
+                    'Timesketch-style rows (message, datetime, parser). The interactive timeline and CSV/JSONL exports are in the Timeline block above.',
+                timelineSearchPlaceholder: 'Search timeline (message, parser, JSON)…',
+                timelineSearchAriaLabel: 'Filter timeline events by message, parser, or JSON text',
+                timelineDetailSearchPlaceholder: 'Search inside this event…',
+                timelineDetailSearchMatches: '{cur} / {total} matches',
+                timelineDetailSearchZero: 'No matches in this event',
+                timelineDetailSearchPrev: 'Previous match',
+                timelineDetailSearchNext: 'Next match',
+                timelineAllCategories: 'All',
+                timelineDetailTitle: 'Event detail',
+                timelineHintClick:
+                    'Click an event for full JSON. Use the search field under this text to find strings inside the selected event. Hover a category chip to highlight that group on the band and overview; hover a list row for one event.',
+                timelineShowing: 'Showing {shown} of {filtered} in the time window ({total} after search/category).',
+                timelineCapped: 'Rendering limited to {max} rows — narrow search, category, or time window.',
+                timelineApprox: 'approx.',
+                timelineBindingSnapshot: 'dumpstate capture',
+                timelineBindingSystemFallback: 'export clock',
+                timelineNoMatch: 'No events match.',
+                timelineVizHint:
+                    'Hover a category chip (e.g. VPN) to highlight all its events on the band and overview · Hover a list row for one time · Zoom the window to separate nearby events · Drag · Wheel · +/− · Shift+drag pans · Double-click fits full filtered range',
+                timelineFitWindow: 'Fit full range',
+                timelineWindowLabel: 'Visible window',
+                timelineWindowFrom: 'Window start',
+                timelineWindowTo: 'Window end',
+                timelineRangeStart: 'Window start',
+                timelineRangeEnd: 'Window end',
+                timelineSectionTitle: 'Timeline',
+                timelineSectionBlurb:
+                    'Visual band by parser; search and category filters apply. Drag on the band to zoom, scroll wheel to zoom, +/− to zoom in/out, double-click or Fit for full range. Shift+drag pans the window when zoomed.',
+                timelineZoomIn: 'Zoom in',
+                timelineZoomOut: 'Zoom out',
+                timelineZoomRangeTitle: 'Time range & zoom',
+                timelineZoomDetail: 'Detail level (narrower visible window)',
+                timelineZoomBrushHelp:
+                    'Overview of filtered events — click the bar to center the visible window on that time.',
+                timelineTimesketchCount: '{n} timeline event(s) from parsers.',
+                timelineDownloadCsv: 'Download CSV',
+                timelineDownloadJsonl: 'Download JSONL',
+                timelineScriptMissing: 'Timeline UI script failed to load (timeline-view.js).',
                 covColParserTypes: 'Parser types (defined)',
                 covColParsedKeys: 'Keys in this run',
                 covColArchiveFiles: 'Archive files',
@@ -217,6 +281,7 @@
                 statusNoResultsCopy: '⚠️ No results to copy',
                 statusDownloadOk: '✓ Results downloaded!',
                 statusCopiedOk: '✓ Results copied to clipboard!',
+                copyJsonDone: 'JSON copied to clipboard.',
                 statusCopyFailed: '❌ Failed to copy'
             },
             fr: {
@@ -267,14 +332,16 @@
                 jsonStringifyHint: 'Utilisez « Télécharger JSON » si le bouton fonctionne, ou inspectez `currentResults` dans la console.',
                 analysersMissing:
                     'Aucune sortie d’analyseur (recompilez le WASM du site avec la dernière version du crate website).',
-                analyserDesc_apps: 'Applications installées sur l’appareil.',
+                analyserDesc_apps:
+                    'Identifiants bundle agrégés par parseur, avec preuves par application (lignes SQLite, chemins plist, contexte brctl, logs). Le tableau ajoute l’heure/message de log quand c’est disponible, la dernière preuve s’il y a plusieurs occurrences, et un extrait de ligne ou de contexte.',
                 analyserDesc_coverage: 'Rapport de couverture des parseurs.',
                 analyserDesc_file_stats: 'Statistiques sur les fichiers de l’archive.',
                 analyserDesc_mcstateshared: 'Profil MCState partagé.',
                 analyserDesc_plist: 'Éléments liés aux plist.',
                 analyserDesc_ps_everywhere: 'Processus repérés dans plusieurs sources.',
                 analyserDesc_ps_matrix: 'Matrice comparant ps, psthread et taskinfo.',
-                analyserDesc_summary: 'Résumé croisé des parseurs.',
+                analyserDesc_summary:
+                    'Résumé croisé : appareil, plists lockdown/calendrier, transparence, extraits security-sysdiagnose, clients shutdown, MCState ; voir la note SAF ci-dessous si présente.',
                 analyserDesc_wifi_geolocation: 'GPX à partir des géolocalisations Wi‑Fi.',
                 analyserDesc_wifi_geolocation_kml: 'KML à partir des géolocalisations Wi‑Fi.',
                 analyzeDoneStatus: 'Terminé · {parsersOk} parseurs OK · {analysersOk} analyseurs OK',
@@ -289,6 +356,59 @@
                 analyserXmlParseError: 'Impossible d’analyser le XML dans le navigateur.',
                 appsColBundleId: 'Bundle ID',
                 appsColSources: 'Vu dans les parseurs',
+                appsSearchPlaceholder:
+                    'Filtrer (bundle, parseur, table, chemin ou champs JSON des preuves)…',
+                appsSearchAriaLabel: 'Filtrer les applications',
+                appsListSummary: 'Affichage de {shown} sur {total} application(s)',
+                appsColHits: 'Occurrences',
+                appsColFirstEvidence: 'Première preuve',
+                appsColTimeOrLog: 'Heure / message de log',
+                appsColLastEvidence: 'Dernière preuve',
+                appsColRowOrContext: 'Ligne SQLite / contexte',
+                appsLastEvidenceSame: '—',
+                appsHitsCapNote:
+                    'La liste de preuves est plafonnée à {n} occurrences par bundle dans le JSON (les plus anciennes peuvent être omises au-delà).',
+                summarySafComparisonLabel: 'Comparaison SAF',
+                analyserDesc_timesketch:
+                    'Lignes style Timesketch (message, datetime, parseur). La chronologie interactive et les exports CSV/JSONL sont dans le bloc au-dessus.',
+                timelineSearchPlaceholder: 'Filtrer la chronologie (message, parseur, JSON)…',
+                timelineSearchAriaLabel: 'Filtrer les événements par message, parseur ou texte JSON',
+                timelineDetailSearchPlaceholder: 'Chercher dans cet événement…',
+                timelineDetailSearchMatches: '{cur} / {total} correspondances',
+                timelineDetailSearchZero: 'Aucune correspondance dans cet événement',
+                timelineDetailSearchPrev: 'Correspondance précédente',
+                timelineDetailSearchNext: 'Correspondance suivante',
+                timelineAllCategories: 'Tout',
+                timelineDetailTitle: 'Détail de l’événement',
+                timelineHintClick:
+                    'Cliquez sur un événement pour le JSON complet. Utilisez le champ sous ce texte pour chercher une chaîne dans l’événement sélectionné. Survolez une pastille de catégorie pour surligner tout le groupe sur la bande et la vue d’ensemble ; survolez une ligne pour un instant précis.',
+                timelineShowing: '{shown} sur {filtered} dans la fenêtre temporelle ({total} après recherche/catégorie).',
+                timelineCapped: 'Plafond d’affichage {max} lignes — affinez recherche, catégorie ou fenêtre.',
+                timelineApprox: 'approx.',
+                timelineBindingSnapshot: 'capture dumpstate',
+                timelineBindingSystemFallback: 'horloge à l’export',
+                timelineNoMatch: 'Aucun événement ne correspond.',
+                timelineVizHint:
+                    'Survolez une pastille (ex. VPN) pour surligner tout le groupe sur la bande et l’aperçu · Survolez une ligne pour un instant · Zoom · Glisser · Molette · +/− · Maj+glisser · Double-clic = intervalle filtré complet',
+                timelineFitWindow: 'Tout l’intervalle',
+                timelineWindowLabel: 'Fenêtre visible',
+                timelineWindowFrom: 'Début de fenêtre',
+                timelineWindowTo: 'Fin de fenêtre',
+                timelineRangeStart: 'Début',
+                timelineRangeEnd: 'Fin',
+                timelineSectionTitle: 'Chronologie',
+                timelineSectionBlurb:
+                    'Bande visuelle par parseur ; filtres recherche et catégorie. Glisser pour zoom, molette, +/− pour zoom avant/arrière, double-clic ou « Tout l’intervalle ». Maj+glisser pour déplacer la fenêtre.',
+                timelineZoomIn: 'Zoom avant',
+                timelineZoomOut: 'Zoom arrière',
+                timelineZoomRangeTitle: 'Plage temporelle & zoom',
+                timelineZoomDetail: 'Niveau de détail (fenêtre plus étroite)',
+                timelineZoomBrushHelp:
+                    'Vue d’ensemble des événements filtrés — cliquez sur la barre pour centrer la fenêtre sur ce moment.',
+                timelineTimesketchCount: '{n} événement(s) de chronologie issus des parseurs.',
+                timelineDownloadCsv: 'Télécharger CSV',
+                timelineDownloadJsonl: 'Télécharger JSONL',
+                timelineScriptMissing: 'Le script de chronologie n’a pas chargé (timeline-view.js).',
                 covColParserTypes: 'Types de parseurs (définis)',
                 covColParsedKeys: 'Clés dans cette exécution',
                 covColArchiveFiles: 'Fichiers dans l’archive',
@@ -327,6 +447,7 @@
                 statusNoResultsCopy: '⚠️ Aucun résultat à copier',
                 statusDownloadOk: '✓ Téléchargement effectué !',
                 statusCopiedOk: '✓ Résultats copiés dans le presse-papiers !',
+                copyJsonDone: 'JSON copié dans le presse-papiers.',
                 statusCopyFailed: '❌ Échec de la copie'
             },
             zh: {
@@ -375,14 +496,16 @@
                 jsonStringifyError: '无法在浏览器中生成完整 JSON 文本。',
                 jsonStringifyHint: '如可用请使用「下载 JSON」，或在控制台查看 `currentResults`。',
                 analysersMissing: '当前构建无分析器输出（请用最新 website crate 重新构建 WASM）。',
-                analyserDesc_apps: '设备上已安装的应用。',
+                analyserDesc_apps:
+                    '各解析器汇总的 Bundle ID，以及每条应用的证据命中（SQLite 行、plist 路径、brctl 上下文、日志等）。表格另含日志时间/消息（若有）、多条命中时的末条证据，以及行或上下文的简短摘录。',
                 analyserDesc_coverage: '解析器覆盖情况报告。',
                 analyserDesc_file_stats: '归档内文件统计。',
                 analyserDesc_mcstateshared: 'MCState 共享配置摘要。',
                 analyserDesc_plist: '与 plist 相关的结果。',
                 analyserDesc_ps_everywhere: '在多处来源中发现的进程。',
                 analyserDesc_ps_matrix: '对比 ps、psthread 与 taskinfo 的矩阵。',
-                analyserDesc_summary: '跨解析器摘要。',
+                analyserDesc_summary:
+                    '跨解析器摘要：设备、锁定模式/日历 plist、透明日志、security-sysdiagnose 要点、关机客户端、MCState；若有则见下方 SAF 说明。',
                 analyserDesc_wifi_geolocation: '由 Wi‑Fi 定位数据生成 GPX。',
                 analyserDesc_wifi_geolocation_kml: '由 Wi‑Fi 定位数据生成 KML。',
                 analyzeDoneStatus: '完成 · 解析器成功 {parsersOk} · 分析器成功 {analysersOk}',
@@ -397,6 +520,56 @@
                 analyserXmlParseError: '无法在浏览器中解析该 XML。',
                 appsColBundleId: 'Bundle ID',
                 appsColSources: '出现的解析器',
+                appsSearchPlaceholder: '按 Bundle ID、解析器、表名、路径或证据 JSON 字段筛选…',
+                appsSearchAriaLabel: '筛选应用',
+                appsListSummary: '显示 {shown} / {total} 个应用',
+                appsColHits: '命中数',
+                appsColFirstEvidence: '首条证据',
+                appsColTimeOrLog: '日志时间 / 消息',
+                appsColLastEvidence: '末条证据',
+                appsColRowOrContext: '行摘要 / 上下文',
+                appsLastEvidenceSame: '—',
+                appsHitsCapNote: 'JSON 中每个 bundle 的证据行最多保留 {n} 条（超出后可能丢弃较早命中）。',
+                summarySafComparisonLabel: '与 SAF 的差异说明',
+                analyserDesc_timesketch:
+                    'Timesketch 风格行（message、datetime、解析器）。交互时间线与 CSV/JSONL 导出位于上方「时间线」区块。',
+                timelineSearchPlaceholder: '搜索时间线（消息、解析器、JSON）…',
+                timelineSearchAriaLabel: '按消息、解析器或 JSON 文本筛选时间线事件',
+                timelineDetailSearchPlaceholder: '在当前事件中搜索…',
+                timelineDetailSearchMatches: '第 {cur} / {total} 处匹配',
+                timelineDetailSearchZero: '此事件中无匹配',
+                timelineDetailSearchPrev: '上一处匹配',
+                timelineDetailSearchNext: '下一处匹配',
+                timelineAllCategories: '全部',
+                timelineDetailTitle: '事件详情',
+                timelineHintClick:
+                    '点击事件查看完整 JSON。使用下方搜索框在已选事件的 JSON 中查找字符串。悬停类别标签可高亮该组在色带与底部概览上的位置；悬停列表行可高亮单个时间。',
+                timelineShowing: '时间窗口内显示 {shown} / {filtered} 条（搜索/类别后共 {total} 条）。',
+                timelineCapped: '列表最多 {max} 行 — 可缩小搜索、类别或时间窗。',
+                timelineApprox: '约',
+                timelineBindingSnapshot: 'dumpstate 抓取时刻',
+                timelineBindingSystemFallback: '导出时刻',
+                timelineNoMatch: '没有匹配的事件。',
+                timelineVizHint:
+                    '悬停类别标签（如 VPN）可高亮该组在色带与概览上的所有时间 · 悬停列表行高亮单个时间 · 缩放时间窗以分开相近事件 · 拖拽 · 滚轮 · +/− · Shift+拖拽 · 双击恢复筛选后的全区间',
+                timelineFitWindow: '全区间',
+                timelineWindowLabel: '可见时间窗',
+                timelineWindowFrom: '窗口起点',
+                timelineWindowTo: '窗口终点',
+                timelineRangeStart: '窗口起点',
+                timelineRangeEnd: '窗口终点',
+                timelineSectionTitle: '时间线',
+                timelineSectionBlurb:
+                    '按解析器分色的时间带；支持搜索与类别筛选。拖拽缩放、滚轮缩放、+/− 缩放，双击或「全区间」复位；按住 Shift 拖拽可平移时间窗。',
+                timelineZoomIn: '放大',
+                timelineZoomOut: '缩小',
+                timelineZoomRangeTitle: '时间范围与缩放',
+                timelineZoomDetail: '细节程度（更窄的可见窗口）',
+                timelineZoomBrushHelp: '已筛选事件的概览 — 点击条带可将可见窗口居中到该时间。',
+                timelineTimesketchCount: '来自解析器的 {n} 条时间线事件。',
+                timelineDownloadCsv: '下载 CSV',
+                timelineDownloadJsonl: '下载 JSONL',
+                timelineScriptMissing: '时间线脚本未加载（timeline-view.js）。',
                 covColParserTypes: '解析器类型（定义）',
                 covColParsedKeys: '本次运行中的键',
                 covColArchiveFiles: '归档内文件数',
@@ -435,6 +608,7 @@
                 statusNoResultsCopy: '⚠️ 没有可复制的结果',
                 statusDownloadOk: '✓ 已下载！',
                 statusCopiedOk: '✓ 已复制到剪贴板！',
+                copyJsonDone: 'JSON 已复制到剪贴板。',
                 statusCopyFailed: '❌ 复制失败'
             }
         };
@@ -939,6 +1113,99 @@
             return frag;
         }
 
+        function appsHitsFromEntry(entry) {
+            if (!entry || typeof entry !== 'object') return [];
+            var h = entry.hits;
+            return Array.isArray(h) ? h : [];
+        }
+
+        /** One-line where-this-was-seen summary for a single apps analyser hit (any index in `hits`). */
+        function appsHitPreviewLine(hit) {
+            if (!hit || typeof hit !== 'object') return '—';
+            var src = hit.source != null ? String(hit.source) : '';
+            var parts = [];
+            if (hit.sqlite_table != null) parts.push(String(hit.sqlite_table));
+            if (hit.plist_path != null) parts.push(String(hit.plist_path));
+            if (hit.brctl_file != null) parts.push(String(hit.brctl_file));
+            if (hit.source_file != null) parts.push(String(hit.source_file));
+            if (hit.sqlite_db != null) {
+                var db = String(hit.sqlite_db);
+                var leaf = db.split('/').pop();
+                parts.push(leaf || db);
+            }
+            if (hit.matched_column != null) parts.push(String(hit.matched_column));
+            if (hit.service != null) parts.push(String(hit.service));
+            if (hit.matched_in != null) parts.push('in ' + String(hit.matched_in));
+            var tail = parts.join(' · ');
+            if (tail) return analyserTruncate(src + ': ' + tail, 220);
+            return analyserTruncate(src || '—', 220);
+        }
+
+        /** Logdata-style timestamp and/or message; subsystem hint when no datetime. */
+        function appsHitDatetimeOrLog(hit) {
+            if (!hit || typeof hit !== 'object') return '—';
+            var dt = hit.datetime != null ? String(hit.datetime).trim() : '';
+            var lm = hit.log_message != null ? String(hit.log_message).trim() : '';
+            if (!lm && hit.message != null) lm = String(hit.message).trim();
+            var lmShort = lm.length > 96 ? lm.slice(0, 96) + '…' : lm;
+            var sub =
+                hit.subsystem != null
+                    ? String(hit.subsystem).trim()
+                    : hit.top_level_hint != null
+                      ? String(hit.top_level_hint).trim()
+                      : '';
+            if (dt && lmShort) return analyserTruncate(dt + ' · ' + lmShort, 200);
+            if (dt) return analyserTruncate(dt, 160);
+            if (lmShort) return analyserTruncate(lmShort, 180);
+            if (sub) {
+                var cat = hit.category != null ? String(hit.category).trim() : '';
+                return analyserTruncate(cat ? sub + ' · ' + cat : sub, 160);
+            }
+            return '—';
+        }
+
+        /** SQLite row excerpt JSON or brctl/plist text context (first hit is usually earliest evidence). */
+        function appsHitRowContextExcerpt(hit) {
+            if (!hit || typeof hit !== 'object') return '—';
+            var row = hit.row;
+            if (row != null && typeof row === 'object') {
+                try {
+                    return analyserTruncate(JSON.stringify(row), 240);
+                } catch (e) {
+                    return '—';
+                }
+            }
+            if (row != null && typeof row === 'string') {
+                var rs = row.trim();
+                return rs ? analyserTruncate(rs, 240) : '—';
+            }
+            var textKeys = [
+                'context',
+                'snippet',
+                'match_context',
+                'text_preview',
+                'detail'
+            ];
+            for (var ti = 0; ti < textKeys.length; ti++) {
+                var k = textKeys[ti];
+                if (hit[k] != null && typeof hit[k] === 'string') {
+                    var t = hit[k].trim();
+                    if (t) return analyserTruncate(t, 240);
+                }
+            }
+            return '—';
+        }
+
+        function appsRowSearchHaystack(bid, foundArr, hits) {
+            var blob = bid + '\n' + foundArr.join(' ') + '\n';
+            try {
+                blob += jsonStringifySysdiagnose(hits);
+            } catch (e) {
+                blob += String(hits.length);
+            }
+            return blob.toLowerCase();
+        }
+
         function buildAnalyserStructuredView(analyserId, payload) {
             var id = String(analyserId);
             var root = document.createElement('div');
@@ -955,14 +1222,55 @@
             if (id === 'apps' && payload.apps && typeof payload.apps === 'object') {
                 var apps = payload.apps;
                 var ids = Object.keys(apps).sort();
-                var count = payload.count != null ? payload.count : ids.length;
+                var totalApps = ids.length;
+                var count = payload.count != null ? payload.count : totalApps;
                 var head = document.createElement('p');
                 head.style.cssText = 'font-size: 0.8125rem; margin: 0 0 0.5rem; font-weight: 600;';
                 head.textContent = trIphone('labelBundleCount').replace('{n}', String(count));
                 root.appendChild(head);
-                var cap = Math.min(ids.length, ANALYSER_UI_MAX_ROWS);
+
+                if (typeof payload.note === 'string' && payload.note.trim()) {
+                    var noteEl = document.createElement('p');
+                    noteEl.style.cssText =
+                        'font-size: 0.75rem; color: var(--text-secondary); margin: 0 0 0.5rem; line-height: 1.45;';
+                    noteEl.textContent = payload.note.trim();
+                    root.appendChild(noteEl);
+                }
+                if (payload.hits_cap_per_app != null && payload.hits_cap_per_app !== '') {
+                    var capEl = document.createElement('p');
+                    capEl.style.cssText =
+                        'font-size: 0.75rem; color: var(--text-secondary); margin: 0 0 0.5rem; line-height: 1.4;';
+                    capEl.textContent = trIphone('appsHitsCapNote').replace(
+                        '{n}',
+                        String(payload.hits_cap_per_app)
+                    );
+                    root.appendChild(capEl);
+                }
+
+                var searchWrap = document.createElement('div');
+                searchWrap.className = 'search-box';
+                searchWrap.style.marginBottom = '0.65rem';
+                var searchIcon = document.createElement('span');
+                searchIcon.className = 'search-icon';
+                searchIcon.setAttribute('aria-hidden', 'true');
+                searchIcon.textContent = '🔍';
+                var searchInput = document.createElement('input');
+                searchInput.type = 'search';
+                searchInput.autocomplete = 'off';
+                searchInput.setAttribute('aria-label', trIphone('appsSearchAriaLabel'));
+                searchInput.placeholder = trIphone('appsSearchPlaceholder');
+                searchWrap.appendChild(searchIcon);
+                searchWrap.appendChild(searchInput);
+                root.appendChild(searchWrap);
+
+                var listSummary = document.createElement('p');
+                listSummary.style.cssText =
+                    'font-size: 0.75rem; color: var(--text-secondary); margin: 0 0 0.5rem;';
+                root.appendChild(listSummary);
+
                 var rows = [];
-                for (var a = 0; a < cap; a++) {
+                var haystacks = [];
+                for (var a = 0; a < ids.length; a++) {
                     var bid = ids[a];
                     var entry = apps[bid];
                     var found = [];
@@ -972,19 +1280,96 @@
                             for (var fi = 0; fi < f.length; fi++) found.push(String(f[fi]));
                         }
                     }
-                    rows.push([bid, found.join(', ') || '—']);
+                    var hits = appsHitsFromEntry(entry);
+                    var hitCount = hits.length;
+                    var firstHit = hitCount ? hits[0] : null;
+                    var lastHit = hitCount > 1 ? hits[hitCount - 1] : null;
+                    var previewFirst = firstHit ? appsHitPreviewLine(firstHit) : '—';
+                    var timeOrLog = firstHit ? appsHitDatetimeOrLog(firstHit) : '—';
+                    var previewLast =
+                        lastHit != null
+                            ? appsHitPreviewLine(lastHit)
+                            : trIphone('appsLastEvidenceSame');
+                    var rowCtx = firstHit ? appsHitRowContextExcerpt(firstHit) : '—';
+                    rows.push([
+                        bid,
+                        found.join(', ') || '—',
+                        String(hitCount),
+                        previewFirst,
+                        timeOrLog,
+                        previewLast,
+                        rowCtx
+                    ]);
+                    haystacks.push(
+                        appsRowSearchHaystack(bid, found, hits) +
+                            '\n' +
+                            [
+                                timeOrLog,
+                                previewLast,
+                                rowCtx
+                            ]
+                                .join('\n')
+                                .toLowerCase()
+                    );
                 }
-                root.appendChild(
-                    buildAnalyserScrollTable([trIphone('appsColBundleId'), trIphone('appsColSources')], rows)
+                var tableWrap = buildAnalyserScrollTable(
+                    [
+                        trIphone('appsColBundleId'),
+                        trIphone('appsColSources'),
+                        trIphone('appsColHits'),
+                        trIphone('appsColFirstEvidence'),
+                        trIphone('appsColTimeOrLog'),
+                        trIphone('appsColLastEvidence'),
+                        trIphone('appsColRowOrContext')
+                    ],
+                    rows
                 );
-                if (ids.length > cap) {
-                    var more = document.createElement('p');
-                    more.style.cssText = 'font-size: 0.75rem; color: var(--text-secondary);';
-                    more.textContent = trIphone('analyserShowingFirst')
-                        .replace('{n}', String(cap))
-                        .replace('{total}', String(ids.length));
-                    root.appendChild(more);
+                tableWrap.style.maxHeight = 'min(65vh, 36rem)';
+
+                var tbodyRef = tableWrap.querySelector('tbody');
+                if (tbodyRef) {
+                    var trNodes = tbodyRef.querySelectorAll('tr');
+                    for (var tn = 0; tn < trNodes.length && tn < haystacks.length; tn++) {
+                        trNodes[tn]._appsSearchHaystack = haystacks[tn];
+                    }
                 }
+
+                function appsUpdateListSummary(shown) {
+                    listSummary.textContent = trIphone('appsListSummary')
+                        .replace('{shown}', String(shown))
+                        .replace('{total}', String(totalApps));
+                }
+
+                function appsApplyFilter() {
+                    var q = searchInput.value.trim().toLowerCase();
+                    var trs = tableWrap.querySelectorAll('tbody tr');
+                    var shown = 0;
+                    for (var ri = 0; ri < trs.length; ri++) {
+                        var tr = trs[ri];
+                        var match = !q;
+                        if (!match) {
+                            var hay = tr._appsSearchHaystack;
+                            if (hay && hay.indexOf(q) >= 0) match = true;
+                            if (!match) {
+                                for (var ci = 0; ci < tr.cells.length; ci++) {
+                                    var cell = tr.cells[ci];
+                                    if (cell && cell.textContent.toLowerCase().indexOf(q) >= 0) {
+                                        match = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        tr.style.display = match ? '' : 'none';
+                        if (match) shown++;
+                    }
+                    appsUpdateListSummary(shown);
+                }
+
+                searchInput.addEventListener('input', appsApplyFilter);
+                appsApplyFilter();
+
+                root.appendChild(tableWrap);
                 return root;
             }
 
@@ -1240,6 +1625,21 @@
 
             if (id === 'summary' && payload.format === 'markdown' && typeof payload.content === 'string') {
                 root.appendChild(renderSummaryMarkdownToDom(payload.content));
+                if (typeof payload.saf_comparison === 'string' && payload.saf_comparison.trim()) {
+                    var safBox = document.createElement('div');
+                    safBox.style.cssText =
+                        'margin-top: 1rem; padding: 0.65rem 0.75rem; font-size: 0.8rem; line-height: 1.45; color: var(--text-secondary); border: 1px solid var(--border); border-radius: 6px; background: var(--bg-secondary);';
+                    var safH = document.createElement('div');
+                    safH.style.cssText =
+                        'font-weight: 600; color: var(--text-primary); margin-bottom: 0.35rem; font-size: 0.8125rem;';
+                    safH.textContent = trIphone('summarySafComparisonLabel');
+                    safBox.appendChild(safH);
+                    var safP = document.createElement('p');
+                    safP.style.margin = '0';
+                    safP.textContent = payload.saf_comparison.trim();
+                    safBox.appendChild(safP);
+                    root.appendChild(safBox);
+                }
                 return root;
             }
 
@@ -1280,6 +1680,110 @@
             return root;
         }
 
+        function hideSysdiagnoseTimelineSection() {
+            var sec = document.getElementById('sysdiagnose-timeline-section');
+            var mount = document.getElementById('sysdiagnose-timeline-mount');
+            var dlRow = document.getElementById('sysdiagnose-timeline-dl-row');
+            if (dlRow) dlRow.textContent = '';
+            if (mount) mount.textContent = '';
+            if (sec) sec.style.display = 'none';
+        }
+
+        function renderSysdiagnoseTimelineBlock(out) {
+            hideSysdiagnoseTimelineSection();
+            var sec = document.getElementById('sysdiagnose-timeline-section');
+            var mount = document.getElementById('sysdiagnose-timeline-mount');
+            var dlRow = document.getElementById('sysdiagnose-timeline-dl-row');
+            if (!sec || !mount || !dlRow) return;
+            var root = sysdiagnoseRootPlain(out);
+            var block =
+                root && root.analysers != null && root.analysers !== undefined
+                    ? root.analysers
+                    : root && root._analysers != null
+                      ? root._analysers
+                      : null;
+            var ts = block && block.timesketch;
+            if (!ts || typeof ts !== 'object' || ts.error != null || !Array.isArray(ts.events) || ts.events.length === 0) {
+                return;
+            }
+            sec.style.display = 'block';
+            var nEv = ts.events.length;
+            var cnt = ts.count != null ? ts.count : nEv;
+            var countP = document.createElement('p');
+            countP.style.cssText = 'font-size: 0.8125rem; margin: 0 0 0.5rem;';
+            countP.textContent = trIphone('timelineTimesketchCount').replace('{n}', String(cnt));
+            mount.appendChild(countP);
+            if (typeof ts.saf_comparison === 'string' && ts.saf_comparison.trim()) {
+                var tsNote = document.createElement('p');
+                tsNote.style.cssText =
+                    'font-size: 0.75rem; color: var(--text-secondary); margin: 0 0 0.5rem; line-height: 1.4;';
+                tsNote.textContent = ts.saf_comparison.trim();
+                mount.appendChild(tsNote);
+            }
+            if (typeof ts.csv === 'string' && ts.csv.length) {
+                var aCsv = document.createElement('a');
+                aCsv.href = URL.createObjectURL(new Blob([ts.csv], { type: 'text/csv;charset=utf-8' }));
+                aCsv.download = 'sysdiagnose-timesketch.csv';
+                aCsv.textContent = trIphone('timelineDownloadCsv');
+                aCsv.style.cssText =
+                    'display: inline-block; padding: 0.35rem 0.75rem; margin-right: 0.5rem; margin-bottom: 0.5rem; background: var(--accent); color: white; border-radius: 6px; text-decoration: none; font-size: 0.8125rem;';
+                dlRow.appendChild(aCsv);
+                if (typeof ts.jsonl === 'string' && ts.jsonl.length) {
+                    var aJl = document.createElement('a');
+                    aJl.href = URL.createObjectURL(
+                        new Blob([ts.jsonl], { type: 'application/x-ndjson;charset=utf-8' })
+                    );
+                    aJl.download = 'sysdiagnose-timesketch.jsonl';
+                    aJl.textContent = trIphone('timelineDownloadJsonl');
+                    aJl.style.cssText = aCsv.style.cssText;
+                    dlRow.appendChild(aJl);
+                }
+            }
+            var tvHost = document.createElement('div');
+            tvHost.className = 'timeline-sketch-mount';
+            mount.appendChild(tvHost);
+            if (window.TimelineSketchView && typeof window.TimelineSketchView.mount === 'function') {
+                window.TimelineSketchView.mount(tvHost, {
+                    events: ts.events,
+                    categoryField: 'sysdiagnose_parser',
+                    maxRender: 15000,
+                    flashyColors: true,
+                    labels: {
+                        searchPlaceholder: trIphone('timelineSearchPlaceholder'),
+                        searchAriaLabel: trIphone('timelineSearchAriaLabel'),
+                        all: trIphone('timelineAllCategories'),
+                        detailTitle: trIphone('timelineDetailTitle'),
+                        hintClick: trIphone('timelineHintClick'),
+                        detailSearchPlaceholder: trIphone('timelineDetailSearchPlaceholder'),
+                        detailSearchMatches: trIphone('timelineDetailSearchMatches'),
+                        detailSearchZero: trIphone('timelineDetailSearchZero'),
+                        detailSearchPrev: trIphone('timelineDetailSearchPrev'),
+                        detailSearchNext: trIphone('timelineDetailSearchNext'),
+                        showing: trIphone('timelineShowing'),
+                        capped: trIphone('timelineCapped'),
+                        approx: trIphone('timelineApprox'),
+                        bindingSnapshot: trIphone('timelineBindingSnapshot'),
+                        bindingSystemFallback: trIphone('timelineBindingSystemFallback'),
+                        noMatch: trIphone('timelineNoMatch'),
+                        vizHint: trIphone('timelineVizHint'),
+                        fitWindow: trIphone('timelineFitWindow'),
+                        windowLabel: trIphone('timelineWindowLabel'),
+                        windowFrom: trIphone('timelineWindowFrom'),
+                        windowTo: trIphone('timelineWindowTo'),
+                        rangeStart: trIphone('timelineRangeStart'),
+                        rangeEnd: trIphone('timelineRangeEnd'),
+                        zoomIn: trIphone('timelineZoomIn'),
+                        zoomOut: trIphone('timelineZoomOut'),
+                        zoomRangeTitle: trIphone('timelineZoomRangeTitle'),
+                        zoomDetail: trIphone('timelineZoomDetail'),
+                        zoomBrushHelp: trIphone('timelineZoomBrushHelp'),
+                    },
+                });
+            } else {
+                tvHost.textContent = trIphone('timelineScriptMissing');
+            }
+        }
+
         function renderSysdiagnoseAnalyserCards(out) {
             var host = document.getElementById('sysdiagnose-analyser-cards');
             if (!host) return;
@@ -1298,7 +1802,9 @@
                 host.appendChild(miss);
                 return;
             }
-            var names = Object.keys(block).sort();
+            var names = Object.keys(block).sort().filter(function (n) {
+                return n !== 'timesketch';
+            });
             for (var i = 0; i < names.length; i++) {
                 (function (idx) {
                     var name = names[idx];
@@ -1411,6 +1917,7 @@
             sumBody.textContent = '';
             tbody.textContent = '';
             if (analyserHost) analyserHost.textContent = '';
+            hideSysdiagnoseTimelineSection();
             out = sysdiagnoseRootPlain(out);
             var parsers =
                 out &&
@@ -1421,6 +1928,7 @@
                       : null);
             if (!sysdiagnoseResultOk(out) || parsers == null) {
                 wrap.style.display = 'none';
+                hideSysdiagnoseTimelineSection();
                 return { okCount: 0, entries: [] };
             }
             wrap.style.display = 'block';
@@ -1464,6 +1972,7 @@
                     addSummaryRow(sumBody, trIphone('labelAnalysersErr'), st.analysers_error);
             }
 
+            renderSysdiagnoseTimelineBlock(out);
             renderSysdiagnoseAnalyserCards(out);
 
             for (var i = 0; i < entries.length; i++) {
@@ -1686,6 +2195,20 @@
             showStatus(trIphone('statusDownloadOk'), 'success');
         };
 
+        var copyJsonFeedbackTimer = null;
+        function showCopyJsonFeedbackIphone() {
+            var el = document.getElementById('copy-json-feedback');
+            if (!el) return;
+            el.textContent = trIphone('copyJsonDone');
+            el.hidden = false;
+            if (copyJsonFeedbackTimer) clearTimeout(copyJsonFeedbackTimer);
+            copyJsonFeedbackTimer = setTimeout(function () {
+                copyJsonFeedbackTimer = null;
+                el.textContent = '';
+                el.hidden = true;
+            }, 2800);
+        }
+
         window.copyIphoneResults = async function () {
             if (currentResults == null) {
                 showStatus(trIphone('statusNoResultsCopy'), 'error');
@@ -1694,6 +2217,7 @@
             try {
                 await navigator.clipboard.writeText(jsonStringifySysdiagnose(currentResults));
                 showStatus(trIphone('statusCopiedOk'), 'success');
+                showCopyJsonFeedbackIphone();
             } catch (e) {
                 console.error('[SYSDIAGNOSE] Copy failed:', e);
                 showStatus(

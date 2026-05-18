@@ -923,6 +923,22 @@
             return x;
         }
 
+        /** serde_wasm_bindgen may expose Rust Vec as Map or iterable, not Array — normalize for UI. */
+        function asWasmArray(v) {
+            if (v == null) return [];
+            if (Array.isArray(v)) return v;
+            if (typeof v === 'string') return [];
+            if (typeof Map !== 'undefined' && v instanceof Map) return Array.from(v.values());
+            if (typeof v[Symbol.iterator] === 'function') {
+                try {
+                    return Array.from(v);
+                } catch (e) {
+                    return [];
+                }
+            }
+            return [];
+        }
+
         function parserCellValue(v) {
             if (v === null || v === undefined) {
                 return '<span style="color:var(--text-secondary)">—</span>';
@@ -1167,39 +1183,138 @@
             el.innerHTML = html;
         }
 
+        function privacyFieldPresent(v) {
+            if (v === undefined || v === null) return false;
+            if (typeof v === 'boolean' || typeof v === 'number') return true;
+            if (typeof v === 'string') return v.length > 0;
+            if (Array.isArray(v)) return v.length > 0;
+            const o = deepPlainForJson(mapPlainTop(v) || v);
+            return !!(o && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).length);
+        }
+
+        function renderPrivacyLocationSnapshot(loc, title) {
+            const o = deepPlainForJson(mapPlainTop(loc) || loc);
+            if (!o || typeof o !== 'object' || Array.isArray(o)) {
+                return (
+                    '<div style="margin-top:0.5rem"><strong>' +
+                    escapeHtml(title) +
+                    '</strong><p>' +
+                    parserCellValue(loc) +
+                    '</p></div>'
+                );
+            }
+            const preferred = ['provider', 'latitude', 'longitude', 'accuracy', 'alt', 'spd', 'ert'];
+            const used = {};
+            let rows = '';
+            preferred.forEach(function (k) {
+                if (o[k] === undefined || o[k] === null) return;
+                used[k] = true;
+                rows +=
+                    '<tr><td style="width:34%;font-weight:600;color:var(--text-secondary);vertical-align:top">' +
+                    escapeHtml(k) +
+                    '</td><td><code style="font-size:0.8125rem;word-break:break-word">' +
+                    escapeHtml(String(o[k])) +
+                    '</code></td></tr>';
+            });
+            Object.keys(o)
+                .sort()
+                .forEach(function (k) {
+                    if (used[k]) return;
+                    rows +=
+                        '<tr><td style="width:34%;font-weight:600;color:var(--text-secondary);vertical-align:top">' +
+                        escapeHtml(k) +
+                        '</td><td><code style="font-size:0.8125rem;word-break:break-word">' +
+                        escapeHtml(String(o[k])) +
+                        '</code></td></tr>';
+                });
+            if (!rows) {
+                return (
+                    '<div class="parser-privacy-loc" style="margin-top:0.65rem"><strong style="display:block;margin-bottom:0.3rem">' +
+                    escapeHtml(title) +
+                    '</strong><p style="color:var(--text-secondary);font-size:0.85rem">No location fields in this snapshot.</p></div>'
+                );
+            }
+            let mapLink = '';
+            const latN = typeof o.latitude === 'number' ? o.latitude : parseFloat(o.latitude);
+            const lonN = typeof o.longitude === 'number' ? o.longitude : parseFloat(o.longitude);
+            if (isFinite(latN) && isFinite(lonN)) {
+                const osm =
+                    'https://www.openstreetmap.org/?mlat=' +
+                    encodeURIComponent(String(latN)) +
+                    '&mlon=' +
+                    encodeURIComponent(String(lonN)) +
+                    '#map=14/' +
+                    latN +
+                    '/' +
+                    lonN;
+                mapLink =
+                    '<p style="margin:0.35rem 0 0;font-size:0.78rem"><a href="' +
+                    escapeHtml(osm) +
+                    '" target="_blank" rel="noopener noreferrer">OpenStreetMap · this position</a></p>';
+            }
+            return (
+                '<div class="parser-privacy-loc" style="margin-top:0.65rem"><strong style="display:block;margin-bottom:0.3rem">' +
+                escapeHtml(title) +
+                '</strong><table class="info-table">' +
+                rows +
+                '</table>' +
+                mapLink +
+                '</div>'
+            );
+        }
+
         function renderPrivacyParser(el, data) {
             const root = data && data.privacy && typeof data.privacy === 'object' ? data.privacy : data;
-            const providers = root && root.location_providers;
-            if (!Array.isArray(providers) || providers.length === 0) {
+            const providers = asWasmArray(root && root.location_providers);
+            if (!providers.length) {
                 el.innerHTML = '<p style="color:var(--text-secondary)">No fused / location provider blocks found.</p>';
                 return;
             }
-            el.innerHTML = providers.map(function (p, idx) {
-                const prov = mapPlainTop(p) || p;
-                let h = '<div class="detail-section" style="margin-bottom:1rem"><strong>Location provider ' + (idx + 1) + '</strong>';
-                if (prov.type) {
-                    h += '<p style="font-size:0.85rem;color:var(--text-secondary);margin:0.25rem 0">' + escapeHtml(String(prov.type)) + '</p>';
-                }
-                if (prov.last_availability !== undefined && prov.last_availability !== null) {
-                    h += '<p style="margin:0.25rem 0">Last availability: <strong>' + (prov.last_availability ? 'true' : 'false') + '</strong></p>';
-                }
-                if (Array.isArray(prov.listeners) && prov.listeners.length) {
-                    h += '<div style="margin-top:0.5rem"><strong>Listeners</strong>' + renderObjectArrayTable(prov.listeners) + '</div>';
-                }
-                ['source', 'last_location_fine', 'last_location_coarse'].forEach(function (field) {
-                    if (!prov[field]) return;
-                    const label = field.replace(/_/g, ' ');
-                    if (typeof prov[field] === 'object' && !Array.isArray(prov[field])) {
-                        h += '<div style="margin-top:0.5rem"><strong>' + escapeHtml(label) + '</strong>' +
-                            renderKeyValueTableFromObject(prov[field]) + '</div>';
-                    } else {
-                        h += '<div style="margin-top:0.5rem"><strong>' + escapeHtml(label) + '</strong><p>' +
-                            parserCellValue(prov[field]) + '</p></div>';
+            el.innerHTML = providers
+                .map(function (p, idx) {
+                    const prov = deepPlainForJson(mapPlainTop(p) || p);
+                    let h =
+                        '<div class="detail-section" style="margin-bottom:1rem"><strong>Location provider ' +
+                        (idx + 1) +
+                        '</strong>';
+                    if (prov.type) {
+                        h +=
+                            '<p style="font-size:0.85rem;color:var(--text-secondary);margin:0.25rem 0">' +
+                            escapeHtml(String(prov.type)) +
+                            '</p>';
                     }
-                });
-                h += '</div>';
-                return h;
-            }).join('');
+                    if (Object.prototype.hasOwnProperty.call(prov, 'last_availability')) {
+                        h +=
+                            '<p style="margin:0.35rem 0">Last availability: <strong>' +
+                            (prov.last_availability ? 'true' : 'false') +
+                            '</strong></p>';
+                    }
+                    if (privacyFieldPresent(prov.last_location_fine)) {
+                        h += renderPrivacyLocationSnapshot(prov.last_location_fine, 'Last location (fine)');
+                    }
+                    if (privacyFieldPresent(prov.last_location_coarse)) {
+                        h += renderPrivacyLocationSnapshot(prov.last_location_coarse, 'Last location (coarse)');
+                    }
+                    if (privacyFieldPresent(prov.source)) {
+                        const src = deepPlainForJson(mapPlainTop(prov.source) || prov.source);
+                        h += '<div style="margin-top:0.65rem"><strong>Source</strong>';
+                        if (src && typeof src === 'object' && !Array.isArray(src)) {
+                            h += renderKeyValueTableFromObject(src);
+                        } else {
+                            h += '<p style="margin:0.25rem 0">' + parserCellValue(prov.source) + '</p>';
+                        }
+                        h += '</div>';
+                    }
+                    if (Array.isArray(prov.listeners) && prov.listeners.length) {
+                        h +=
+                            '<div style="margin-top:0.65rem"><strong>Listeners</strong>' +
+                            renderObjectArrayTable(prov.listeners) +
+                            '</div>';
+                    }
+                    h += '</div>';
+                    return h;
+                })
+                .join('');
         }
 
         function renderParserStructured(key, el, data) {
@@ -3532,9 +3647,25 @@
                         location_providers: [
                             {
                                 type: "fused",
-                                last_availability: true,
-                                listeners: [{ uid: 10123, packageName: "com.android.chrome", permission: "fine" }],
-                                last_location_fine: { latitude: "48.85", longitude: "2.35" }
+                                last_availability: false,
+                                last_location_coarse: {
+                                    accuracy: "2000.0m",
+                                    ert: "11-08 22:18:14.823",
+                                    latitude: 52.378378,
+                                    longitude: 4.899697,
+                                    provider: "fused"
+                                },
+                                last_location_fine: {
+                                    accuracy: "14.69m",
+                                    alt: "63.4±171.19m",
+                                    ert: "11-08 22:18:14.822",
+                                    latitude: 52.392128,
+                                    longitude: 4.90232,
+                                    provider: "fused",
+                                    spd: ".0±2.29m/s"
+                                },
+                                source: { service: "FusedLocationProvider" },
+                                listeners: [{ uid: 10123, packageName: "com.android.chrome", permission: "fine" }]
                             }
                         ]
                     }

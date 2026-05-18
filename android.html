@@ -7,6 +7,7 @@
     <link rel="icon" href="favicon.ico" sizes="any">
     <link rel="apple-touch-icon" href="logo.png">
     <link rel="stylesheet" href="assets/site.css">
+    <script src="assets/timeline-view.js" defer></script>
 
 </head>
 <body>
@@ -404,6 +405,17 @@
                     </div>
                 </div>
 
+                <div id="timeline-sketch-card" class="result-card" style="display: none;">
+                    <h3 data-i18n="timelineCardTitle">🗓️ Timeline</h3>
+                    <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.75rem;" data-i18n="timelineCardBlurb">
+                        Parser-based Plaso/Timesketch-style rows when available, plus Sigma matches. Colors by parser or category; click an event for JSON.
+                    </p>
+                    <div id="timeline-sketch-meta" style="font-size: 0.8125rem; margin: 0 0 0.5rem;"></div>
+                    <div id="timeline-sketch-epoch-skip-wrap" style="display: none; margin: 0 0 0.5rem;"></div>
+                    <div id="timeline-sketch-dl-row" style="margin-bottom: 0.5rem;"></div>
+                    <div id="timeline-sketch-host"></div>
+                </div>
+
                 <!-- System Statistics -->
                 <div class="result-card">
                     <h3 data-i18n="systemStats">📈 System Statistics</h3>
@@ -791,6 +803,20 @@
                     </div>
                 </div>
 
+                <!-- Per-parser raw payloads (all parsers that ran in WASM) -->
+                <div class="result-card" id="parser-outputs-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>📦 Parser outputs (complete)</h3>
+                    </div>
+                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('parser-outputs')">▼</button>
+                    <div class="section-content collapsed" id="parser-outputs-content">
+                        <p style="font-size: 0.8125rem; color: var(--text-secondary); margin: 0 0 0.75rem;">
+                            One block per parser: status, duration, and full JSON (same data the timeline and cards are built from).
+                        </p>
+                        <div id="parser-outputs-container"></div>
+                    </div>
+                </div>
+
                 <!-- Full Data (JSON) -->
                 <div class="result-card">
                     <div class="section-header">
@@ -803,9 +829,10 @@
                 </div>
                 
                 <!-- Results Actions -->
-                <div id="results-actions" style="margin-top: 1.5rem; display: none; gap: 0.5rem; flex-wrap: wrap;">
+                <div id="results-actions" style="margin-top: 1.5rem; display: none; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
                     <button onclick="downloadResults()" style="background: #4CAF50; color: white;" data-i18n="btnDownloadJson">📥 Download JSON</button>
-                    <button onclick="copyResults()" style="background: var(--accent); color: white;" data-i18n="btnCopyClipboard">📋 Copy to Clipboard</button>
+                    <button type="button" onclick="copyResults()" style="background: var(--accent); color: white;" data-i18n="btnCopyClipboard">📋 Copy to Clipboard</button>
+                    <span id="copy-json-feedback" class="copy-json-feedback" hidden aria-live="polite"></span>
                 </div>
             </div>
         </div>
@@ -881,6 +908,51 @@
                 sigmaMatches: 'Matches',
                 analysisResults: '📊 Analysis Results',
                 analyzedOn: 'Analyzed on',
+                timelineCardTitle: '🗓️ Timeline',
+                timelineCardBlurb:
+                    'Parser-based Plaso/Timesketch-style rows when available, plus Sigma matches. Each row includes event_time_binding: per_record (real row time), snapshot_only (dumpstate header capture only — ps, sockets, lists, etc.), or system_fallback (no header; wall clock at export). Colors by parser or category; click an event for JSON.',
+                timelineTimesketchCount: '{n} timeline rows (Timesketch-style export from parsers).',
+                timelineEpochSkippedSummary: 'Skipped bogus 1970-era timestamps ({n})',
+                timelineEpochSkippedBody:
+                    'These rows used Unix epoch or year-1970 wall times (usually missing or mis-parsed source fields). They are not included in the CSV, JSONL, or chart above so Timesketch stays meaningful.',
+                timelineDownloadCsv: 'Download CSV',
+                timelineDownloadJsonl: 'Download JSONL',
+                timelineSearchPlaceholder: 'Search timeline (message, parser, JSON)…',
+                timelineSearchAriaLabel: 'Filter timeline events by message, parser, or JSON text',
+                timelineDetailSearchPlaceholder: 'Search inside this event…',
+                timelineDetailSearchMatches: '{cur} / {total} matches',
+                timelineDetailSearchZero: 'No matches in this event',
+                timelineDetailSearchPrev: 'Previous match',
+                timelineDetailSearchNext: 'Next match',
+                timelineAllCategories: 'All',
+                timelineDetailTitle: 'Event detail',
+                timelineHintClick:
+                    'Click an event for full JSON. Use the search field under this text to find strings inside the selected event. Hover a category chip to highlight that group on the band and overview; hover a list row for one event.',
+                timelineShowing: 'Showing {shown} of {filtered} in the time window ({total} after search/category).',
+                timelineCapped: 'Rendering limited to {max} rows — narrow search, category, or time window.',
+                timelineApprox: 'approx.',
+                timelineBindingSnapshot: 'dumpstate capture',
+                timelineBindingSystemFallback: 'export clock',
+                timelineNoMatch: 'No events match.',
+                timelineScriptMissing: 'Timeline UI script failed to load (timeline-view.js).',
+                timelineVizHint:
+                    'Hover a category chip (e.g. VPN) to highlight all its events on the band and overview · Hover a list row for one time · Zoom the window to separate nearby events · Drag · Wheel · +/− · Shift+drag pans · Double-click fits full filtered range',
+                timelineFitWindow: 'Fit full range',
+                timelineWindowLabel: 'Visible window',
+                timelineWindowFrom: 'Window start',
+                timelineWindowTo: 'Window end',
+                timelineRangeStart: 'Window start',
+                timelineRangeEnd: 'Window end',
+                timelineZoomIn: 'Zoom in',
+                timelineZoomOut: 'Zoom out',
+                timelineZoomRangeTitle: 'Time range & zoom',
+                timelineZoomDetail: 'Detail level (narrower visible window)',
+                timelineZoomBrushHelp:
+                    'Overview of filtered events — click the bar to center the visible window on that time.',
+                timelineCardEmpty:
+                    'No timed events for the interactive timeline yet (install history, power log, Sigma hits, or parser Timesketch export).',
+                timelineRenderError:
+                    'Timeline UI hit an error; other sections below are still valid. Check the browser console for details.',
                 deviceInfo: '📱 Device Information',
                 manufacturer: 'Manufacturer',
                 model: 'Model',
@@ -916,6 +988,28 @@
                 statTombstones: 'Crash tombstones',
                 parserMemoryTitle: '🧠 Memory parser',
                 parserDevicePolicyTitle: '📜 Device policy parser',
+                devicePolicyIntro:
+                    'Structured view of <code>dumpsys device_policy</code>: profile owner, device admins per user, user restrictions, app suspension lists, and caches. Use the filter to jump to a package or policy name.',
+                devicePolicyFilterPlaceholder: 'Filter sections (package, restriction, keyword)…',
+                devicePolicyTitleProfileOwner: 'Profile owner',
+                devicePolicyTitleDeviceAdmins: 'Device admins (unspecified user)',
+                devicePolicyTitleDeviceAdminsUser: 'Device admins (user {u})',
+                devicePolicyTitleLocalPol: 'Local policies (user restrictions)',
+                devicePolicyTitleGlobalPol: 'Global policies',
+                devicePolicyTitlePersonalSusp: 'Personal apps suspension',
+                devicePolicyTitleOverlay: 'Overlay packages provider',
+                devicePolicyTitlePolCache: 'Device policy cache',
+                devicePolicyTitleStateCache: 'Device state cache',
+                devicePolicyUserRestrictions: 'User {u} ({n} restrictions)',
+                devicePolicyThPackage: 'Package',
+                devicePolicyThReceiver: 'Receiver',
+                devicePolicyThUid: 'UID',
+                devicePolicyThPolicies: 'Declared policies',
+                devicePolicyThRestriction: 'Restriction',
+                devicePolicyThResolved: 'Resolved',
+                devicePolicyThPerAdmin: 'Per-admin',
+                devicePolicyPoliciesCount: '{n} policies',
+                devicePolicyMoreFields: 'More fields',
                 parserAdbTitle: '🔧 ADB parser',
                 parserAuthenticationTitle: '🔑 Authentication parser',
                 parserVpnTitle: '🔒 VPN parser',
@@ -926,6 +1020,13 @@
                 searchProcesses: 'Search processes by name or PID...',
                 btnDownloadJson: '📥 Download JSON',
                 btnCopyClipboard: '📋 Copy to Clipboard',
+                copyJsonDone: 'JSON copied to clipboard.',
+                btnCopyParserJson: 'Copy parser JSON',
+                copyParserOk: 'Parser JSON copied to clipboard.',
+                copyParserOkShort: 'Copied',
+                copyParserEmpty: 'Nothing to copy for this parser.',
+                copyParserFail: 'Copy failed',
+                copyParserNoResults: 'No analysis loaded.',
                 disclaimerSummary: '⚠️ Disclaimer (expand)',
                 navExample: '📋 Example',
                 navStatus: '📄 Rules & parsers status',
@@ -975,6 +1076,51 @@
                 sigmaMatches: 'Correspondances',
                 analysisResults: '📊 Résultats d\'analyse',
                 analyzedOn: 'Analysé le',
+                timelineCardTitle: '🗓️ Chronologie',
+                timelineCardBlurb:
+                    'Lignes style Plaso/Timesketch issues des parseurs quand c’est disponible, plus les correspondances Sigma. Chaque ligne a event_time_binding : per_record (heure réelle), snapshot_only (instant de capture dumpstate dans l’en-tête — ps, sockets, listes, etc.) ou system_fallback (pas d’en-tête exploitable ; horloge à l’export). Couleurs par parseur ou catégorie ; clic pour le JSON.',
+                timelineTimesketchCount: '{n} lignes de chronologie (export style Timesketch depuis les parseurs).',
+                timelineEpochSkippedSummary: 'Horodatages 1970 / époque ignorés ({n})',
+                timelineEpochSkippedBody:
+                    'Ces lignes correspondaient à l’époque Unix ou à l’année 1970 (champs source absents ou mal interprétés). Elles ne figurent pas dans le CSV, le JSONL ni le graphique ci-dessus pour garder une chronologie exploitable dans Timesketch.',
+                timelineDownloadCsv: 'Télécharger CSV',
+                timelineDownloadJsonl: 'Télécharger JSONL',
+                timelineSearchPlaceholder: 'Filtrer la chronologie (message, parseur, JSON)…',
+                timelineSearchAriaLabel: 'Filtrer les événements par message, parseur ou texte JSON',
+                timelineDetailSearchPlaceholder: 'Chercher dans cet événement…',
+                timelineDetailSearchMatches: '{cur} / {total} correspondances',
+                timelineDetailSearchZero: 'Aucune correspondance dans cet événement',
+                timelineDetailSearchPrev: 'Correspondance précédente',
+                timelineDetailSearchNext: 'Correspondance suivante',
+                timelineAllCategories: 'Tout',
+                timelineDetailTitle: 'Détail de l’événement',
+                timelineHintClick:
+                    'Cliquez sur un événement pour le JSON complet. Utilisez le champ sous ce texte pour chercher une chaîne dans l’événement sélectionné. Survolez une pastille de catégorie pour surligner tout le groupe sur la bande et la vue d’ensemble ; survolez une ligne pour un instant précis.',
+                timelineShowing: '{shown} sur {filtered} dans la fenêtre temporelle ({total} après recherche/catégorie).',
+                timelineCapped: 'Plafond d’affichage {max} lignes — affinez recherche, catégorie ou fenêtre.',
+                timelineApprox: 'approx.',
+                timelineBindingSnapshot: 'capture dumpstate',
+                timelineBindingSystemFallback: 'horloge à l’export',
+                timelineNoMatch: 'Aucun événement ne correspond.',
+                timelineScriptMissing: 'Le script de chronologie n’a pas chargé (timeline-view.js).',
+                timelineVizHint:
+                    'Survolez une pastille (ex. VPN) pour surligner tout le groupe sur la bande et l’aperçu · Survolez une ligne pour un instant · Zoom · Glisser · Molette · +/− · Maj+glisser · Double-clic = intervalle filtré complet',
+                timelineFitWindow: 'Tout l’intervalle',
+                timelineWindowLabel: 'Fenêtre visible',
+                timelineWindowFrom: 'Début de fenêtre',
+                timelineWindowTo: 'Fin de fenêtre',
+                timelineRangeStart: 'Début',
+                timelineRangeEnd: 'Fin',
+                timelineZoomIn: 'Zoom avant',
+                timelineZoomOut: 'Zoom arrière',
+                timelineZoomRangeTitle: 'Plage temporelle & zoom',
+                timelineZoomDetail: 'Niveau de détail (fenêtre plus étroite)',
+                timelineZoomBrushHelp:
+                    'Vue d’ensemble des événements filtrés — cliquez sur la barre pour centrer la fenêtre sur ce moment.',
+                timelineCardEmpty:
+                    'Pas d’événements horodatés pour la chronologie interactive (historique d’installations, journal d’alimentation, Sigma ou export Timesketch des parseurs).',
+                timelineRenderError:
+                    'Erreur dans l’interface de chronologie ; le reste des résultats ci-dessous reste valide. Voir la console du navigateur.',
                 deviceInfo: '📱 Informations appareil',
                 manufacturer: 'Fabricant',
                 model: 'Modèle',
@@ -1010,6 +1156,28 @@
                 statTombstones: 'Tombstones (crash natif)',
                 parserMemoryTitle: '🧠 Parseur mémoire',
                 parserDevicePolicyTitle: '📜 Parseur stratégie appareil',
+                devicePolicyIntro:
+                    'Vue structurée de <code>dumpsys device_policy</code> : propriétaire de profil, administrateurs par utilisateur, restrictions, listes d’apps suspendues et caches. Filtrez pour trouver un paquet ou une politique.',
+                devicePolicyFilterPlaceholder: 'Filtrer les blocs (paquet, restriction, mot-clé)…',
+                devicePolicyTitleProfileOwner: 'Propriétaire du profil',
+                devicePolicyTitleDeviceAdmins: 'Administrateurs (utilisateur non précisé)',
+                devicePolicyTitleDeviceAdminsUser: 'Administrateurs (utilisateur {u})',
+                devicePolicyTitleLocalPol: 'Politiques locales (restrictions utilisateur)',
+                devicePolicyTitleGlobalPol: 'Politiques globales',
+                devicePolicyTitlePersonalSusp: 'Suspension des apps personnelles',
+                devicePolicyTitleOverlay: 'Fournisseur de paquets d’overlay',
+                devicePolicyTitlePolCache: 'Cache politique appareil',
+                devicePolicyTitleStateCache: 'Cache état appareil',
+                devicePolicyUserRestrictions: 'Utilisateur {u} ({n} restrictions)',
+                devicePolicyThPackage: 'Paquet',
+                devicePolicyThReceiver: 'Récepteur',
+                devicePolicyThUid: 'UID',
+                devicePolicyThPolicies: 'Politiques déclarées',
+                devicePolicyThRestriction: 'Restriction',
+                devicePolicyThResolved: 'Résolu',
+                devicePolicyThPerAdmin: 'Par admin',
+                devicePolicyPoliciesCount: '{n} politiques',
+                devicePolicyMoreFields: 'Autres champs',
                 parserAdbTitle: '🔧 Parseur ADB',
                 parserAuthenticationTitle: '🔑 Parseur authentification',
                 parserVpnTitle: '🔒 Parseur VPN',
@@ -1020,6 +1188,13 @@
                 searchProcesses: 'Rechercher par nom ou PID...',
                 btnDownloadJson: '📥 Télécharger JSON',
                 btnCopyClipboard: '📋 Copier dans le presse-papiers',
+                copyJsonDone: 'JSON copié dans le presse-papiers.',
+                btnCopyParserJson: 'Copier le JSON du parseur',
+                copyParserOk: 'JSON du parseur copié dans le presse-papiers.',
+                copyParserOkShort: 'Copié',
+                copyParserEmpty: 'Rien à copier pour ce parseur.',
+                copyParserFail: 'Échec de la copie',
+                copyParserNoResults: 'Aucune analyse chargée.',
                 disclaimerSummary: '⚠️ Avertissement (déplier)',
                 navExample: '📋 Exemple',
                 navStatus: '📄 État règles et parseurs',
@@ -1069,6 +1244,48 @@
                 sigmaMatches: '匹配',
                 analysisResults: '📊 分析结果',
                 analyzedOn: '分析于',
+                timelineCardTitle: '🗓️ 时间线',
+                timelineCardBlurb:
+                    '可用时展示解析器生成的 Plaso/Timesketch 风格行，并包含 Sigma 匹配。每行含 event_time_binding：per_record（真实行时间）、snapshot_only（仅 bugreport 头里的 dumpstate 抓取时刻，如 ps、套接字、列表等）或 system_fallback（无可用头时间；导出时的墙钟）。按解析器或类别着色；点击事件查看 JSON。',
+                timelineTimesketchCount: '共 {n} 条时间线（解析器导出的 Timesketch 风格）。',
+                timelineEpochSkippedSummary: '已跳过无效 1970 / Unix 纪元时间戳（{n} 条）',
+                timelineEpochSkippedBody:
+                    '这些行对应 Unix 纪元或 1970 年（多为源字段缺失或解析错误）。为保持 Timesketch 时间线可用，它们未包含在上方的 CSV、JSONL 与图表中。',
+                timelineDownloadCsv: '下载 CSV',
+                timelineDownloadJsonl: '下载 JSONL',
+                timelineSearchPlaceholder: '搜索时间线（消息、解析器、JSON）…',
+                timelineSearchAriaLabel: '按消息、解析器或 JSON 文本筛选时间线事件',
+                timelineDetailSearchPlaceholder: '在当前事件中搜索…',
+                timelineDetailSearchMatches: '第 {cur} / {total} 处匹配',
+                timelineDetailSearchZero: '此事件中无匹配',
+                timelineDetailSearchPrev: '上一处匹配',
+                timelineDetailSearchNext: '下一处匹配',
+                timelineAllCategories: '全部',
+                timelineDetailTitle: '事件详情',
+                timelineHintClick:
+                    '点击事件查看完整 JSON。使用下方搜索框在已选事件的 JSON 中查找字符串。悬停类别标签可高亮该组在色带与底部概览上的位置；悬停列表行可高亮单个时间。',
+                timelineShowing: '时间窗口内显示 {shown} / {filtered} 条（搜索/类别后共 {total} 条）。',
+                timelineCapped: '列表最多 {max} 行 — 可缩小搜索、类别或时间窗。',
+                timelineApprox: '约',
+                timelineBindingSnapshot: 'dumpstate 抓取时刻',
+                timelineBindingSystemFallback: '导出时刻',
+                timelineNoMatch: '没有匹配的事件。',
+                timelineScriptMissing: '时间线脚本未加载（timeline-view.js）。',
+                timelineVizHint:
+                    '悬停类别标签（如 VPN）可高亮该组在色带与概览上的所有时间 · 悬停列表行高亮单个时间 · 缩放时间窗以分开相近事件 · 拖拽 · 滚轮 · +/− · Shift+拖拽 · 双击恢复筛选后的全区间',
+                timelineFitWindow: '全区间',
+                timelineWindowLabel: '可见时间窗',
+                timelineWindowFrom: '窗口起点',
+                timelineWindowTo: '窗口终点',
+                timelineRangeStart: '窗口起点',
+                timelineRangeEnd: '窗口终点',
+                timelineZoomIn: '放大',
+                timelineZoomOut: '缩小',
+                timelineZoomRangeTitle: '时间范围与缩放',
+                timelineZoomDetail: '细节程度（更窄的可见窗口）',
+                timelineZoomBrushHelp: '已筛选事件的概览 — 点击条带可将可见窗口居中到该时间。',
+                timelineCardEmpty: '当前没有可用于交互时间线的时间戳事件（安装历史、电源日志、Sigma 或解析器 Timesketch 导出）。',
+                timelineRenderError: '时间线界面出错；下方其他结果仍然有效。请查看浏览器控制台。',
                 deviceInfo: '📱 设备信息',
                 manufacturer: '制造商',
                 model: '型号',
@@ -1104,6 +1321,28 @@
                 statTombstones: '原生崩溃 tombstone',
                 parserMemoryTitle: '🧠 内存解析',
                 parserDevicePolicyTitle: '📜 设备策略解析',
+                devicePolicyIntro:
+                    '对 <code>dumpsys device_policy</code> 的结构化展示：配置文件所有者、各用户的设备管理员、用户限制、个人应用挂起列表与缓存。可用筛选快速定位包名或策略关键字。',
+                devicePolicyFilterPlaceholder: '筛选区块（包名、限制项、关键字）…',
+                devicePolicyTitleProfileOwner: '配置文件所有者（Profile owner）',
+                devicePolicyTitleDeviceAdmins: '设备管理员（未指定用户）',
+                devicePolicyTitleDeviceAdminsUser: '设备管理员（用户 {u}）',
+                devicePolicyTitleLocalPol: '本地策略（用户限制）',
+                devicePolicyTitleGlobalPol: '全局策略',
+                devicePolicyTitlePersonalSusp: '个人应用挂起',
+                devicePolicyTitleOverlay: 'Overlay 包提供方',
+                devicePolicyTitlePolCache: '设备策略缓存',
+                devicePolicyTitleStateCache: '设备状态缓存',
+                devicePolicyUserRestrictions: '用户 {u}（{n} 条限制）',
+                devicePolicyThPackage: '包名',
+                devicePolicyThReceiver: '接收器',
+                devicePolicyThUid: 'UID',
+                devicePolicyThPolicies: '声明的策略',
+                devicePolicyThRestriction: '限制项',
+                devicePolicyThResolved: '解析结果',
+                devicePolicyThPerAdmin: '各管理员',
+                devicePolicyPoliciesCount: '{n} 条策略',
+                devicePolicyMoreFields: '更多字段',
                 parserAdbTitle: '🔧 ADB 解析',
                 parserAuthenticationTitle: '🔑 身份验证解析',
                 parserVpnTitle: '🔒 VPN 解析',
@@ -1114,6 +1353,13 @@
                 searchProcesses: '按名称或 PID 搜索进程...',
                 btnDownloadJson: '📥 下载 JSON',
                 btnCopyClipboard: '📋 复制到剪贴板',
+                copyJsonDone: 'JSON 已复制到剪贴板。',
+                btnCopyParserJson: '复制该解析器 JSON',
+                copyParserOk: '该解析器 JSON 已复制到剪贴板。',
+                copyParserOkShort: '已复制',
+                copyParserEmpty: '此解析器没有可复制内容。',
+                copyParserFail: '复制失败',
+                copyParserNoResults: '尚未加载分析结果。',
                 disclaimerSummary: '⚠️ 免责声明（展开）',
                 navExample: '📋 示例',
                 navStatus: '📄 规则与解析器状态',
@@ -1130,6 +1376,8 @@
             });
             var ps = document.getElementById('process-search');
             if (ps && t.searchProcesses) ps.placeholder = t.searchProcesses;
+            var dpf = document.getElementById('parser-device-policy-filter');
+            if (dpf && t.devicePolicyFilterPlaceholder) dpf.placeholder = t.devicePolicyFilterPlaceholder;
             var bugreportSelect = document.getElementById('bugreport-select');
             if (bugreportSelect && bugreportSelect.options[0] && t.selectBugreport) bugreportSelect.options[0].text = t.selectBugreport;
             var themeText = document.getElementById('theme-text');
@@ -1195,6 +1443,20 @@
                 content.classList.add('collapsed');
                 toggle.classList.add('collapsed');
             }
+        }
+
+        /** WASM returns JSON text so nested arrays round-trip; older builds may return an object. */
+        function parseBugreportAnalysis(raw) {
+            if (raw == null) return raw;
+            if (typeof raw === 'string') {
+                try {
+                    return JSON.parse(raw);
+                } catch (e) {
+                    console.error('parseBugreportAnalysis: invalid JSON', e);
+                    throw e;
+                }
+            }
+            return raw;
         }
         
         // Calculate SHA-256 hash
@@ -1336,6 +1598,66 @@
             showStatus('✓ Results downloaded!', 'success');
         }
         
+        window.copyParserOutputJson = async function (parserKey, feedbackEl) {
+            const pack =
+                (window.BUGREPORT_I18N && window.BUGREPORT_I18N[window.currentLang || 'en']) ||
+                window.BUGREPORT_I18N.en ||
+                {};
+            if (!currentResults) {
+                showStatus(pack.copyParserNoResults || 'No analysis loaded.', 'error');
+                return;
+            }
+            let raw = null;
+            let po = currentResults.parser_outputs;
+            if (po && po instanceof Map) po = Object.fromEntries(po);
+            if (po && po[parserKey]) {
+                const pe = mapPlainTop(po[parserKey]) || po[parserKey];
+                if (pe && pe.success && pe.data != null) raw = pe.data;
+            }
+            if (raw == null) {
+                let ap = currentResults.additional_parsers;
+                if (ap && ap instanceof Map) ap = Object.fromEntries(ap);
+                if (ap && ap[parserKey] != null) raw = ap[parserKey];
+            }
+            if (raw == null) {
+                showStatus(pack.copyParserEmpty || 'Nothing to copy for this parser.', 'error');
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(JSON.stringify(deepPlainForJson(raw), null, 2));
+                showStatus(pack.copyParserOk || 'Parser JSON copied to clipboard.', 'success');
+                if (feedbackEl) {
+                    feedbackEl.textContent = pack.copyParserOkShort || 'Copied';
+                    feedbackEl.hidden = false;
+                    setTimeout(function () {
+                        feedbackEl.hidden = true;
+                        feedbackEl.textContent = '';
+                    }, 2200);
+                }
+            } catch (err) {
+                console.error('copyParserOutputJson', parserKey, err);
+                showStatus((pack.copyParserFail || 'Copy failed') + ': ' + (err && err.message ? err.message : err), 'error');
+            }
+        };
+
+        var copyJsonFeedbackTimer = null;
+        function showCopyJsonFeedback() {
+            const el = document.getElementById('copy-json-feedback');
+            if (!el) return;
+            const pack =
+                (window.BUGREPORT_I18N && window.BUGREPORT_I18N[window.currentLang || 'en']) ||
+                window.BUGREPORT_I18N.en ||
+                {};
+            el.textContent = pack.copyJsonDone || 'JSON copied to clipboard.';
+            el.hidden = false;
+            if (copyJsonFeedbackTimer) clearTimeout(copyJsonFeedbackTimer);
+            copyJsonFeedbackTimer = setTimeout(function () {
+                copyJsonFeedbackTimer = null;
+                el.textContent = '';
+                el.hidden = true;
+            }, 2800);
+        }
+
         // Copy results
         window.copyResults = async function() {
             if (!currentResults) {
@@ -1371,6 +1693,7 @@
                 
                 await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
                 showStatus('✓ Results copied to clipboard!', 'success');
+                showCopyJsonFeedback();
             } catch (error) {
                 console.error('Copy error:', error);
                 showStatus('❌ Failed to copy: ' + error.message, 'error');
@@ -1539,19 +1862,31 @@
             const processCard = document.getElementById('process-details-card');
             const processTableBody = document.getElementById('process-table-body');
             
-            if (!data.processes || !Array.isArray(data.processes) || data.processes.length === 0) {
+            const procs = asWasmArray(data.processes);
+            if (procs.length === 0) {
                 processCard.style.display = 'none';
                 return;
             }
 
             processCard.style.display = 'block';
-            document.getElementById('process-count-badge').textContent = data.processes.length;
+            document.getElementById('process-count-badge').textContent = procs.length;
 
             // Clear table
             processTableBody.innerHTML = '';
 
-            // Add processes to table
-            data.processes.forEach(proc => {
+            const procsSorted = procs
+                .map((rawProc) => mapPlainTop(rawProc) || rawProc)
+                .sort((a, b) => {
+                    const na = Number(a.pid);
+                    const nb = Number(b.pid);
+                    if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+                    if (Number.isFinite(na)) return -1;
+                    if (Number.isFinite(nb)) return 1;
+                    return String(a.pid ?? '').localeCompare(String(b.pid ?? ''), undefined, { numeric: true });
+                });
+
+            // Add processes to table (ordered by PID)
+            procsSorted.forEach((proc) => {
                 const row = document.createElement('tr');
                 row.setAttribute('data-pid', proc.pid || '');
                 row.setAttribute('data-name', (proc.name || '').toLowerCase());
@@ -1570,24 +1905,26 @@
 
             // Add search functionality
             const searchInput = document.getElementById('process-search');
-            searchInput.addEventListener('input', (e) => {
-                const query = e.target.value.toLowerCase();
-                const rows = processTableBody.querySelectorAll('tr');
-                let visibleCount = 0;
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    const query = e.target.value.toLowerCase();
+                    const rows = processTableBody.querySelectorAll('tr');
+                    let visibleCount = 0;
 
-                rows.forEach(row => {
-                    const pid = row.getAttribute('data-pid');
-                    const name = row.getAttribute('data-name');
-                    const user = row.getAttribute('data-user');
-                    
-                    if (pid.includes(query) || name.includes(query) || user.includes(query)) {
-                        row.style.display = '';
-                        visibleCount++;
-                    } else {
-                        row.style.display = 'none';
-                    }
+                    rows.forEach(row => {
+                        const pid = row.getAttribute('data-pid');
+                        const name = row.getAttribute('data-name');
+                        const user = row.getAttribute('data-user');
+                        
+                        if (pid.includes(query) || name.includes(query) || user.includes(query)) {
+                            row.style.display = '';
+                            visibleCount++;
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
                 });
-            });
+            }
         }
 
         // Display battery details
@@ -1595,19 +1932,21 @@
             const batteryCard = document.getElementById('battery-details-card');
             const batteryTableBody = document.getElementById('battery-table-body');
             
-            if (!data.battery_apps || !Array.isArray(data.battery_apps) || data.battery_apps.length === 0) {
+            const batApps = asWasmArray(data.battery_apps);
+            if (batApps.length === 0) {
                 batteryCard.style.display = 'none';
                 return;
             }
 
             batteryCard.style.display = 'block';
-            document.getElementById('battery-apps-count-badge').textContent = data.battery_apps.length;
+            document.getElementById('battery-apps-count-badge').textContent = batApps.length;
 
             // Clear table
             batteryTableBody.innerHTML = '';
 
             // Add battery stats to table
-            data.battery_apps.forEach(batt => {
+            batApps.forEach((rawBatt) => {
+                const batt = mapPlainTop(rawBatt) || rawBatt;
                 const row = document.createElement('tr');
                 const pkgName = batt.package_name || '';
                 row.setAttribute('data-package', pkgName.toLowerCase());
@@ -1645,22 +1984,24 @@
 
             // Add search functionality
             const searchInput = document.getElementById('battery-search');
-            searchInput.addEventListener('input', (e) => {
-                const query = e.target.value.toLowerCase();
-                const rows = batteryTableBody.querySelectorAll('tr');
-                let visibleCount = 0;
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    const query = e.target.value.toLowerCase();
+                    const rows = batteryTableBody.querySelectorAll('tr');
+                    let visibleCount = 0;
 
-                rows.forEach(row => {
-                    const pkg = row.getAttribute('data-package');
-                    
-                    if (pkg.includes(query)) {
-                        row.style.display = '';
-                        visibleCount++;
-                    } else {
-                        row.style.display = 'none';
-                    }
+                    rows.forEach(row => {
+                        const pkg = row.getAttribute('data-package');
+                        
+                        if (pkg.includes(query)) {
+                            row.style.display = '';
+                            visibleCount++;
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
                 });
-            });
+            }
         }
 
         // Format bytes
@@ -1736,10 +2077,229 @@
             return formatDuration(seconds * 1000);
         }
 
+        function collectAndroidTimelineEvents(data) {
+            const d = data && typeof data === 'object' ? data : {};
+            const out = [];
+            const push = (tsRaw, category, message, raw) => {
+                if (tsRaw == null || message == null) return;
+                let s = typeof tsRaw === 'string' ? tsRaw.trim() : String(tsRaw).trim();
+                if (!s) return;
+                let ms = Date.parse(s);
+                if (Number.isNaN(ms)) {
+                    const n = Number(s);
+                    if (!Number.isNaN(n) && n > 1e12) ms = n;
+                    else return;
+                }
+                const iso = new Date(ms).toISOString();
+                out.push({
+                    category,
+                    message: String(message),
+                    datetime: iso,
+                    timestamp: Math.floor(ms * 1000),
+                    timestamp_desc: category,
+                    android_source: raw,
+                });
+            };
+            let pkgs = asWasmArray(d.packages);
+            pkgs.forEach((pkg) => {
+                const p = mapPlainTop(pkg) || pkg;
+                const name = p.package_name || p.packageName || 'unknown';
+                const ok = p.success !== false;
+                push(p.timestamp, 'package', (ok ? 'Install' : 'Install failed') + ': ' + name, p);
+            });
+            const ph = asWasmArray(d.power_history);
+            ph.forEach((rawEntry) => {
+                const entry = mapPlainTop(rawEntry) || rawEntry;
+                const evs = asWasmArray(entry.history_events);
+                evs.forEach((rawEv) => {
+                    const ev = mapPlainTop(rawEv) || rawEv;
+                    const t = ev.timestamp || entry.timestamp;
+                    const typ = ev.event_type || 'power';
+                    const det = ev.details ? String(ev.details).slice(0, 300) : '';
+                    push(t, 'power', typ + (det ? ' — ' + det : ''), { entry, ev });
+                });
+            });
+            const sm = asWasmArray(d.sigma_matches);
+            sm.forEach((rawM) => {
+                const m = mapPlainTop(rawM) || rawM;
+                let ml = m.log_entry ?? m.matched_log;
+                if (ml && ml instanceof Map) ml = Object.fromEntries(ml);
+                if (!ml || typeof ml !== 'object') return;
+                const ts = ml.timestamp || ml.time || ml.datetime || ml['@timestamp'];
+                if (ts == null || ts === '') return;
+                const title = m.rule_title || m.rule_id || 'sigma';
+                const level = m.level ? ' [' + m.level + ']' : '';
+                push(String(ts), 'sigma', 'Sigma: ' + title + level, m);
+            });
+            return out;
+        }
+
+        function timelineLabelsAndroid() {
+            const lang = window.currentLang || 'en';
+            const pack = (window.BUGREPORT_I18N && window.BUGREPORT_I18N[lang]) || window.BUGREPORT_I18N.en || {};
+            return {
+                searchPlaceholder: pack.timelineSearchPlaceholder,
+                searchAriaLabel: pack.timelineSearchAriaLabel,
+                all: pack.timelineAllCategories,
+                detailTitle: pack.timelineDetailTitle,
+                hintClick: pack.timelineHintClick,
+                detailSearchPlaceholder: pack.timelineDetailSearchPlaceholder,
+                detailSearchMatches: pack.timelineDetailSearchMatches,
+                detailSearchZero: pack.timelineDetailSearchZero,
+                detailSearchPrev: pack.timelineDetailSearchPrev,
+                detailSearchNext: pack.timelineDetailSearchNext,
+                showing: pack.timelineShowing,
+                capped: pack.timelineCapped,
+                approx: pack.timelineApprox,
+                bindingSnapshot: pack.timelineBindingSnapshot,
+                bindingSystemFallback: pack.timelineBindingSystemFallback,
+                noMatch: pack.timelineNoMatch,
+                vizHint: pack.timelineVizHint,
+                fitWindow: pack.timelineFitWindow,
+                windowLabel: pack.timelineWindowLabel,
+                windowFrom: pack.timelineWindowFrom,
+                windowTo: pack.timelineWindowTo,
+                rangeStart: pack.timelineRangeStart,
+                rangeEnd: pack.timelineRangeEnd,
+                zoomIn: pack.timelineZoomIn,
+                zoomOut: pack.timelineZoomOut,
+                zoomRangeTitle: pack.timelineZoomRangeTitle,
+                zoomDetail: pack.timelineZoomDetail,
+                zoomBrushHelp: pack.timelineZoomBrushHelp,
+            };
+        }
+
+        function displayTimelineSketch(data) {
+            const card = document.getElementById('timeline-sketch-card');
+            const host = document.getElementById('timeline-sketch-host');
+            const meta = document.getElementById('timeline-sketch-meta');
+            const epochSkipWrap = document.getElementById('timeline-sketch-epoch-skip-wrap');
+            const dlRow = document.getElementById('timeline-sketch-dl-row');
+            if (!card || !host) return;
+            if (meta) meta.textContent = '';
+            if (epochSkipWrap) {
+                epochSkipWrap.style.display = 'none';
+                epochSkipWrap.textContent = '';
+            }
+            if (dlRow) dlRow.textContent = '';
+            host.textContent = '';
+
+            const pack =
+                (window.BUGREPORT_I18N && window.BUGREPORT_I18N[window.currentLang || 'en']) || window.BUGREPORT_I18N.en;
+
+            const d = data && typeof data === 'object' ? data : {};
+            let analysers = d.analysers;
+            if (analysers && typeof analysers === 'object' && analysers instanceof Map) {
+                analysers = Object.fromEntries(analysers);
+            }
+            const tsRaw =
+                analysers && typeof analysers === 'object' && !Array.isArray(analysers)
+                    ? analysers.timesketch
+                    : null;
+            const ts = tsRaw && typeof tsRaw === 'object' ? mapPlainTop(tsRaw) || tsRaw : null;
+            const tsEvents = ts && ts.error == null ? asWasmArray(ts.events) : [];
+            const tsOk = tsEvents.length > 0;
+
+            let events;
+            let mountOpts;
+            if (tsOk) {
+                const sigmaOnly = collectAndroidTimelineEvents(data).filter((e) => e.category === 'sigma');
+                events = tsEvents.concat(sigmaOnly);
+                mountOpts = {
+                    events,
+                    maxRender: 15000,
+                    flashyColors: true,
+                    labels: timelineLabelsAndroid(),
+                };
+            } else {
+                events = collectAndroidTimelineEvents(data);
+                if (!events.length) {
+                    card.style.display = 'block';
+                    if (meta) meta.textContent = '';
+                    if (epochSkipWrap) {
+                        epochSkipWrap.style.display = 'none';
+                        epochSkipWrap.textContent = '';
+                    }
+                    if (dlRow) dlRow.textContent = '';
+                    host.textContent = pack.timelineCardEmpty || pack.timelineNoMatch || '';
+                    return;
+                }
+                mountOpts = {
+                    events,
+                    categoryField: 'category',
+                    maxRender: 15000,
+                    flashyColors: true,
+                    labels: timelineLabelsAndroid(),
+                };
+            }
+
+            card.style.display = 'block';
+
+            if (tsOk && meta) {
+                const nEv = tsEvents.length;
+                const cnt = ts.count != null ? ts.count : nEv;
+                meta.textContent = (pack.timelineTimesketchCount || '{n} rows').replace('{n}', String(cnt));
+            }
+            if (tsOk && epochSkipWrap) {
+                const rawSkip = ts && ts.skipped_epoch_timeline_events;
+                const nSkip = typeof rawSkip === 'number' && Number.isFinite(rawSkip) ? rawSkip : parseInt(String(rawSkip || 0), 10);
+                if (nSkip > 0) {
+                    epochSkipWrap.style.display = 'block';
+                    const det = document.createElement('details');
+                    det.style.cssText =
+                        'font-size: 0.8125rem; border: 1px solid var(--border); border-radius: 6px; padding: 0.35rem 0.5rem; background: var(--surface-alt, rgba(0,0,0,0.03));';
+                    const sum = document.createElement('summary');
+                    sum.style.cursor = 'pointer';
+                    sum.textContent = (pack.timelineEpochSkippedSummary || 'Skipped {n}').replace('{n}', String(nSkip));
+                    const p = document.createElement('p');
+                    p.style.cssText = 'margin: 0.5rem 0 0; line-height: 1.45;';
+                    p.textContent = pack.timelineEpochSkippedBody || '';
+                    det.appendChild(sum);
+                    det.appendChild(p);
+                    epochSkipWrap.appendChild(det);
+                }
+            }
+            if (tsOk && dlRow && typeof ts.csv === 'string' && ts.csv.length) {
+                const aCsv = document.createElement('a');
+                aCsv.href = URL.createObjectURL(new Blob([ts.csv], { type: 'text/csv;charset=utf-8' }));
+                aCsv.download = 'bugreport-timesketch.csv';
+                aCsv.textContent = pack.timelineDownloadCsv || 'Download CSV';
+                aCsv.style.cssText =
+                    'display: inline-block; padding: 0.35rem 0.75rem; margin-right: 0.5rem; margin-bottom: 0.5rem; background: var(--accent); color: white; border-radius: 6px; text-decoration: none; font-size: 0.8125rem;';
+                dlRow.appendChild(aCsv);
+                if (typeof ts.jsonl === 'string' && ts.jsonl.length) {
+                    const aJl = document.createElement('a');
+                    aJl.href = URL.createObjectURL(
+                        new Blob([ts.jsonl], { type: 'application/x-ndjson;charset=utf-8' })
+                    );
+                    aJl.download = 'bugreport-timesketch.jsonl';
+                    aJl.textContent = pack.timelineDownloadJsonl || 'Download JSONL';
+                    aJl.style.cssText = aCsv.style.cssText;
+                    dlRow.appendChild(aJl);
+                }
+            }
+
+            if (window.TimelineSketchView && typeof window.TimelineSketchView.mount === 'function') {
+                try {
+                    window.TimelineSketchView.mount(host, mountOpts);
+                } catch (e) {
+                    console.error('TimelineSketchView.mount failed', e);
+                    host.textContent = pack.timelineRenderError || 'Timeline UI error.';
+                }
+            } else {
+                host.textContent = pack.timelineScriptMissing || 'Timeline script missing.';
+            }
+        }
+
         // Display results
         function displayResults(data) {
             currentResults = data;
-            
+            if (data == null || typeof data !== 'object') {
+                console.error('displayResults: invalid data');
+                return;
+            }
+            showResults();
+
             // Device info
             if (data.device_info) {
                 document.getElementById('device-manufacturer').textContent = data.device_info.manufacturer || 'Unknown';
@@ -1751,19 +2311,44 @@
 
             // Battery info
             if (data.battery_info) {
-                document.getElementById('battery-level').textContent = data.battery_info.level ? data.battery_info.level.toFixed(1) + '%' : '-';
-                document.getElementById('battery-health').textContent = data.battery_info.health || '-';
-                document.getElementById('battery-temp').textContent = data.battery_info.temperature ? data.battery_info.temperature.toFixed(1) + '°C' : '-';
-                document.getElementById('battery-voltage').textContent = data.battery_info.voltage ? data.battery_info.voltage.toFixed(2) + 'V' : '-';
+                const bi = data.battery_info;
+                const lvl = bi.level != null ? Number(bi.level) : NaN;
+                document.getElementById('battery-level').textContent =
+                    Number.isFinite(lvl) ? lvl.toFixed(1) + '%' : '-';
+                document.getElementById('battery-health').textContent = bi.health || '-';
+                const temp = bi.temperature != null ? Number(bi.temperature) : NaN;
+                document.getElementById('battery-temp').textContent =
+                    Number.isFinite(temp) ? temp.toFixed(1) + '°C' : '-';
+                const volt = bi.voltage != null ? Number(bi.voltage) : NaN;
+                document.getElementById('battery-voltage').textContent =
+                    Number.isFinite(volt) ? volt.toFixed(2) + 'V' : '-';
             }
 
             fillSystemStatistics(data);
+            try {
+                displayTimelineSketch(data);
+            } catch (e) {
+                console.error('displayTimelineSketch failed', e);
+                const card = document.getElementById('timeline-sketch-card');
+                const host = document.getElementById('timeline-sketch-host');
+                const errPack =
+                    (window.BUGREPORT_I18N && window.BUGREPORT_I18N[window.currentLang || 'en']) ||
+                    (window.BUGREPORT_I18N && window.BUGREPORT_I18N.en) ||
+                    {};
+                if (card && host) {
+                    card.style.display = 'block';
+                    host.textContent =
+                        errPack.timelineRenderError ||
+                        'Timeline UI error. Other results below are still valid; check the browser console.';
+                }
+            }
 
             // Detection / Sigma rules (title, id, description, status, level, fetch success)
             const sigmaEl = document.getElementById('sigma-rules-container');
-            const info = data.sigma_rules_info;
-            if (info && Array.isArray(info) && info.length > 0) {
-                sigmaEl.innerHTML = info.map(r => {
+            const info = asWasmArray(data.sigma_rules_info);
+            if (info.length > 0) {
+                sigmaEl.innerHTML = info.map((rawR) => {
+                    const r = mapPlainTop(rawR) || rawR;
                     const fetchBadge = r.success
                         ? '<span style="color: var(--success);">✓ Fetched</span>'
                         : '<span style="color: var(--error);">✗ ' + escapeHtml(r.fetchError || 'Failed') + '</span>';
@@ -1785,9 +2370,10 @@
 
             // Sigma matches (from match_with_log_to_value: rule_id, rule_title, level, log_entry)
             const matchesEl = document.getElementById('sigma-matches-container');
-            const matches = data.sigma_matches;
-            if (matches && Array.isArray(matches) && matches.length > 0) {
-                matchesEl.innerHTML = matches.map(m => {
+            const matches = asWasmArray(data.sigma_matches);
+            if (matches.length > 0) {
+                matchesEl.innerHTML = matches.map((rawM) => {
+                    const m = mapPlainTop(rawM) || rawM;
                     const id = (m.rule_id && m.rule_id.trim()) ? escapeHtml(m.rule_id) : '-';
                     const title = (m.rule_title && m.rule_title.trim()) ? escapeHtml(m.rule_title) : '-';
                     const level = (m.level && m.level.trim()) ? escapeHtml(m.level) : '-';
@@ -1999,6 +2585,7 @@
             displayUsbInfo(data);
 
             displayAdditionalParsers(data);
+            displayParserOutputs(data);
 
             // JSON output
             document.getElementById('json-output').textContent = JSON.stringify(data, null, 2);
@@ -2024,8 +2611,6 @@
 
             // Show action buttons
             document.getElementById('results-actions').style.display = 'flex';
-
-            showResults();
         }
 
         function displayPackageHistory(data) {
@@ -2035,16 +2620,19 @@
             // Use the packages array from Rust
             let packages = [];
             
-            if (data.packages && Array.isArray(data.packages) && data.packages.length > 0) {
-                // Use the structured packages data from Rust
-                packages = data.packages.map(pkg => ({
+            const pkgRows = asWasmArray(data.packages);
+            if (pkgRows.length > 0) {
+                packages = pkgRows.map((rawPkg) => {
+                    const pkg = mapPlainTop(rawPkg) || rawPkg;
+                    return {
                     packageName: pkg.package_name || 'Unknown',
                     installer: pkg.installer || 'Unknown',
                     timestamp: pkg.timestamp || '',
                     versionCode: pkg.version_code || null,
                     success: pkg.success !== undefined ? pkg.success : false,
                     duration: pkg.duration_seconds ? formatDuration(pkg.duration_seconds * 1000) : null
-                }));
+                };
+                });
             }
 
             if (packages.length === 0) {
@@ -2124,6 +2712,22 @@
             return x;
         }
 
+        /** serde_wasm_bindgen may expose Rust Vec / sequences as Map or iterable, not Array — normalize for UI. */
+        function asWasmArray(v) {
+            if (v == null) return [];
+            if (Array.isArray(v)) return v;
+            if (typeof v === 'string') return [];
+            if (typeof Map !== 'undefined' && v instanceof Map) return Array.from(v.values());
+            if (typeof v[Symbol.iterator] === 'function') {
+                try {
+                    return Array.from(v);
+                } catch (e) {
+                    return [];
+                }
+            }
+            return [];
+        }
+
         function parserCellValue(v) {
             if (v === null || v === undefined) {
                 return '<span style="color:var(--text-secondary)">—</span>';
@@ -2192,6 +2796,233 @@
                 '</tr></thead><tbody>' + body + '</tbody></table></div>';
         }
 
+        function getDevicePolicyPack() {
+            const lang = window.currentLang || 'en';
+            return (window.BUGREPORT_I18N && window.BUGREPORT_I18N[lang]) || window.BUGREPORT_I18N.en || {};
+        }
+
+        function devicePolicySectionHeading(key, t) {
+            if (key === 'profile_owner') return t.devicePolicyTitleProfileOwner || 'Profile owner';
+            const um = /^device_admins_user_(\d+)$/.exec(key);
+            if (um) return (t.devicePolicyTitleDeviceAdminsUser || 'Device admins (user {u})').replace('{u}', um[1]);
+            if (key === 'device_admins') return t.devicePolicyTitleDeviceAdmins || 'Device admins';
+            if (key === 'local_policies') return t.devicePolicyTitleLocalPol || 'Local policies';
+            if (key === 'global_policies') return t.devicePolicyTitleGlobalPol || 'Global policies';
+            if (key === 'personal_apps_suspension') return t.devicePolicyTitlePersonalSusp || 'Personal apps suspension';
+            if (key === 'overlay_packages') return t.devicePolicyTitleOverlay || 'Overlay packages';
+            if (key === 'device_policy_cache') return t.devicePolicyTitlePolCache || 'Device policy cache';
+            if (key === 'device_state_cache') return t.devicePolicyTitleStateCache || 'Device state cache';
+            return key.replace(/_/g, ' ');
+        }
+
+        function devicePolicySearchBlob(sectionKey, v) {
+            const parts = [sectionKey];
+            try {
+                if (Array.isArray(v)) {
+                    v.forEach(function (row) {
+                        const a = mapPlainTop(row) || row;
+                        if (a && typeof a === 'object') {
+                            parts.push(String(a.package || ''), String(a.receiver || ''), String(a.uid || ''));
+                            if (Array.isArray(a.policies)) a.policies.forEach(function (p) { parts.push(String(p)); });
+                        }
+                    });
+                } else if (v && typeof v === 'object' && !Array.isArray(v)) {
+                    parts.push(JSON.stringify(v));
+                } else parts.push(String(v));
+            } catch (e) {
+                /* ignore */
+            }
+            return parts.join(' ').toLowerCase();
+        }
+
+        function devicePolicyAdminExtraFields(admin) {
+            const o = Object.assign({}, mapPlainTop(admin) || admin);
+            ['package', 'receiver', 'uid', 'policies', 'component'].forEach(function (k) { delete o[k]; });
+            return o;
+        }
+
+        function renderDevicePolicyAdminsTable(admins, t) {
+            if (!Array.isArray(admins) || admins.length === 0) {
+                return '<p style="color:var(--text-secondary)">—</p>';
+            }
+            const thPkg = escapeHtml(t.devicePolicyThPackage || 'Package');
+            const thRcv = escapeHtml(t.devicePolicyThReceiver || 'Receiver');
+            const thUid = escapeHtml(t.devicePolicyThUid || 'UID');
+            const thPol = escapeHtml(t.devicePolicyThPolicies || 'Policies');
+            const moreLbl = escapeHtml(t.devicePolicyMoreFields || 'More fields');
+            const rows = admins
+                .map(function (raw) {
+                    const a = mapPlainTop(raw) || raw;
+                    const pol = Array.isArray(a.policies) ? a.policies : [];
+                    let polCell;
+                    if (!pol.length) {
+                        polCell = '—';
+                    } else {
+                        const sum = escapeHtml(
+                            (t.devicePolicyPoliciesCount || '{n} policies').replace('{n}', String(pol.length))
+                        );
+                        polCell =
+                            '<details class="parser-dp-inline-details"><summary>' +
+                            sum +
+                            '</summary><ul class="parser-dp-mono-list">' +
+                            pol
+                                .map(function (p) {
+                                    return '<li><code>' + escapeHtml(String(p)) + '</code></li>';
+                                })
+                                .join('') +
+                            '</ul></details>';
+                    }
+                    const extra = devicePolicyAdminExtraFields(a);
+                    const extraKeys = Object.keys(extra).filter(function (k) { return extra[k] !== undefined; });
+                    let more = '';
+                    if (extraKeys.length) {
+                        more =
+                            '<details style="margin-top:0.35rem"><summary>' +
+                            moreLbl +
+                            '</summary>' +
+                            renderKeyValueTableFromObject(extra) +
+                            '</details>';
+                    }
+                    return (
+                        '<tr><td><code>' +
+                        escapeHtml(String(a.package != null ? a.package : '—')) +
+                        '</code></td><td><code>' +
+                        escapeHtml(String(a.receiver != null ? a.receiver : '—')) +
+                        '</code></td><td>' +
+                        escapeHtml(a.uid != null ? String(a.uid) : '—') +
+                        '</td><td>' +
+                        polCell +
+                        '</td></tr>' +
+                        (more ? '<tr><td colspan="4" style="border-top:none;padding-top:0">' + more + '</td></tr>' : '')
+                    );
+                })
+                .join('');
+            return (
+                '<div class="data-table-container" style="max-height:24rem"><table class="data-table parser-dp-table"><thead><tr><th>' +
+                thPkg +
+                '</th><th>' +
+                thRcv +
+                '</th><th>' +
+                thUid +
+                '</th><th>' +
+                thPol +
+                '</th></tr></thead><tbody>' +
+                rows +
+                '</tbody></table></div>'
+            );
+        }
+
+        function renderDevicePolicyRestrictionsTables(root, t) {
+            const o = mapPlainTop(root) || root;
+            if (!o || typeof o !== 'object' || Array.isArray(o)) return renderDevicePolicySectionValue(root);
+            const userKeys = Object.keys(o)
+                .filter(function (k) {
+                    return /^user_\d+$/.test(k);
+                })
+                .sort(function (a, b) {
+                    return parseInt(a.slice(5), 10) - parseInt(b.slice(5), 10);
+                });
+            if (!userKeys.length) return renderKeyValueTableFromObject(o);
+            const thR = escapeHtml(t.devicePolicyThRestriction || 'Restriction');
+            const thRes = escapeHtml(t.devicePolicyThResolved || 'Resolved');
+            const thPer = escapeHtml(t.devicePolicyThPerAdmin || 'Per-admin');
+            return userKeys
+                .map(function (uk) {
+                    const arr = o[uk];
+                    if (!Array.isArray(arr) || !arr.length) return '';
+                    const uid = uk.replace(/^user_/, '');
+                    const headLine = escapeHtml(
+                        (t.devicePolicyUserRestrictions || 'User {u} ({n} restrictions)')
+                            .replace('{u}', uid)
+                            .replace('{n}', String(arr.length))
+                    );
+                    const body = arr
+                        .map(function (raw) {
+                            const p = mapPlainTop(raw) || raw;
+                            const rk = p.key != null ? String(p.key) : '—';
+                            const res = parserCellValue(p.resolved_policy);
+                            const perRaw = p.per_admin_policy;
+                            let perCell;
+                            if (Array.isArray(perRaw) && perRaw.length) {
+                                const first = mapPlainTop(perRaw[0]) || perRaw[0];
+                                if (first && typeof first === 'object') {
+                                    perCell =
+                                        '<details><summary>' +
+                                        escapeHtml(String(perRaw.length)) +
+                                        ' admin(s)</summary>' +
+                                        renderObjectArrayTable(perRaw) +
+                                        '</details>';
+                                } else perCell = parserCellValue(perRaw);
+                            } else perCell = parserCellValue(perRaw);
+                            return (
+                                '<tr><td><code>' +
+                                escapeHtml(rk) +
+                                '</code></td><td>' +
+                                res +
+                                '</td><td>' +
+                                perCell +
+                                '</td></tr>'
+                            );
+                        })
+                        .join('');
+                    return (
+                        '<details class="parser-dp-subsection" open><summary class="parser-dp-summary">' +
+                        headLine +
+                        '</summary><div class="data-table-container" style="max-height:20rem;margin-top:0.35rem"><table class="data-table"><thead><tr><th>' +
+                        thR +
+                        '</th><th>' +
+                        thRes +
+                        '</th><th>' +
+                        thPer +
+                        '</th></tr></thead><tbody>' +
+                        body +
+                        '</tbody></table></div></details>'
+                    );
+                })
+                .join('');
+        }
+
+        function renderDevicePolicyNamedAppLists(obj, t) {
+            const o = mapPlainTop(obj) || obj;
+            const keys = Object.keys(o).sort();
+            if (!keys.length) return '<p style="color:var(--text-secondary)">—</p>';
+            return keys
+                .map(function (listName) {
+                    const apps = o[listName];
+                    if (!Array.isArray(apps)) {
+                        return (
+                            '<div class="parser-dp-named" style="margin-bottom:0.5rem"><strong>' +
+                            escapeHtml(listName) +
+                            '</strong> ' +
+                            parserCellValue(apps) +
+                            '</div>'
+                        );
+                    }
+                    if (!apps.length) {
+                        return (
+                            '<details class="parser-dp-subsection"><summary>' +
+                            escapeHtml(listName) +
+                            ' <span class="parser-dp-cnt">(0)</span></summary><p style="color:var(--text-secondary)">—</p></details>'
+                        );
+                    }
+                    const items = apps
+                        .map(function (pkg) {
+                            return '<li><code>' + escapeHtml(String(pkg)) + '</code></li>';
+                        })
+                        .join('');
+                    return (
+                        '<details class="parser-dp-subsection" open><summary>' +
+                        escapeHtml(listName) +
+                        ' <span class="parser-dp-cnt">(' +
+                        apps.length +
+                        ')</span></summary><ul class="parser-dp-app-list">' +
+                        items +
+                        '</ul></details>'
+                    );
+                })
+                .join('');
+        }
+
         function renderMemoryParser(el, data) {
             if (!Array.isArray(data) || data.length === 0) {
                 el.innerHTML = '<p style="color:var(--text-secondary)">No <code>MEMORY INFO (/proc/meminfo)</code> snapshots in this bugreport.</p>';
@@ -2232,13 +3063,107 @@
 
         function renderDevicePolicyParser(el, data) {
             if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).length === 0) {
-                el.innerHTML = '<p style="color:var(--text-secondary)">No <code>DUMP OF SERVICE device_policy</code> section found.</p>';
+                el.innerHTML =
+                    '<p style="color:var(--text-secondary)">No <code>DUMP OF SERVICE device_policy</code> section found.</p>';
                 return;
             }
-            el.innerHTML = Object.keys(data).sort().map(function (sk) {
-                return '<div class="detail-section" style="margin-bottom:1rem"><strong style="word-break:break-all">' +
-                    escapeHtml(sk) + '</strong>' + renderDevicePolicySectionValue(data[sk]) + '</div>';
-            }).join('');
+            const t = getDevicePolicyPack();
+            const intro = t.devicePolicyIntro || '';
+            const ph = escapeHtml(t.devicePolicyFilterPlaceholder || 'Filter…');
+            const keys = Object.keys(data);
+            const adminKeys = keys
+                .filter(function (k) {
+                    return k === 'device_admins' || /^device_admins_user_\d+$/.test(k);
+                })
+                .sort(function (a, b) {
+                    if (a === 'device_admins') return -1;
+                    if (b === 'device_admins') return 1;
+                    const na = parseInt((/^device_admins_user_(\d+)$/.exec(a) || [, '0'])[1], 10);
+                    const nb = parseInt((/^device_admins_user_(\d+)$/.exec(b) || [, '0'])[1], 10);
+                    return na - nb;
+                });
+            const preferred = ['profile_owner']
+                .concat(adminKeys)
+                .concat([
+                    'local_policies',
+                    'global_policies',
+                    'personal_apps_suspension',
+                    'overlay_packages',
+                    'device_policy_cache',
+                    'device_state_cache',
+                ]);
+            const ordered = [];
+            preferred.forEach(function (k) {
+                if (keys.indexOf(k) >= 0 && ordered.indexOf(k) < 0) ordered.push(k);
+            });
+            keys
+                .sort()
+                .forEach(function (k) {
+                    if (ordered.indexOf(k) < 0) ordered.push(k);
+                });
+
+            const blocks = ordered
+                .map(function (sectionKey) {
+                    const v = data[sectionKey];
+                    const blob = devicePolicySearchBlob(sectionKey, v);
+                    let body;
+                    if (sectionKey === 'profile_owner' && v && typeof v === 'object' && !Array.isArray(v)) {
+                        body = renderKeyValueTableFromObject(v);
+                    } else if (
+                        (sectionKey === 'device_admins' || /^device_admins_user_\d+$/.test(sectionKey)) &&
+                        Array.isArray(v)
+                    ) {
+                        body = renderDevicePolicyAdminsTable(v, t);
+                    } else if (
+                        (sectionKey === 'local_policies' || sectionKey === 'global_policies') &&
+                        v &&
+                        typeof v === 'object' &&
+                        !Array.isArray(v)
+                    ) {
+                        body = renderDevicePolicyRestrictionsTables(v, t);
+                    } else if (
+                        (sectionKey === 'personal_apps_suspension' || sectionKey === 'overlay_packages') &&
+                        v &&
+                        typeof v === 'object' &&
+                        !Array.isArray(v)
+                    ) {
+                        body = renderDevicePolicyNamedAppLists(v, t);
+                    } else {
+                        body = renderDevicePolicySectionValue(v);
+                    }
+                    return (
+                        '<article class="parser-dp-block" data-dp-search="' +
+                        escapeHtml(blob.slice(0, 24000)) +
+                        '"><h4 class="parser-dp-block-title">' +
+                        escapeHtml(devicePolicySectionHeading(sectionKey, t)) +
+                        '</h4><div class="parser-dp-block-body">' +
+                        body +
+                        '</div></article>'
+                    );
+                })
+                .join('');
+
+            el.innerHTML =
+                '<p class="parser-dp-intro">' +
+                intro +
+                '</p><div class="search-box parser-dp-search-wrap" style="margin:0 0 0.75rem">' +
+                '<span class="search-icon">🔍</span><input type="search" id="parser-device-policy-filter" class="parser-dp-filter" placeholder="' +
+                ph +
+                '" autocomplete="off" /></div><div class="parser-dp-blocks">' +
+                blocks +
+                '</div>';
+
+            const inp = document.getElementById('parser-device-policy-filter');
+            if (inp) {
+                const runFilter = function () {
+                    const q = inp.value.trim().toLowerCase();
+                    el.querySelectorAll('.parser-dp-block').forEach(function (blk) {
+                        const hay = (blk.getAttribute('data-dp-search') || '').toLowerCase();
+                        blk.style.display = !q || hay.indexOf(q) >= 0 ? '' : 'none';
+                    });
+                };
+                inp.addEventListener('input', runFilter);
+            }
         }
 
         function renderAdbParser(el, data) {
@@ -2368,39 +3293,139 @@
             el.innerHTML = html;
         }
 
+        function privacyFieldPresent(v) {
+            if (v === undefined || v === null) return false;
+            if (typeof v === 'boolean' || typeof v === 'number') return true;
+            if (typeof v === 'string') return v.length > 0;
+            if (Array.isArray(v)) return v.length > 0;
+            const o = deepPlainForJson(mapPlainTop(v) || v);
+            return !!(o && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).length);
+        }
+
+        /** Structured last_location_* objects (lat/lon/accuracy/ert/provider/alt/spd from bugreport). */
+        function renderPrivacyLocationSnapshot(loc, title) {
+            const o = deepPlainForJson(mapPlainTop(loc) || loc);
+            if (!o || typeof o !== 'object' || Array.isArray(o)) {
+                return (
+                    '<div style="margin-top:0.5rem"><strong>' +
+                    escapeHtml(title) +
+                    '</strong><p>' +
+                    parserCellValue(loc) +
+                    '</p></div>'
+                );
+            }
+            const preferred = ['provider', 'latitude', 'longitude', 'accuracy', 'alt', 'spd', 'ert'];
+            const used = {};
+            let rows = '';
+            preferred.forEach(function (k) {
+                if (o[k] === undefined || o[k] === null) return;
+                used[k] = true;
+                rows +=
+                    '<tr><td style="width:34%;font-weight:600;color:var(--text-secondary);vertical-align:top">' +
+                    escapeHtml(k) +
+                    '</td><td><code style="font-size:0.8125rem;word-break:break-word">' +
+                    escapeHtml(String(o[k])) +
+                    '</code></td></tr>';
+            });
+            Object.keys(o)
+                .sort()
+                .forEach(function (k) {
+                    if (used[k]) return;
+                    rows +=
+                        '<tr><td style="width:34%;font-weight:600;color:var(--text-secondary);vertical-align:top">' +
+                        escapeHtml(k) +
+                        '</td><td><code style="font-size:0.8125rem;word-break:break-word">' +
+                        escapeHtml(String(o[k])) +
+                        '</code></td></tr>';
+                });
+            if (!rows) {
+                return (
+                    '<div class="parser-privacy-loc" style="margin-top:0.65rem"><strong style="display:block;margin-bottom:0.3rem">' +
+                    escapeHtml(title) +
+                    '</strong><p style="color:var(--text-secondary);font-size:0.85rem">No location fields in this snapshot.</p></div>'
+                );
+            }
+            let mapLink = '';
+            const latN = typeof o.latitude === 'number' ? o.latitude : parseFloat(o.latitude);
+            const lonN = typeof o.longitude === 'number' ? o.longitude : parseFloat(o.longitude);
+            if (isFinite(latN) && isFinite(lonN)) {
+                const osm =
+                    'https://www.openstreetmap.org/?mlat=' +
+                    encodeURIComponent(String(latN)) +
+                    '&mlon=' +
+                    encodeURIComponent(String(lonN)) +
+                    '#map=14/' +
+                    latN +
+                    '/' +
+                    lonN;
+                mapLink =
+                    '<p style="margin:0.35rem 0 0;font-size:0.78rem"><a href="' +
+                    escapeHtml(osm) +
+                    '" target="_blank" rel="noopener noreferrer">OpenStreetMap · this position</a></p>';
+            }
+            return (
+                '<div class="parser-privacy-loc" style="margin-top:0.65rem"><strong style="display:block;margin-bottom:0.3rem">' +
+                escapeHtml(title) +
+                '</strong><table class="info-table">' +
+                rows +
+                '</table>' +
+                mapLink +
+                '</div>'
+            );
+        }
+
         function renderPrivacyParser(el, data) {
             const root = data && data.privacy && typeof data.privacy === 'object' ? data.privacy : data;
-            const providers = root && root.location_providers;
-            if (!Array.isArray(providers) || providers.length === 0) {
+            const providers = asWasmArray(root && root.location_providers);
+            if (!providers.length) {
                 el.innerHTML = '<p style="color:var(--text-secondary)">No fused / location provider blocks found.</p>';
                 return;
             }
-            el.innerHTML = providers.map(function (p, idx) {
-                const prov = mapPlainTop(p) || p;
-                let h = '<div class="detail-section" style="margin-bottom:1rem"><strong>Location provider ' + (idx + 1) + '</strong>';
-                if (prov.type) {
-                    h += '<p style="font-size:0.85rem;color:var(--text-secondary);margin:0.25rem 0">' + escapeHtml(String(prov.type)) + '</p>';
-                }
-                if (prov.last_availability !== undefined && prov.last_availability !== null) {
-                    h += '<p style="margin:0.25rem 0">Last availability: <strong>' + (prov.last_availability ? 'true' : 'false') + '</strong></p>';
-                }
-                if (Array.isArray(prov.listeners) && prov.listeners.length) {
-                    h += '<div style="margin-top:0.5rem"><strong>Listeners</strong>' + renderObjectArrayTable(prov.listeners) + '</div>';
-                }
-                ['source', 'last_location_fine', 'last_location_coarse'].forEach(function (field) {
-                    if (!prov[field]) return;
-                    const label = field.replace(/_/g, ' ');
-                    if (typeof prov[field] === 'object' && !Array.isArray(prov[field])) {
-                        h += '<div style="margin-top:0.5rem"><strong>' + escapeHtml(label) + '</strong>' +
-                            renderKeyValueTableFromObject(prov[field]) + '</div>';
-                    } else {
-                        h += '<div style="margin-top:0.5rem"><strong>' + escapeHtml(label) + '</strong><p>' +
-                            parserCellValue(prov[field]) + '</p></div>';
+            el.innerHTML = providers
+                .map(function (p, idx) {
+                    const prov = deepPlainForJson(mapPlainTop(p) || p);
+                    let h =
+                        '<div class="detail-section" style="margin-bottom:1rem"><strong>Location provider ' +
+                        (idx + 1) +
+                        '</strong>';
+                    if (prov.type) {
+                        h +=
+                            '<p style="font-size:0.85rem;color:var(--text-secondary);margin:0.25rem 0">' +
+                            escapeHtml(String(prov.type)) +
+                            '</p>';
                     }
-                });
-                h += '</div>';
-                return h;
-            }).join('');
+                    if (Object.prototype.hasOwnProperty.call(prov, 'last_availability')) {
+                        h +=
+                            '<p style="margin:0.35rem 0">Last availability: <strong>' +
+                            (prov.last_availability ? 'true' : 'false') +
+                            '</strong></p>';
+                    }
+                    if (privacyFieldPresent(prov.last_location_fine)) {
+                        h += renderPrivacyLocationSnapshot(prov.last_location_fine, 'Last location (fine)');
+                    }
+                    if (privacyFieldPresent(prov.last_location_coarse)) {
+                        h += renderPrivacyLocationSnapshot(prov.last_location_coarse, 'Last location (coarse)');
+                    }
+                    if (privacyFieldPresent(prov.source)) {
+                        const src = deepPlainForJson(mapPlainTop(prov.source) || prov.source);
+                        h += '<div style="margin-top:0.65rem"><strong>Source</strong>';
+                        if (src && typeof src === 'object' && !Array.isArray(src)) {
+                            h += renderKeyValueTableFromObject(src);
+                        } else {
+                            h += '<p style="margin:0.25rem 0">' + parserCellValue(prov.source) + '</p>';
+                        }
+                        h += '</div>';
+                    }
+                    if (Array.isArray(prov.listeners) && prov.listeners.length) {
+                        h +=
+                            '<div style="margin-top:0.65rem"><strong>Listeners</strong>' +
+                            renderObjectArrayTable(prov.listeners) +
+                            '</div>';
+                    }
+                    h += '</div>';
+                    return h;
+                })
+                .join('');
         }
 
         function renderParserStructured(key, el, data) {
@@ -2436,7 +3461,10 @@
         }
 
         function fillSystemStatistics(data) {
-            const n = function (a) { return Array.isArray(a) ? a.length : 0; };
+            if (data == null || typeof data !== 'object') return;
+            const n = function (a) {
+                return asWasmArray(a).length;
+            };
             const set = function (id, v) {
                 const el = document.getElementById(id);
                 if (el) el.textContent = v;
@@ -2451,16 +3479,16 @@
             set('stats-network-stats-rows', String(n(data.network_stats)));
             set('stats-sockets', String(n(data.sockets)));
             const sri = data.sigma_rules_info;
-            set('stats-sigma-rules', String(Array.isArray(sri) ? sri.length : 0));
+            set('stats-sigma-rules', String(n(sri)));
             const sm = data.sigma_matches;
-            set('stats-sigma-matches', String(Array.isArray(sm) ? sm.length : 0));
+            set('stats-sigma-matches', String(n(sm)));
             let anrFiles = 0;
             let tombstones = 0;
             if (data.crash_info && typeof data.crash_info === 'object') {
                 const ci = mapPlainTop(data.crash_info);
                 const af = mapPlainTop(ci.anr_files);
-                if (af && Array.isArray(af.files)) anrFiles = af.files.length;
-                if (Array.isArray(ci.tombstones)) tombstones = ci.tombstones.length;
+                if (af) anrFiles = asWasmArray(af.files).length;
+                tombstones = asWasmArray(ci.tombstones).length;
             }
             set('stats-anr-files', String(anrFiles));
             set('stats-tombstones', String(tombstones));
@@ -2483,11 +3511,23 @@
             if (ap && ap instanceof Map) ap = Object.fromEntries(ap);
             const hasMap = ap && typeof ap === 'object' && !Array.isArray(ap);
 
+            let po = data.parser_outputs;
+            if (po && po instanceof Map) po = Object.fromEntries(po);
+            const hasPo = po && typeof po === 'object' && !Array.isArray(po);
+
+            const pack =
+                (window.BUGREPORT_I18N && window.BUGREPORT_I18N[window.currentLang || 'en']) ||
+                window.BUGREPORT_I18N.en ||
+                {};
             specs.forEach(function (spec) {
                 const card = document.getElementById(spec.cardId);
                 const bodyEl = document.getElementById(spec.bodyId);
                 if (!card || !bodyEl) return;
-                const raw = hasMap ? ap[spec.key] : null;
+                let raw = hasMap ? ap[spec.key] : null;
+                if (raw == null && hasPo && po[spec.key]) {
+                    const pe = mapPlainTop(po[spec.key]) || po[spec.key];
+                    if (pe && pe.success && pe.data != null) raw = pe.data;
+                }
                 if (raw == null) {
                     card.style.display = 'none';
                     bodyEl.innerHTML = '';
@@ -2496,7 +3536,120 @@
                 card.style.display = 'block';
                 const plain = deepPlainForJson(raw);
                 renderParserStructured(spec.key, bodyEl, plain);
+                const existingBar = bodyEl.querySelector('.parser-card-json-actions');
+                if (existingBar) existingBar.remove();
+                const bar = document.createElement('div');
+                bar.className = 'parser-card-json-actions';
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn-parser-copy-json';
+                btn.textContent = pack.btnCopyParserJson || 'Copy parser JSON';
+                const fb = document.createElement('span');
+                fb.className = 'copy-parser-inline-feedback';
+                fb.hidden = true;
+                fb.setAttribute('aria-live', 'polite');
+                const pk = spec.key;
+                btn.addEventListener('click', function () {
+                    void window.copyParserOutputJson(pk, fb);
+                });
+                bar.appendChild(btn);
+                bar.appendChild(fb);
+                bodyEl.insertBefore(bar, bodyEl.firstChild);
             });
+        }
+
+        function displayParserOutputs(data) {
+            const card = document.getElementById('parser-outputs-card');
+            const container = document.getElementById('parser-outputs-container');
+            if (!card || !container) return;
+
+            let po = data.parser_outputs;
+            if (po && po instanceof Map) po = Object.fromEntries(po);
+            if (!po || typeof po !== 'object' || Array.isArray(po)) {
+                card.style.display = 'none';
+                container.innerHTML = '';
+                return;
+            }
+
+            const keys = Object.keys(po).sort();
+            if (keys.length === 0) {
+                card.style.display = 'none';
+                container.innerHTML = '';
+                return;
+            }
+
+            card.style.display = 'block';
+            const pack =
+                (window.BUGREPORT_I18N && window.BUGREPORT_I18N[window.currentLang || 'en']) ||
+                window.BUGREPORT_I18N.en ||
+                {};
+            const copyBtnLabel = escapeHtml(pack.btnCopyParserJson || 'Copy parser JSON');
+            const preStyle =
+                'margin: 0.5rem 0 0; padding: 0.75rem; max-height: 28rem; overflow: auto; ' +
+                'background: var(--bg-secondary, rgba(0,0,0,0.04)); border-radius: 6px; ' +
+                'font-size: 0.75rem; line-height: 1.35; white-space: pre-wrap; word-break: break-word;';
+
+            container.innerHTML = keys
+                .map(function (k) {
+                    const entry = mapPlainTop(po[k]) || po[k];
+                    const ok = entry && entry.success === true;
+                    const ms = entry && entry.duration_ms != null ? String(entry.duration_ms) : '—';
+                    const statusHtml = ok
+                        ? '<span style="color: var(--success);">OK</span>'
+                        : '<span style="color: var(--error);">Failed</span>';
+                    let actions = '';
+                    if (ok && entry.data != null) {
+                        actions =
+                            '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;margin:0.5rem 0 0">' +
+                            '<button type="button" class="btn-parser-copy-json" data-parser-copy-key="' +
+                            escapeHtml(k) +
+                            '">' +
+                            copyBtnLabel +
+                            '</button><span class="copy-parser-inline-feedback" hidden aria-live="polite"></span></div>';
+                    }
+                    let inner = '';
+                    if (ok && entry.data != null) {
+                        const jsonStr = JSON.stringify(deepPlainForJson(entry.data), null, 2);
+                        inner = actions + '<pre style="' + preStyle + '">' + escapeHtml(jsonStr) + '</pre>';
+                    } else if (entry && entry.error != null && entry.error !== '') {
+                        inner =
+                            '<pre style="' +
+                            preStyle +
+                            '">' +
+                            escapeHtml(String(entry.error)) +
+                            '</pre>';
+                    } else {
+                        inner =
+                            '<p style="margin: 0.5rem 0 0; font-size: 0.8125rem; color: var(--text-secondary);">No payload.</p>';
+                    }
+                    return (
+                        '<details class="result-card" style="margin-bottom: 0.75rem; padding: 0.75rem 1rem;">' +
+                        '<summary style="cursor: pointer; font-weight: 600; list-style: none;">' +
+                        escapeHtml(k) +
+                        ' — ' +
+                        statusHtml +
+                        ' · ' +
+                        escapeHtml(ms) +
+                        ' ms</summary>' +
+                        '<div>' +
+                        inner +
+                        '</div></details>'
+                    );
+                })
+                .join('');
+
+            if (!container.dataset.parserCopyDelegated) {
+                container.dataset.parserCopyDelegated = '1';
+                container.addEventListener('click', function (ev) {
+                    const btn = ev.target.closest('.btn-parser-copy-json');
+                    if (!btn || !container.contains(btn)) return;
+                    const pk = btn.getAttribute('data-parser-copy-key');
+                    if (!pk) return;
+                    const row = btn.parentElement;
+                    const fb = row ? row.querySelector('.copy-parser-inline-feedback') : null;
+                    void window.copyParserOutputJson(pk, fb);
+                });
+            }
         }
 
         function escapeHtml(text) {
@@ -2653,16 +3806,17 @@
             const packageDetailsUserListEl = document.getElementById('package-details-user-list');
             const userCountBadge = document.getElementById('package-details-user-count-badge');
 
-            if (!data.package_details || !Array.isArray(data.package_details) || data.package_details.length === 0) {
+            const detailRows = asWasmArray(data.package_details);
+            if (detailRows.length === 0) {
                 packageDetailsCard.style.display = 'none';
                 if (packageDetailsUserCard) packageDetailsUserCard.style.display = 'none';
                 return;
             }
 
             packageDetailsCard.style.display = 'block';
-            countBadge.textContent = data.package_details.length;
+            countBadge.textContent = detailRows.length;
 
-            const sortedDetails = data.package_details.slice().sort(sortPackagesByLatestInstallDesc);
+            const sortedDetails = detailRows.map((r) => mapPlainTop(r) || r).sort(sortPackagesByLatestInstallDesc);
             const userPkgs = sortedDetails.filter(packageIsUserInstalled);
             if (packageDetailsUserCard && packageDetailsUserListEl && userCountBadge) {
                 if (userPkgs.length === 0) {
@@ -3138,17 +4292,19 @@
             const powerHistoryListEl = document.getElementById('power-history-list');
             const countBadge = document.getElementById('power-history-count-badge');
 
-            if (!data.power_history || !Array.isArray(data.power_history) || data.power_history.length === 0) {
+            const rows = asWasmArray(data.power_history);
+            if (rows.length === 0) {
                 powerHistoryCard.style.display = 'none';
                 return;
             }
 
             powerHistoryCard.style.display = 'block';
-            countBadge.textContent = data.power_history.length;
+            countBadge.textContent = rows.length;
 
             let html = '<div class="power-history-container">';
             
-            data.power_history.forEach((entry, index) => {
+            rows.forEach((rawEntry, index) => {
+                const entry = mapPlainTop(rawEntry) || rawEntry;
                 html += `<div class="power-history-entry">`;
                 html += `<div class="power-history-header">`;
                 html += `<h4>${escapeHtml(entry.timestamp)}</h4>`;
@@ -3160,16 +4316,19 @@
                 html += `<div class="power-history-content">`;
                 
                 // History Events
-                if (entry.history_events && entry.history_events.length > 0) {
+                const histEvs = asWasmArray(entry.history_events);
+                if (histEvs.length > 0) {
                     html += `<div class="detail-section">`;
-                    html += `<strong>History Events (${entry.history_events.length})</strong>`;
+                    html += `<strong>History Events (${histEvs.length})</strong>`;
                     html += `<div class="power-events-container">`;
                     
-                    entry.history_events.forEach((event, eventIdx) => {
+                    histEvs.forEach((rawEv, eventIdx) => {
+                        const event = mapPlainTop(rawEv) || rawEv;
+                        const et = event.event_type != null ? String(event.event_type) : '';
                         html += `<div class="power-event-entry">`;
                         html += `<div class="power-event-header">`;
-                        if (event.event_type) {
-                            html += `<span class="power-event-type ${event.event_type.toLowerCase()}">${escapeHtml(event.event_type)}</span>`;
+                        if (et) {
+                            html += `<span class="power-event-type ${et.toLowerCase()}">${escapeHtml(et)}</span>`;
                         }
                         if (event.timestamp) {
                             html += `<span class="power-event-time">${escapeHtml(event.timestamp)}</span>`;
@@ -3189,13 +4348,14 @@
                 }
                 
                 // Stack Trace
-                if (entry.stack_trace && entry.stack_trace.length > 0) {
+                const stackLines = asWasmArray(entry.stack_trace);
+                if (stackLines.length > 0) {
                     html += `<div class="detail-section">`;
-                    html += `<strong>Stack Trace (${entry.stack_trace.length} lines)</strong>`;
+                    html += `<strong>Stack Trace (${stackLines.length} lines)</strong>`;
                     html += `<div class="stack-trace-container">`;
                     html += `<pre class="stack-trace">`;
-                    entry.stack_trace.forEach(line => {
-                        html += escapeHtml(line) + '\n';
+                    stackLines.forEach((line) => {
+                        html += escapeHtml(String(line)) + '\n';
                     });
                     html += `</pre>`;
                     html += `</div>`;
@@ -3215,17 +4375,19 @@
             const networkInfoListEl = document.getElementById('network-info-list');
             const countBadge = document.getElementById('network-info-count-badge');
 
-            if (!data.network_info || !Array.isArray(data.network_info) || data.network_info.length === 0) {
+            const nets = asWasmArray(data.network_info);
+            if (nets.length === 0) {
                 networkInfoCard.style.display = 'none';
                 return;
             }
 
             networkInfoCard.style.display = 'block';
-            countBadge.textContent = data.network_info.length;
+            countBadge.textContent = nets.length;
 
             let html = '<div class="package-details-container">';
             
-            data.network_info.forEach((net, index) => {
+            nets.forEach((rawNet, index) => {
+                const net = mapPlainTop(rawNet) || rawNet;
                 html += `<div class="package-detail-item" data-interface-name="${(net.interface_name || '').toLowerCase()}" data-ip="${(net.ip_address || '').toLowerCase()}">`;
                 html += `<div class="package-detail-header">`;
                 html += `<h4>${escapeHtml(net.interface_name || 'Unknown Interface')}</h4>`;
@@ -3305,23 +4467,25 @@
 
             // Add search functionality
             const searchInput = document.getElementById('network-search-input');
-            searchInput.addEventListener('input', (e) => {
-                const query = e.target.value.toLowerCase();
-                const items = document.querySelectorAll('.package-detail-item[data-interface-name]');
-                let visibleCount = 0;
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    const query = e.target.value.toLowerCase();
+                    const items = document.querySelectorAll('.package-detail-item[data-interface-name]');
+                    let visibleCount = 0;
 
-                items.forEach(item => {
-                    const interfaceName = item.getAttribute('data-interface-name') || '';
-                    const ip = item.getAttribute('data-ip') || '';
-                    
-                    if (interfaceName.includes(query) || ip.includes(query)) {
-                        item.style.display = 'block';
-                        visibleCount++;
-                    } else {
-                        item.style.display = 'none';
-                    }
+                    items.forEach(item => {
+                        const interfaceName = item.getAttribute('data-interface-name') || '';
+                        const ip = item.getAttribute('data-ip') || '';
+                        
+                        if (interfaceName.includes(query) || ip.includes(query)) {
+                            item.style.display = 'block';
+                            visibleCount++;
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
                 });
-            });
+            }
         }
 
         function displayNetworkStats(data) {
@@ -3329,17 +4493,19 @@
             const networkStatsListEl = document.getElementById('network-stats-list');
             const countBadge = document.getElementById('network-stats-count-badge');
 
-            if (!data.network_stats || !Array.isArray(data.network_stats) || data.network_stats.length === 0) {
+            const statsRows = asWasmArray(data.network_stats);
+            if (statsRows.length === 0) {
                 networkStatsCard.style.display = 'none';
                 return;
             }
 
             networkStatsCard.style.display = 'block';
-            countBadge.textContent = data.network_stats.length;
+            countBadge.textContent = statsRows.length;
 
             let html = '<div class="package-details-container">';
             
-            data.network_stats.forEach((stat, index) => {
+            statsRows.forEach((rawStat, index) => {
+                const stat = mapPlainTop(rawStat) || rawStat;
                 const networkType = stat.network_type || 'Unknown';
                 const networkName = stat.wifi_network_name || stat.subscriber_id || 'N/A';
                 
@@ -3404,23 +4570,25 @@
 
             // Add search functionality
             const searchInput = document.getElementById('network-stats-search-input');
-            searchInput.addEventListener('input', (e) => {
-                const query = e.target.value.toLowerCase();
-                const items = document.querySelectorAll('.package-detail-item[data-network-type]');
-                let visibleCount = 0;
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    const query = e.target.value.toLowerCase();
+                    const items = document.querySelectorAll('.package-detail-item[data-network-type]');
+                    let visibleCount = 0;
 
-                items.forEach(item => {
-                    const networkType = item.getAttribute('data-network-type') || '';
-                    const networkName = item.getAttribute('data-network-name') || '';
-                    
-                    if (networkType.includes(query) || networkName.includes(query)) {
-                        item.style.display = 'block';
-                        visibleCount++;
-                    } else {
-                        item.style.display = 'none';
-                    }
+                    items.forEach(item => {
+                        const networkType = item.getAttribute('data-network-type') || '';
+                        const networkName = item.getAttribute('data-network-name') || '';
+                        
+                        if (networkType.includes(query) || networkName.includes(query)) {
+                            item.style.display = 'block';
+                            visibleCount++;
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
                 });
-            });
+            }
         }
 
         function displayUsbInfo(data) {
@@ -3434,9 +4602,9 @@
                 return;
             }
 
-            const usbInfo = data.usb_info;
-            const devices = Array.isArray(usbInfo.connected_devices) ? usbInfo.connected_devices : [];
-            const ports = Array.isArray(usbInfo.ports) ? usbInfo.ports : [];
+            const usbInfo = mapPlainTop(data.usb_info) || data.usb_info;
+            const devices = asWasmArray(usbInfo.connected_devices);
+            const ports = asWasmArray(usbInfo.ports);
 
             if (devices.length === 0 && ports.length === 0) {
                 usbCard.style.display = 'none';
@@ -3481,7 +4649,8 @@
                 portsHtml += '<div class="package-detail-content">';
                 portsHtml += '<table class="info-table">';
                 
-                ports.forEach((port, idx) => {
+                ports.forEach((rawPort, idx) => {
+                    const port = mapPlainTop(rawPort) || rawPort;
                     portsHtml += '<tr>';
                     portsHtml += `<td>Port ${idx + 1} (${escapeHtml(port.id || 'Unknown')}):</td>`;
                     portsHtml += '<td>';
@@ -3519,7 +4688,8 @@
             // Display devices
             let devicesHtml = '<div class="package-details-container">';
             
-            devices.forEach((device, index) => {
+            devices.forEach((rawDevice, index) => {
+                const device = mapPlainTop(rawDevice) || rawDevice;
                 const vid = device.vid || 'Unknown';
                 const pid = device.pid || 'Unknown';
                 const interfaceName = device.interface || 'Unknown';
@@ -3606,29 +4776,31 @@
 
             // Add search functionality
             const searchInput = document.getElementById('usb-search-input');
-            searchInput.addEventListener('input', (e) => {
-                const query = e.target.value.toLowerCase();
-                const items = document.querySelectorAll('#usb-devices-list .package-detail-item');
-                let visibleCount = 0;
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    const query = e.target.value.toLowerCase();
+                    const items = document.querySelectorAll('#usb-devices-list .package-detail-item');
+                    let visibleCount = 0;
 
-                items.forEach(item => {
-                    const vid = item.getAttribute('data-vid') || '';
-                    const pid = item.getAttribute('data-pid') || '';
-                    const driver = item.getAttribute('data-driver') || '';
-                    const interfaceName = item.getAttribute('data-interface') || '';
-                    const product = item.getAttribute('data-product') || '';
-                    const mfr = item.getAttribute('data-usb-mfr') || '';
-                    const path = item.getAttribute('data-path') || '';
-                    const hay = vid + pid + driver + interfaceName + product + mfr + path;
-                    
-                    if (!query || hay.includes(query)) {
-                        item.style.display = 'block';
-                        visibleCount++;
-                    } else {
-                        item.style.display = 'none';
-                    }
+                    items.forEach(item => {
+                        const vid = item.getAttribute('data-vid') || '';
+                        const pid = item.getAttribute('data-pid') || '';
+                        const driver = item.getAttribute('data-driver') || '';
+                        const interfaceName = item.getAttribute('data-interface') || '';
+                        const product = item.getAttribute('data-product') || '';
+                        const mfr = item.getAttribute('data-usb-mfr') || '';
+                        const path = item.getAttribute('data-path') || '';
+                        const hay = vid + pid + driver + interfaceName + product + mfr + path;
+                        
+                        if (!query || hay.includes(query)) {
+                            item.style.display = 'block';
+                            visibleCount++;
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
                 });
-            });
+            }
         }
 
         function displayBluetoothInfo(data) {
@@ -3637,13 +4809,13 @@
             const bluetoothDevicesListEl = document.getElementById('bluetooth-devices-list');
             const countBadge = document.getElementById('bluetooth-devices-count-badge');
 
-            if (!data.bluetooth_info || !data.bluetooth_info.devices || !Array.isArray(data.bluetooth_info.devices)) {
+            if (!data.bluetooth_info) {
                 bluetoothCard.style.display = 'none';
                 return;
             }
 
-            const btInfo = data.bluetooth_info;
-            const devices = btInfo.devices || [];
+            const btInfo = deepPlainForJson(mapPlainTop(data.bluetooth_info) || data.bluetooth_info) || {};
+            const devices = asWasmArray(btInfo.devices);
 
             if (devices.length === 0 && !btInfo.adapter_properties) {
                 bluetoothCard.style.display = 'none';
@@ -3706,12 +4878,14 @@
             // Display devices
             let devicesHtml = '<div class="package-details-container">';
             
-            devices.forEach((device, index) => {
+            devices.forEach((rawDevice, index) => {
+                const device = mapPlainTop(rawDevice) || rawDevice;
                 const isConnected = device.connected === true;
                 const deviceName = device.name || 'Unknown Device';
                 const macAddress = device.mac_address || device.masked_address || 'N/A';
+                const svcList = asWasmArray(device.services);
                 
-                devicesHtml += `<div class="package-detail-item" data-device-name="${deviceName.toLowerCase()}" data-mac="${macAddress.toLowerCase()}" data-services="${(device.services || []).join(' ').toLowerCase()}">`;
+                devicesHtml += `<div class="package-detail-item" data-device-name="${deviceName.toLowerCase()}" data-mac="${macAddress.toLowerCase()}" data-services="${svcList.join(' ').toLowerCase()}">`;
                 devicesHtml += '<div class="package-detail-header">';
                 devicesHtml += `<h4>${escapeHtml(deviceName)}</h4>`;
                 if (isConnected) {
@@ -3748,14 +4922,14 @@
                 if (device.manufacturer !== undefined) {
                     devicesHtml += `<tr><td>Manufacturer ID:</td><td>${device.manufacturer}</td></tr>`;
                 }
-                if (device.services && device.services.length > 0) {
+                if (svcList.length > 0) {
                     devicesHtml += `<tr><td>Services:</td><td>`;
-                    device.services.forEach((service, idx) => {
+                    svcList.forEach((service, idx) => {
                         if (service !== 'No uuid' && service !== '00000000-0000-0000-0000-000000000000') {
-                            devicesHtml += `<span class="service-badge">${escapeHtml(service)}</span>`;
+                            devicesHtml += `<span class="service-badge">${escapeHtml(String(service))}</span>`;
                         }
                     });
-                    if (device.services.every(s => s === 'No uuid' || s === '00000000-0000-0000-0000-000000000000')) {
+                    if (svcList.every(s => s === 'No uuid' || s === '00000000-0000-0000-0000-000000000000')) {
                         devicesHtml += '<span style="color: var(--text-secondary);">No services</span>';
                     }
                     devicesHtml += '</td></tr>';
@@ -3771,24 +4945,26 @@
 
             // Add search functionality
             const searchInput = document.getElementById('bluetooth-search-input');
-            searchInput.addEventListener('input', (e) => {
-                const query = e.target.value.toLowerCase();
-                const items = document.querySelectorAll('#bluetooth-devices-list .package-detail-item');
-                let visibleCount = 0;
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    const query = e.target.value.toLowerCase();
+                    const items = document.querySelectorAll('#bluetooth-devices-list .package-detail-item');
+                    let visibleCount = 0;
 
-                items.forEach(item => {
-                    const deviceName = item.getAttribute('data-device-name') || '';
-                    const mac = item.getAttribute('data-mac') || '';
-                    const services = item.getAttribute('data-services') || '';
-                    
-                    if (deviceName.includes(query) || mac.includes(query) || services.includes(query)) {
-                        item.style.display = 'block';
-                        visibleCount++;
-                    } else {
-                        item.style.display = 'none';
-                    }
+                    items.forEach(item => {
+                        const deviceName = item.getAttribute('data-device-name') || '';
+                        const mac = item.getAttribute('data-mac') || '';
+                        const services = item.getAttribute('data-services') || '';
+                        
+                        if (deviceName.includes(query) || mac.includes(query) || services.includes(query)) {
+                            item.style.display = 'block';
+                            visibleCount++;
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
                 });
-            });
+            }
         }
 
         function displayNetworkSockets(data) {
@@ -3796,19 +4972,21 @@
             const networkSocketsTableBody = document.getElementById('network-sockets-table-body');
             const countBadge = document.getElementById('network-sockets-count-badge');
 
-            if (!data.sockets || !Array.isArray(data.sockets) || data.sockets.length === 0) {
+            const sockRows = asWasmArray(data.sockets);
+            if (sockRows.length === 0) {
                 networkSocketsCard.style.display = 'none';
                 return;
             }
 
             networkSocketsCard.style.display = 'block';
-            countBadge.textContent = data.sockets.length;
+            countBadge.textContent = sockRows.length;
 
             // Clear table
             networkSocketsTableBody.innerHTML = '';
 
             // Add sockets to table
-            data.sockets.forEach(socket => {
+            sockRows.forEach((rawSocket) => {
+                const socket = mapPlainTop(rawSocket) || rawSocket;
                 const row = document.createElement('tr');
                 const protocol = socket.protocol || '-';
                 const localAddr = socket.local_address || '-';
@@ -3846,32 +5024,34 @@
 
             // Add search functionality
             const searchInput = document.getElementById('network-sockets-search-input');
-            searchInput.addEventListener('input', (e) => {
-                const query = e.target.value.toLowerCase();
-                const rows = networkSocketsTableBody.querySelectorAll('tr');
-                let visibleCount = 0;
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    const query = e.target.value.toLowerCase();
+                    const rows = networkSocketsTableBody.querySelectorAll('tr');
+                    let visibleCount = 0;
 
-                rows.forEach(row => {
-                    const protocol = row.getAttribute('data-protocol') || '';
-                    const local = row.getAttribute('data-local') || '';
-                    const localPort = row.getAttribute('data-local-port') || '';
-                    const remote = row.getAttribute('data-remote') || '';
-                    const remotePort = row.getAttribute('data-remote-port') || '';
-                    const state = row.getAttribute('data-state') || '';
-                    
-                    if (protocol.includes(query) || 
-                        local.includes(query) || 
-                        localPort.includes(query) ||
-                        remote.includes(query) || 
-                        remotePort.includes(query) ||
-                        state.includes(query)) {
-                        row.style.display = '';
-                        visibleCount++;
-                    } else {
-                        row.style.display = 'none';
-                    }
+                    rows.forEach(row => {
+                        const protocol = row.getAttribute('data-protocol') || '';
+                        const local = row.getAttribute('data-local') || '';
+                        const localPort = row.getAttribute('data-local-port') || '';
+                        const remote = row.getAttribute('data-remote') || '';
+                        const remotePort = row.getAttribute('data-remote-port') || '';
+                        const state = row.getAttribute('data-state') || '';
+                        
+                        if (protocol.includes(query) || 
+                            local.includes(query) || 
+                            localPort.includes(query) ||
+                            remote.includes(query) || 
+                            remotePort.includes(query) ||
+                            state.includes(query)) {
+                            row.style.display = '';
+                            visibleCount++;
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
                 });
-            });
+            }
         }
 
         function showSocketDetails(socket) {
@@ -4264,7 +5444,7 @@
                 showStatus('Hash calculated! Analyzing...', 'info');
 
                 const { rules, rulesInfo } = await fetchSigmaRules();
-                const result = await adb.analyze_bugreport(bugreportData, rules);
+                const result = parseBugreportAnalysis(await adb.analyze_bugreport(bugreportData, rules));
                 result.sigma_rules_info = rulesInfo;
 
                 result.file_info = {
@@ -4340,7 +5520,7 @@
 
                 const { rules, rulesInfo } = await fetchSigmaRules();
                 const startAnalysis = Date.now();
-                const result = await adb.analyze_bugreport(bugreportData, rules);
+                const result = parseBugreportAnalysis(await adb.analyze_bugreport(bugreportData, rules));
                 result.sigma_rules_info = rulesInfo;
 
                 const analysisDurationMs = Date.now() - startAnalysis;
@@ -4474,7 +5654,7 @@
                 }
 
                 const { rules, rulesInfo } = await fetchSigmaRules();
-                const result = await adb.analyze_bugreport(uint8Array, rules);
+                const result = parseBugreportAnalysis(await adb.analyze_bugreport(uint8Array, rules));
                 result.sigma_rules_info = rulesInfo;
 
                 result.file_info = {

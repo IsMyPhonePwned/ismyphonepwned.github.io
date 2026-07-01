@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>IsMyPhonePwned · Intrusion logs</title>
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="stylesheet" href="assets/site.css">
+    <script src="assets/timeline-view.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-container">
+                <img src="logo.png" alt="IsMyPhonePwned Logo" class="logo" onerror="this.style.display='none';">
+                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <h1 class="logo-text">IsMyPhonePwned ?</h1>
+                    <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400;" data-i18n="pageSubtitle">Android · Intrusion Logging (AAPM)</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="lang-switcher" role="group" aria-label="Language">
+                    <button type="button" data-lang="en" class="active" onclick="window.setLang('en')">EN</button>
+                    <button type="button" data-lang="fr" onclick="window.setLang('fr')">FR</button>
+                    <button type="button" data-lang="zh" onclick="window.setLang('zh')">中文</button>
+                </div>
+                <span id="wasm-status" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px;" data-i18n="wasmLoading">⏳ Loading...</span>
+                <button class="theme-toggle" onclick="toggleTheme()">
+                    <span id="theme-icon">🌙</span>
+                    <span id="theme-text" data-i18n="themeDark">Dark</span>
+                </button>
+            </div>
+        </header>
+
+        <nav class="page-nav" aria-label="Pages">
+            <a href="index.html" data-i18n="navHome">Home</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="android.html" data-i18n="navAndroidPage">Android (bugreport)</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="iphone.html" data-i18n="navIphonePage">iPhone (sysdiagnose)</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="artifact-paths.html">Artifact paths</a>
+        </nav>
+
+        <div id="status" class="status"></div>
+        <div id="progress" class="progress"><div class="progress-bar"></div></div>
+        <div id="loading-spinner" class="loading-spinner">
+            <div class="spinner"></div>
+            <div class="loading-text" data-i18n="analyzingWait">Analyzing…</div>
+        </div>
+
+        <div class="section">
+            <h2 data-i18n="uploadTitle">Intrusion Logging files</h2>
+            <p data-i18n="uploadDesc">Upload Android Intrusion Logging (AAPM) NDJSON — plain <code>.txt</code> logs, a <code>.zip</code> archive, or an AndroidQF-style folder (<code>intrusion_logs/logs/*.txt</code>). Parsing runs locally via il-extractor-library (WASM).</p>
+            <div class="upload-zone" id="il-upload-zone">
+                <div class="upload-icon">🛡️</div>
+                <div data-i18n="uploadDrop">Click or drag .txt / .zip files here</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;" data-i18n="uploadFormats">One or more NDJSON log files · duplicate lines are deduplicated</div>
+            </div>
+            <input type="file" id="il-file-input" accept=".txt,.zip,text/plain,application/zip" multiple>
+            <input type="file" id="il-folder-input" webkitdirectory multiple hidden>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; align-items: center;">
+                <button type="button" id="btn-pick-files" data-i18n="btnPickFiles">Choose files…</button>
+                <button type="button" id="btn-pick-folder" data-i18n="btnPickFolder">Choose folder…</button>
+                <button id="btn-analyze-il" class="hidden" onclick="window.analyzeIntrusionLogsUpload()" data-i18n="analyzeBtn">Analyze intrusion logs</button>
+            </div>
+            <ul id="il-file-list" style="margin: 0.75rem 0 0; padding-left: 1.25rem; font-size: 0.8125rem; color: var(--text-secondary);"></ul>
+        </div>
+
+        <div id="results" class="results">
+            <div id="il-parsed-wrap" class="section" style="display: none;">
+                <h2 data-i18n="resultsSectionTitle">Analysis results</h2>
+                <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;" data-i18n="resultsSectionBlurb">Summary of loaded events, per-parser status, security tag counts, and a visual timeline. Full JSON is below.</p>
+                <table class="detail-table" id="il-meta-table" style="margin-bottom: 1.25rem;">
+                    <tbody id="il-summary-body"></tbody>
+                </table>
+                <div id="il-security-section" style="display: none; margin-bottom: 1.25rem;">
+                    <h3 class="sysdiagnose-cards-heading" style="margin-top: 0; margin-bottom: 0.5rem; font-size: 1.05rem;" data-i18n="securityTagsTitle">Security event tags</h3>
+                    <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.65rem;" data-i18n="securityTagsBlurb">Counts by documented security_event tag (keyguard, adb_shell_cmd, etc.).</p>
+                    <div class="data-table-container">
+                        <table class="data-table" id="il-security-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="colEventTag">Event tag</th>
+                                    <th data-i18n="colCount">Count</th>
+                                </tr>
+                            </thead>
+                            <tbody id="il-security-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="il-timeline-section" class="sysdiagnose-timeline-card" style="display: none; margin-bottom: 1.25rem;">
+                    <h3 class="sysdiagnose-cards-heading" style="margin-top: 0; margin-bottom: 0.35rem; font-size: 1.05rem;" data-i18n="timelineSectionTitle">Timeline</h3>
+                    <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.65rem;" data-i18n="timelineSectionBlurb">DNS, connect, and security events colored by parser module. Search, filter, zoom, and export JSONL below.</p>
+                    <div id="il-timeline-dl-row"></div>
+                    <div id="il-timeline-mount"></div>
+                </div>
+                <h3 class="sysdiagnose-cards-heading" style="margin-top: 0.5rem; margin-bottom: 0.5rem; font-size: 1.05rem;" data-i18n="parserModulesTitle">Parser modules</h3>
+                <div class="data-table-container">
+                    <table class="data-table" id="il-parser-table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="colParser">Parser</th>
+                                <th data-i18n="colStatus">Status</th>
+                                <th data-i18n="colDuration">Duration (ms)</th>
+                                <th data-i18n="colNote">Note</th>
+                            </tr>
+                        </thead>
+                        <tbody id="il-parser-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="result-card">
+                <div class="section-header">
+                    <h3 data-i18n="fullDataJsonTitle">📋 Full Data (JSON)</h3>
+                </div>
+                <button type="button" class="section-toggle collapsed" onclick="toggleSection('json-output')">▼</button>
+                <div class="section-content collapsed" id="json-output-content">
+                    <div class="json-viewer" id="json-output" style="min-height: 4rem;">—</div>
+                </div>
+            </div>
+            <div id="results-actions" style="margin-top: 1.5rem; display: none; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                <button type="button" onclick="window.downloadIlResults()" style="background: #4CAF50; color: white;" data-i18n="btnDownloadJson">📥 Download JSON</button>
+                <button type="button" onclick="window.copyIlResults()" style="background: var(--accent); color: white;" data-i18n="btnCopyClipboard">📋 Copy to Clipboard</button>
+                <span id="copy-json-feedback" class="copy-json-feedback" hidden aria-live="polite"></span>
+            </div>
+        </div>
+
+        <footer style="text-align: center; padding: 1.5rem 0; color: var(--text-secondary); font-size: 0.813rem;">
+            <div style="margin-bottom: 0.75rem;">
+                <a href="https://github.com/IsMyPhonePwned/il-extractor-library" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;">il-extractor-library</a>
+            </div>
+            <p style="margin-top: 0.5rem; font-size: 0.8rem;">
+                <a href="https://github.com/IsMyPhonePwned/" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;" data-i18n="navGitHub">GitHub</a>
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        window.IL_I18N = {
+            en: {
+                pageSubtitle: 'Android · Intrusion Logging (AAPM)',
+                wasmLoading: '⏳ Loading...',
+                wasmReady: '✓ Ready',
+                wasmFailed: '❌ Failed to load',
+                themeDark: 'Dark',
+                themeLight: 'Light',
+                analyzingWait: 'Analyzing…',
+                navHome: 'Home',
+                navAndroidPage: 'Android (bugreport)',
+                navIphonePage: 'iPhone (sysdiagnose)',
+                uploadTitle: 'Intrusion Logging files',
+                uploadDesc: 'Upload Android Intrusion Logging (AAPM) NDJSON — plain .txt logs, a .zip archive, or an AndroidQF-style folder (intrusion_logs/logs/*.txt). Parsing runs locally via il-extractor-library (WASM).',
+                uploadDrop: 'Click or drag .txt / .zip files here',
+                uploadFormats: 'One or more NDJSON log files · duplicate lines are deduplicated',
+                btnPickFiles: 'Choose files…',
+                btnPickFolder: 'Choose folder…',
+                analyzeBtn: 'Analyze intrusion logs',
+                resultsSectionTitle: 'Analysis results',
+                resultsSectionBlurb: 'Summary of loaded events, per-parser status, security tag counts, and a visual timeline. Full JSON is below.',
+                securityTagsTitle: 'Security event tags',
+                securityTagsBlurb: 'Counts by documented security_event tag (keyguard, adb_shell_cmd, etc.).',
+                colEventTag: 'Event tag',
+                colCount: 'Count',
+                timelineSectionTitle: 'Timeline',
+                timelineSectionBlurb: 'DNS, connect, and security events colored by parser module. Search, filter, zoom, and export JSONL below.',
+                parserModulesTitle: 'Parser modules',
+                colParser: 'Parser',
+                colStatus: 'Status',
+                colDuration: 'Duration (ms)',
+                colNote: 'Note',
+                fullDataJsonTitle: '📋 Full Data (JSON)',
+                btnDownloadJson: '📥 Download JSON',
+                btnCopyClipboard: '📋 Copy to Clipboard',
+                navGitHub: 'GitHub',
+                labelEngine: 'Engine',
+                labelFilesLoaded: 'Files loaded',
+                labelTotalLines: 'Total lines',
+                labelSkippedLines: 'Skipped lines',
+                labelDuplicateLines: 'Duplicate lines',
+                labelTotalEvents: 'Total events',
+                labelDnsEvents: 'DNS events',
+                labelConnectEvents: 'Connect events',
+                labelSecurityEvents: 'Security events',
+                labelUnknownTypes: 'Unknown top-level types',
+                labelParsersOk: 'Parsers OK',
+                labelParsersErr: 'Parsers failed',
+                labelUploadCount: 'Uploaded files',
+                labelUploadBytes: 'Upload size',
+                statusOk: 'OK',
+                statusErr: 'Error',
+                jsonBuilding: 'Building JSON preview…',
+                jsonStringifyError: 'Could not build JSON text in the browser.',
+                analyzeDoneStatus: 'Done · {parsersOk} parsers OK · {events} events',
+                timelineTimesketchCount: '{n} timeline events from parsers.',
+                timelineDownloadJsonl: 'Download JSONL',
+                timelineScriptMissing: 'Timeline UI script failed to load (timeline-view.js).',
+                timelineSearchPlaceholder: 'Search timeline (message, parser, JSON fields)…',
+                timelineSearchAriaLabel: 'Filter timeline events by text',
+                timelineAllCategories: 'All',
+                timelineDetailTitle: 'Event detail',
+                timelineHintClick: 'Click an event for full JSON.',
+                timelineDetailSearchPlaceholder: 'Search inside this event…',
+                timelineDetailSearchMatches: '{cur} / {total} matches',
+                timelineDetailSearchZero: 'No matches in this event',
+                timelineDetailSearchPrev: 'Previous match',
+                timelineDetailSearchNext: 'Next match',
+                timelineShowing: 'Showing {shown} of {filtered} in the time window ({total} after search/category).',
+                timelineCapped: 'List limited to {max} rows — narrow filters or the time window.',
+                timelineApprox: 'approx.',
+                timelineBindingSnapshot: 'log capture',
+                timelineBindingSystemFallback: 'export clock',
+                timelineNoMatch: 'No events match.',
+                timelineVizHint: 'Hover a category chip to highlight its events · Drag · Wheel · +/− · Shift+drag pans',
+                timelineFitWindow: 'Fit full range',
+                timelineWindowLabel: 'Visible window',
+                timelineWindowFrom: 'Start',
+                timelineWindowTo: 'End',
+                timelineRangeStart: 'Window start',
+                timelineRangeEnd: 'Window end',
+                timelineZoomIn: 'Zoom in',
+                timelineZoomOut: 'Zoom out',
+                timelineZoomRangeTitle: 'Time range & zoom',
+                timelineZoomDetail: 'Detail level (narrow window)',
+                timelineZoomBrushHelp: 'Overview of filtered events — click to center the visible window.',
+                statusNoResultsDownload: '⚠️ No results to download',
+                statusNoResultsCopy: '⚠️ No results to copy',
+                statusDownloadOk: '✓ Downloaded!',
+                statusCopiedOk: '✓ Copied to clipboard!',
+                copyJsonDone: 'JSON copied to clipboard.',
+                statusCopyFailed: '❌ Copy failed',
+                filesSelected: '{n} file(s) selected ({size})'
+            },
+            fr: {
+                pageSubtitle: 'Android · Intrusion Logging (AAPM)',
+                wasmLoading: '⏳ Chargement…',
+                wasmReady: '✓ Prêt',
+                wasmFailed: '❌ Échec du chargement',
+                themeDark: 'Sombre',
+                themeLight: 'Clair',
+                analyzingWait: 'Analyse…',
+                navHome: 'Accueil',
+                navAndroidPage: 'Android (bugreport)',
+                navIphonePage: 'iPhone (sysdiagnose)',
+                uploadTitle: 'Fichiers Intrusion Logging',
+                uploadDesc: 'Envoyez des journaux NDJSON AAPM — fichiers .txt, archive .zip ou dossier type AndroidQF (intrusion_logs/logs/*.txt). Analyse locale via il-extractor-library (WASM).',
+                uploadDrop: 'Cliquez ou glissez des fichiers .txt / .zip ici',
+                uploadFormats: 'Un ou plusieurs fichiers NDJSON · les doublons sont ignorés',
+                btnPickFiles: 'Choisir des fichiers…',
+                btnPickFolder: 'Choisir un dossier…',
+                analyzeBtn: 'Analyser les journaux',
+                resultsSectionTitle: 'Résultats',
+                resultsSectionBlurb: 'Résumé des événements, statut des parseurs, tags de sécurité et chronologie. JSON complet ci-dessous.',
+                securityTagsTitle: 'Tags security_event',
+                securityTagsBlurb: 'Comptages par tag documenté (keyguard, adb_shell_cmd, etc.).',
+                colEventTag: 'Tag',
+                colCount: 'Nombre',
+                timelineSectionTitle: 'Chronologie',
+                timelineSectionBlurb: 'Événements DNS, connect et security par module parseur.',
+                parserModulesTitle: 'Modules parseur',
+                colParser: 'Parseur',
+                colStatus: 'Statut',
+                colDuration: 'Durée (ms)',
+                colNote: 'Note',
+                fullDataJsonTitle: '📋 Données complètes (JSON)',
+                btnDownloadJson: '📥 Télécharger JSON',
+                btnCopyClipboard: '📋 Copier',
+                navGitHub: 'GitHub',
+                labelEngine: 'Moteur',
+                labelFilesLoaded: 'Fichiers chargés',
+                labelTotalLines: 'Lignes totales',
+                labelSkippedLines: 'Lignes ignorées',
+                labelDuplicateLines: 'Doublons',
+                labelTotalEvents: 'Événements totaux',
+                labelDnsEvents: 'Événements DNS',
+                labelConnectEvents: 'Événements connect',
+                labelSecurityEvents: 'Événements security',
+                labelUnknownTypes: 'Types inconnus',
+                labelParsersOk: 'Parseurs OK',
+                labelParsersErr: 'Parseurs en échec',
+                labelUploadCount: 'Fichiers envoyés',
+                labelUploadBytes: 'Taille envoi',
+                statusOk: 'OK',
+                statusErr: 'Erreur',
+                jsonBuilding: 'Génération de l’aperçu JSON…',
+                jsonStringifyError: 'Impossible de produire le JSON dans le navigateur.',
+                analyzeDoneStatus: 'Terminé · {parsersOk} parseurs OK · {events} événements',
+                timelineTimesketchCount: '{n} événements chronologie.',
+                timelineDownloadJsonl: 'Télécharger JSONL',
+                timelineScriptMissing: 'Script chronologie non chargé (timeline-view.js).',
+                timelineSearchPlaceholder: 'Rechercher dans la chronologie…',
+                timelineSearchAriaLabel: 'Filtrer la chronologie',
+                timelineAllCategories: 'Tout',
+                timelineDetailTitle: 'Détail',
+                timelineHintClick: 'Cliquez un événement pour le JSON complet.',
+                timelineDetailSearchPlaceholder: 'Rechercher dans cet événement…',
+                timelineDetailSearchMatches: '{cur} / {total}',
+                timelineDetailSearchZero: 'Aucune correspondance',
+                timelineDetailSearchPrev: 'Précédent',
+                timelineDetailSearchNext: 'Suivant',
+                timelineShowing: '{shown} sur {filtered} ({total} après filtre).',
+                timelineCapped: 'Liste limitée à {max} lignes.',
+                timelineApprox: 'env.',
+                timelineBindingSnapshot: 'capture journal',
+                timelineBindingSystemFallback: 'horloge export',
+                timelineNoMatch: 'Aucun événement.',
+                timelineVizHint: 'Survol des puces · Glisser · Molette · +/−',
+                timelineFitWindow: 'Tout l’intervalle',
+                timelineWindowLabel: 'Fenêtre visible',
+                timelineWindowFrom: 'Début',
+                timelineWindowTo: 'Fin',
+                timelineRangeStart: 'Début fenêtre',
+                timelineRangeEnd: 'Fin fenêtre',
+                timelineZoomIn: 'Zoom +',
+                timelineZoomOut: 'Zoom −',
+                timelineZoomRangeTitle: 'Plage & zoom',
+                timelineZoomDetail: 'Niveau de détail',
+                timelineZoomBrushHelp: 'Vue d’ensemble — cliquer pour centrer.',
+                statusNoResultsDownload: '⚠️ Rien à télécharger',
+                statusNoResultsCopy: '⚠️ Rien à copier',
+                statusDownloadOk: '✓ Téléchargé !',
+                statusCopiedOk: '✓ Copié !',
+                copyJsonDone: 'JSON copié.',
+                statusCopyFailed: '❌ Échec copie',
+                filesSelected: '{n} fichier(s) ({size})'
+            },
+            zh: {
+                pageSubtitle: 'Android · 入侵日志 (AAPM)',
+                wasmLoading: '⏳ 加载中…',
+                wasmReady: '✓ 就绪',
+                wasmFailed: '❌ 加载失败',
+                themeDark: '深色',
+                themeLight: '浅色',
+                analyzingWait: '分析中…',
+                navHome: '首页',
+                navAndroidPage: 'Android (bugreport)',
+                navIphonePage: 'iPhone (sysdiagnose)',
+                uploadTitle: '入侵日志文件',
+                uploadDesc: '上传 Android 入侵日志 (AAPM) NDJSON — .txt、.zip 或 AndroidQF 目录 (intrusion_logs/logs/*.txt)。由 il-extractor-library (WASM) 在本地解析。',
+                uploadDrop: '点击或拖放 .txt / .zip 文件',
+                uploadFormats: '可多个 NDJSON 文件 · 重复行会去重',
+                btnPickFiles: '选择文件…',
+                btnPickFolder: '选择文件夹…',
+                analyzeBtn: '分析入侵日志',
+                resultsSectionTitle: '分析结果',
+                resultsSectionBlurb: '事件摘要、解析器状态、安全标签计数与时间线。完整 JSON 见下方。',
+                securityTagsTitle: 'security_event 标签',
+                securityTagsBlurb: '按已文档化标签计数（keyguard、adb_shell_cmd 等）。',
+                colEventTag: '标签',
+                colCount: '数量',
+                timelineSectionTitle: '时间线',
+                timelineSectionBlurb: '按解析器模块着色的 DNS、连接与安全事件。',
+                parserModulesTitle: '解析器模块',
+                colParser: '解析器',
+                colStatus: '状态',
+                colDuration: '耗时 (ms)',
+                colNote: '说明',
+                fullDataJsonTitle: '📋 完整数据 (JSON)',
+                btnDownloadJson: '📥 下载 JSON',
+                btnCopyClipboard: '📋 复制',
+                navGitHub: 'GitHub',
+                labelEngine: '引擎',
+                labelFilesLoaded: '已加载文件',
+                labelTotalLines: '总行数',
+                labelSkippedLines: '跳过行数',
+                labelDuplicateLines: '重复行',
+                labelTotalEvents: '事件总数',
+                labelDnsEvents: 'DNS 事件',
+                labelConnectEvents: '连接事件',
+                labelSecurityEvents: '安全事件',
+                labelUnknownTypes: '未知顶层类型',
+                labelParsersOk: '解析器成功',
+                labelParsersErr: '解析器失败',
+                labelUploadCount: '上传文件数',
+                labelUploadBytes: '上传大小',
+                statusOk: 'OK',
+                statusErr: '错误',
+                jsonBuilding: '正在生成 JSON 预览…',
+                jsonStringifyError: '无法在浏览器中生成 JSON。',
+                analyzeDoneStatus: '完成 · {parsersOk} 个解析器 OK · {events} 个事件',
+                timelineTimesketchCount: '{n} 条时间线事件。',
+                timelineDownloadJsonl: '下载 JSONL',
+                timelineScriptMissing: '时间线脚本未加载 (timeline-view.js)。',
+                timelineSearchPlaceholder: '搜索时间线…',
+                timelineSearchAriaLabel: '筛选时间线',
+                timelineAllCategories: '全部',
+                timelineDetailTitle: '事件详情',
+                timelineHintClick: '点击事件查看完整 JSON。',
+                timelineDetailSearchPlaceholder: '在此事件中搜索…',
+                timelineDetailSearchMatches: '{cur} / {total}',
+                timelineDetailSearchZero: '无匹配',
+                timelineDetailSearchPrev: '上一个',
+                timelineDetailSearchNext: '下一个',
+                timelineShowing: '显示 {shown} / {filtered}（筛选后 {total}）。',
+                timelineCapped: '列表最多 {max} 行。',
+                timelineApprox: '约',
+                timelineBindingSnapshot: '日志采集',
+                timelineBindingSystemFallback: '导出时钟',
+                timelineNoMatch: '无匹配事件。',
+                timelineVizHint: '悬停类别 · 拖拽 · 滚轮 · +/−',
+                timelineFitWindow: '全区间',
+                timelineWindowLabel: '可见窗口',
+                timelineWindowFrom: '起点',
+                timelineWindowTo: '终点',
+                timelineRangeStart: '窗口起点',
+                timelineRangeEnd: '窗口终点',
+                timelineZoomIn: '放大',
+                timelineZoomOut: '缩小',
+                timelineZoomRangeTitle: '时间范围与缩放',
+                timelineZoomDetail: '细节程度',
+                timelineZoomBrushHelp: '概览 — 点击居中窗口。',
+                statusNoResultsDownload: '⚠️ 无可下载结果',
+                statusNoResultsCopy: '⚠️ 无可复制结果',
+                statusDownloadOk: '✓ 已下载！',
+                statusCopiedOk: '✓ 已复制！',
+                copyJsonDone: 'JSON 已复制。',
+                statusCopyFailed: '❌ 复制失败',
+                filesSelected: '已选 {n} 个文件 ({size})'
+            }
+        };
+        window.currentLang = localStorage.getItem('lang') || 'en';
+        function applyLang(lang) {
+            var t = window.IL_I18N[lang] || window.IL_I18N.en;
+            document.documentElement.lang = (lang === 'zh' ? 'zh' : lang === 'fr' ? 'fr' : 'en');
+            document.querySelectorAll('[data-i18n]').forEach(function (el) {
+                var key = el.getAttribute('data-i18n');
+                if (t[key] !== undefined) el.textContent = t[key];
+            });
+            var themeText = document.getElementById('theme-text');
+            if (themeText) {
+                var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                themeText.textContent = isDark ? t.themeLight : t.themeDark;
+            }
+        }
+        window.setLang = function (lang) {
+            window.currentLang = lang;
+            localStorage.setItem('lang', lang);
+            document.querySelectorAll('.lang-switcher button').forEach(function (btn) {
+                btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
+            });
+            applyLang(lang);
+        };
+        window.toggleTheme = function () {
+            var html = document.documentElement;
+            var cur = html.getAttribute('data-theme');
+            var next = cur === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            document.getElementById('theme-icon').textContent = next === 'dark' ? '☀️' : '🌙';
+            applyLang(window.currentLang);
+            localStorage.setItem('theme', next);
+        };
+        window.toggleSection = function (id) {
+            var content = document.getElementById(id + '-content');
+            var btn = event.target;
+            if (!content || !btn) return;
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                btn.classList.remove('collapsed');
+            } else {
+                content.classList.add('collapsed');
+                btn.classList.add('collapsed');
+            }
+        };
+        document.addEventListener('DOMContentLoaded', function () {
+            if (localStorage.getItem('theme') === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                var ic = document.getElementById('theme-icon');
+                if (ic) ic.textContent = '☀️';
+            }
+            applyLang(window.currentLang);
+            document.querySelectorAll('.lang-switcher button').forEach(function (btn) {
+                btn.classList.toggle('active', btn.getAttribute('data-lang') === window.currentLang);
+            });
+        });
+    </script>
+
+    <script type="module">
+        import init, { analyzeIntrusionLogs } from './pkg/ismyphonepwned_wasm.js';
+
+        let selectedFiles = [];
+        let currentResults = null;
+
+        function trIl(key) {
+            var t = window.IL_I18N[window.currentLang] || window.IL_I18N.en;
+            return t[key] !== undefined ? t[key] : key;
+        }
+
+        function addSummaryRow(tbody, label, value) {
+            var tr = document.createElement('tr');
+            var td0 = document.createElement('td');
+            td0.textContent = label;
+            var td1 = document.createElement('td');
+            td1.textContent = value === undefined || value === null || value === '' ? '—' : String(value);
+            tr.appendChild(td0);
+            tr.appendChild(td1);
+            tbody.appendChild(tr);
+        }
+
+        function jsonStringify(obj) {
+            return JSON.stringify(obj, function (_k, v) {
+                return typeof v === 'bigint' ? v.toString() : v;
+            }, 2);
+        }
+
+        function parserEntryOk(pp) {
+            if (!pp || typeof pp !== 'object') return false;
+            var v = pp.ok;
+            if (v === false || v === 0) return false;
+            if (v === true || v === 1) return true;
+            if (typeof v === 'bigint') return v !== 0n;
+            return false;
+        }
+
+        function formatDurationMs(pp) {
+            var d = pp.duration_ms;
+            if (d == null) return '—';
+            if (typeof d === 'bigint') d = Number(d);
+            if (typeof d === 'number' && !isNaN(d)) return d.toFixed(1);
+            return String(d);
+        }
+
+        function parseWasmJson(raw) {
+            if (typeof raw === 'string') return JSON.parse(raw);
+            throw new Error('analyzeIntrusionLogs: expected JSON string, got ' + typeof raw);
+        }
+
+        function timelineLabels() {
+            return {
+                searchPlaceholder: trIl('timelineSearchPlaceholder'),
+                searchAriaLabel: trIl('timelineSearchAriaLabel'),
+                all: trIl('timelineAllCategories'),
+                detailTitle: trIl('timelineDetailTitle'),
+                hintClick: trIl('timelineHintClick'),
+                detailSearchPlaceholder: trIl('timelineDetailSearchPlaceholder'),
+                detailSearchMatches: trIl('timelineDetailSearchMatches'),
+                detailSearchZero: trIl('timelineDetailSearchZero'),
+                detailSearchPrev: trIl('timelineDetailSearchPrev'),
+                detailSearchNext: trIl('timelineDetailSearchNext'),
+                showing: trIl('timelineShowing'),
+                capped: trIl('timelineCapped'),
+                approx: trIl('timelineApprox'),
+                bindingSnapshot: trIl('timelineBindingSnapshot'),
+                bindingSystemFallback: trIl('timelineBindingSystemFallback'),
+                noMatch: trIl('timelineNoMatch'),
+                vizHint: trIl('timelineVizHint'),
+                fitWindow: trIl('timelineFitWindow'),
+                windowLabel: trIl('timelineWindowLabel'),
+                windowFrom: trIl('timelineWindowFrom'),
+                windowTo: trIl('timelineWindowTo'),
+                rangeStart: trIl('timelineRangeStart'),
+                rangeEnd: trIl('timelineRangeEnd'),
+                zoomIn: trIl('timelineZoomIn'),
+                zoomOut: trIl('timelineZoomOut'),
+                zoomRangeTitle: trIl('timelineZoomRangeTitle'),
+                zoomDetail: trIl('timelineZoomDetail'),
+                zoomBrushHelp: trIl('timelineZoomBrushHelp')
+            };
+        }
+
+        function hideTimelineSection() {
+            var sec = document.getElementById('il-timeline-section');
+            var mount = document.getElementById('il-timeline-mount');
+            var dlRow = document.getElementById('il-timeline-dl-row');
+            if (dlRow) dlRow.textContent = '';
+            if (mount) mount.textContent = '';
+            if (sec) sec.style.display = 'none';
+        }
+
+        function renderTimelineBlock(out) {
+            hideTimelineSection();
+            var sec = document.getElementById('il-timeline-section');
+            var mount = document.getElementById('il-timeline-mount');
+            var dlRow = document.getElementById('il-timeline-dl-row');
+            if (!sec || !mount || !dlRow) return;
+            var ts = out && out.analysers && out.analysers.timesketch;
+            if (!ts || ts.error != null || !Array.isArray(ts.events) || ts.events.length === 0) return;
+            sec.style.display = 'block';
+            var cnt = ts.count != null ? ts.count : ts.events.length;
+            var countP = document.createElement('p');
+            countP.style.cssText = 'font-size: 0.8125rem; margin: 0 0 0.5rem;';
+            countP.textContent = trIl('timelineTimesketchCount').replace('{n}', String(cnt));
+            mount.appendChild(countP);
+            if (typeof ts.jsonl === 'string' && ts.jsonl.length) {
+                var aJl = document.createElement('a');
+                aJl.href = URL.createObjectURL(new Blob([ts.jsonl], { type: 'application/x-ndjson;charset=utf-8' }));
+                aJl.download = 'intrusion-logs-timesketch.jsonl';
+                aJl.textContent = trIl('timelineDownloadJsonl');
+                aJl.style.cssText =
+                    'display: inline-block; padding: 0.35rem 0.75rem; margin-bottom: 0.5rem; background: var(--accent); color: white; border-radius: 6px; text-decoration: none; font-size: 0.8125rem;';
+                dlRow.appendChild(aJl);
+            }
+            var tvHost = document.createElement('div');
+            tvHost.className = 'timeline-sketch-mount';
+            mount.appendChild(tvHost);
+            if (window.TimelineSketchView && typeof window.TimelineSketchView.mount === 'function') {
+                window.TimelineSketchView.mount(tvHost, {
+                    events: ts.events,
+                    categoryField: 'il_parser',
+                    maxRender: 15000,
+                    flashyColors: true,
+                    labels: timelineLabels()
+                });
+            } else {
+                tvHost.textContent = trIl('timelineScriptMissing');
+            }
+        }
+
+        function renderSecurityTags(out) {
+            var sec = document.getElementById('il-security-section');
+            var tbody = document.getElementById('il-security-tbody');
+            if (!sec || !tbody) return;
+            tbody.textContent = '';
+            sec.style.display = 'none';
+            var se = out && out.parsers && out.parsers.security_event;
+            if (!se || !parserEntryOk(se) || !se.data) return;
+            var data = se.data;
+            var counts = data.event_type_counts;
+            if (!Array.isArray(counts) || counts.length === 0) return;
+            sec.style.display = 'block';
+            for (var i = 0; i < counts.length; i++) {
+                var row = counts[i];
+                var tr = document.createElement('tr');
+                var tdTag = document.createElement('td');
+                var code = document.createElement('code');
+                code.style.fontSize = '0.8125rem';
+                code.textContent = row.event_tag || '—';
+                tdTag.appendChild(code);
+                var tdCnt = document.createElement('td');
+                tdCnt.textContent = row.count != null ? String(row.count) : '—';
+                tr.appendChild(tdTag);
+                tr.appendChild(tdCnt);
+                tbody.appendChild(tr);
+            }
+        }
+
+        function renderResults(out, uploadMeta) {
+            var wrap = document.getElementById('il-parsed-wrap');
+            var sumBody = document.getElementById('il-summary-body');
+            var tbody = document.getElementById('il-parser-tbody');
+            if (!wrap || !sumBody || !tbody) return { okCount: 0 };
+            sumBody.textContent = '';
+            tbody.textContent = '';
+            hideTimelineSection();
+            document.getElementById('il-security-section').style.display = 'none';
+            if (!out || out.ok === false) {
+                wrap.style.display = 'none';
+                return { okCount: 0 };
+            }
+            wrap.style.display = 'block';
+            if (uploadMeta) {
+                addSummaryRow(sumBody, trIl('labelUploadCount'), uploadMeta.count);
+                addSummaryRow(sumBody, trIl('labelUploadBytes'), uploadMeta.sizeLabel);
+            }
+            var meta = out.meta || {};
+            addSummaryRow(sumBody, trIl('labelEngine'), out.parser);
+            addSummaryRow(sumBody, trIl('labelFilesLoaded'), Array.isArray(meta.files_loaded) ? meta.files_loaded.join(', ') : meta.files_loaded);
+            addSummaryRow(sumBody, trIl('labelTotalLines'), meta.total_lines);
+            addSummaryRow(sumBody, trIl('labelSkippedLines'), meta.skipped_lines);
+            addSummaryRow(sumBody, trIl('labelDuplicateLines'), meta.duplicate_lines);
+            addSummaryRow(sumBody, trIl('labelTotalEvents'), meta.total_events);
+            var ec = meta.event_counts || {};
+            addSummaryRow(sumBody, trIl('labelDnsEvents'), ec.dns_event);
+            addSummaryRow(sumBody, trIl('labelConnectEvents'), ec.connect_event);
+            addSummaryRow(sumBody, trIl('labelSecurityEvents'), ec.security_event);
+            if (Array.isArray(meta.unknown_event_types) && meta.unknown_event_types.length) {
+                addSummaryRow(sumBody, trIl('labelUnknownTypes'), meta.unknown_event_types.join(', '));
+            }
+            var parsers = out.parsers || {};
+            var names = Object.keys(parsers).sort();
+            var okN = 0;
+            for (var i = 0; i < names.length; i++) {
+                if (parserEntryOk(parsers[names[i]])) okN++;
+            }
+            addSummaryRow(sumBody, trIl('labelParsersOk'), okN);
+            addSummaryRow(sumBody, trIl('labelParsersErr'), names.length - okN);
+
+            renderSecurityTags(out);
+            renderTimelineBlock(out);
+
+            for (var j = 0; j < names.length; j++) {
+                var name = names[j];
+                var pp = parsers[name];
+                var tr = document.createElement('tr');
+                var tdName = document.createElement('td');
+                var codeEl = document.createElement('code');
+                codeEl.style.fontSize = '0.8125rem';
+                codeEl.textContent = name;
+                tdName.appendChild(codeEl);
+                var tdSt = document.createElement('td');
+                tdSt.textContent = parserEntryOk(pp) ? trIl('statusOk') : trIl('statusErr');
+                tdSt.style.color = parserEntryOk(pp) ? 'var(--success)' : 'var(--error)';
+                tdSt.style.fontWeight = '600';
+                var tdDur = document.createElement('td');
+                tdDur.textContent = formatDurationMs(pp);
+                var tdNote = document.createElement('td');
+                tdNote.style.fontSize = '0.8125rem';
+                if (parserEntryOk(pp) && pp.data && pp.data.count != null) {
+                    tdNote.textContent = 'count=' + pp.data.count;
+                } else if (!parserEntryOk(pp)) {
+                    tdNote.textContent = pp.error || '—';
+                    tdNote.style.color = 'var(--error)';
+                } else {
+                    tdNote.textContent = '—';
+                }
+                tr.appendChild(tdName);
+                tr.appendChild(tdSt);
+                tr.appendChild(tdDur);
+                tr.appendChild(tdNote);
+                tbody.appendChild(tr);
+            }
+            return { okCount: okN };
+        }
+
+        function updateFileListUI() {
+            var list = document.getElementById('il-file-list');
+            var btn = document.getElementById('btn-analyze-il');
+            list.textContent = '';
+            if (!selectedFiles.length) {
+                btn.classList.add('hidden');
+                return;
+            }
+            btn.classList.remove('hidden');
+            var totalBytes = selectedFiles.reduce(function (s, f) { return s + f.size; }, 0);
+            var mb = (totalBytes / 1024 / 1024).toFixed(2);
+            var summary = document.createElement('li');
+            summary.textContent = trIl('filesSelected').replace('{n}', String(selectedFiles.length)).replace('{size}', mb + ' MB');
+            list.appendChild(summary);
+            var maxShow = 12;
+            for (var i = 0; i < Math.min(selectedFiles.length, maxShow); i++) {
+                var li = document.createElement('li');
+                li.textContent = selectedFiles[i].webkitRelativePath || selectedFiles[i].name;
+                list.appendChild(li);
+            }
+            if (selectedFiles.length > maxShow) {
+                var more = document.createElement('li');
+                more.textContent = '… +' + (selectedFiles.length - maxShow) + ' more';
+                list.appendChild(more);
+            }
+        }
+
+        function setSelectedFiles(fileList) {
+            selectedFiles = Array.from(fileList || []).filter(function (f) {
+                var n = (f.webkitRelativePath || f.name || '').toLowerCase();
+                return n.endsWith('.txt') || n.endsWith('.zip') || f.type === 'text/plain' || f.type === 'application/zip';
+            });
+            updateFileListUI();
+            if (selectedFiles.length) {
+                var totalBytes = selectedFiles.reduce(function (s, f) { return s + f.size; }, 0);
+                showStatus(trIl('filesSelected').replace('{n}', String(selectedFiles.length)).replace('{size}', (totalBytes / 1024 / 1024).toFixed(2) + ' MB'), 'success');
+            }
+        }
+
+        function showStatus(msg, type) {
+            var el = document.getElementById('status');
+            el.textContent = msg;
+            el.className = 'status ' + (type || 'info');
+        }
+        function showProgress() { document.getElementById('progress').classList.add('show'); }
+        function hideProgress() { document.getElementById('progress').classList.remove('show'); }
+        function showSpinner() { document.getElementById('loading-spinner').classList.add('show'); }
+        function hideSpinner() { document.getElementById('loading-spinner').classList.remove('show'); }
+
+        document.getElementById('btn-pick-files').addEventListener('click', function () {
+            document.getElementById('il-file-input').click();
+        });
+        document.getElementById('btn-pick-folder').addEventListener('click', function () {
+            document.getElementById('il-folder-input').click();
+        });
+        document.getElementById('il-file-input').addEventListener('change', function (e) {
+            setSelectedFiles(e.target.files);
+        });
+        document.getElementById('il-folder-input').addEventListener('change', function (e) {
+            setSelectedFiles(e.target.files);
+        });
+
+        var zone = document.getElementById('il-upload-zone');
+        zone.addEventListener('click', function () { document.getElementById('il-file-input').click(); });
+        zone.addEventListener('dragover', function (e) { e.preventDefault(); zone.classList.add('dragover'); });
+        zone.addEventListener('dragleave', function () { zone.classList.remove('dragover'); });
+        zone.addEventListener('drop', function (e) {
+            e.preventDefault();
+            zone.classList.remove('dragover');
+            setSelectedFiles(e.dataTransfer.files);
+        });
+
+        window.analyzeIntrusionLogsUpload = async function () {
+            if (!selectedFiles.length) {
+                showStatus('Choose at least one .txt or .zip file', 'error');
+                return;
+            }
+            document.querySelector('.loading-text').textContent = trIl('analyzingWait');
+            showSpinner();
+            showProgress();
+            try {
+                var totalBytes = 0;
+                var filesPayload = [];
+                for (var i = 0; i < selectedFiles.length; i++) {
+                    var f = selectedFiles[i];
+                    var buf = await f.arrayBuffer();
+                    var u8 = new Uint8Array(buf);
+                    totalBytes += u8.length;
+                    filesPayload.push({
+                        name: f.webkitRelativePath || f.name,
+                        data: Array.from(u8)
+                    });
+                }
+                var payload = JSON.stringify({ files: filesPayload });
+                console.log('[INTRUSION_LOGS] Calling WASM', { files: filesPayload.length, payload_bytes: payload.length });
+                var raw = analyzeIntrusionLogs(payload);
+                var out = parseWasmJson(raw);
+                out.upload_info = {
+                    file_count: selectedFiles.length,
+                    size_bytes: totalBytes,
+                    size_mb: (totalBytes / 1024 / 1024).toFixed(2),
+                    names: selectedFiles.map(function (f) { return f.webkitRelativePath || f.name; })
+                };
+                currentResults = out;
+                var summary = renderResults(out, {
+                    count: selectedFiles.length,
+                    sizeLabel: (totalBytes / 1024 / 1024).toFixed(2) + ' MB (' + totalBytes.toLocaleString() + ' bytes)'
+                });
+                document.getElementById('results').classList.add('show');
+                document.getElementById('results-actions').style.display = 'flex';
+                var jsonOut = document.getElementById('json-output');
+                jsonOut.textContent = trIl('jsonBuilding');
+                setTimeout(function () {
+                    try {
+                        jsonOut.textContent = jsonStringify(currentResults);
+                    } catch (e) {
+                        jsonOut.textContent = trIl('jsonStringifyError');
+                    }
+                }, 0);
+                if (out.ok === false) {
+                    showStatus(out.error || 'Analysis failed', 'error');
+                } else {
+                    var events = out.meta && out.meta.total_events != null ? out.meta.total_events : '—';
+                    showStatus(
+                        trIl('analyzeDoneStatus')
+                            .replace('{parsersOk}', String(summary.okCount))
+                            .replace('{events}', String(events)),
+                        'success'
+                    );
+                }
+            } catch (err) {
+                console.error('[INTRUSION_LOGS] Analysis failed:', err);
+                showStatus(String(err && err.message ? err.message : err), 'error');
+            } finally {
+                hideProgress();
+                hideSpinner();
+            }
+        };
+
+        window.downloadIlResults = function () {
+            if (currentResults == null) {
+                showStatus(trIl('statusNoResultsDownload'), 'error');
+                return;
+            }
+            var blob = new Blob([jsonStringify(currentResults)], { type: 'application/json' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            a.download = 'intrusion-logs-analysis-' + ts + '.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            showStatus(trIl('statusDownloadOk'), 'success');
+        };
+
+        window.copyIlResults = async function () {
+            if (currentResults == null) {
+                showStatus(trIl('statusNoResultsCopy'), 'error');
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(jsonStringify(currentResults));
+                showStatus(trIl('statusCopiedOk'), 'success');
+                var el = document.getElementById('copy-json-feedback');
+                el.textContent = trIl('copyJsonDone');
+                el.hidden = false;
+                setTimeout(function () { el.hidden = true; }, 2800);
+            } catch (e) {
+                showStatus(trIl('statusCopyFailed'), 'error');
+            }
+        };
+
+        async function boot() {
+            var statusEl = document.getElementById('wasm-status');
+            try {
+                statusEl.textContent = trIl('wasmLoading');
+                await init();
+                statusEl.textContent = trIl('wasmReady');
+                statusEl.style.background = 'rgba(76, 175, 80, 0.1)';
+                statusEl.style.color = 'var(--success)';
+                console.log('[INTRUSION_LOGS] WebAssembly initialized');
+            } catch (e) {
+                console.error('[INTRUSION_LOGS] WASM init failed:', e);
+                statusEl.textContent = trIl('wasmFailed');
+                statusEl.style.background = 'rgba(244, 67, 54, 0.1)';
+                statusEl.style.color = 'var(--error)';
+            }
+        }
+        boot();
+    </script>
+</body>
+</html>

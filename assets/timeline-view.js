@@ -108,6 +108,7 @@
         if (!ev || typeof ev !== 'object') return 'event';
         if (ev.bugreport_parser != null && String(ev.bugreport_parser)) return String(ev.bugreport_parser);
         if (ev.sysdiagnose_parser != null && String(ev.sysdiagnose_parser)) return String(ev.sysdiagnose_parser);
+        if (ev.il_parser != null && String(ev.il_parser)) return String(ev.il_parser);
         if (ev.category != null && String(ev.category)) return String(ev.category);
         if (ev.event_type != null && String(ev.event_type)) return String(ev.event_type);
         if (ev.timestamp_desc != null && String(ev.timestamp_desc)) return String(ev.timestamp_desc);

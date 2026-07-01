@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Artifact path reference · IsMyPhonePwned</title>
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="stylesheet" href="assets/site.css">
+    <style>
+        .artifact-page.container {
+            max-width: 1280px;
+        }
+        .artifact-page header {
+            margin-bottom: 1.5rem;
+        }
+        .artifact-page header .logo {
+            height: 64px;
+        }
+        .artifact-intro {
+            display: grid;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+        @media (min-width: 768px) {
+            .artifact-intro {
+                grid-template-columns: 1fr min(22rem, 38%);
+            }
+        }
+        .artifact-intro-lead {
+            color: var(--text-secondary);
+            font-size: 0.9375rem;
+            line-height: 1.55;
+            margin: 0;
+        }
+        .artifact-legend {
+            margin: 0;
+            padding: 0.85rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--bg-secondary);
+            font-size: 0.8125rem;
+            line-height: 1.5;
+        }
+        .artifact-legend dt {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 0.5rem;
+        }
+        .artifact-legend dt:first-child {
+            margin-top: 0;
+        }
+        .artifact-legend dd {
+            margin: 0.15rem 0 0;
+            color: var(--text-secondary);
+        }
+        .artifact-toolbar {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--bg-card);
+            padding: 1rem 1.1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px var(--shadow);
+        }
+        .artifact-toolbar-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.85rem 1.25rem;
+            align-items: flex-end;
+        }
+        .artifact-toolbar-row + .artifact-toolbar-row {
+            margin-top: 0.85rem;
+            padding-top: 0.85rem;
+            border-top: 1px solid var(--border);
+        }
+        .artifact-toolbar label.field-label {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+        .artifact-toolbar select {
+            font-size: 0.875rem;
+            padding: 0.5rem 0.65rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-width: 11rem;
+        }
+        .artifact-toolbar .search-box {
+            flex: 1 1 18rem;
+            min-width: 14rem;
+            margin: 0;
+        }
+        .artifact-toolbar .search-box input {
+            font-size: 0.9375rem;
+            padding: 0.55rem 0.65rem 0.55rem 2.35rem;
+        }
+        .artifact-platform-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+        .artifact-platform-tabs button {
+            padding: 0.45rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
+        }
+        .artifact-platform-tabs button:hover {
+            border-color: var(--accent);
+        }
+        .artifact-platform-tabs button.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+        .artifact-acq-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+            align-items: center;
+        }
+        .artifact-acq-chips span.hint {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-left: 0.25rem;
+        }
+        .artifact-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: var(--bg-primary);
+            font-size: 0.8125rem;
+            cursor: pointer;
+            user-select: none;
+        }
+        .artifact-chip input {
+            accent-color: var(--accent);
+        }
+        .artifact-chip:has(input:checked) {
+            border-color: var(--accent);
+            background: color-mix(in srgb, var(--accent) 12%, var(--bg-primary));
+        }
+        .artifact-summary {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            font-size: 0.8125rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.65rem;
+        }
+        .artifact-summary strong {
+            color: var(--text-primary);
+        }
+        #artifact-table-wrap {
+            max-height: min(72vh, 44rem);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--bg-card);
+        }
+        #artifact-table-wrap .data-table {
+            margin: 0;
+        }
+        #artifact-table-wrap .data-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            background: var(--bg-secondary);
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            padding: 0.65rem 0.75rem;
+            white-space: nowrap;
+            box-shadow: 0 1px 0 var(--border);
+        }
+        #artifact-table-wrap .data-table tbody td {
+            padding: 0.6rem 0.75rem;
+            font-size: 0.875rem;
+            line-height: 1.45;
+            vertical-align: top;
+        }
+        #artifact-table-wrap .data-table tbody tr:not(.artifact-section-row):nth-child(even) {
+            background: color-mix(in srgb, var(--bg-secondary) 45%, transparent);
+        }
+        #artifact-table-wrap .data-table tbody tr:not(.artifact-section-row):hover {
+            background: color-mix(in srgb, var(--accent) 8%, var(--bg-card));
+        }
+        .artifact-section-row td {
+            background: var(--bg-secondary) !important;
+            font-weight: 600;
+            font-size: 0.78rem;
+            letter-spacing: 0.02em;
+            color: var(--text-primary);
+            padding: 0.55rem 0.75rem !important;
+            border-top: 2px solid var(--border);
+        }
+        .artifact-desc-cell {
+            max-width: 22rem;
+            color: var(--text-primary);
+        }
+        .artifact-path-cell {
+            min-width: 14rem;
+            max-width: 28rem;
+        }
+        .artifact-path-cell code {
+            display: block;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.78rem;
+            line-height: 1.4;
+            word-break: break-all;
+            padding: 0.35rem 0.45rem;
+            border-radius: 6px;
+            background: color-mix(in srgb, var(--bg-secondary) 80%, var(--bg-card));
+            border: 1px solid var(--border);
+        }
+        .artifact-col-yn {
+            text-align: center;
+            width: 3.25rem;
+        }
+        .artifact-col-partition {
+            white-space: nowrap;
+            font-size: 0.8125rem;
+            font-weight: 500;
+        }
+        .artifact-pill {
+            display: inline-block;
+            min-width: 1.85rem;
+            text-align: center;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 0.2rem 0.45rem;
+            border-radius: 6px;
+            letter-spacing: 0.02em;
+        }
+        .artifact-pill-y {
+            background: color-mix(in srgb, var(--success) 18%, transparent);
+            color: var(--success);
+        }
+        .artifact-pill-n {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+        }
+        .artifact-plat {
+            display: inline-block;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            padding: 0.15rem 0.45rem;
+            border-radius: 4px;
+        }
+        .artifact-plat-ios {
+            background: color-mix(in srgb, #007aff 14%, var(--bg-secondary));
+            color: #007aff;
+        }
+        [data-theme="dark"] .artifact-plat-ios {
+            color: #64b5f6;
+        }
+        .artifact-plat-android {
+            background: color-mix(in srgb, #3ddc84 14%, var(--bg-secondary));
+            color: #1b8a4a;
+        }
+        [data-theme="dark"] .artifact-plat-android {
+            color: #81c784;
+        }
+        .artifact-category-tag {
+            display: inline-block;
+            font-size: 0.72rem;
+            line-height: 1.35;
+            padding: 0.2rem 0.45rem;
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            max-width: 11rem;
+        }
+        .artifact-tables-tag {
+            font-family: ui-monospace, monospace;
+            font-size: 0.75rem;
+            padding: 0.15rem 0.35rem;
+            border-radius: 4px;
+            background: var(--bg-secondary);
+        }
+        .artifact-mark {
+            background: rgba(255, 193, 7, 0.4);
+            border-radius: 2px;
+            padding: 0 1px;
+        }
+        [data-theme="dark"] .artifact-mark {
+            background: rgba(255, 193, 7, 0.25);
+        }
+        .artifact-empty {
+            padding: 2rem 1rem;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.9375rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container artifact-page">
+        <header>
+            <div class="logo-container">
+                <img src="logo.png" alt="" class="logo" onerror="this.style.display='none';">
+                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <h1 class="logo-text" style="font-size: 1.35rem;">Artifact path reference</h1>
+                    <span style="font-size: 0.7rem; color: var(--text-secondary);">Where to find data · iOS &amp; Android</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="theme-toggle" type="button" onclick="toggleTheme()">
+                    <span id="theme-icon">🌙</span>
+                    <span id="theme-text">Dark</span>
+                </button>
+            </div>
+        </header>
+
+        <nav class="page-nav" aria-label="Pages">
+            <a href="index.html">Home</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="iphone.html">iPhone (sysdiagnose)</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="android.html">Android (bugreport)</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="intrusion-logs.html">Intrusion logs</a>
+        </nav>
+
+        <div class="artifact-intro">
+            <p class="artifact-intro-lead">
+                Look up filesystem paths and what they contain. Search by path fragment, description, or category.
+                Use the <strong>iOS</strong> tab for BFU / backup / sysdiagnose availability; use <strong>Android</strong> for partition and SQLite table hints.
+                Values are reference only — presence depends on OS version, vendor, and acquisition method.
+            </p>
+            <dl class="artifact-legend">
+                <dt>iOS columns</dt>
+                <dd><strong>BFU</strong> — Before First Unlock · <strong>Backup</strong> — encrypted backup · <strong>Sysdiagnose</strong> — sysdiagnose archive</dd>
+                <dt>Android columns</dt>
+                <dd><strong>Partition</strong> — System / Userdata / Cache · <strong>Tables</strong> — SQLite tables of interest (<code>*</code> = whole DB)</dd>
+            </dl>
+        </div>
+
+        <div class="artifact-toolbar">
+            <div class="artifact-toolbar-row">
+                <div class="artifact-platform-tabs" role="tablist" aria-label="Platform">
+                    <button type="button" data-platform="ios" aria-selected="true" class="active">iOS</button>
+                    <button type="button" data-platform="android" aria-selected="false">Android</button>
+                    <button type="button" data-platform="all" aria-selected="false">Both</button>
+                </div>
+                <div class="search-box" style="margin: 0;">
+                    <span class="search-icon" aria-hidden="true">🔍</span>
+                    <input type="search" id="artifact-search" placeholder="e.g. sms.db, locationd, call log…" autocomplete="off" aria-label="Search artifact paths">
+                </div>
+                <label class="field-label">
+                    Category
+                    <select id="artifact-category">
+                        <option value="">All categories</option>
+                    </select>
+                </label>
+            </div>
+            <div class="artifact-toolbar-row" id="artifact-ios-acq">
+                <div class="artifact-acq-chips">
+                    <span class="field-label" style="text-transform: none; letter-spacing: 0; font-size: 0.8125rem; margin-right: 0.25rem;">iOS — show paths available in:</span>
+                    <label class="artifact-chip"><input type="checkbox" id="filter-bfu" value="bfu"> BFU</label>
+                    <label class="artifact-chip"><input type="checkbox" id="filter-backup" value="backup"> Backup</label>
+                    <label class="artifact-chip"><input type="checkbox" id="filter-sysdiagnose" value="sysdiagnose"> Sysdiagnose</label>
+                    <span class="hint">Check one or more; leave all unchecked for every iOS row.</span>
+                </div>
+            </div>
+        </div>
+
+        <p class="artifact-summary" id="artifact-summary">Loading…</p>
+
+        <div class="data-table-container" id="artifact-table-wrap">
+            <table class="data-table" id="artifact-table">
+                <thead id="artifact-thead"></thead>
+                <tbody id="artifact-tbody"></tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <script src="assets/artifact-paths-data.js"></script>
+    <script>
+        (function () {
+            var platformFilter = 'ios';
+            var searchEl = document.getElementById('artifact-search');
+            var catEl = document.getElementById('artifact-category');
+            var summaryEl = document.getElementById('artifact-summary');
+            var theadEl = document.getElementById('artifact-thead');
+            var tbodyEl = document.getElementById('artifact-tbody');
+            var iosAcqEl = document.getElementById('artifact-ios-acq');
+            var filterBfu = document.getElementById('filter-bfu');
+            var filterBackup = document.getElementById('filter-backup');
+            var filterSys = document.getElementById('filter-sysdiagnose');
+
+            var allRows = [];
+            var categories = [];
+            var DISPLAY_CAP = 500;
+
+            function escapeHtml(s) {
+                if (s == null) return '';
+                return String(s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function highlight(text, q) {
+                var safe = escapeHtml(text);
+                if (!q) return safe;
+                var lower = String(text).toLowerCase();
+                var idx = lower.indexOf(q);
+                if (idx < 0) return safe;
+                var before = escapeHtml(String(text).slice(0, idx));
+                var match = escapeHtml(String(text).slice(idx, idx + q.length));
+                var after = highlight(String(text).slice(idx + q.length), q);
+                return before + '<span class="artifact-mark">' + match + '</span>' + after;
+            }
+
+            function ynCell(v, q) {
+                if (v !== 'Y' && v !== 'N') return '<span class="artifact-pill artifact-pill-n">—</span>';
+                var cls = v === 'Y' ? 'artifact-pill-y' : 'artifact-pill-n';
+                var title = v === 'Y' ? 'Typically present' : 'Typically absent';
+                return (
+                    '<span class="artifact-pill ' +
+                    cls +
+                    '" title="' +
+                    escapeHtml(title) +
+                    '">' +
+                    highlight(v, q) +
+                    '</span>'
+                );
+            }
+
+            function platBadge(platform, q) {
+                var cls = platform === 'ios' ? 'artifact-plat-ios' : 'artifact-plat-android';
+                var label = platform === 'ios' ? 'iOS' : 'Android';
+                return '<span class="artifact-plat ' + cls + '">' + highlight(label, q) + '</span>';
+            }
+
+            function rowHaystack(row) {
+                if (row.platform === 'ios') {
+                    return [
+                        row.category,
+                        row.path,
+                        row.description,
+                        row.bfu,
+                        row.backup,
+                        row.sysdiagnose,
+                        'ios',
+                    ]
+                        .join('\n')
+                        .toLowerCase();
+                }
+                return [
+                    row.category,
+                    row.partition,
+                    row.path,
+                    row.tables,
+                    row.description,
+                    'android',
+                ]
+                    .join('\n')
+                    .toLowerCase();
+            }
+
+            function iosAcqMatch(row) {
+                if (row.platform !== 'ios') return true;
+                var needBfu = filterBfu.checked;
+                var needBackup = filterBackup.checked;
+                var needSys = filterSys.checked;
+                if (!needBfu && !needBackup && !needSys) return true;
+                if (needBfu && row.bfu !== 'Y') return false;
+                if (needBackup && row.backup !== 'Y') return false;
+                if (needSys && row.sysdiagnose !== 'Y') return false;
+                return true;
+            }
+
+            function colCount() {
+                if (platformFilter === 'android') return 5;
+                if (platformFilter === 'ios') return 6;
+                return 9;
+            }
+
+            function shouldGroup() {
+                return !searchEl.value.trim() && !catEl.value;
+            }
+
+            function sortForDisplay(rows) {
+                if (!shouldGroup()) return rows;
+                return rows.slice().sort(function (a, b) {
+                    var ca = (a.platform || '') + '::' + (a.category || '');
+                    var cb = (b.platform || '') + '::' + (b.category || '');
+                    if (ca !== cb) return ca.localeCompare(cb);
+                    return String(a.path || '').localeCompare(String(b.path || ''));
+                });
+            }
+
+            function sectionKey(row) {
+                return (row.platform || '') + '::' + (row.category || '');
+            }
+
+            function buildCategories() {
+                var set = {};
+                allRows.forEach(function (r) {
+                    if (r.category) set[r.platform + '::' + r.category] = r.category + ' (' + r.platform + ')';
+                });
+                categories = Object.keys(set)
+                    .sort(function (a, b) {
+                        return set[a].localeCompare(set[b]);
+                    })
+                    .map(function (k) {
+                        return { key: k, label: set[k] };
+                    });
+                catEl.innerHTML = '<option value="">All categories</option>';
+                categories.forEach(function (c) {
+                    var opt = document.createElement('option');
+                    opt.value = c.key;
+                    opt.textContent = c.label;
+                    catEl.appendChild(opt);
+                });
+            }
+
+            function renderHead() {
+                var tr = document.createElement('tr');
+                if (platformFilter === 'android') {
+                    tr.innerHTML =
+                        '<th>Category</th><th>Partition</th><th>Path</th><th>Tables</th><th>Description</th>';
+                } else if (platformFilter === 'ios') {
+                    tr.innerHTML =
+                        '<th>Category</th><th>Path</th><th>Description</th><th class="artifact-col-yn">BFU</th><th class="artifact-col-yn">Backup</th><th class="artifact-col-yn">Sysdiag.</th>';
+                } else {
+                    tr.innerHTML =
+                        '<th>Platform</th><th>Category</th><th>Path</th><th>Description</th><th class="artifact-col-yn">BFU</th><th class="artifact-col-yn">Backup</th><th class="artifact-col-yn">Sysdiag.</th><th>Partition</th><th>Tables</th>';
+                }
+                theadEl.innerHTML = '';
+                theadEl.appendChild(tr);
+            }
+
+            function renderBody(filtered) {
+                var q = searchEl.value.trim().toLowerCase();
+                tbodyEl.innerHTML = '';
+                var sorted = sortForDisplay(filtered);
+                var slice = sorted.slice(0, DISPLAY_CAP);
+                var frag = document.createDocumentFragment();
+                var lastSection = null;
+
+                if (!slice.length) {
+                    var empty = document.createElement('tr');
+                    empty.innerHTML =
+                        '<td colspan="' +
+                        colCount() +
+                        '" class="artifact-empty">No paths match your filters. Try clearing search or acquisition checkboxes.</td>';
+                    frag.appendChild(empty);
+                } else {
+                    slice.forEach(function (row) {
+                        var sk = sectionKey(row);
+                        if (shouldGroup() && sk !== lastSection) {
+                            lastSection = sk;
+                            var sec = document.createElement('tr');
+                            sec.className = 'artifact-section-row';
+                            var label =
+                                (row.platform === 'ios' ? 'iOS · ' : row.platform === 'android' ? 'Android · ' : '') +
+                                (row.category || 'Uncategorized');
+                            sec.innerHTML = '<td colspan="' + colCount() + '">' + escapeHtml(label) + '</td>';
+                            frag.appendChild(sec);
+                        }
+
+                        var tr = document.createElement('tr');
+                        if (platformFilter === 'android') {
+                            tr.innerHTML =
+                                '<td><span class="artifact-category-tag" title="' +
+                                escapeHtml(row.category) +
+                                '">' +
+                                highlight(row.category, q) +
+                                '</span></td>' +
+                                '<td class="artifact-col-partition">' +
+                                highlight(row.partition, q) +
+                                '</td>' +
+                                '<td class="artifact-path-cell"><code>' +
+                                highlight(row.path, q) +
+                                '</code></td>' +
+                                '<td>' +
+                                (row.tables
+                                    ? '<span class="artifact-tables-tag">' + highlight(row.tables, q) + '</span>'
+                                    : '—') +
+                                '</td>' +
+                                '<td class="artifact-desc-cell">' +
+                                highlight(row.description, q) +
+                                '</td>';
+                        } else if (platformFilter === 'ios') {
+                            tr.innerHTML =
+                                '<td><span class="artifact-category-tag" title="' +
+                                escapeHtml(row.category) +
+                                '">' +
+                                highlight(row.category, q) +
+                                '</span></td>' +
+                                '<td class="artifact-path-cell"><code>' +
+                                highlight(row.path, q) +
+                                '</code></td>' +
+                                '<td class="artifact-desc-cell">' +
+                                highlight(row.description, q) +
+                                '</td>' +
+                                '<td class="artifact-col-yn">' +
+                                ynCell(row.bfu, q) +
+                                '</td>' +
+                                '<td class="artifact-col-yn">' +
+                                ynCell(row.backup, q) +
+                                '</td>' +
+                                '<td class="artifact-col-yn">' +
+                                ynCell(row.sysdiagnose, q) +
+                                '</td>';
+                        } else {
+                            tr.innerHTML =
+                                '<td>' +
+                                platBadge(row.platform, q) +
+                                '</td>' +
+                                '<td><span class="artifact-category-tag" title="' +
+                                escapeHtml(row.category) +
+                                '">' +
+                                highlight(row.category, q) +
+                                '</span></td>' +
+                                '<td class="artifact-path-cell"><code>' +
+                                highlight(row.path, q) +
+                                '</code></td>' +
+                                '<td class="artifact-desc-cell">' +
+                                highlight(row.description, q) +
+                                '</td>' +
+                                '<td class="artifact-col-yn">' +
+                                (row.platform === 'ios' ? ynCell(row.bfu, q) : '—') +
+                                '</td>' +
+                                '<td class="artifact-col-yn">' +
+                                (row.platform === 'ios' ? ynCell(row.backup, q) : '—') +
+                                '</td>' +
+                                '<td class="artifact-col-yn">' +
+                                (row.platform === 'ios' ? ynCell(row.sysdiagnose, q) : '—') +
+                                '</td>' +
+                                '<td class="artifact-col-partition">' +
+                                (row.platform === 'android' ? highlight(row.partition, q) : '—') +
+                                '</td>' +
+                                '<td>' +
+                                (row.platform === 'android' && row.tables
+                                    ? '<span class="artifact-tables-tag">' + highlight(row.tables, q) + '</span>'
+                                    : '—') +
+                                '</td>';
+                        }
+                        frag.appendChild(tr);
+                    });
+                }
+
+                tbodyEl.appendChild(frag);
+
+                var groupedNote = shouldGroup() ? ' · grouped by category' : '';
+                var msg =
+                    '<span>Showing <strong>' +
+                    slice.length +
+                    '</strong> of <strong>' +
+                    filtered.length +
+                    '</strong> matching paths' +
+                    groupedNote +
+                    '</span>';
+                if (filtered.length > DISPLAY_CAP) {
+                    msg +=
+                        '<span>Narrow search to see more (cap ' +
+                        DISPLAY_CAP +
+                        ' rows)</span>';
+                }
+                summaryEl.innerHTML = msg;
+            }
+
+            function applyFilters() {
+                var q = searchEl.value.trim().toLowerCase();
+                var cat = catEl.value;
+                iosAcqEl.style.display = platformFilter === 'android' ? 'none' : 'flex';
+                renderHead();
+                var filtered = allRows.filter(function (row) {
+                    if (platformFilter !== 'all' && row.platform !== platformFilter) return false;
+                    if (cat && cat !== row.platform + '::' + row.category) return false;
+                    if (!iosAcqMatch(row)) return false;
+                    if (q && rowHaystack(row).indexOf(q) < 0) return false;
+                    return true;
+                });
+                renderBody(filtered);
+            }
+
+            document.querySelectorAll('.artifact-platform-tabs button').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    document.querySelectorAll('.artifact-platform-tabs button').forEach(function (b) {
+                        b.classList.remove('active');
+                        b.setAttribute('aria-selected', 'false');
+                    });
+                    btn.classList.add('active');
+                    btn.setAttribute('aria-selected', 'true');
+                    platformFilter = btn.getAttribute('data-platform');
+                    applyFilters();
+                });
+            });
+
+            searchEl.addEventListener('input', applyFilters);
+            catEl.addEventListener('change', applyFilters);
+            filterBfu.addEventListener('change', applyFilters);
+            filterBackup.addEventListener('change', applyFilters);
+            filterSys.addEventListener('change', applyFilters);
+
+            function init() {
+                var data = window.ARTIFACT_PATHS;
+                if (!data) {
+                    summaryEl.textContent = 'Could not load artifact-paths-data.js';
+                    return;
+                }
+                allRows = (data.ios || []).concat(data.android || []);
+                buildCategories();
+                applyFilters();
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+        })();
+
+        function toggleTheme() {
+            var html = document.documentElement;
+            var next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next === 'dark' ? 'dark' : '');
+            localStorage.setItem('theme', next);
+            document.getElementById('theme-icon').textContent = next === 'dark' ? '☀️' : '🌙';
+            document.getElementById('theme-text').textContent = next === 'dark' ? 'Light' : 'Dark';
+        }
+        (function () {
+            var t = localStorage.getItem('theme');
+            if (t === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.getElementById('theme-icon').textContent = '☀️';
+                document.getElementById('theme-text').textContent = 'Light';
+            }
+        })();
+    </script>
+</body>
+</html>

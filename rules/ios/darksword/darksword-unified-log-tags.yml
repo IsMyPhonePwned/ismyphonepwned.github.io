@@ -1,10 +1,10 @@
 title: DarkSword unified log exploit tags
-id: mobipwn-darksword-unified-log-tags
+id: darksword-unified-log-tags
 status: experimental
 description: |
   High-confidence unified-log markers from DarkSword chain execution in mediaplaybackd
   and related processes. Requires logarchive decode at ingest. Ref iVerify.
-author: mobipwn (adapted for sigma-zero)
+author: IsMyPhonePwned (adapted for sigma-zero)
 date: 2026/03/01
 logsource:
   product: ios

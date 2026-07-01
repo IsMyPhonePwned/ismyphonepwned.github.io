@@ -1,10 +1,10 @@
 title: DarkSword iOS network IoCs
-id: mobipwn-darksword-network-iocs
+id: darksword-network-iocs
 status: experimental
 description: |
   Delivery, watering-hole, and exfiltration domains/IPs for the DarkSword iOS exploit chain
   (GTIG, iVerify, Lookout, MVT). Ref Google GTIG Mar 2026.
-author: mobipwn (adapted for sigma-zero)
+author: IsMyPhonePwned (adapted for sigma-zero)
 date: 2026/03/01
 logsource:
   product: ios

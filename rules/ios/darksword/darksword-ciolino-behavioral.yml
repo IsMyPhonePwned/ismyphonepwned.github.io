@@ -1,10 +1,10 @@
 title: DarkSword Ciolino behavioral indicators
-id: mobipwn-darksword-ciolino-behavioral
+id: darksword-ciolino-behavioral
 status: experimental
 description: |
   Post-exploitation behaviors from reconstructed DarkSword chain — WebContent framework
   load abuse, ICMPv6 kernel R/W sockets, sandbox token issuance, cross-process JS injection.
-author: mobipwn (adapted for sigma-zero)
+author: IsMyPhonePwned (adapted for sigma-zero)
 date: 2026/03/01
 logsource:
   product: ios

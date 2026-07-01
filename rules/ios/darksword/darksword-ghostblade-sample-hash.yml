@@ -1,10 +1,10 @@
 title: DarkSword GHOSTBLADE sample SHA256
-id: mobipwn-darksword-ghostblade-sample-hash
+id: darksword-ghostblade-sample-hash
 status: experimental
 description: |
   SHA256 of extracted GHOSTBLADE sample (UNC6353 Ukraine watering-hole campaign).
   Ref Google GTIG IOC table Mar 2026.
-author: mobipwn (adapted for sigma-zero)
+author: IsMyPhonePwned (adapted for sigma-zero)
 date: 2026/03/01
 logsource:
   product: ios

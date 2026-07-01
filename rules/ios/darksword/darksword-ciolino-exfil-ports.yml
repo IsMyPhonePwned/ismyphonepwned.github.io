@@ -1,10 +1,10 @@
 title: DarkSword Ciolino C2 exfil ports
-id: mobipwn-darksword-ciolino-exfil-ports
+id: darksword-ciolino-exfil-ports
 status: experimental
 description: |
   DarkSword HTTPS/HTTP exfiltration ports (8882/8881) to known campaign infrastructure.
   Ref AntonioCiolino/DarkSword-Analysis (sqwas.shapelie.com C2).
-author: mobipwn (adapted for sigma-zero)
+author: IsMyPhonePwned (adapted for sigma-zero)
 date: 2026/03/01
 logsource:
   product: ios

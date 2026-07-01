@@ -1,10 +1,10 @@
 title: DarkSword GHOSTBLADE filesystem artifacts
-id: mobipwn-darksword-ghostblade-filesystem
+id: darksword-ghostblade-filesystem
 status: experimental
 description: |
   Post-exploitation file artifacts from GHOSTBLADE dataminer (WiFi password dumps,
   keychain copies, iCloud dump staging). Requires on-device or full filesystem capture.
-author: mobipwn (adapted for sigma-zero)
+author: IsMyPhonePwned (adapted for sigma-zero)
 date: 2026/03/01
 logsource:
   product: ios

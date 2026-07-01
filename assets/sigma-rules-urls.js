@@ -23,11 +23,9 @@ window.SIGMA_RULE_URLS = [
     // Spyware / vendor-specific
     '/rules/spyware/cellebrite.yml',
     '/rules/spyware/novispy.yml',
-    '/rules/test.yml',
     // Android bugreport hunts
     '/rules/android/bugreport_anr.yml',
     '/rules/android/bugreport_native_crash.yml',
-    '/rules/android/sideload_package_install.yml',
     // CVE / exploit signatures
     '/rules/CVE/CVE-2025-21055.yaml',
     '/rules/CVE/CVE-2025-27363.yml',

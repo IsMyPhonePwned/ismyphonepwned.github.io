@@ -1,10 +1,10 @@
 title: DarkSword exploit crash cluster
-id: mobipwn-darksword-crash-cluster
+id: darksword-crash-cluster
 status: experimental
 description: |
   Crash reports consistent with DarkSword chain stages — mediaplaybackd kernel exploit host,
   WebKit sandbox escapes, EXC_ARM_DA_ALIGN in wifid/UserEventAgent/configd. Ref iVerify, GTIG.
-author: mobipwn (adapted for sigma-zero)
+author: IsMyPhonePwned (adapted for sigma-zero)
 date: 2026/03/01
 logsource:
   product: ios

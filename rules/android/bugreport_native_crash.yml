@@ -1,0 +1,19 @@
+title: Bugreport native crash (tombstone)
+id: mobipwn-bugreport-native-crash
+status: experimental
+description: |
+  Detects native crashes from Android bugreport Crash parser tombstone rows
+  (process name, signal, optional backtrace frames). Adapted from mobipwn mobile rules.
+author: mobipwn (adapted for sigma-zero)
+date: 2026/03/01
+logsource:
+  product: android
+  category: crash
+detection:
+  selection:
+    event_type: native_crash
+    crash_type: tombstone
+  condition: selection
+level: high
+tags:
+  - crash.tombstone

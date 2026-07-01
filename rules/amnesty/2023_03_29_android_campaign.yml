@@ -1,0 +1,42 @@
+title: AmnestyTech Investigations - Android Malware Campaign (2023-03-29)
+id: amnesty-inv-2023-03-29-android-campaign
+status: experimental
+description: Android malware campaign IoCs (domains, file paths, android_properties). Full list at https://github.com/AmnestyTech/investigations/tree/master/2023-03-29_android_campaign
+level: high
+author: AmnestyTech (adapted for sigma-zero)
+date: 2023/03/29
+references:
+  - https://github.com/AmnestyTech/investigations/tree/master/2023-03-29_android_campaign
+
+detection:
+  selection_domain:
+    destination_domain:
+      - 'ablazenutrient.net'
+      - 'abreastelongated.com'
+      - 'abroadwizard.net'
+      - 'absintheskewer.net'
+      - 'absolutecool.net'
+      - 'abstainoxymoron.net'
+      - 'acceptway.com'
+      - 'acetonenemesis.net'
+      - 'achinessfiddle.net'
+      - 'acidconfront.link'
+      - 'classicnames.eu'
+      - 'classicwallets.eu'
+      - 'click-grid.com'
+      - 'click-grid.net'
+      - 'click-grid.org'
+      - 'climateyo-yo.net'
+      - 'ddetik.net'
+      - 'ddetik.org'
+      - 'e-albania-services.com'
+      - 'firsttask.nl'
+  selection_path:
+    file_path:
+      - '/data/local/tmp/dropbox'
+  selection_android:
+    process_name|contains:
+      - 'sys.brand.note'
+      - 'sys.brand.notes'
+      - 'sys.brand.doc'
+  condition: selection_domain or selection_path or selection_android

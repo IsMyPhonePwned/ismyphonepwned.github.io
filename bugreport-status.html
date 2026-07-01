@@ -6,6 +6,7 @@
     <title>Bugreport Analysis — Status & Capabilities</title>
     <link rel="icon" href="favicon.ico" sizes="any">
     <link rel="apple-touch-icon" href="logo.png">
+    <script src="assets/sigma-rules-urls.js"></script>
     <style>
         * {
             margin: 0;
@@ -511,7 +512,7 @@ detection:<br>
 
             <h3 data-i18n="rulesListTitle">Rules list</h3>
             <p id="rules-list-desc" style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
-                Rules are auto-loaded from <code>/rules/</code> (20 files: NSO, Cellebrite, Novispy, FinFisher, Donot, Cytrox, CVE, and others). The analysis page fetches and concatenates them for Sigma evaluation.
+                Rules are auto-loaded from <code>/rules/</code> (38 files in <code>amnesty/</code>, <code>android/</code>, <code>CVE/</code>, <code>ios/darksword/</code>, <code>spyware/</code>). The analysis page fetches and concatenates them for Sigma evaluation.
             </p>
             <div id="fetch-status" class="fetch-status" style="display: none;"></div>
             <div id="rules-list-wrapper" style="display: none;">
@@ -721,7 +722,7 @@ detection:<br>
                 sigmaFormat: 'Sigma rule format',
                 sigmaFields: 'Rules follow the Sigma schema. Supported fields include title, id, description, status, level (critical / high / medium / low), and detection selection / condition.',
                 rulesListTitle: 'Rules list',
-                rulesListDesc: 'Rules are auto-loaded from /rules/ (20 files: NSO, Cellebrite, Novispy, FinFisher, Donot, Cytrox, CVE, and others). The analysis page fetches and concatenates them for Sigma evaluation.',
+                rulesListDesc: 'Rules are auto-loaded from /rules/ (38 files in amnesty/, android/, CVE/, ios/darksword/, spyware/). The analysis page fetches and concatenates them for Sigma evaluation.',
                 ruleLevels: 'Rule levels',
                 levelCritical: '— Critical security events (e.g. root access)',
                 levelHigh: '— High-risk behaviour (e.g. suspicious installs, exfiltration)',
@@ -759,7 +760,7 @@ detection:<br>
                 sigmaFormat: 'Format de règle Sigma',
                 sigmaFields: 'Les règles suivent le schéma Sigma. Champs supportés : title, id, description, status, level (critical / high / medium / low), et détection selection / condition.',
                 rulesListTitle: 'Liste des règles',
-                rulesListDesc: 'Les règles sont chargées automatiquement depuis /rules/ (20 fichiers : NSO, Cellebrite, Novispy, FinFisher, Donot, Cytrox, CVE, etc.). La page d\'analyse les récupère et les concatène pour l\'évaluation Sigma.',
+                rulesListDesc: 'Les règles sont chargées depuis /rules/ (38 fichiers : amnesty/, android/, CVE/, ios/darksword/, spyware/). La page d\'analyse les concatène pour Sigma.',
                 ruleLevels: 'Niveaux de règle',
                 levelCritical: '— Événements de sécurité critiques (ex. accès root)',
                 levelHigh: '— Comportement à haut risque (ex. installations suspectes, exfiltration)',
@@ -797,7 +798,7 @@ detection:<br>
                 sigmaFormat: 'Sigma 规则格式',
                 sigmaFields: '规则遵循 Sigma 架构。支持的字段包括 title、id、description、status、level（critical / high / medium / low）以及检测 selection / condition。',
                 rulesListTitle: '规则列表',
-                rulesListDesc: '规则从 /rules/ 自动加载（20 个文件：NSO、Cellebrite、Novispy、FinFisher、Donot、Cytrox、CVE 等）。分析页会获取并拼接它们以进行 Sigma 评估。',
+                rulesListDesc: '规则从 /rules/ 自动加载（38 个文件：amnesty/、android/、CVE/、ios/darksword/、spyware/）。分析页拼接后用于 Sigma 评估。',
                 ruleLevels: '规则级别',
                 levelCritical: '— 严重安全事件（如 root 访问）',
                 levelHigh: '— 高风险行为（如可疑安装、外泄）',
@@ -845,7 +846,9 @@ detection:<br>
                 if (t[key] !== undefined) el.textContent = t[key];
             });
             const rulesDesc = document.getElementById('rules-list-desc');
-            if (rulesDesc && t.rulesListDesc) rulesDesc.innerHTML = t.rulesListDesc.replace(/\/rules\//g, '<code>/rules/</code>');
+            if (rulesDesc && t.rulesListDesc) {
+                rulesDesc.innerHTML = t.rulesListDesc.replace(/\/rules\//g, '<code>/rules/</code>');
+            }
             const eval3 = document.getElementById('detection-eval3-li');
             if (eval3 && t.detectionEval3) eval3.innerHTML = t.detectionEval3.replace('---', '<code>---</code>');
             const themeText = document.getElementById('theme-text');
@@ -898,29 +901,8 @@ detection:<br>
             return d.innerHTML;
         }
 
-        // Same rule set as bugreport.html (ismyphonepwned.github.io/rules)
-        const DEFAULT_RULES_URLS = [
-            '/rules/2018_08_01_nso.yml',
-            '/rules/2018_12_19_best_practice.yml',
-            '/rules/2019_03_06_egypt_oauth.yml',
-            '/rules/2019_08_16_evolving_phishing.yml',
-            '/rules/2019_10_10_nso_morocco.yml',
-            '/rules/2020_03_12_uzbekistan.yml',
-            '/rules/2020_06_15_india.yml',
-            '/rules/2020_09_25_finfisher.yml',
-            '/rules/2021_02_24_vietnam.yml',
-            '/rules/2021_05_28_qatar.yml',
-            '/rules/2021_07_18_nso.yml',
-            '/rules/2021_10_07_donot.yml',
-            '/rules/2021_12_16_cytrox.yml',
-            '/rules/2023_03_29_android_campaign.yml',
-            '/rules/2024_05_02_wintego_helios.yml',
-            '/rules/2024_12_16_serbia_novispy.yml',
-            '/rules/cellebrite.yml',
-            '/rules/novispy.yml',
-            '/rules/test.yml',
-            '/rules/CVE/CVE-2025-21055.yaml'
-        ];
+        // Same rule set as android.html — see assets/sigma-rules-urls.js
+        const DEFAULT_RULES_URLS = window.SIGMA_RULE_URLS || [];
 
         function parseRulesFromYaml(text, source) {
             const rules = [];

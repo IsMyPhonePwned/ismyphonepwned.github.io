@@ -1,0 +1,29 @@
+title: DarkSword GHOSTBLADE filesystem artifacts
+id: mobipwn-darksword-ghostblade-filesystem
+status: experimental
+description: |
+  Post-exploitation file artifacts from GHOSTBLADE dataminer (WiFi password dumps,
+  keychain copies, iCloud dump staging). Requires on-device or full filesystem capture.
+author: mobipwn (adapted for sigma-zero)
+date: 2026/03/01
+logsource:
+  product: ios
+  category: filesystem
+detection:
+  selection:
+    file_path|contains:
+      - 'wifi_passwords'
+      - 'wifi_passwords_securityd.txt'
+      - 'icloud_dump'
+      - 'keychain_dump.txt'
+      - '/private/var/tmp/keychain-2.db'
+      - 'keychain_copy'
+      - 'keybag_copy'
+      - 'PostLogs.txt'
+      - 'persona_keychains.kb'
+      - 'usersession_keychains.kb'
+      - 'installed_apps.txt'
+  condition: selection
+level: critical
+tags:
+  - attack.collection

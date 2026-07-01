@@ -1,0 +1,69 @@
+title: AmnestyTech Investigations - DoNot Team APT (2021-10-07)
+id: amnesty-inv-2021-10-07-donot
+status: experimental
+description: DoNot (Donot) Team APT IoCs – domains and SHA256 hashes. Full list at https://github.com/AmnestyTech/investigations/tree/master/2021-10-07_donot
+level: critical
+author: AmnestyTech (adapted for sigma-zero)
+date: 2021/10/07
+references:
+  - https://github.com/AmnestyTech/investigations/tree/master/2021-10-07_donot
+
+detection:
+  selection_domain:
+    destination_domain:
+      - 'bulk.fun'
+      - 'apkv5.ppadaolnwod.xyz'
+      - 'apkv6.endurecif.top'
+      - 'getelements.xyz'
+      - 'fiddaz.club'
+      - 'lif0.top'
+      - 'fif0.top'
+      - 'chipp.pw'
+      - 'mimestyle.xyz'
+      - 'mangasiso.top'
+      - 'and.retardrattle.website'
+      - 'help.domainoutlet.site'
+      - 'whynotworkonit.top'
+      - 'spectronet.pw'
+      - 'full.naturalpercent.life'
+      - 'mimeversion.top'
+      - 'rythemsjoy.club'
+      - 'lowlight.xyz'
+      - 'inapturst.top'
+      - 'auth.forwardtoken.website'
+      - 'accounts.loginshare.info'
+      - 'seahome.top'
+      - 'imageview.xyz'
+      - 'flickry.xyz'
+      - 'userauthen.pw'
+      - 'join.officeframe.work'
+      - 'zumba.tampotrust.agency'
+      - 'image.loadingmessage.info'
+  selection_hash:
+    file_hash:
+      - '000ddbb75d10a939b54a7ceea5f12563b855daec971a9da0f2b4d5f935e195a3'
+      - '03d10d2682093fa126f0eaa5cbfd64eabbb06e151238bba1a7e261468ec4198e'
+      - '066ae38cc8514c07360049099bf954e3e2470b18b19ff9fc13681b1c2e3089d5'
+      - '0848541d0eda16a5c16c920916092fb0e6f1555a9b12df9f8400f70d1b4d387d'
+      - '0c2494c03f07f891c67bb31390c12c84b0bb5eea132821c0873db7a87f27ccef'
+      - '0efdd55f9341dcf358872cdb42c943f2457f800886f5cfeb74fa07c0f5c750e9'
+      - '10143c8b913b5714688b5d439d11e3918cc45639c7725c1fc8e240e37091c354'
+      - '106645830653a937cf133baefbe02ccdf8a0b55b743473b720d9129a4360bdc1'
+      - '10a2d4fc913fa0931cf93c8725c1c9af20f22a4a35e619b1af17b84da326ea3f'
+      - '11764af75f241ccf8642558014ba29729585850a1efac86a5a8d4c7032c9bb40'
+      - '14fb7d317fff4fa2f02e106281dafa951c635adb3151343619440964370090f1'
+      - '16ab497d5b3af927264ca4ef36f605a3d0374a49c355d1a73b5a1a52a1d6c039'
+      - '175c0d04e9419432d0adffece655a338f71714d2b5cdc2639d1a5c5462b4e7ac'
+      - '19a2aeb938785c98e2692dc055ac6e2844cf0e70ba80b9bc6f192ab362b8a635'
+      - '2068cd66658eac0ac50202a9ae249e45abb4ee3c4f03f8cf8dd6998acbd75261'
+      - '236e0cd0914f1851072f54f4284d5af21842e47302b391e4780a14e84abb4269'
+      - '2606b863b512957a4af47a4ad6a319fa8e1e4349de691f30b89f1fb9acc71bb5'
+      - '2943fc4eec81e2da6c195b6e6a4e3c9b847f0da8079044c29b21d6fb06c84f0c'
+      - '2fb28fe0190041c47157df760dcb4f8865f2b450219016c95893d22d4eda22f0'
+      - '3587b0f5d18863992dcd124b103c50ecd32a2393c2cd1c0346c3a3cf8985e107'
+      - '42a116b3db5b1142f2812b1e73cd386c4381500fb95932f36aeb752179e25ef7'
+      - '4789b7c5940f6482cbb1c296b58e725f7ade070d2d8181627d90db86ff75ac7a'
+      - '4ed8ee387750da187bf327568d975d6e568ec6bfb92a0923e3a3cc04c6597514'
+      - '555578d8d5f116c55bfe8e8ac4794ecf67193668b52222e7a8d9fa919ee6eeac'
+      - '63efcbb541cd17a9b940e125a52245f50f06d5033b64ad7111be8d82202e3c37'
+  condition: selection_domain or selection_hash

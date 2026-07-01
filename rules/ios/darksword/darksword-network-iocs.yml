@@ -1,0 +1,29 @@
+title: DarkSword iOS network IoCs
+id: mobipwn-darksword-network-iocs
+status: experimental
+description: |
+  Delivery, watering-hole, and exfiltration domains/IPs for the DarkSword iOS exploit chain
+  (GTIG, iVerify, Lookout, MVT). Ref Google GTIG Mar 2026.
+author: mobipwn (adapted for sigma-zero)
+date: 2026/03/01
+logsource:
+  product: ios
+  category: network
+detection:
+  selection_domain:
+    destination_domain:
+      - 'snapshare.chat'
+      - 'sahibndn.io'
+      - 'e5.malaymoil.com'
+      - 'static.cdncounter.net'
+      - 'sqwas.shapelie.com'
+      - 'novosti.dn.ua'
+      - '7aac.gov.ua'
+  selection_ip:
+    remote_ip:
+      - '62.72.21.10'
+      - '72.60.98.48'
+  condition: selection_domain or selection_ip
+level: critical
+tags:
+  - attack.command_and_control

@@ -1,0 +1,29 @@
+title: AmnestyTech Investigations - Wintego Helios (2024-05-02)
+id: amnesty-inv-2024-05-02-wintego-helios
+status: experimental
+description: Wintego Helios spyware IoCs (domains). Full list at https://github.com/AmnestyTech/investigations/tree/master/2024-05-02_wintego_helios
+level: high
+author: AmnestyTech (adapted for sigma-zero)
+date: 2024/05/02
+references:
+  - https://github.com/AmnestyTech/investigations/tree/master/2024-05-02_wintego_helios
+
+detection:
+  selection_domain:
+    destination_domain:
+      - 'africatech.eu'
+      - 'alertanalysis.org'
+      - 'androidcheckupdate.com'
+      - 'galaxy-update-check.com'
+      - 'galaxyupdate.network'
+      - 'galaxyupdatecheck.com'
+      - 'senego.fr'
+      - 'senego.info'
+      - 'seneweb.eu'
+      - 'seneweb.news'
+      - 'serverdetails.click'
+      - 'techarmys.com'
+      - 'techarmys.net'
+      - 'tiktok.do'
+      - 'tribunnews.org'
+  condition: selection_domain

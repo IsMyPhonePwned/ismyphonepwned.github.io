@@ -1,0 +1,25 @@
+title: DarkSword unified log exploit tags
+id: mobipwn-darksword-unified-log-tags
+status: experimental
+description: |
+  High-confidence unified-log markers from DarkSword chain execution in mediaplaybackd
+  and related processes. Requires logarchive decode at ingest. Ref iVerify.
+author: mobipwn (adapted for sigma-zero)
+date: 2026/03/01
+logsource:
+  product: ios
+  category: logarchive
+detection:
+  selection:
+    message|contains:
+      - 'DarkSword-WIFI-DUMP'
+      - 'MIG_FILTER_BYPASS'
+      - 'DRIVER-NEWTHREAD'
+      - 'TASKROP'
+      - 'Hello from'
+      - 'target corrupted'
+      - 'Running on non-A18'
+  condition: selection
+level: critical
+tags:
+  - attack.execution

@@ -1,0 +1,26 @@
+title: DarkSword implant JavaScript strings
+id: mobipwn-darksword-implant-strings
+status: experimental
+description: |
+  In-memory implant and loader strings from GHOSTKNIFE, GHOSTSABER, and GHOSTBLADE
+  (GTIG YARA rules). Ref Google GTIG Mar 2026.
+author: mobipwn (adapted for sigma-zero)
+date: 2026/03/01
+logsource:
+  product: ios
+detection:
+  selection:
+    message|contains:
+      - 'sendDeviceInfoJson'
+      - 'getfilebyExtention'
+      - 'send_command_to_upper_process'
+      - 'ChangeStatusCheckSleepInterval'
+      - 'device_info_all'
+      - 'server_pub_ex'
+      - 'client_pri_ds'
+      - 'X-Device-UUID'
+      - 'icloud_dump_'
+  condition: selection
+level: critical
+tags:
+  - attack.execution

@@ -1,0 +1,34 @@
+title: AmnestyTech Investigations - Serbia NoviSpy (2024-12-16)
+id: amnesty-inv-2024-12-16-serbia-novispy
+status: experimental
+description: Serbia NoviSpy IoCs (domains, SHA256, package names, package cert hashes). Full list at https://github.com/AmnestyTech/investigations/tree/master/2024-12-16_serbia_novispy
+level: high
+author: AmnestyTech (adapted for sigma-zero)
+date: 2024/12/16
+references:
+  - https://github.com/AmnestyTech/investigations/tree/master/2024-12-16_serbia_novispy
+
+detection:
+  selection_ip:
+    event_type: network_socket
+    remote_ip:
+      - '195.178.51.251'
+      - '79.101.110.108'
+      - '188.93.127.34'
+      - '178.220.122.57'
+      - '94.140.125.174'
+      - '185.86.148.174'
+      - '176.223.111.131'
+  selection_hash:
+    file_hash:
+      - '54ee2c4f3e2396b6f92def135d68abd35d63ca7f9c304633a36f705ba4728cb7'
+      - 'd55e492d5fce87898e065572a5553d1ac1389cd12bf3d28cabc1218cb29780af'
+      - '99673ce7f10e938ed73ed4a99930fbd6499983caa7a2c1b9e3f0e0bb0a5df602'
+      - '087fc1217c897033425fe7f1f12b913cd48918c875e99c25bdb9e1ffcf80f57e'
+  selection_package:
+    process_name|contains:
+      - 'com.serv.services'
+      - 'com.accessibilityservice'
+      - 'com.li.activity'
+      - 'com.gu.activity'
+  condition: selection_ip or selection_hash or selection_package

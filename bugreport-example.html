@@ -7,6 +7,8 @@
     <link rel="icon" href="favicon.ico" sizes="any">
     <link rel="apple-touch-icon" href="logo.png">
     <link rel="stylesheet" href="assets/site.css">
+    <script src="assets/sigma-rules-urls.js"></script>
+    <script src="assets/timeline-view.js" defer></script>
     <style>
         * {
             margin: 0;
@@ -388,9 +390,19 @@
             </button>
         </header>
 
+        <nav class="page-nav" aria-label="Pages">
+            <a href="index.html">Home</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="android.html">Android (live analyzer)</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="bugreport-status.html">Rules &amp; parsers reference</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="intrusion-logs.html">Intrusion logs</a>
+        </nav>
+
         <div class="info-banner">
             <strong>📋 Example Page</strong><br>
-            Sample layout matching the live <a href="android.html" style="color: var(--accent); font-weight: 600;">Android analyzer</a>: extended system statistics, <strong>Packages installed by user</strong> (non-system apps with install metadata, sorted by latest install/update), full package cards, extra parsers (memory, policy, ADB, auth, VPN, privacy), and <strong>Full Data (JSON)</strong> at the bottom. All values are fictional.
+            Sample layout matching the live <a href="android.html" style="color: var(--accent); font-weight: 600;">Android analyzer</a> (v0.2.0 · 5 July 2026): <strong>36 Sigma rules</strong> from <code>/rules/</code> (amnesty, android, CVE, ios/darksword, spyware), timeline + Sigma matches, privacy parser (location providers, last availability, OpenStreetMap links), packages installed by user, parser cards, and full JSON export. See <a href="bugreport-status.html" style="color: var(--accent);">bugreport-status</a> for the rule catalog. All values are fictional.
         </div>
 
         <!-- Results -->
@@ -473,6 +485,16 @@
                 <div class="result-card" id="crash-info-card" style="display: none;">
                     <h3>💥 ANR / Crash</h3>
                     <div id="crash-info-container" style="font-size: 0.875rem; color: var(--text-primary);"></div>
+                </div>
+
+                <div id="timeline-sketch-card" class="result-card" style="display: none;">
+                    <h3>🗓️ Timeline</h3>
+                    <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+                        Parser-based timeline rows plus Sigma matches. Colors by parser or category; click an event for JSON.
+                    </p>
+                    <div id="timeline-sketch-meta" style="font-size: 0.8125rem; margin: 0 0 0.5rem;"></div>
+                    <div id="timeline-sketch-dl-row" style="margin-bottom: 0.5rem;"></div>
+                    <div id="timeline-sketch-host"></div>
                 </div>
 
                 <!-- Battery Status -->
@@ -1512,6 +1534,85 @@
             return `${seconds}s`;
         }
 
+        function buildExampleSigmaRulesInfo() {
+            const urls = window.SIGMA_RULE_URLS || [];
+            return urls.map(function (url) {
+                const file = (url.split('/').pop() || '').replace(/\.(yml|yaml)$/i, '');
+                let level = 'medium';
+                if (url.indexOf('/CVE/') >= 0 || url.indexOf('/spyware/') >= 0) level = 'critical';
+                else if (url.indexOf('/amnesty/') >= 0 || url.indexOf('/ios/') >= 0) level = 'high';
+                let id = file;
+                if (url.indexOf('/amnesty/') >= 0) id = 'amnesty-inv-' + file.replace(/_/g, '-');
+                if (file === 'bugreport_anr') id = 'bugreport-anr';
+                if (file === 'bugreport_native_crash') id = 'bugreport-native-crash';
+                if (file === 'cellebrite') id = '426e58ac-4a36-4dcc-9d98-4f621b1a89d0';
+                if (file === 'novispy') id = '5b3d6582-6c45-463a-92f6-8657dc199a0c';
+                if (file === 'CVE-2025-21055') id = 'cve-2025-21055';
+                if (file === 'CVE-2025-27363') id = 'cve-2025-27363-freetype';
+                if (file.indexOf('CVE-2025-27363-') === 0) id = file.toLowerCase().replace(/_/g, '-');
+                if (file.indexOf('darksword-') === 0) id = file;
+                const title = file
+                    .replace(/_/g, ' ')
+                    .replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+                return {
+                    url: url,
+                    success: true,
+                    title: title,
+                    id: id,
+                    description: 'Sigma rule served from ' + url,
+                    status: url.indexOf('/amnesty/') >= 0 ? 'experimental' : 'stable',
+                    level: level
+                };
+            });
+        }
+
+        function displayTimelineSketch(data) {
+            const card = document.getElementById('timeline-sketch-card');
+            const host = document.getElementById('timeline-sketch-host');
+            const meta = document.getElementById('timeline-sketch-meta');
+            const dlRow = document.getElementById('timeline-sketch-dl-row');
+            if (!card || !host) return;
+            if (meta) meta.textContent = '';
+            if (dlRow) dlRow.textContent = '';
+            host.textContent = '';
+
+            const d = data && typeof data === 'object' ? data : {};
+            let analysers = d.analysers;
+            if (analysers && typeof analysers === 'object' && analysers instanceof Map) {
+                analysers = Object.fromEntries(analysers);
+            }
+            const ts = analysers && analysers.timesketch ? mapPlainTop(analysers.timesketch) || analysers.timesketch : null;
+            const tsEvents = ts && ts.error == null ? asWasmArray(ts.events) : [];
+            if (!tsEvents.length) {
+                card.style.display = 'none';
+                return;
+            }
+            card.style.display = 'block';
+            if (meta) {
+                const cnt = ts.count != null ? ts.count : tsEvents.length;
+                meta.textContent = cnt + ' timeline events (parser rows + Sigma matches).';
+            }
+            if (dlRow && typeof ts.jsonl === 'string' && ts.jsonl.length) {
+                const aJl = document.createElement('a');
+                aJl.href = URL.createObjectURL(new Blob([ts.jsonl], { type: 'application/x-ndjson;charset=utf-8' }));
+                aJl.download = 'bugreport-example-timesketch.jsonl';
+                aJl.textContent = 'Download JSONL';
+                aJl.style.cssText =
+                    'display: inline-block; padding: 0.35rem 0.75rem; margin-bottom: 0.5rem; background: var(--accent); color: white; border-radius: 6px; text-decoration: none; font-size: 0.8125rem;';
+                dlRow.appendChild(aJl);
+            }
+            if (window.TimelineSketchView && typeof window.TimelineSketchView.mount === 'function') {
+                window.TimelineSketchView.mount(host, {
+                    events: tsEvents,
+                    categoryField: 'bugreport_parser',
+                    maxRender: 15000,
+                    flashyColors: true
+                });
+            } else {
+                host.textContent = 'Timeline UI script not loaded (timeline-view.js).';
+            }
+        }
+
         // Display results
         function displayResults(data) {
             currentResults = data;
@@ -1535,20 +1636,15 @@
 
             fillSystemStatistics(data);
 
-            // Sigma rules
+            // Sigma rules (same card layout as android.html)
             const sigmaEl = document.getElementById('sigma-rules-container');
-            const info = data.sigma_rules_info;
-            if (info && Array.isArray(info) && info.length > 0) {
-                const loadedCount = info.filter(r => r.success).length;
-                const failedCount = info.filter(r => !r.success).length;
-                sigmaEl.innerHTML = `<div style="margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 6px; font-size: 0.875rem;">
-                    <strong>Rules Summary:</strong> ${loadedCount} loaded, ${failedCount} failed, ${info.length} total
-                </div>`;
-                sigmaEl.innerHTML += info.map(r => {
+            const info = asWasmArray(data.sigma_rules_info);
+            if (info.length > 0) {
+                sigmaEl.innerHTML = info.map(function (rawR) {
+                    const r = mapPlainTop(rawR) || rawR;
                     const fetchBadge = r.success
                         ? '<span style="color: var(--success);">✓ Fetched</span>'
                         : '<span style="color: var(--error);">✗ ' + escapeHtml(r.fetchError || 'Failed') + '</span>';
-                    const levelColor = r.level === 'critical' ? 'var(--error)' : r.level === 'high' ? 'var(--warning)' : r.level === 'medium' ? 'var(--sigma-medium)' : r.level === 'low' ? 'var(--sigma-low)' : 'var(--text-secondary)';
                     const rows = [
                         ['URL', escapeHtml(r.url)],
                         ['Server', fetchBadge],
@@ -1556,10 +1652,12 @@
                         ['ID', r.id ? escapeHtml(r.id) : '-'],
                         ['Description', r.description ? escapeHtml(r.description) : '-'],
                         ['Status', r.status ? escapeHtml(r.status) : '-'],
-                        ['Level', `<span style="color: ${levelColor}; font-weight: 600;">${escapeHtml(r.level || '-')}</span>`]
+                        ['Level', r.level ? escapeHtml(r.level) : '-']
                     ];
-                    const body = rows.map(([l, v]) => `<div style="margin-bottom: 0.35rem;"><span style="color: var(--text-secondary); font-weight: 500;">${escapeHtml(l)}:</span> ${v}</div>`).join('');
-                    return `<div class="result-card" style="margin-bottom: 0.75rem; padding: 1rem; border-left: 4px solid ${levelColor};"><div style="font-size: 0.875rem;">${body}</div></div>`;
+                    const body = rows.map(function (pair) {
+                        return '<div style="margin-bottom: 0.35rem;"><span style="color: var(--text-secondary); font-weight: 500;">' + escapeHtml(pair[0]) + ':</span> ' + pair[1] + '</div>';
+                    }).join('');
+                    return '<div class="result-card" style="margin-bottom: 0.75rem; padding: 1rem;"><div style="font-size: 0.875rem;">' + body + '</div></div>';
                 }).join('');
             } else {
                 sigmaEl.textContent = 'No rules loaded.';
@@ -1567,35 +1665,10 @@
 
             // Sigma matches
             const matchesEl = document.getElementById('sigma-matches-container');
-            const matches = data.sigma_matches;
-            if (matches && Array.isArray(matches) && matches.length > 0) {
-                // Summary banner
-                const criticalCount = matches.filter(m => (m.level || '').toLowerCase() === 'critical').length;
-                const highCount = matches.filter(m => (m.level || '').toLowerCase() === 'high').length;
-                const mediumCount = matches.filter(m => (m.level || '').toLowerCase() === 'medium').length;
-                const lowCount = matches.filter(m => (m.level || '').toLowerCase() === 'low').length;
-                
-                let summaryHtml = '<div style="margin-bottom: 1rem; padding: 1rem; background: ';
-                if (criticalCount > 0) {
-                    summaryHtml += 'rgba(244, 67, 54, 0.1); border: 2px solid var(--error); border-radius: 6px;">';
-                    summaryHtml += '<div style="color: var(--error); font-weight: 600; font-size: 1rem; margin-bottom: 0.5rem;">⚠️ Security Threats Detected!</div>';
-                } else if (highCount > 0) {
-                    summaryHtml += 'rgba(255, 152, 0, 0.1); border: 2px solid var(--warning); border-radius: 6px;">';
-                    summaryHtml += '<div style="color: var(--warning); font-weight: 600; font-size: 1rem; margin-bottom: 0.5rem;">⚠️ High-Risk Activities Detected</div>';
-                } else {
-                    summaryHtml += 'var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px;">';
-                    summaryHtml += '<div style="font-weight: 600; font-size: 1rem; margin-bottom: 0.5rem;">Detection Summary</div>';
-                }
-                summaryHtml += `<div style="font-size: 0.875rem; display: flex; gap: 1rem; flex-wrap: wrap;">
-                    <span><strong>Total Matches:</strong> ${matches.length}</span>
-                    ${criticalCount > 0 ? `<span style="color: var(--error);"><strong>Critical:</strong> ${criticalCount}</span>` : ''}
-                    ${highCount > 0 ? `<span style="color: var(--warning);"><strong>High:</strong> ${highCount}</span>` : ''}
-                    ${mediumCount > 0 ? `<span style="color: var(--sigma-medium);"><strong>Medium:</strong> ${mediumCount}</span>` : ''}
-                    ${lowCount > 0 ? `<span style="color: var(--sigma-low);"><strong>Low:</strong> ${lowCount}</span>` : ''}
-                </div></div>`;
-                
-                matchesEl.innerHTML = summaryHtml;
-                matchesEl.innerHTML += matches.map(m => {
+            const matches = asWasmArray(data.sigma_matches);
+            if (matches.length > 0) {
+                matchesEl.innerHTML = matches.map(function (rawM) {
+                    const m = mapPlainTop(rawM) || rawM;
                     const id = (m.rule_id && m.rule_id.trim()) ? escapeHtml(m.rule_id) : '-';
                     const title = (m.rule_title && m.rule_title.trim()) ? escapeHtml(m.rule_title) : '-';
                     const level = (m.level && m.level.trim()) ? escapeHtml(m.level) : '-';
@@ -1603,38 +1676,26 @@
                     const levelColor = l === 'critical' ? 'var(--error)' : l === 'high' ? 'var(--warning)' : l === 'medium' ? 'var(--sigma-medium)' : l === 'low' ? 'var(--sigma-low)' : 'var(--text-secondary)';
                     let matchedLogHtml = '';
                     let ml = m.log_entry ?? m.matched_log;
-                    if (ml && typeof ml === 'object' && ml instanceof Map) {
-                        ml = Object.fromEntries(ml);
-                    }
+                    if (ml && typeof ml === 'object' && ml instanceof Map) ml = Object.fromEntries(ml);
                     if (ml && typeof ml === 'object' && !Array.isArray(ml) && Object.keys(ml).length > 0) {
-                        const fmt = (v) => {
-                            if (v === null || v === undefined) return '';
-                            if (typeof v === 'object') return escapeHtml(JSON.stringify(v, null, 2));
-                            if (typeof v === 'boolean') return v ? 'true' : 'false';
-                            return escapeHtml(String(v));
+                        const fmt = function (v) {
+                            return typeof v === 'object' && v !== null ? escapeHtml(JSON.stringify(v)) : escapeHtml(String(v ?? ''));
                         };
-                        const entriesHtml = Object.entries(ml)
-                            .filter(([k, v]) => v !== null && v !== undefined && v !== '')
-                            .map(([k, v]) => '<div style="margin-bottom: 0.3rem; padding: 0.25rem 0; border-bottom: 1px solid var(--border);"><span style="color: var(--text-secondary); font-weight: 500; display: inline-block; min-width: 150px;">' + escapeHtml(k) + ':</span> <span style="font-family: monospace; font-size: 0.85rem;">' + fmt(v) + '</span></div>').join('');
-                        matchedLogHtml = '<details class="sigma-matched-log" style="margin-top: 0.75rem;"><summary style="font-weight: 600; cursor: pointer; padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;">📋 View Detection Details</summary><div class="sigma-matched-log-body" style="margin-top: 0.5rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 4px; max-height: 400px; overflow-y: auto;">' + entriesHtml + '</div></details>';
+                        const entriesHtml = Object.entries(ml).map(function (pair) {
+                            return '<div style="margin-bottom: 0.2rem;"><span style="color: var(--text-secondary);">' + escapeHtml(pair[0]) + ':</span> ' + fmt(pair[1]) + '</div>';
+                        }).join('');
+                        matchedLogHtml = '<details class="sigma-matched-log"><summary>Matched log</summary><div class="sigma-matched-log-body">' + entriesHtml + '</div></details>';
                     }
-                    return `<div class="result-card" style="margin-bottom: 0.75rem; padding: 1rem; border-left: 4px solid ${levelColor}; background: var(--bg-card);">
-                        <div style="font-size: 0.875rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; gap: 1rem;">
-                                <div style="flex: 1;">
-                                    <div style="margin-bottom: 0.25rem; font-weight: 600; color: var(--text-primary);">${title}</div>
-                                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.8rem;">
-                                        <span style="color: var(--text-secondary);">Rule ID: <code>${id}</code></span>
-                                        <span style="color: ${levelColor}; font-weight: 600; padding: 0.125rem 0.5rem; background: ${levelColor}20; border-radius: 4px;">${level.toUpperCase()}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            ${matchedLogHtml}
-                        </div>
-                    </div>`;
+                    return '<div class="result-card" style="margin-bottom: 0.5rem; padding: 0.75rem 1rem; border-left: 4px solid ' + levelColor + ';"><div style="font-size: 0.875rem;"><div style="margin-bottom: 0.25rem;"><span style="color: var(--text-secondary); font-weight: 500;">Rule:</span> ' + title + '</div><div style="display: flex; gap: 1rem; flex-wrap: wrap;"><span><span style="color: var(--text-secondary);">ID:</span> ' + id + '</span><span style="color: ' + levelColor + '; font-weight: 500;">' + level + '</span></div>' + matchedLogHtml + '</div></div>';
                 }).join('');
             } else {
-                matchesEl.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-secondary); background: var(--bg-secondary); border-radius: 6px;">✓ No security threats detected. All checks passed.</div>';
+                matchesEl.textContent = 'No matches.';
+            }
+
+            try {
+                displayTimelineSketch(data);
+            } catch (e) {
+                console.error('displayTimelineSketch failed', e);
             }
 
             // File info
@@ -2927,255 +2988,170 @@
                 size_bytes: 16457728,
                 sha256: "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"
             },
-            sigma_rules_info: [
-                {
-                    url: "https://github.com/SigmaHQ/sigma/rules/android/",
-                    success: true,
-                    title: "Android Root Access Detection",
-                    id: "android_root_001",
-                    description: "Detects execution of su binary or root access attempts on Android devices",
-                    status: "active",
-                    level: "critical"
-                },
-                {
-                    url: "https://github.com/SigmaHQ/sigma/rules/android/",
-                    success: true,
-                    title: "Suspicious Package Installation",
-                    id: "android_package_install_001",
-                    description: "Detects installation of packages from unknown or untrusted sources",
-                    status: "active",
-                    level: "high"
-                },
-                {
-                    url: "https://github.com/SigmaHQ/sigma/rules/android/",
-                    success: true,
-                    title: "Data Exfiltration via Network",
-                    id: "android_data_exfil_001",
-                    description: "Detects suspicious network activity indicating potential data exfiltration",
-                    status: "active",
-                    level: "high"
-                },
-                {
-                    url: "https://github.com/SigmaHQ/sigma/rules/android/",
-                    success: true,
-                    title: "Privilege Escalation Attempt",
-                    id: "android_priv_esc_001",
-                    description: "Detects attempts to escalate privileges or access protected resources",
-                    status: "active",
-                    level: "high"
-                },
-                {
-                    url: "https://github.com/SigmaHQ/sigma/rules/android/",
-                    success: true,
-                    title: "Suspicious System Modification",
-                    id: "android_system_mod_001",
-                    description: "Detects unauthorized modifications to system files or directories",
-                    status: "active",
-                    level: "medium"
-                },
-                {
-                    url: "https://github.com/SigmaHQ/sigma/rules/android/",
-                    success: true,
-                    title: "Background Service Abuse",
-                    id: "android_service_abuse_001",
-                    description: "Detects suspicious background service activity or persistent services",
-                    status: "active",
-                    level: "medium"
-                },
-                {
-                    url: "https://github.com/SigmaHQ/sigma/rules/android/",
-                    success: true,
-                    title: "SMS/MMS Interception",
-                    id: "android_sms_intercept_001",
-                    description: "Detects applications attempting to intercept or read SMS/MMS messages",
-                    status: "active",
-                    level: "high"
-                },
-                {
-                    url: "https://github.com/SigmaHQ/sigma/rules/android/",
-                    success: false,
-                    fetchError: "Network timeout",
-                    title: "Advanced Persistent Threat Detection",
-                    id: "android_apt_001",
-                    description: "Detects indicators of advanced persistent threats",
-                    status: "pending",
-                    level: "critical"
-                }
-            ],
+            sigma_rules_info: [],
             sigma_matches: [
                 {
-                    rule_id: "android_root_001",
-                    rule_title: "Android Root Access Detection",
+                    rule_id: "amnesty-inv-2021-07-18-nso",
+                    rule_title: "AmnestyTech Investigations - NSO Pegasus Infrastructure (2021-07-18)",
                     level: "critical",
                     matched_log: {
-                        timestamp: "2024-01-15T09:15:22Z",
-                        process: "su",
-                        command: "/system/xbin/su",
-                        pid: 9876,
-                        uid: 0,
-                        package: "com.example.rootapp",
-                        log_entry: "Process 'su' executed with root privileges",
-                        source: "logcat",
-                        tag: "Security"
-                    }
-                },
-                {
-                    rule_id: "android_package_install_001",
-                    rule_title: "Suspicious Package Installation",
-                    level: "high",
-                    matched_log: {
-                        timestamp: "2024-01-14T20:15:00Z",
-                        package: "com.example.suspicious",
-                        installer: "com.android.packageinstaller",
-                        source: "unknown",
-                        version_code: 1,
-                        apk_path: "/data/local/tmp/suspicious.apk",
-                        user_id: 0,
-                        log_entry: "Package installed from unknown source without user interaction",
-                        source: "package_manager",
-                        tag: "PackageInstaller"
-                    }
-                },
-                {
-                    rule_id: "android_data_exfil_001",
-                    rule_title: "Data Exfiltration via Network",
-                    level: "high",
-                    matched_log: {
                         timestamp: "2024-01-15T11:30:45Z",
-                        package: "com.example.suspicious",
-                        network_type: "mobile",
+                        destination_domain: "accountnotify.com",
                         remote_address: "185.220.101.45",
-                        remote_port: 443,
-                        bytes_sent: 52428800,
-                        bytes_received: 1024,
                         protocol: "tcp",
-                        connection_duration: 300,
-                        log_entry: "Large data transfer to suspicious IP address",
+                        bytes_sent: 4096,
+                        log_entry: "DNS lookup / connection to Pegasus-related domain",
                         source: "network_stats",
                         tag: "NetworkSecurity"
                     }
                 },
                 {
-                    rule_id: "android_priv_esc_001",
-                    rule_title: "Privilege Escalation Attempt",
-                    level: "high",
+                    rule_id: "5b3d6582-6c45-463a-92f6-8657dc199a0c",
+                    rule_title: "NoviSpy Android spyware",
+                    level: "critical",
                     matched_log: {
-                        timestamp: "2024-01-15T10:45:12Z",
-                        package: "com.example.suspicious",
-                        action: "android.permission.WRITE_SECURE_SETTINGS",
-                        requested_by: "com.example.suspicious",
-                        granted: false,
-                        reason: "Permission denied: requires system signature",
-                        log_entry: "Attempt to access protected system settings",
-                        source: "permission_manager",
-                        tag: "Security"
-                    }
-                },
-                {
-                    rule_id: "android_system_mod_001",
-                    rule_title: "Suspicious System Modification",
-                    level: "medium",
-                    matched_log: {
-                        timestamp: "2024-01-15T08:20:33Z",
-                        package: "com.example.suspicious",
-                        file_path: "/system/etc/hosts",
-                        operation: "write",
-                        result: "denied",
-                        uid: 10123,
-                        log_entry: "Attempt to modify system file /system/etc/hosts",
-                        source: "file_system",
-                        tag: "Security"
-                    }
-                },
-                {
-                    rule_id: "android_service_abuse_001",
-                    rule_title: "Background Service Abuse",
-                    level: "medium",
-                    matched_log: {
-                        timestamp: "2024-01-15T07:00:00Z",
-                        package: "com.example.suspicious",
-                        service: "com.example.suspicious.BackgroundService",
-                        action: "start",
-                        foreground: false,
-                        persistent: true,
-                        wakelock_held: true,
-                        cpu_usage: 15.5,
-                        log_entry: "Persistent background service with high CPU usage",
-                        source: "activity_manager",
-                        tag: "BatteryStats"
-                    }
-                },
-                {
-                    rule_id: "android_sms_intercept_001",
-                    rule_title: "SMS/MMS Interception",
-                    level: "high",
-                    matched_log: {
-                        timestamp: "2024-01-15T12:15:30Z",
-                        package: "com.example.suspicious",
-                        permission: "android.permission.RECEIVE_SMS",
-                        action: "android.provider.Telephony.SMS_RECEIVED",
-                        sms_sender: "+1234567890",
-                        sms_body_preview: "Your verification code is: 123456",
-                        intercepted: true,
-                        log_entry: "Application intercepted SMS message without user consent",
-                        source: "telephony",
-                        tag: "Privacy"
-                    }
-                },
-                {
-                    rule_id: "android_data_exfil_001",
-                    rule_title: "Data Exfiltration via Network",
-                    level: "high",
-                    matched_log: {
-                        timestamp: "2024-01-15T13:45:20Z",
-                        package: "com.example.suspicious",
-                        network_type: "wifi",
-                        remote_address: "192.168.1.100",
-                        remote_port: 8080,
-                        bytes_sent: 104857600,
-                        bytes_received: 2048,
-                        protocol: "tcp",
-                        data_type: "contacts",
-                        contacts_count: 500,
-                        log_entry: "Large amount of contact data transmitted to local network",
-                        source: "network_stats",
-                        tag: "Privacy"
-                    }
-                },
-                {
-                    rule_id: "android_system_mod_001",
-                    rule_title: "Suspicious System Modification",
-                    level: "medium",
-                    matched_log: {
-                        timestamp: "2024-01-14T22:10:15Z",
-                        package: "com.example.suspicious",
-                        file_path: "/data/data/com.android.providers.settings/databases/settings.db",
-                        operation: "read",
-                        accessed_tables: ["secure", "global"],
-                        query: "SELECT * FROM secure WHERE name='install_non_market_apps'",
-                        log_entry: "Unauthorized access to system settings database",
-                        source: "database_access",
-                        tag: "Security"
-                    }
-                },
-                {
-                    rule_id: "android_package_install_001",
-                    rule_title: "Suspicious Package Installation",
-                    level: "high",
-                    matched_log: {
-                        timestamp: "2024-01-13T15:30:00Z",
-                        package: "com.malware.trojan",
+                        timestamp: "2024-01-14T20:15:00Z",
+                        pkg: "com.serv.services",
+                        package: "com.serv.services",
                         installer: "com.android.packageinstaller",
-                        source: "http://malicious-site.com/app.apk",
-                        version_code: 1,
-                        permissions: ["android.permission.READ_SMS", "android.permission.SEND_SMS", "android.permission.ACCESS_FINE_LOCATION"],
-                        suspicious_permissions: true,
-                        log_entry: "Package with suspicious permissions installed from untrusted source",
+                        version_code: 12,
+                        log_entry: "Suspicious NoviSpy-related package present on device",
                         source: "package_manager",
-                        tag: "Security"
+                        tag: "PackageInstaller"
+                    }
+                },
+                {
+                    rule_id: "bugreport-anr",
+                    rule_title: "Bugreport ANR (Crash parser)",
+                    level: "low",
+                    matched_log: {
+                        timestamp: "2024-01-15T10:20:00Z",
+                        event_type: "anr_file",
+                        crash_type: "anr",
+                        filename: "/data/anr/anr_2024-01-15-10-20-00.txt",
+                        subject: "ANR in com.sec.android.gallery3d",
+                        log_entry: "ANR trace file listed in bugreport Crash parser output",
+                        source: "crash",
+                        tag: "ANR"
+                    }
+                },
+                {
+                    rule_id: "bugreport-anr",
+                    rule_title: "Bugreport ANR (Crash parser)",
+                    level: "low",
+                    matched_log: {
+                        timestamp: "2024-01-15T09:45:00Z",
+                        event_type: "anr_trace",
+                        crash_type: "anr",
+                        subject: "ANR in com.sec.android.gallery3d",
+                        pid: 12345,
+                        log_entry: "ANR trace subject parsed from bugreport",
+                        source: "crash",
+                        tag: "ANR"
+                    }
+                },
+                {
+                    rule_id: "426e58ac-4a36-4dcc-9d98-4f621b1a89d0",
+                    rule_title: "Cellebrite Android spyware",
+                    level: "critical",
+                    matched_log: {
+                        timestamp: "2024-01-13T08:02:11Z",
+                        pkg: "com.client.appA",
+                        package: "com.client.appA",
+                        log_entry: "Cellebrite-related package indicator",
+                        source: "packages",
+                        tag: "Spyware"
                     }
                 }
             ],
+            analysers: {
+                timesketch: {
+                    analyser: "timesketch",
+                    count: 6,
+                    skipped_epoch_timeline_events: 0,
+                    events: [
+                        {
+                            message: "Package installed: com.serv.services (uid 10234)",
+                            datetime: "2024-01-14T20:15:00Z",
+                            timestamp_desc: "package",
+                            timestamp: 1705263300000000,
+                            time_is_approximate: false,
+                            data_type: "android:package",
+                            parser: "Package",
+                            bugreport_parser: "package",
+                            event_time_binding: "per_record",
+                            package_name: "com.serv.services",
+                            uid: 10234
+                        },
+                        {
+                            message: "Power: SCREEN_ON — battery 87%",
+                            datetime: "2024-01-15T07:00:00Z",
+                            timestamp_desc: "power",
+                            timestamp: 1705302000000000,
+                            time_is_approximate: false,
+                            data_type: "android:power",
+                            parser: "Power",
+                            bugreport_parser: "power",
+                            event_time_binding: "per_record",
+                            event_type: "SCREEN_ON",
+                            details: "battery 87%"
+                        },
+                        {
+                            message: "ANR file: /data/anr/anr_2024-01-15-10-20-00.txt",
+                            datetime: "2024-01-15T10:20:00Z",
+                            timestamp_desc: "crash",
+                            timestamp: 1705314000000000,
+                            time_is_approximate: false,
+                            data_type: "android:crash",
+                            parser: "Crash",
+                            bugreport_parser: "crash",
+                            event_time_binding: "per_record",
+                            event_type: "anr_file",
+                            crash_type: "anr",
+                            filename: "/data/anr/anr_2024-01-15-10-20-00.txt"
+                        },
+                        {
+                            message: "Network stats: com.android.chrome rx_wifi 104857600 bytes",
+                            datetime: "2024-01-15T11:30:45Z",
+                            timestamp_desc: "network",
+                            timestamp: 1705318245000000,
+                            time_is_approximate: false,
+                            data_type: "android:network_stats",
+                            parser: "Network",
+                            bugreport_parser: "network",
+                            event_time_binding: "per_record",
+                            package_name: "com.android.chrome",
+                            rx_bytes: 104857600
+                        },
+                        {
+                            message: "Process snapshot: 247 processes (dumpstate capture)",
+                            datetime: "2024-01-15T10:30:00Z",
+                            timestamp_desc: "process",
+                            timestamp: 1705314600000000,
+                            time_is_approximate: true,
+                            data_type: "android:process",
+                            parser: "Process",
+                            bugreport_parser: "process",
+                            event_time_binding: "snapshot_only",
+                            process_count: 247
+                        },
+                        {
+                            message: "Logcat: ActivityManager — ANR in com.sec.android.gallery3d",
+                            datetime: "2024-01-15T10:19:58Z",
+                            timestamp_desc: "logcat",
+                            timestamp: 1705313998000000,
+                            time_is_approximate: false,
+                            data_type: "android:logcat",
+                            parser: "Logcat",
+                            bugreport_parser: "logcat",
+                            event_time_binding: "per_record",
+                            tag: "ActivityManager",
+                            priority: "E"
+                        }
+                    ],
+                    jsonl: "{\"message\":\"Package installed: com.serv.services (uid 10234)\",\"datetime\":\"2024-01-14T20:15:00Z\",\"bugreport_parser\":\"package\",\"timestamp\":1705263300000000}\n{\"message\":\"Power: SCREEN_ON — battery 87%\",\"datetime\":\"2024-01-15T07:00:00Z\",\"bugreport_parser\":\"power\",\"timestamp\":1705302000000000}\n{\"message\":\"ANR file: /data/anr/anr_2024-01-15-10-20-00.txt\",\"datetime\":\"2024-01-15T10:20:00Z\",\"bugreport_parser\":\"crash\",\"timestamp\":1705314000000000}\n{\"message\":\"Network stats: com.android.chrome rx_wifi 104857600 bytes\",\"datetime\":\"2024-01-15T11:30:45Z\",\"bugreport_parser\":\"network\",\"timestamp\":1705318245000000}\n{\"message\":\"Process snapshot: 247 processes (dumpstate capture)\",\"datetime\":\"2024-01-15T10:30:00Z\",\"bugreport_parser\":\"process\",\"timestamp\":1705314600000000}\n{\"message\":\"Logcat: ActivityManager — ANR in com.sec.android.gallery3d\",\"datetime\":\"2024-01-15T10:19:58Z\",\"bugreport_parser\":\"logcat\",\"timestamp\":1705313998000000}"
+                }
+            },
             crash_info: {
                 anr_files: {
                     files: [
@@ -3675,6 +3651,7 @@
 
         // Auto-load sample data on page load
         window.addEventListener('DOMContentLoaded', () => {
+            sampleData.sigma_rules_info = buildExampleSigmaRulesInfo();
             displayResults(sampleData);
         });
     </script>

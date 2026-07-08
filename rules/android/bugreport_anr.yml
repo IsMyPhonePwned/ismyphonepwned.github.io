@@ -1,0 +1,22 @@
+title: Bugreport ANR (Crash parser)
+id: bugreport-anr
+status: experimental
+description: |
+  Surfaces Application Not Responding artifacts from bugreport Crash parser output:
+  ANR trace files and ANR file listings. Pair with "Bugreport native crash (tombstone)".
+author: IsMyPhonePwned (adapted for sigma-zero)
+date: 2026/03/01
+logsource:
+  product: android
+  category: crash
+detection:
+  selection_anr_file:
+    event_type: anr_file
+    crash_type: anr
+  selection_anr_trace:
+    event_type: anr_trace
+    crash_type: anr
+  condition: selection_anr_file or selection_anr_trace
+level: low
+tags:
+  - crash.anr

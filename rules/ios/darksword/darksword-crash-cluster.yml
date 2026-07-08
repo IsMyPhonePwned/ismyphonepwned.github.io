@@ -1,0 +1,36 @@
+title: DarkSword exploit crash cluster
+id: darksword-crash-cluster
+status: experimental
+description: |
+  Crash reports consistent with DarkSword chain stages — mediaplaybackd kernel exploit host,
+  WebKit sandbox escapes, EXC_ARM_DA_ALIGN in wifid/UserEventAgent/configd. Ref iVerify, GTIG.
+author: IsMyPhonePwned (adapted for sigma-zero)
+date: 2026/03/01
+logsource:
+  product: ios
+  category: crash
+detection:
+  selection_message:
+    message|contains:
+      - 'mediaplaybackd'
+      - 'WebKit.WebContent'
+      - 'WebKit.GPU'
+      - 'EXC_ARM_DA_ALIGN'
+      - 'EXC_GUARD'
+      - 'com.apple.configd'
+      - 'UserEventAgent'
+      - 'securityd'
+      - 'wifid'
+  selection_process:
+    process_name|contains:
+      - 'mediaplaybackd'
+      - 'WebKit'
+      - 'wifid'
+  selection_pkg:
+    pkg|contains:
+      - 'mediaplaybackd'
+      - 'WebKit'
+  condition: selection_message or selection_process or selection_pkg
+level: high
+tags:
+  - crash

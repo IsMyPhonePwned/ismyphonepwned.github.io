@@ -2,25 +2,51 @@ title: DarkSword Ciolino behavioral indicators
 id: darksword-ciolino-behavioral
 status: experimental
 description: |
-  Post-exploitation behaviors from reconstructed DarkSword chain — WebContent framework
-  load abuse, ICMPv6 kernel R/W sockets, sandbox token issuance, cross-process JS injection.
+  Post-exploitation behaviors from reconstructed DarkSword chain — requires correlated
+  indicators, not isolated syscall or sandbox strings. Covers WebContent framework load
+  abuse (TextToSpeech / PerfPowerServicesReader), ICMPv6 kernel R/W in mediaplaybackd,
+  cross-process JS injection primitives, JSC in system daemons, and AirPort keychain
+  queries from wifid/securityd. Ref AntonioCiolino/DarkSword-Analysis §3–§7.
 author: IsMyPhonePwned (adapted for sigma-zero)
 date: 2026/03/01
 logsource:
   product: ios
 detection:
-  selection:
-    message|contains:
-      - 'TextToSpeech.framework'
-      - 'PerfPowerServicesReader'
-      - 'ICMP6_FILTER'
-      - 'IPPROTO_ICMPV6'
-      - 'sandbox_extension_issue_file'
-      - 'sandbox_extension_consume'
-      - 'JSObjectMakeArrayBufferWithBytesNoCopy'
-      - 'thread_set_exception_ports'
-      - 'pthread_create_suspended_np'
-  condition: selection
+  selection_webcontent:
+    message|contains: 'WebKit.WebContent'
+  selection_tts_webcontent:
+    message|contains: 'TextToSpeech.framework'
+  selection_perf_webcontent:
+    message|contains: 'PerfPowerServicesReader'
+  selection_icmp_filter:
+    message|contains: 'ICMP6_FILTER'
+  selection_icmp_proto:
+    message|contains: 'IPPROTO_ICMPV6'
+  selection_mpd:
+    message|contains: 'mediaplaybackd'
+  selection_js_arraybuf:
+    message|contains: 'JSObjectMakeArrayBufferWithBytesNoCopy'
+  selection_exc_ports:
+    message|contains: 'thread_set_exception_ports'
+  selection_pthread_suspended:
+    message|contains: 'pthread_create_suspended_np'
+  selection_secitem:
+    message|contains: 'SecItemCopyMatching'
+  selection_airport:
+    message|contains: 'AirPort'
+  selection_jsc:
+    message|contains: 'JavaScriptCore'
+  selection_configd:
+    message|contains: 'configd'
+  selection_wifid:
+    message|contains: 'wifid'
+  selection_securityd:
+    message|contains: 'securityd'
+  selection_user_event:
+    message|contains: 'UserEventAgent'
+  selection_springboard:
+    message|contains: 'SpringBoard'
+  condition: (selection_tts_webcontent and selection_webcontent) or (selection_perf_webcontent and selection_webcontent) or (selection_icmp_filter and selection_icmp_proto and selection_mpd) or (selection_js_arraybuf and selection_exc_ports and selection_pthread_suspended) or (selection_secitem and selection_airport and (selection_wifid or selection_securityd)) or (selection_jsc and (selection_configd or selection_wifid or selection_securityd or selection_user_event or selection_springboard))
 level: high
 tags:
   - attack.defense_evasion

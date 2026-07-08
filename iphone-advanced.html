@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>IsMyPhonePwned · iPhone Advanced (WebUSB)</title>
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="stylesheet" href="assets/site.css">
+    <link rel="stylesheet" href="assets/idevice-workspace.css">
+    <script>(function(){ if (localStorage.getItem("theme") === "dark") document.documentElement.setAttribute("data-theme","dark"); })();</script>
+    <style>
+        .iphone-advanced-page .container { max-width: 72rem; }
+        .iphone-advanced-page .idevice-workspace .btn { width: auto; }
+    </style>
+</head>
+<body class="iphone-advanced-page">
+    <div class="container">
+        <header>
+            <div class="logo-container">
+                <img src="logo.png" alt="IsMyPhonePwned Logo" class="logo" onerror="this.style.display='none';">
+                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <h1 class="logo-text">IsMyPhonePwned ?</h1>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0; max-width: 48rem; line-height: 1.45;">
+                        <strong>iPhone Advanced</strong> — same WebUSB UI as
+                        <a href="https://github.com/ping2A/idevice-rs" target="_blank" rel="noopener">idevice-rs</a>.
+                        Sysdiagnose <em>analysis</em> is on <a href="iphone.html">iPhone (analyzer)</a>.
+                    </p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button type="button" class="theme-toggle" onclick="toggleTheme()">
+                    <span id="theme-icon">🌙</span>
+                    <span id="theme-text">Dark</span>
+                </button>
+            </div>
+        </header>
+
+        <nav class="page-nav" aria-label="Pages">
+            <a href="index.html">Home</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="iphone.html">iPhone (analyzer)</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <span style="color: var(--text-primary); font-weight: 600;">Advanced WebUSB</span>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="android.html">Android</a>
+        </nav>
+
+        <div class="idevice-workspace" id="idevice-workspace">
+<!-- Status bar -->
+    <div class="status-bar" aria-label="Session status">
+      <div class="status-item" id="st-device" data-state="off">
+        <span class="pill"></span>
+        <div style="min-width:0">
+          <div class="label">Device</div>
+          <div class="value" id="st-device-val">Not connected</div>
+        </div>
+      </div>
+      <div class="status-item" id="st-pair" data-state="off">
+        <span class="pill"></span>
+        <div style="min-width:0">
+          <div class="label">Pair record</div>
+          <div class="value" id="st-pair-val">None</div>
+        </div>
+      </div>
+      <div class="status-item" id="st-job" data-state="off">
+        <span class="pill"></span>
+        <div style="min-width:0">
+          <div class="label">Last action</div>
+          <div class="value" id="st-job-val">Idle</div>
+        </div>
+      </div>
+    </div>
+
+    <details class="toggle-block">
+      <summary>About WebUSB tools (idevice-rs WASM)</summary>
+      <p class="hint">
+        Everything runs in the browser via <strong>WebUSB</strong> + a Rust → WASM bundle.
+        Pick a device, generate or load a pair record, then run actions like
+        <strong>Battery</strong> / <strong>Diagnostics</strong> / <strong>Crash reports</strong>.
+        When the device sets <code>EnableSessionSSL</code>, the page negotiates lockdown
+        <strong>TLS</strong> with <strong>rustls</strong> using the host certificate chain
+        (same shape as the native <code>idevice</code> CLI / pymobiledevice3).
+      </p>
+      <p class="hint">
+        <strong>Diagnostics</strong> now runs ~40 <code>GetValue</code> queries grouped into
+        <em>Identity</em>, <em>Network / cellular</em>, <em>Locale / time</em>,
+        <em>Activation / security</em>, <em>Storage</em>, <em>iTunes / sync</em> and
+        <em>Battery</em>. Headline values are mirrored into the
+        <strong>Device snapshot</strong> card below; the full sectioned report stays in the
+        log for copy / paste.
+      </p>
+      <p class="hint">
+        On <strong>Linux</strong>, Chromium needs exclusive access to the USB interface — stop
+        <code>usbmuxd</code> briefly if claim fails. Verbose mode logs mux + pseudo-TCP frames
+        to the browser console (<code>[idevice-wasm]</code>).
+      </p>
+    </details>
+
+    <!-- Device snapshot card (filled by Diagnostics / Fetch with plist) -->
+    <section class="step" id="device-card-section" hidden>
+      <h2><span class="num">i</span><span class="ttl">Device snapshot</span></h2>
+      <p class="hint" id="device-card-meta"></p>
+      <div id="device-card-grid" class="device-card-grid"></div>
+    </section>
+
+    <!-- Step 1: Device -->
+    <section class="step" id="step-device">
+      <h2><span class="num">1</span><span class="ttl">Device</span></h2>
+      <p class="hint">Authorize one Apple device for this page. The browser scopes USB access per origin + serial.</p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary" id="btn-pick">
+          <span>Request Apple device</span>
+        </button>
+        <button type="button" class="btn" id="btn-mux" data-needs="dev"
+          title="USB mux VERSION (+ SETUP if v2) + pseudo-TCP to lockdownd:62078">
+          <span class="spinner" aria-hidden="true"></span><span>Mux test</span>
+        </button>
+        <button type="button" class="btn" id="btn-qt" data-needs="dev"
+          title="Mux + lockdown QueryType (cleartext)">
+          <span class="spinner" aria-hidden="true"></span><span>QueryType</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Step 2: Pair record -->
+    <section class="step" id="step-pair">
+      <h2><span class="num">2</span><span class="ttl">Pair record</span></h2>
+      <p class="hint">
+        A pair record holds a HostID + RSA host chain trusted by the device. Generate one (Trust
+        prompt on first use) and save it for next time, or load an existing libimobiledevice / usbmuxd
+        XML plist.
+      </p>
+      <div class="row">
+        <div class="seg" role="radiogroup" aria-label="Pair mode">
+          <label><input type="radio" name="pair" value="random" checked /><span>Generate · random</span></label>
+          <label><input type="radio" name="pair" value="legacy" /><span>Generate · legacy</span></label>
+          <label><input type="radio" name="pair" value="plist" /><span>Load plist</span></label>
+        </div>
+      </div>
+
+      <!-- Generate sub-panel -->
+      <div id="pair-generate-panel">
+        <p class="hint">
+          <em>Random</em> → fresh UUIDs each run (libimobiledevice / pymobiledevice3 style).
+          <em>Legacy</em> → fixed HostID, useful if a device gets stuck on UUID handshakes.
+        </p>
+        <div class="btn-row">
+          <button type="button" class="btn btn-primary" id="btn-pair" data-needs="dev">
+            <span class="spinner" aria-hidden="true"></span><span>Pair + save record</span>
+          </button>
+        </div>
+        <p class="hint" id="pair-hint">Tip: unlock the iPhone first; the Trust prompt may take ~10–30 s.</p>
+      </div>
+
+      <!-- Load sub-panel -->
+      <div id="pair-load-panel" hidden>
+        <div class="row">
+          <label>Pair-record XML plist</label>
+          <div class="plist-file-row">
+            <input type="file" id="plist-file" accept=".plist,.xml,application/xml,text/xml" hidden />
+            <button type="button" class="btn btn-primary" id="btn-plist-browse">Choose XML plist…</button>
+            <span id="plist-file-name" class="plist-file-name hint">No file chosen</span>
+          </div>
+          <p class="hint" id="plist-status">Binary plists (<code>bplist00</code>) are not parsed; export as XML on macOS with <code>plutil -convert xml1</code>.</p>
+        </div>
+        <div class="row two-col">
+          <div>
+            <label for="hostid">HostID</label>
+            <input type="text" id="hostid" placeholder="UUID from plist (auto-filled)" autocomplete="off" />
+          </div>
+          <div>
+            <label for="buid">SystemBUID</label>
+            <input type="text" id="buid" placeholder="UUID from plist (auto-filled)" autocomplete="off" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Pair record summary card (visible when plistXmlText is loaded) -->
+      <div id="pair-summary" class="hint" hidden style="margin-top:0.55rem;padding:0.55rem 0.7rem;border:1px solid var(--accent-line);background:var(--accent-soft);border-radius:8px;color:var(--text);">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.4rem;">
+          <div>
+            <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--accent);">Pair record loaded</div>
+            <div id="pair-summary-ids" style="font-family:var(--mono);font-size:0.78rem;margin-top:0.15rem;"></div>
+          </div>
+          <div class="btn-row" style="margin:0">
+            <button type="button" class="btn btn-ghost" id="btn-pair-copy" title="Copy XML to clipboard">Copy</button>
+            <button type="button" class="btn btn-ghost" id="btn-pair-download" title="Download as pair-record.plist">Download</button>
+            <button type="button" class="btn btn-ghost btn-danger" id="btn-pair-clear" title="Forget pair record from this page + localStorage">Clear</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 3: Actions -->
+    <section class="step" id="step-actions">
+      <h2><span class="num">3</span><span class="ttl">Run an action</span></h2>
+
+      <details class="toggle-block">
+        <summary>TLS settings (advanced)</summary>
+        <div class="row two-col">
+          <div>
+            <label for="tls-client-auth">Client cert</label>
+            <select id="tls-client-auth">
+              <option value="host" selected>host — host leaf + host key (default)</option>
+              <option value="root">root — root cert + root key (libimobiledevice)</option>
+              <option value="chain">chain — host + root in chain</option>
+            </select>
+          </div>
+          <div>
+            <label for="tls-sni">SNI</label>
+            <select id="tls-sni">
+              <option value="device" selected>Device</option>
+              <option value="none">none (IP placeholder)</option>
+            </select>
+          </div>
+        </div>
+        <p class="hint">If TLS handshake fails, try a different client cert or SNI option.</p>
+      </details>
+
+      <p class="hint">Each action does QueryType → (Pair if needed) → StartSession → optional TLS → service call.</p>
+
+      <!-- Lockdown queries -->
+      <div class="action-card" id="card-lockdown" data-state="idle">
+        <div class="ac-head">
+          <div class="ac-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M3 12h3l3-7 4 14 3-9 2 4h3"/></svg>
+          </div>
+          <div class="ac-title">
+            <h3>Lockdown queries</h3>
+            <div class="ac-sub">QueryType → Pair → StartSession → TLS → <code>GetValue</code></div>
+          </div>
+          <span class="ac-pill" id="card-lockdown-pill">Idle</span>
+        </div>
+        <div class="ac-body">
+          <div class="btn-row">
+            <button type="button" class="btn btn-primary" id="btn-bat" data-needs="dev,auth">
+              <span class="spinner" aria-hidden="true"></span><span>Battery</span>
+            </button>
+            <button type="button" class="btn" id="btn-diag" data-needs="dev,auth"
+              title="Identity + network + cellular + locale + activation + storage + battery (~40 GetValue queries, sectioned report)">
+              <span class="spinner" aria-hidden="true"></span><span>Diagnostics</span>
+            </button>
+            <button type="button" class="btn" id="btn-plist-fetch" data-needs="dev,plist"
+              title="Full QueryType + StartSession + TLS + GetValue summary using a loaded pair-record plist">
+              <span class="spinner" aria-hidden="true"></span><span>Fetch with plist</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Screenshot -->
+      <div class="action-card" id="card-screenshot" data-state="idle">
+        <div class="ac-head">
+          <div class="ac-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="13" r="3.2"/><path d="M9 6V4h6v2"/></svg>
+          </div>
+          <div class="ac-title">
+            <h3>Screenshot</h3>
+            <div class="ac-sub"><code>com.apple.mobile.screenshotr</code> · DeviceLink · PNG/TIFF · requires mounted Developer Disk Image</div>
+          </div>
+          <span class="ac-pill" id="card-screenshot-pill">Idle</span>
+        </div>
+        <div class="ac-body">
+          <div class="btn-row">
+            <button type="button" class="btn btn-primary" id="btn-screenshot" data-needs="dev,auth"
+              title="StartService(com.apple.mobile.screenshotr) → secondary TLS → DeviceLink version exchange → ScreenShotRequest → save PNG/TIFF">
+              <span class="spinner" aria-hidden="true"></span><span>Take screenshot</span>
+            </button>
+            <button type="button" class="btn btn-ghost" id="btn-screenshot-save" disabled>Save…</button>
+            <button type="button" class="btn btn-ghost" id="btn-screenshot-clear" disabled>Clear</button>
+          </div>
+          <div id="screenshot-area" class="ac-result" hidden>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:0.5rem;flex-wrap:wrap;">
+              <h4 style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);margin:0;">Captured screenshot</h4>
+              <span class="hint" id="screenshot-status" style="margin:0;"></span>
+            </div>
+            <div id="screenshot-frame">
+              <img id="screenshot-img" alt="Device screenshot" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Syslog -->
+      <div class="action-card" id="card-syslog" data-state="idle">
+        <div class="ac-head">
+          <div class="ac-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></svg>
+          </div>
+          <div class="ac-title">
+            <h3>Syslog stream</h3>
+            <div class="ac-sub"><code>com.apple.syslog_relay</code> · live decoded text · filter / save</div>
+          </div>
+          <span class="ac-pill" id="card-syslog-pill">Idle</span>
+        </div>
+        <div class="ac-body">
+          <details class="toggle-block">
+            <summary>Capture options</summary>
+            <div class="row two-col">
+              <div>
+                <label for="syslog-filter">Filter (case-insensitive substring)</label>
+                <input type="search" id="syslog-filter" placeholder="e.g. SpringBoard or assertiond" />
+              </div>
+              <div>
+                <label for="syslog-max-duration">Max duration (s, 0 = unlimited)</label>
+                <input type="text" id="syslog-max-duration" value="60" inputmode="numeric" />
+              </div>
+            </div>
+            <div class="row two-col">
+              <div>
+                <label for="syslog-max-bytes">Max bytes (0 = unlimited)</label>
+                <input type="text" id="syslog-max-bytes" value="2097152" inputmode="numeric" />
+              </div>
+              <div>
+                <label class="inline" style="margin-top:1.4rem"><input type="checkbox" id="syslog-tail" checked /> Auto-scroll</label>
+                <label class="inline"><input type="checkbox" id="syslog-mirror" /> Mirror to log</label>
+              </div>
+            </div>
+            <p class="hint">
+              Reads block on WebUSB until the device sends data — if the phone is silent, <strong>Stop</strong> only takes
+              effect when the next syslog line arrives. Lock/unlock or open an app to flush the pipe.
+            </p>
+          </details>
+          <div class="btn-row">
+            <button type="button" class="btn btn-primary" id="btn-syslog" data-needs="dev,auth">
+              <span class="spinner" aria-hidden="true"></span><span>Stream syslog</span>
+            </button>
+            <button type="button" class="btn btn-ghost" id="btn-syslog-stop" disabled>Stop</button>
+            <button type="button" class="btn btn-ghost" id="btn-syslog-save" disabled title="Download the full capture (raw bytes from the device, not the filtered view)">Save…</button>
+            <button type="button" class="btn btn-ghost" id="btn-syslog-clear" disabled>Clear</button>
+          </div>
+          <div id="syslog-area" class="ac-result" hidden>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:0.5rem;flex-wrap:wrap;">
+              <h4 style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);margin:0;">Live syslog</h4>
+              <span class="hint" id="syslog-status" style="margin:0;"></span>
+            </div>
+            <pre id="syslog-out"></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Network capture -->
+      <div class="action-card" id="card-pcap" data-state="idle">
+        <div class="ac-head">
+          <div class="ac-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 3 4 6 4 9s-1.5 6-4 9c-2.5-3-4-6-4-9s1.5-6 4-9z"/></svg>
+          </div>
+          <div class="ac-title">
+            <h3>Network capture</h3>
+            <div class="ac-sub"><code>com.apple.pcapd</code> RVI · live decoder (Ethernet→IP→TCP/UDP/DNS/TLS-SNI) · saves a Wireshark <code>.pcap</code></div>
+          </div>
+          <span class="ac-pill" id="card-pcap-pill">Idle</span>
+        </div>
+        <div class="ac-body">
+          <details class="toggle-block">
+            <summary>Capture options</summary>
+            <div class="row two-col">
+              <div>
+                <label for="pcap-filter-process">Process filter (PID, comm, or ecomm — empty = all)</label>
+                <input type="search" id="pcap-filter-process" placeholder="e.g. mobilesafari or 73" />
+              </div>
+              <div>
+                <label for="pcap-filter-iface">Interface filter (e.g. en0, pdp_ip0 — empty = all)</label>
+                <input type="search" id="pcap-filter-iface" placeholder="e.g. en0" />
+              </div>
+            </div>
+            <div class="row two-col">
+              <div>
+                <label for="pcap-max-packets">Max packets (0 = unlimited)</label>
+                <input type="text" id="pcap-max-packets" value="0" inputmode="numeric" />
+              </div>
+              <div>
+                <label for="pcap-max-duration">Max duration (s, 0 = unlimited)</label>
+                <input type="text" id="pcap-max-duration" value="0" inputmode="numeric" />
+              </div>
+            </div>
+            <div class="row two-col">
+              <div>
+                <label for="pcap-max-bytes">Max pcap bytes (0 = unlimited)</label>
+                <input type="text" id="pcap-max-bytes" value="33554432" inputmode="numeric" />
+              </div>
+              <div>
+                <label class="inline" style="margin-top:1.4rem"><input type="checkbox" id="pcap-decode" checked /> Decode protocols (Ethernet/IP/TCP/UDP/DNS/TLS-SNI/HTTP)</label>
+                <label class="inline"><input type="checkbox" id="pcap-mirror" /> Mirror packet log to Output</label>
+              </div>
+            </div>
+            <p class="hint">
+              The whole <code>.pcap</code> file (libpcap, <code>LINKTYPE_ETHERNET</code>, snaplen 65535) is held in
+              memory — defaults are <em>Max pcap bytes = 32&nbsp;MiB</em>, all other limits unbounded. The live
+              table only mounts the most recent ~500 rows for performance; older packets stay in the saved
+              <code>.pcap</code> and the in-page summary. Click any decoded row to expand its layered breakdown
+              (Ethernet / IPv4 / IPv6 / TCP / UDP / DNS / TLS / HTTP).
+            </p>
+          </details>
+          <div class="btn-row">
+            <button type="button" class="btn btn-primary" id="btn-pcap" data-needs="dev,auth"
+              title="StartService(com.apple.pcapd) → secondary TLS → libpcap stream + per-packet decoder">
+              <span class="spinner" aria-hidden="true"></span><span>Capture network</span>
+            </button>
+            <button type="button" class="btn btn-ghost" id="btn-pcap-stop" disabled>Stop</button>
+            <button type="button" class="btn btn-ghost" id="btn-pcap-save" disabled title="Download the libpcap (.pcap) file we built so far">Save .pcap</button>
+            <button type="button" class="btn btn-ghost" id="btn-pcap-clear" disabled>Clear</button>
+          </div>
+          <div id="pcap-area" class="ac-result" hidden>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:0.5rem;flex-wrap:wrap;">
+              <h4 style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);margin:0;">Live packets</h4>
+              <span class="hint" id="pcap-status" style="margin:0;"></span>
+            </div>
+            <div id="pcap-summary" class="pcap-summary" data-state="idle">
+              <span class="live-dot" aria-hidden="true"></span>
+            </div>
+            <div id="pcap-banner" class="pcap-banner" hidden>
+              <span class="b-title" id="pcap-banner-title">Capture finished</span>
+              <span class="b-msg" id="pcap-banner-msg"></span>
+              <button type="button" class="btn btn-ghost" id="pcap-banner-resume" hidden>Resume capture</button>
+              <button type="button" class="btn btn-ghost" id="pcap-banner-dismiss">Dismiss</button>
+            </div>
+            <div class="pcap-controls">
+              <input type="search" id="pcap-quick-filter"
+                placeholder="Filter visible packets (proto, host, flow, info, comm)…"
+                title="Substring filter applied client-side over the rendered live table; capture and the .pcap export are unaffected." />
+              <button type="button" class="seg-btn" id="pcap-tail-btn" data-on="1"
+                title="Auto-scroll: keep the latest packet in view">Live tail</button>
+              <button type="button" class="seg-btn" id="pcap-decoded-only" data-on="0"
+                title="Only show rows whose protocol the decoder understands (TCP, UDP, DNS, TLS, HTTP, ICMP)">Decoded only</button>
+            </div>
+            <div class="pcap-table-wrap" id="pcap-table-wrap">
+              <table class="pcap-table" id="pcap-table">
+                <thead>
+                  <tr>
+                    <th class="num col-num">#</th>
+                    <th class="col-t">t</th>
+                    <th class="col-dir">dir</th>
+                    <th class="col-iface">iface</th>
+                    <th class="col-proc">process</th>
+                    <th class="col-flow">flow</th>
+                    <th class="col-proto">proto</th>
+                    <th class="num col-len">len</th>
+                    <th class="col-info">info</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+              <div id="pcap-empty" class="pcap-empty">Waiting for the first packet…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sysdiagnose -->
+      <div class="action-card" id="card-sysdiagnose" data-state="idle">
+        <div class="ac-head">
+          <div class="ac-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>
+          </div>
+          <div class="ac-title">
+            <h3>Sysdiagnose</h3>
+            <div class="ac-sub"><code>crashreportcopymobile</code> AFC · probes <code>DiagnosticLogs/sysdiagnose</code> directly + full tree · per-archive download</div>
+          </div>
+          <span class="ac-pill" id="card-sysdiagnose-pill">Idle</span>
+        </div>
+        <div class="ac-body">
+          <details class="toggle-block">
+            <summary>Trigger on device</summary>
+            <p class="hint">Press <strong>Vol Up + Vol Down + Side</strong> together for ~0.7&nbsp;s (vibration). Wait ~5–10&nbsp;minutes for the <code>.tar.gz</code> archive under <code>DiagnosticLogs/sysdiagnose</code> on the device. <strong>Note:</strong> <code>stacks-*.ips</code> crash reports are not the sysdiagnose archive; Mac Finder may show synced copies that are no longer on the phone.</p>
+            <label class="inline"><input type="checkbox" id="sysdiagnose-keep" checked /> Keep on device after download</label>
+          </details>
+          <div class="btn-row">
+            <button type="button" class="btn btn-primary" id="btn-sysdiagnose-list" data-needs="dev,auth">
+              <span class="spinner" aria-hidden="true"></span><span>List sysdiagnose archives</span>
+            </button>
+          </div>
+          <div id="sysdiagnose-area" class="ac-result" hidden>
+            <p class="hint" id="sysdiagnose-hint" style="margin:0 0 0.35rem"></p>
+            <table class="files-table" id="sysdiagnose-table">
+              <thead><tr><th>#</th><th>Name</th><th class="size">Size</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
+            <details id="sysdiagnose-debug-wrap" hidden style="margin-top:0.5rem">
+              <summary style="cursor:pointer;color:var(--muted);font-size:0.84rem">AFC list debug (all paths scanned)</summary>
+              <pre id="sysdiagnose-debug" style="font-size:0.76rem;max-height:16rem;overflow:auto;margin:0.35rem 0 0;padding:0.5rem 0.6rem;background:var(--bg-2);border:1px solid var(--line-2);border-radius:6px;color:var(--muted)"></pre>
+            </details>
+            <p class="hint" style="margin-top:0.55rem">To run SAF analysers on an archive, open <a href="iphone.html">iPhone (sysdiagnose)</a> and use <strong>Analyze selected archive</strong> after listing.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Crash reports -->
+      <div class="action-card" id="card-crash" data-state="idle">
+        <div class="ac-head">
+          <div class="ac-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 2 2 21h20L12 2z"/><path d="M12 9v6"/><circle cx="12" cy="18" r="0.6" fill="currentColor"/></svg>
+          </div>
+          <div class="ac-title">
+            <h3>Crash reports</h3>
+            <div class="ac-sub"><code>crashreportmover</code> + AFC <code>crashreportcopymobile</code> · per-file table with Save / Save all</div>
+          </div>
+          <span class="ac-pill" id="card-crash-pill">Idle</span>
+        </div>
+        <div class="ac-body">
+          <details class="toggle-block">
+            <summary>Copy options</summary>
+            <div class="row two-col">
+              <div>
+                <label for="crash-filter">Name filter (substring)</label>
+                <input type="search" id="crash-filter" placeholder="e.g. JetsamEvent or stacks (empty = all)" />
+              </div>
+              <div>
+                <label class="inline" style="margin-top:1.4rem"><input type="checkbox" id="crash-keep" checked /> Keep on device after copy</label>
+              </div>
+            </div>
+            <p class="hint">Files are streamed into memory (cap ~32&nbsp;MiB). On success a per-file table appears below the log with Save buttons.</p>
+          </details>
+          <div class="btn-row">
+            <button type="button" class="btn btn-primary" id="btn-crash" data-needs="dev,auth">
+              <span class="spinner" aria-hidden="true"></span><span>Copy crash reports</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Output / log -->
+    <div class="out-card">
+      <div class="out-head">
+        <h2>Output</h2>
+        <div class="actions">
+          <label class="inline" style="margin:0"><input type="checkbox" id="verbose" /> verbose</label>
+          <button type="button" class="btn btn-ghost" id="btn-out-copy" title="Copy log to clipboard">Copy</button>
+          <button type="button" class="btn btn-ghost" id="btn-out-clear" title="Clear log">Clear</button>
+        </div>
+      </div>
+      <pre id="out">Loading WASM…</pre>
+      <div id="files-area" hidden>
+        <h2 style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);margin:0.7rem 0 0.3rem">Crash reports — files</h2>
+        <div class="btn-row" style="margin-bottom:0.3rem;">
+          <button type="button" class="btn btn-ghost" id="btn-files-download-all" title="Save every file with the same relative names">Save all</button>
+          <button type="button" class="btn btn-ghost" id="btn-files-clear">Clear list</button>
+        </div>
+        <table class="files-table" id="files-table">
+          <thead><tr><th>#</th><th>Name</th><th class="size">Bytes</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+        </div>
+
+        <footer style="text-align: center; padding: 1.5rem 0; color: var(--text-secondary); font-size: 0.813rem;">
+            <a href="https://github.com/ping2A/idevice-rs" target="_blank" rel="noopener noreferrer" style="color: var(--accent);">idevice-rs</a>
+        </footer>
+    </div>
+
+    <script>
+        window.toggleTheme = function () {
+            var html = document.documentElement;
+            var isDark = html.getAttribute('data-theme') === 'dark';
+            var next = isDark ? 'light' : 'dark';
+            if (next === 'dark') html.setAttribute('data-theme', 'dark');
+            else html.removeAttribute('data-theme');
+            document.getElementById('theme-icon').textContent = next === 'dark' ? '☀️' : '🌙';
+            localStorage.setItem('theme', next);
+        };
+    </script>
+    <script type="module" src="assets/idevice-demo-app.js"></script>
+</body>
+</html>

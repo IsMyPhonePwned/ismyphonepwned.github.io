@@ -1,5 +1,5 @@
 /**
- * Sigma rule files loaded by android.html and bugreport-status.html.
+ * Sigma rule files loaded by android.html, iphone.html, and bugreport-status.html.
  * Served from /rules/ — grouped by category (Amnesty IoCs, Android bugreport/CVE, iOS, spyware).
  */
 window.SIGMA_RULE_URLS = [

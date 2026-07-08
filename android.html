@@ -7,6 +7,7 @@
     <link rel="icon" href="favicon.ico" sizes="any">
     <link rel="apple-touch-icon" href="logo.png">
     <link rel="stylesheet" href="assets/site.css">
+    <link rel="stylesheet" href="assets/bugreport-picker.css">
     <script src="assets/sigma-rules-urls.js"></script>
     <script src="assets/timeline-view.js" defer></script>
 
@@ -307,15 +308,28 @@
                     </div>
                     <div id="listing-status" class="listing-indicator hidden" style="text-align: center; padding: 1rem; margin: 1rem 0;">
                         <div style="margin-bottom: 0.5rem; font-weight: 500;" data-i18n="scanningDevice">📡 Scanning device for bugreports...</div>
-                        <div style="font-size: 0.75rem; color: var(--text-secondary);" data-i18n="scanningTime">This may take 10-30 seconds</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);" data-i18n="scanningTime">This may take a few seconds</div>
                     </div>
-                    <select id="bugreport-select" class="hidden" onchange="selectBugreport()">
-                        <option value="" data-i18n="selectBugreport">Select a bugreport...</option>
-                    </select>
-                    <button id="btn-refresh-list" class="hidden" onclick="refreshBugreportList()" style="background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); margin-top: 0.5rem;">
-                        <span data-i18n="refreshList">🔄 Refresh List</span>
-                    </button>
-                    <button id="btn-analyze-device" class="hidden" onclick="analyzeFromDevice()" data-i18n="analyzeSelected">Analyze Selected Bugreport</button>
+                    <div id="bugreport-picker" class="bugreport-picker hidden" aria-live="polite">
+                        <div class="bugreport-picker-head">
+                            <div>
+                                <div class="bugreport-picker-title" data-i18n="bugreportPickerTitle">Choose a bugreport</div>
+                                <div id="bugreport-picker-count" class="bugreport-picker-sub"></div>
+                            </div>
+                            <button type="button" id="btn-refresh-list" class="bugreport-picker-refresh hidden" onclick="refreshBugreportList()">
+                                <span data-i18n="refreshList">🔄 Refresh</span>
+                            </button>
+                        </div>
+                        <p class="bugreport-picker-hint" data-i18n="bugreportPickerHint">Select the main .zip archive for full analysis. .txt files are companion logs.</p>
+                        <div id="bugreport-picker-list" class="bugreport-picker-list" role="listbox" aria-label="Bugreports on device"></div>
+                        <div id="bugreport-picker-actions" class="bugreport-picker-actions hidden">
+                            <div class="bugreport-picker-selected">
+                                <span class="bugreport-picker-selected-label" data-i18n="bugreportSelectedLabel">Selected</span>
+                                <span id="bugreport-selected-name" class="bugreport-picker-selected-name">—</span>
+                            </div>
+                            <button type="button" id="btn-analyze-device" class="bugreport-picker-analyze" onclick="analyzeFromDevice()" data-i18n="analyzeSelected">Analyze bugreport</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Upload File -->
@@ -940,10 +954,21 @@
                 deviceDesc: 'Connect to device and select an existing bugreport.',
                 btnConnectDevice: 'Connect to Device',
                 scanningDevice: '📡 Scanning device for bugreports...',
-                scanningTime: 'This may take 10-30 seconds',
-                selectBugreport: 'Select a bugreport...',
-                refreshList: '🔄 Refresh List',
-                analyzeSelected: 'Analyze Selected Bugreport',
+                scanningTime: 'This may take a few seconds',
+                bugreportPickerTitle: 'Choose a bugreport',
+                bugreportPickerHint: 'Select the main .zip archive for full analysis. .txt files are companion logs.',
+                bugreportPickerCount: '{n} archive(s) on device',
+                bugreportPickerCountTimed: '{n} archive(s) · listed in {t}',
+                bugreportSelectedLabel: 'Selected',
+                bugreportKindBugreport: 'Bugreport',
+                bugreportKindDumpstate: 'Dumpstate',
+                bugreportKindOther: 'Archive',
+                bugreportBadgeRecommended: 'Recommended',
+                bugreportBadgeZip: 'ZIP',
+                bugreportBadgeTxt: 'TXT',
+                bugreportDateUnknown: 'Date unknown',
+                refreshList: '🔄 Refresh',
+                analyzeSelected: 'Analyze bugreport',
                 uploadDesc: 'Upload a bugreport file from your computer.',
                 uploadDrop: 'Click or drag a bugreport file here',
                 uploadFormats: 'Supports .zip, .txt files',
@@ -1131,10 +1156,21 @@
                 deviceDesc: 'Connectez l\'appareil et sélectionnez un bug report existant.',
                 btnConnectDevice: 'Connecter l\'appareil',
                 scanningDevice: '📡 Recherche des bug reports...',
-                scanningTime: 'Cela peut prendre 10 à 30 secondes',
-                selectBugreport: 'Choisir un bug report...',
+                scanningTime: 'Cela peut prendre quelques secondes',
+                bugreportPickerTitle: 'Choisir un bug report',
+                bugreportPickerHint: 'Sélectionnez l’archive principale .zip pour une analyse complète. Les fichiers .txt sont des journaux complémentaires.',
+                bugreportPickerCount: '{n} archive(s) sur l’appareil',
+                bugreportPickerCountTimed: '{n} archive(s) · listé en {t}',
+                bugreportSelectedLabel: 'Sélection',
+                bugreportKindBugreport: 'Bug report',
+                bugreportKindDumpstate: 'Dumpstate',
+                bugreportKindOther: 'Archive',
+                bugreportBadgeRecommended: 'Recommandé',
+                bugreportBadgeZip: 'ZIP',
+                bugreportBadgeTxt: 'TXT',
+                bugreportDateUnknown: 'Date inconnue',
                 refreshList: '🔄 Actualiser',
-                analyzeSelected: 'Analyser le bug report sélectionné',
+                analyzeSelected: 'Analyser le bug report',
                 uploadDesc: 'Envoyez un fichier bug report depuis votre ordinateur.',
                 uploadDrop: 'Cliquez ou glissez un fichier bug report ici',
                 uploadFormats: 'Formats .zip, .txt',
@@ -1322,10 +1358,21 @@
                 deviceDesc: '连接设备并选择已有的 bugreport。',
                 btnConnectDevice: '连接设备',
                 scanningDevice: '📡 正在扫描设备中的 bugreport...',
-                scanningTime: '可能需要 10–30 秒',
-                selectBugreport: '选择 bugreport...',
-                refreshList: '🔄 刷新列表',
-                analyzeSelected: '分析所选 Bugreport',
+                scanningTime: '通常只需几秒钟',
+                bugreportPickerTitle: '选择 bugreport',
+                bugreportPickerHint: '请选择主 .zip 压缩包进行完整分析。.txt 文件通常为辅助日志。',
+                bugreportPickerCount: '设备上 {n} 个归档',
+                bugreportPickerCountTimed: '{n} 个归档 · 耗时 {t}',
+                bugreportSelectedLabel: '已选',
+                bugreportKindBugreport: 'Bugreport',
+                bugreportKindDumpstate: 'Dumpstate',
+                bugreportKindOther: '归档',
+                bugreportBadgeRecommended: '推荐',
+                bugreportBadgeZip: 'ZIP',
+                bugreportBadgeTxt: 'TXT',
+                bugreportDateUnknown: '日期未知',
+                refreshList: '🔄 刷新',
+                analyzeSelected: '分析 bugreport',
                 uploadDesc: '从电脑上传 bugreport 文件。',
                 uploadDrop: '点击或拖拽 bugreport 文件到此处',
                 uploadFormats: '支持 .zip、.txt 文件',
@@ -1491,8 +1538,7 @@
             if (ps && t.searchProcesses) ps.placeholder = t.searchProcesses;
             var dpf = document.getElementById('parser-device-policy-filter');
             if (dpf && t.devicePolicyFilterPlaceholder) dpf.placeholder = t.devicePolicyFilterPlaceholder;
-            var bugreportSelect = document.getElementById('bugreport-select');
-            if (bugreportSelect && bugreportSelect.options[0] && t.selectBugreport) bugreportSelect.options[0].text = t.selectBugreport;
+            if (typeof window.rerenderBugreportPicker === 'function') window.rerenderBugreportPicker();
             var themeText = document.getElementById('theme-text');
             if (themeText) {
                 var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -3327,6 +3373,247 @@
                 }
             }
             return [];
+        }
+
+        function bugreportArchiveKind(filename) {
+            if (!filename) return 'unknown';
+            if (filename.startsWith('dumpstate') && (filename.endsWith('.zip') || filename.endsWith('.txt'))) return 'dumpstate';
+            if (filename.startsWith('bugreport-')) return 'bugreport';
+            return 'other';
+        }
+
+        let bugreportListPaths = [];
+        let bugreportListDurationMs = null;
+
+        function i18nFmtSimple(template, vars) {
+            if (!template) return '';
+            return String(template).replace(/\{(\w+)\}/g, function (_, key) {
+                return vars && vars[key] != null ? String(vars[key]) : '';
+            });
+        }
+
+        function parseBugreportDateFromName(name) {
+            if (!name) return null;
+            var m = name.match(/(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})/);
+            if (m) {
+                return new Date(
+                    parseInt(m[1], 10),
+                    parseInt(m[2], 10) - 1,
+                    parseInt(m[3], 10),
+                    parseInt(m[4], 10),
+                    parseInt(m[5], 10),
+                    parseInt(m[6], 10)
+                );
+            }
+            m = name.match(/(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})/);
+            if (m) {
+                return new Date(
+                    parseInt(m[1], 10),
+                    parseInt(m[2], 10) - 1,
+                    parseInt(m[3], 10),
+                    parseInt(m[4], 10),
+                    parseInt(m[5], 10),
+                    parseInt(m[6], 10)
+                );
+            }
+            return null;
+        }
+
+        function formatBugreportDate(date) {
+            var t = i18nPack();
+            if (!date || isNaN(date.getTime())) return t.bugreportDateUnknown || 'Date unknown';
+            return date.toLocaleString(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+        }
+
+        function bugreportKindLabel(kind) {
+            var t = i18nPack();
+            if (kind === 'bugreport') return t.bugreportKindBugreport || 'Bugreport';
+            if (kind === 'dumpstate') return t.bugreportKindDumpstate || 'Dumpstate';
+            return t.bugreportKindOther || 'Archive';
+        }
+
+        function sortBugreportPaths(paths) {
+            return paths.slice().sort(function (a, b) {
+                var na = a.split('/').pop() || a;
+                var nb = b.split('/').pop() || b;
+                var za = na.endsWith('.zip') ? 1 : 0;
+                var zb = nb.endsWith('.zip') ? 1 : 0;
+                if (za !== zb) return zb - za;
+                var da = parseBugreportDateFromName(na);
+                var db = parseBugreportDateFromName(nb);
+                var ta = da && !isNaN(da.getTime()) ? da.getTime() : 0;
+                var tb = db && !isNaN(db.getTime()) ? db.getTime() : 0;
+                if (ta !== tb) return tb - ta;
+                return nb.localeCompare(na);
+            });
+        }
+
+        function pickRecommendedBugreportPath(paths) {
+            var sorted = sortBugreportPaths(paths);
+            var zip = sorted.find(function (p) {
+                return (p.split('/').pop() || '').endsWith('.zip');
+            });
+            return zip || sorted[0] || null;
+        }
+
+        function shortenBugreportPath(path) {
+            if (!path) return '';
+            if (path.startsWith('/bugreports/')) return path;
+            if (path.indexOf('/bugreports/') !== -1) return path.replace(/^.*\/bugreports\//, '/bugreports/');
+            var parts = path.split('/');
+            if (parts.length <= 3) return path;
+            return '…/' + parts.slice(-3).join('/');
+        }
+
+        function hideBugreportPicker() {
+            var picker = document.getElementById('bugreport-picker');
+            if (picker) picker.classList.add('hidden');
+            var actions = document.getElementById('bugreport-picker-actions');
+            if (actions) actions.classList.add('hidden');
+            var refresh = document.getElementById('btn-refresh-list');
+            if (refresh) refresh.classList.add('hidden');
+            bugreportListPaths = [];
+            bugreportListDurationMs = null;
+            selectedBugreportPath = null;
+        }
+
+        function setBugreportSelection(path) {
+            selectedBugreportPath = path || null;
+            var list = document.getElementById('bugreport-picker-list');
+            if (list) {
+                list.querySelectorAll('.bugreport-card').forEach(function (card) {
+                    var selected = card.getAttribute('data-path') === path;
+                    card.classList.toggle('bugreport-card--selected', selected);
+                    card.setAttribute('aria-selected', selected ? 'true' : 'false');
+                });
+            }
+            var actions = document.getElementById('bugreport-picker-actions');
+            var nameEl = document.getElementById('bugreport-selected-name');
+            if (path) {
+                if (actions) actions.classList.remove('hidden');
+                if (nameEl) nameEl.textContent = path.split('/').pop() || path;
+            } else {
+                if (actions) actions.classList.add('hidden');
+                if (nameEl) nameEl.textContent = '—';
+            }
+        }
+
+        function renderBugreportPicker(paths, options) {
+            options = options || {};
+            var sorted = sortBugreportPaths(paths);
+            bugreportListPaths = sorted.slice();
+            bugreportListDurationMs = options.durationMs != null ? options.durationMs : null;
+
+            var picker = document.getElementById('bugreport-picker');
+            var list = document.getElementById('bugreport-picker-list');
+            var countEl = document.getElementById('bugreport-picker-count');
+            var refresh = document.getElementById('btn-refresh-list');
+            if (!picker || !list) return;
+
+            var t = i18nPack();
+            if (countEl) {
+                if (bugreportListDurationMs != null && typeof formatDuration === 'function') {
+                    countEl.textContent = i18nFmtSimple(t.bugreportPickerCountTimed, {
+                        n: sorted.length,
+                        t: formatDuration(bugreportListDurationMs),
+                    });
+                } else {
+                    countEl.textContent = i18nFmtSimple(t.bugreportPickerCount, { n: sorted.length });
+                }
+            }
+
+            var recommended = pickRecommendedBugreportPath(sorted);
+            list.innerHTML = '';
+
+            sorted.forEach(function (path) {
+                var name = path.split('/').pop() || path;
+                var kind = bugreportArchiveKind(name);
+                var isZip = name.endsWith('.zip');
+                var isTxt = name.endsWith('.txt');
+                var date = parseBugreportDateFromName(name);
+                var isRecommended = recommended === path;
+
+                var card = document.createElement('button');
+                card.type = 'button';
+                card.className = 'bugreport-card' + (isRecommended && options.autoSelect !== false ? ' bugreport-card--selected' : '');
+                card.setAttribute('role', 'option');
+                card.setAttribute('data-path', path);
+                card.setAttribute('aria-selected', isRecommended && options.autoSelect !== false ? 'true' : 'false');
+                card.title = path;
+
+                var icon = isZip ? '📦' : '📄';
+                var badges = '';
+                if (isRecommended) {
+                    badges += '<span class="bugreport-badge bugreport-badge--rec">' + escapeHtml(t.bugreportBadgeRecommended || 'Recommended') + '</span>';
+                }
+                badges += '<span class="bugreport-badge bugreport-badge--kind bugreport-badge--' + escapeHtml(kind) + '">' + escapeHtml(bugreportKindLabel(kind)) + '</span>';
+                badges += '<span class="bugreport-badge bugreport-badge--type">' + escapeHtml(isZip ? (t.bugreportBadgeZip || 'ZIP') : (t.bugreportBadgeTxt || 'TXT')) + '</span>';
+
+                card.innerHTML =
+                    '<span class="bugreport-card-radio" aria-hidden="true"></span>' +
+                    '<span class="bugreport-card-icon" aria-hidden="true">' + icon + '</span>' +
+                    '<span class="bugreport-card-body">' +
+                        '<span class="bugreport-card-title">' + escapeHtml(name) + '</span>' +
+                        '<span class="bugreport-card-meta">' + escapeHtml(formatBugreportDate(date)) + ' · ' + escapeHtml(shortenBugreportPath(path)) + '</span>' +
+                    '</span>' +
+                    '<span class="bugreport-card-badges">' + badges + '</span>';
+
+                card.addEventListener('click', function () {
+                    setBugreportSelection(path);
+                });
+                list.appendChild(card);
+            });
+
+            picker.classList.remove('hidden');
+            if (refresh) refresh.classList.remove('hidden');
+
+            if (options.autoSelect !== false && recommended) {
+                setBugreportSelection(recommended);
+            } else {
+                setBugreportSelection(options.selectedPath || null);
+            }
+        }
+
+        window.rerenderBugreportPicker = function () {
+            if (bugreportListPaths.length) {
+                renderBugreportPicker(bugreportListPaths, {
+                    autoSelect: false,
+                    selectedPath: selectedBugreportPath,
+                    durationMs: bugreportListDurationMs,
+                });
+            }
+        };
+
+        function populateBugreportPicker(paths, durationMs) {
+            if (!paths || !paths.length) {
+                hideBugreportPicker();
+                return false;
+            }
+            renderBugreportPicker(paths, { durationMs: durationMs, autoSelect: true });
+            return true;
+        }
+
+        /** Log list_bugreports results to the browser console (Rust also logs via console_log). */
+        function logBugreportListResult(rawPaths, durationMs, context) {
+            const paths = asWasmArray(rawPaths).map(String);
+            const byKind = { bugreport: 0, dumpstate: 0, other: 0 };
+            console.log('[BUGREPORT] Scan (' + context + ')');
+            console.log('[BUGREPORT] Dirs: /bugreports, …/com.android.shell/files/bugreports (user_de + legacy)');
+            console.log('[BUGREPORT] Patterns: bugreport-*.zip, bugreport-*.txt, dumpstate*.zip, dumpstate*.txt');
+            paths.forEach(function (p, i) {
+                const name = p.split('/').pop() || p;
+                const kind = bugreportArchiveKind(name);
+                byKind[kind] = (byKind[kind] || 0) + 1;
+                console.log('[BUGREPORT]   [' + (i + 1) + '/' + paths.length + '] ' + kind + ': ' + p);
+            });
+            console.log('[BUGREPORT] Done in ' + durationMs + ' ms — ' + paths.length + ' archive(s)', { byKind: byKind, paths: paths });
+            return paths;
         }
 
         function parserCellValue(v) {
@@ -5853,31 +6140,20 @@
                 }, 15000);
 
                 const startTime = Date.now();
-                const bugreports = await adb.list_bugreports();
+                const bugreportsRaw = await adb.list_bugreports();
                 const durationMs = Date.now() - startTime;
+                const bugreports = logBugreportListResult(bugreportsRaw, durationMs, 'connectDevice');
                 
                 clearTimeout(timeoutWarning);
                 listingStatus.classList.add('hidden');
-                
-                const select = document.getElementById('bugreport-select');
-                select.innerHTML = '<option value="">Select a bugreport...</option>';
-                
-                if (bugreports && bugreports.length > 0) {
-                    bugreports.forEach(path => {
-                        const option = document.createElement('option');
-                        option.value = path;
-                        option.textContent = path.split('/').pop();
-                        select.appendChild(option);
-                    });
-                    
-                    showStatus(`✓ Found ${bugreports.length} bugreport(s) on device in ${formatDuration(durationMs)} - select one to analyze`, 'success');
-                    document.getElementById('btn-refresh-list').classList.remove('hidden');
+
+                if (populateBugreportPicker(bugreports, durationMs)) {
+                    showStatus('✓ Found ' + bugreports.length + ' bugreport(s) on device — pick one below to analyze', 'success');
                 } else {
+                    hideBugreportPicker();
                     showStatus('⚠️ No bugreports found on device. Try generating a new one or use the "Generate New" tab.', 'error');
                 }
 
-                select.classList.remove('hidden');
-                select.style.display = 'block';
                 document.getElementById('btn-disconnect-device').classList.remove('hidden');
                 
                 hideProgress();
@@ -5935,15 +6211,8 @@
                     btnGenerate.disabled = false;
                 }
                 document.getElementById('btn-disconnect-generate').classList.add('hidden');
-                
-                const select = document.getElementById('bugreport-select');
-                select.classList.add('hidden');
-                select.innerHTML = '<option value="">Select a bugreport...</option>';
-                
-                document.getElementById('btn-refresh-list').classList.add('hidden');
-                document.getElementById('btn-analyze-device').classList.add('hidden');
-                
-                selectedBugreportPath = null;
+
+                hideBugreportPicker();
                 hideResults();
                 
                 showStatus('✓ Disconnected from device', 'success');
@@ -5974,31 +6243,20 @@
                 }, 15000);
 
                 const startTime = Date.now();
-                const bugreports = await adb.list_bugreports();
+                const bugreportsRaw = await adb.list_bugreports();
                 const durationMs = Date.now() - startTime;
+                const bugreports = logBugreportListResult(bugreportsRaw, durationMs, 'refreshBugreportList');
                 
                 clearTimeout(timeoutWarning);
                 listingStatus.classList.add('hidden');
-                
-                const select = document.getElementById('bugreport-select');
-                select.innerHTML = '<option value="">Select a bugreport...</option>';
-                
-                if (bugreports && bugreports.length > 0) {
-                    bugreports.forEach(path => {
-                        const option = document.createElement('option');
-                        option.value = path;
-                        option.textContent = path.split('/').pop();
-                        select.appendChild(option);
-                    });
-                    
-                    showStatus(`✓ Refreshed - found ${bugreports.length} bugreport(s) in ${formatDuration(durationMs)}`, 'success');
+
+                if (populateBugreportPicker(bugreports, durationMs)) {
+                    showStatus('✓ Refreshed — ' + bugreports.length + ' bugreport(s) found', 'success');
                 } else {
+                    hideBugreportPicker();
                     showStatus('⚠️ No bugreports found on device', 'error');
                 }
-                
-                document.getElementById('btn-analyze-device').classList.add('hidden');
-                selectedBugreportPath = null;
-                
+
                 hideProgress();
             } catch (error) {
                 console.error('Refresh error:', error);
@@ -6008,16 +6266,9 @@
             }
         }
 
-        window.selectBugreport = function() {
-            const select = document.getElementById('bugreport-select');
-            selectedBugreportPath = select.value;
-            
-            if (selectedBugreportPath) {
-                document.getElementById('btn-analyze-device').classList.remove('hidden');
-            } else {
-                document.getElementById('btn-analyze-device').classList.add('hidden');
-            }
-        }
+        window.selectBugreport = function () {
+            setBugreportSelection(selectedBugreportPath);
+        };
 
         // Generate new bugreport
         window.generateBugreport = async function() {

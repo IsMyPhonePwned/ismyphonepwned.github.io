@@ -1,0 +1,252 @@
+/* Bugreport picker — Android "From Device" tab */
+.bugreport-picker {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+}
+
+.bugreport-picker-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.65rem;
+}
+
+.bugreport-picker-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.bugreport-picker-sub {
+    margin-top: 0.2rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.bugreport-picker-refresh {
+    flex-shrink: 0;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.8rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.bugreport-picker-refresh:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.bugreport-picker-hint {
+    margin: 0 0 0.75rem;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--text-secondary);
+}
+
+.bugreport-picker-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.bugreport-card {
+    display: grid;
+    grid-template-columns: auto auto 1fr auto;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
+    padding: 0.75rem 0.85rem;
+    text-align: left;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.bugreport-card:hover {
+    border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+    background: color-mix(in srgb, var(--accent) 6%, var(--bg-secondary));
+}
+
+.bugreport-card--selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+    background: color-mix(in srgb, var(--accent) 10%, var(--bg-secondary));
+}
+
+.bugreport-card-radio {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    position: relative;
+    flex-shrink: 0;
+}
+
+.bugreport-card--selected .bugreport-card-radio {
+    border-color: var(--accent);
+}
+
+.bugreport-card--selected .bugreport-card-radio::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border-radius: 50%;
+    background: var(--accent);
+}
+
+.bugreport-card-icon {
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.bugreport-card-body {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.bugreport-card-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    word-break: break-all;
+}
+
+.bugreport-card-meta {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    word-break: break-all;
+}
+
+.bugreport-card-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    justify-content: flex-end;
+    max-width: 9rem;
+}
+
+.bugreport-badge {
+    display: inline-block;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.bugreport-badge--rec {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+    background: color-mix(in srgb, var(--accent) 14%, var(--bg-card));
+    color: var(--accent);
+}
+
+.bugreport-badge--kind.bugreport-badge--bugreport {
+    border-color: color-mix(in srgb, #6366f1 40%, var(--border));
+    color: #6366f1;
+}
+
+.bugreport-badge--kind.bugreport-badge--dumpstate {
+    border-color: color-mix(in srgb, #0ea5e9 40%, var(--border));
+    color: #0ea5e9;
+}
+
+.bugreport-badge--type {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.bugreport-picker-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.bugreport-picker-selected {
+    min-width: 0;
+    flex: 1 1 12rem;
+}
+
+.bugreport-picker-selected-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    margin-bottom: 0.15rem;
+}
+
+.bugreport-picker-selected-name {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+
+.bugreport-picker-analyze {
+    flex-shrink: 0;
+    min-width: 11rem;
+    padding: 0.8rem 1.25rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-radius: 10px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+}
+
+.bugreport-picker-analyze:hover {
+    filter: brightness(1.06);
+}
+
+@media (max-width: 640px) {
+    .bugreport-card {
+        grid-template-columns: auto 1fr;
+        grid-template-rows: auto auto;
+    }
+
+    .bugreport-card-radio {
+        grid-row: 1 / span 2;
+    }
+
+    .bugreport-card-icon {
+        display: none;
+    }
+
+    .bugreport-card-badges {
+        grid-column: 2;
+        justify-content: flex-start;
+        max-width: none;
+    }
+
+    .bugreport-picker-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .bugreport-picker-analyze {
+        width: 100%;
+    }
+}

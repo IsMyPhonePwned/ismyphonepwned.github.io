@@ -1,0 +1,261 @@
+/* Shared iPhone pairing panel (idevice-rs style) */
+.iphone-pairing {
+    margin: 1rem 0;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-card);
+}
+
+.iphone-pairing .pair-hint em {
+    font-style: normal;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.btn-pair-primary {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 0.55rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-pair-primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.btn-pair-primary[data-running="1"] {
+    opacity: 0.75;
+}
+
+.iphone-pairing h3 {
+    margin: 0 0 0.35rem;
+    font-size: 1rem;
+}
+
+.iphone-pairing .pairing-intro {
+    margin: 0 0 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+}
+
+.iphone-pairing .pair-mode-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    margin: 0.5rem 0 0.75rem;
+}
+
+.iphone-pairing .pair-mode-row label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8125rem;
+    cursor: pointer;
+}
+
+.iphone-pairing .pair-panel {
+    margin-top: 0.5rem;
+}
+
+.iphone-pairing .pair-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.65rem;
+}
+
+.iphone-pairing .pair-summary {
+    margin-top: 0.75rem;
+    padding: 0.65rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+    background: color-mix(in srgb, var(--accent) 8%, var(--bg-secondary));
+    font-size: 0.8125rem;
+}
+
+.iphone-pairing .pair-summary-ids {
+    font-family: ui-monospace, monospace;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    word-break: break-all;
+}
+
+.iphone-pairing .pair-hint {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin: 0.35rem 0 0;
+}
+
+.iphone-pairing .pair-field {
+    margin: 0.5rem 0;
+}
+
+.iphone-pairing .pair-field label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.2rem;
+}
+
+.iphone-pairing .pair-field input[type="text"],
+.iphone-pairing .pair-field input[type="file"],
+.iphone-pairing .pair-field select {
+    width: 100%;
+    max-width: 28rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.8125rem;
+}
+
+.iphone-pairing .tls-details {
+    margin-top: 0.75rem;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+}
+
+.iphone-pairing .tls-details summary {
+    cursor: pointer;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.iphone-pairing .tls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 0.65rem;
+    margin-top: 0.65rem;
+}
+
+.iphone-status-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.5rem;
+    margin: 0.75rem 0 1rem;
+}
+
+.iphone-status-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.65rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    min-width: 0;
+}
+
+.iphone-status-pill .dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.iphone-status-pill.ok .dot { background: var(--success); }
+.iphone-status-pill.warn .dot { background: var(--warning); }
+
+.iphone-status-pill .lbl {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+}
+
+.iphone-status-pill .val {
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.iphone-advanced .tool-card-wide { grid-column: 1 / -1; }
+
+.iphone-advanced pre.stream-pane,
+.iphone-advanced pre.log-pane {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-family: ui-monospace, monospace;
+    font-size: 0.75rem;
+    max-height: 18rem;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    border: 1px solid var(--border);
+    margin: 0.5rem 0 0;
+}
+
+.iphone-advanced .capture-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+
+.iphone-advanced .capture-controls input[type="text"],
+.iphone-advanced .capture-controls input[type="number"] {
+    padding: 0.4rem 0.55rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+}
+
+.iphone-advanced #screenshot-preview {
+    margin-top: 0.75rem;
+    max-width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    display: none;
+}
+
+.iphone-advanced #screenshot-preview.visible { display: block; }
+
+.iphone-advanced .pcap-table-wrap {
+    max-height: 16rem;
+    overflow: auto;
+    margin-top: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.iphone-advanced .pcap-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+    font-family: ui-monospace, monospace;
+}
+
+.iphone-advanced .pcap-table th,
+.iphone-advanced .pcap-table td {
+    padding: 0.3rem 0.45rem;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+}
+
+.iphone-advanced .pcap-table th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-card);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}

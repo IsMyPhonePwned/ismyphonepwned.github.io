@@ -1,0 +1,977 @@
+/* Sysdiagnose archive file panel — mobipwn ingest / case-ios hero style */
+
+.sysdiagnose-file-drop {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    min-height: 148px;
+    padding: 1.25rem 1.1rem;
+    margin-bottom: 0.75rem;
+    border-radius: 14px;
+    border: 2px dashed color-mix(in srgb, var(--border) 75%, var(--accent) 25%);
+    background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--accent) 5%, var(--bg-card)) 0%,
+        color-mix(in srgb, var(--bg-card) 96%, var(--bg-primary)) 100%
+    );
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sysdiagnose-file-drop:hover,
+.sysdiagnose-file-drop.dragover {
+    border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.sysdiagnose-file-drop--has-file {
+    min-height: auto;
+    text-align: left;
+    border-style: solid;
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+    cursor: default;
+}
+
+.sysdiagnose-file-drop__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.sysdiagnose-file-drop__icon-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin-bottom: 0.25rem;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--accent) 14%, var(--bg-card));
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.sysdiagnose-file-drop__prompt {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+
+.sysdiagnose-file-drop__formats {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.15rem;
+}
+
+.sysdiagnose-file-drop__browse {
+    margin-top: 0.35rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+    color: var(--accent);
+    background: transparent;
+}
+
+.sysdiagnose-file-drop__selected {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-width: 0;
+}
+
+.sysdiagnose-file-drop__file-icon {
+    flex-shrink: 0;
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.sysdiagnose-file-drop__meta {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.sysdiagnose-file-drop__name {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sysdiagnose-file-drop__size {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.sysdiagnose-file-drop__clear {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--accent);
+    font-size: 0.78rem;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.sysdiagnose-file-panel {
+    margin-bottom: 1.25rem;
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+}
+
+.sysdiagnose-file-panel__hero {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--accent) 8%, var(--bg-secondary));
+}
+
+.sysdiagnose-file-panel__icon {
+    flex-shrink: 0;
+    font-size: 1.35rem;
+    line-height: 1;
+    margin-top: 0.1rem;
+}
+
+.sysdiagnose-file-panel__body {
+    min-width: 0;
+    flex: 1;
+}
+
+.sysdiagnose-file-panel__row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.sysdiagnose-file-panel__title {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--text-primary);
+    overflow-wrap: break-word;
+    word-break: normal;
+}
+
+.sysdiagnose-file-panel__badge {
+    flex-shrink: 0;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent);
+}
+
+.sysdiagnose-file-panel__badge--ok {
+    background: color-mix(in srgb, var(--success) 14%, transparent);
+    color: var(--success);
+}
+
+.sysdiagnose-file-panel__badge--warn {
+    background: color-mix(in srgb, var(--warning, #d97706) 14%, transparent);
+    color: var(--warning, #d97706);
+}
+
+.sysdiagnose-file-panel__badge--err {
+    background: color-mix(in srgb, var(--error) 14%, transparent);
+    color: var(--error);
+}
+
+.sysdiagnose-file-panel__meta {
+    margin: 0.35rem 0 0;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    overflow-wrap: break-word;
+    word-break: normal;
+    line-height: 1.45;
+}
+
+.sysdiagnose-file-panel__stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem 1rem;
+    margin: 0.85rem 0 0;
+    padding: 0;
+}
+
+@media (max-width: 520px) {
+    .sysdiagnose-file-panel__stats {
+        grid-template-columns: 1fr;
+    }
+}
+
+.sysdiagnose-file-panel__stat {
+    margin: 0;
+    min-width: 0;
+}
+
+.sysdiagnose-file-panel__stat dt {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.sysdiagnose-file-panel__stat dd {
+    margin: 0.15rem 0 0;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.sysdiagnose-file-panel__stat dd.mono {
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.78rem;
+}
+
+.sysdiagnose-selected-panel {
+    width: 100%;
+    margin-bottom: 0.65rem;
+    padding: 0.75rem 0.85rem;
+    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+    background: color-mix(in srgb, var(--accent) 6%, var(--bg-secondary));
+}
+
+.sysdiagnose-selected-panel__row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+}
+
+.sysdiagnose-selected-panel__icon {
+    font-size: 1.25rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.sysdiagnose-selected-panel__body {
+    min-width: 0;
+    flex: 1;
+}
+
+.sysdiagnose-selected-panel__title {
+    display: block;
+    font-weight: 600;
+    font-size: 0.875rem;
+    line-height: 1.35;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sysdiagnose-selected-panel__path {
+    margin-top: 0.2rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+    word-break: normal;
+    line-height: 1.4;
+}
+
+.sysdiagnose-selected-panel__size {
+    flex-shrink: 0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Upload ready checklist (mobipwn ingest-ready) */
+.sysdiagnose-upload-ready {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem 1.1rem;
+    padding: 0.7rem 0.85rem;
+    margin: 0.65rem 0 0.75rem;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--text-primary) 4%, var(--bg-card));
+    border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.sysdiagnose-upload-ready__title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.sysdiagnose-upload-ready__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sysdiagnose-upload-ready__item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.sysdiagnose-upload-ready__item--ok {
+    color: var(--text-primary);
+}
+
+.sysdiagnose-upload-ready__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text-secondary) 40%, transparent);
+    flex-shrink: 0;
+}
+
+.sysdiagnose-upload-ready__item--ok .sysdiagnose-upload-ready__dot {
+    background: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.sysdiagnose-upload-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+/* Ingest / analysis progress (mobipwn ingest-progress) */
+.sysdiagnose-ingest-progress {
+    display: grid;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    margin: 0.75rem 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--accent) 6%, var(--bg-card));
+}
+
+.sysdiagnose-ingest-progress__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.sysdiagnose-ingest-progress__title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.sysdiagnose-ingest-progress__pct {
+    font-size: 0.82rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-secondary);
+    font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.sysdiagnose-ingest-progress__bar {
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    background: var(--border);
+    overflow: hidden;
+}
+
+.sysdiagnose-ingest-progress__fill {
+    display: block;
+    height: 100%;
+    min-width: 0;
+    max-width: 100%;
+    background: var(--accent);
+    transition: width 0.25s ease;
+}
+
+.sysdiagnose-ingest-progress__phase {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--text-primary);
+}
+
+.sysdiagnose-ingest-progress__detail {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-family: var(--font-mono, ui-monospace, monospace);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Summary chips under file hero */
+.sysdiagnose-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.sysdiagnose-chip {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text-secondary) 12%, transparent);
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.sysdiagnose-chip--ok {
+    background: color-mix(in srgb, var(--success) 14%, transparent);
+    color: var(--success);
+}
+
+.sysdiagnose-chip--warn {
+    background: color-mix(in srgb, var(--warning, #d97706) 14%, transparent);
+    color: var(--warning, #d97706);
+}
+
+.sysdiagnose-chip--err {
+    background: color-mix(in srgb, var(--error) 14%, transparent);
+    color: var(--error);
+}
+
+/* Section headings */
+.sysdiagnose-section-head {
+    margin: 1.25rem 0 0.35rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.sysdiagnose-section-head:first-child {
+    margin-top: 0;
+}
+
+.sysdiagnose-section-lead {
+    margin: 0 0 0.85rem;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+}
+
+/* Parser module list (mobipwn ingest-progress__parsers) */
+.sysdiagnose-parser-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    max-height: min(42vh, 22rem);
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-card);
+}
+
+.sysdiagnose-parser-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.15rem 0.65rem;
+    padding: 0.45rem 0.65rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+    font-size: 0.82rem;
+}
+
+.sysdiagnose-parser-row:last-child {
+    border-bottom: none;
+}
+
+.sysdiagnose-parser-row--ok {
+    border-left: 3px solid color-mix(in srgb, var(--success) 65%, transparent);
+}
+
+.sysdiagnose-parser-row--fail {
+    border-left: 3px solid var(--error);
+}
+
+.sysdiagnose-parser-row__name {
+    font-weight: 600;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.78rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sysdiagnose-parser-row__meta {
+    text-align: right;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.sysdiagnose-parser-row__meta--ok {
+    color: var(--success);
+    font-weight: 600;
+}
+
+.sysdiagnose-parser-row__meta--fail {
+    color: var(--error);
+    font-weight: 600;
+}
+
+.sysdiagnose-parser-row__error {
+    grid-column: 1 / -1;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    overflow-wrap: break-word;
+}
+
+/* Analyser cards (mobipwn case panel cards) */
+.sysdiagnose-analyser-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-card);
+    overflow: hidden;
+}
+
+.sysdiagnose-analyser-card__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.65rem 0.75rem;
+    background: color-mix(in srgb, var(--accent) 5%, var(--bg-secondary));
+    cursor: pointer;
+    user-select: none;
+}
+
+.sysdiagnose-analyser-card__head:hover {
+    background: color-mix(in srgb, var(--accent) 9%, var(--bg-secondary));
+}
+
+.sysdiagnose-analyser-card--open .sysdiagnose-analyser-card__head {
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.sysdiagnose-analyser-card__hero {
+    min-width: 0;
+    flex: 1;
+}
+
+.sysdiagnose-analyser-card__title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.sysdiagnose-analyser-card__name {
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.sysdiagnose-analyser-card__badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.12rem 0.45rem;
+    border-radius: 999px;
+}
+
+.sysdiagnose-analyser-card__badge--ok {
+    background: color-mix(in srgb, var(--success) 14%, transparent);
+    color: var(--success);
+}
+
+.sysdiagnose-analyser-card__badge--fail {
+    background: color-mix(in srgb, var(--error) 14%, transparent);
+    color: var(--error);
+}
+
+.sysdiagnose-analyser-card__desc {
+    margin: 0.25rem 0 0;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.35;
+}
+
+.sysdiagnose-analyser-card__toggle {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0.15rem 0.45rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.sysdiagnose-analyser-card__toggle[aria-expanded='true'] {
+    transform: rotate(180deg);
+}
+
+.sysdiagnose-analyser-card__body {
+    padding: 0.65rem 0.75rem;
+}
+
+.sysdiagnose-analyser-card__body.collapsed {
+    display: none;
+}
+
+.sysdiagnose-analyser-card__error {
+    margin: 0;
+    padding: 0.55rem 0.65rem;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--error) 8%, var(--bg-secondary));
+    color: var(--error);
+    font-size: 0.78rem;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: min(50vh, 20rem);
+    overflow: auto;
+}
+
+/* Analyser section toolbar + card grid */
+.sysdiagnose-analyser-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.sysdiagnose-analyser-toolbar__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.sysdiagnose-analyser-toolbar__btn {
+    margin: 0;
+    padding: 0.3rem 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.sysdiagnose-analyser-toolbar__btn:hover {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+    color: var(--text-primary);
+}
+
+.sysdiagnose-analyser-toolbar__count {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.sysdiagnose-analyser-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.sysdiagnose-analyser-card__icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--accent) 12%, var(--bg-card));
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.sysdiagnose-analyser-card__head-inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.sysdiagnose-analyser-card__preview {
+    margin: 0.2rem 0 0;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sysdiagnose-analyser-card__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.sysdiagnose-analyser-card__chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    transition: transform 0.15s ease;
+}
+
+.sysdiagnose-analyser-card--open .sysdiagnose-analyser-card__chevron {
+    transform: rotate(180deg);
+}
+
+/* Structured analyser body */
+.sysdiagnose-analyser-view {
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--text-primary);
+}
+
+.sysdiagnose-analyser-view > p,
+.sysdiagnose-analyser-lead {
+    margin: 0 0 0.5rem;
+    font-weight: 600;
+}
+
+.sysdiagnose-analyser-muted {
+    margin: 0 0 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+}
+
+.sysdiagnose-analyser-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: 0.5rem 0.85rem;
+    margin: 0 0 0.75rem;
+}
+
+.sysdiagnose-analyser-stat {
+    padding: 0.45rem 0.55rem;
+    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+    background: color-mix(in srgb, var(--bg-secondary) 80%, var(--bg-card));
+}
+
+.sysdiagnose-analyser-stat__label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+}
+
+.sysdiagnose-analyser-stat__value {
+    margin-top: 0.15rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.sysdiagnose-analyser-cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 0.85rem;
+    align-items: start;
+}
+
+.sysdiagnose-analyser-col__title {
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-bottom: 0.35rem;
+}
+
+.sysdiagnose-analyser-col__list {
+    margin: 0;
+    padding-left: 1.1rem;
+    max-height: 12rem;
+    overflow: auto;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.sysdiagnose-analyser-kv {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem 0.85rem;
+    margin: 0 0 0.75rem;
+}
+
+.sysdiagnose-analyser-kv dt {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+}
+
+.sysdiagnose-analyser-kv dd {
+    margin: 0.1rem 0 0.35rem;
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.sysdiagnose-analyser-table-wrap {
+    overflow: auto;
+    max-height: min(55vh, 24rem);
+    margin: 0.35rem 0 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-card);
+}
+
+.sysdiagnose-analyser-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+}
+
+.sysdiagnose-analyser-table th,
+.sysdiagnose-analyser-table td {
+    padding: 0.4rem 0.55rem;
+    text-align: left;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+    vertical-align: top;
+}
+
+.sysdiagnose-analyser-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+}
+
+.sysdiagnose-analyser-table tbody tr:nth-child(even) {
+    background: color-mix(in srgb, var(--bg-secondary) 45%, transparent);
+}
+
+.sysdiagnose-analyser-table td:first-child {
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.74rem;
+}
+
+.sysdiagnose-analyser-table td {
+    word-break: break-word;
+}
+
+.sysdiagnose-summary-md {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--text-primary);
+}
+
+.sysdiagnose-summary-md h4 {
+    margin: 0.85rem 0 0.35rem;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.sysdiagnose-summary-md h4:first-child {
+    margin-top: 0;
+}
+
+.sysdiagnose-summary-md p {
+    margin: 0.35rem 0;
+    color: var(--text-secondary);
+}
+
+.sysdiagnose-summary-md ul {
+    margin: 0.35rem 0;
+    padding-left: 1.25rem;
+    color: var(--text-secondary);
+}
+
+.sysdiagnose-summary-md pre {
+    max-height: 14rem;
+    margin: 0.35rem 0;
+    padding: 0.55rem 0.65rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    font-size: 0.74rem;
+    overflow: auto;
+}
+
+.sysdiagnose-analyser-saf-box {
+    margin-top: 0.85rem;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bg-secondary) 70%, var(--bg-card));
+}
+
+.sysdiagnose-analyser-saf-box__title {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.35rem;
+    font-size: 0.8rem;
+}
+
+.sysdiagnose-analyser-view .search-box {
+    margin-bottom: 0.65rem;
+}
+
+@media (max-width: 520px) {
+    .sysdiagnose-analyser-kv {
+        grid-template-columns: 1fr;
+    }
+}

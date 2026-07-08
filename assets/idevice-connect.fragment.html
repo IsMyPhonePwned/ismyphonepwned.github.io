@@ -1,0 +1,138 @@
+<!-- Status bar -->
+    <div class="status-bar" aria-label="Session status">
+      <div class="status-item" id="st-device" data-state="off">
+        <span class="pill"></span>
+        <div style="min-width:0">
+          <div class="label">Device</div>
+          <div class="value" id="st-device-val">Not connected</div>
+        </div>
+      </div>
+      <div class="status-item" id="st-pair" data-state="off">
+        <span class="pill"></span>
+        <div style="min-width:0">
+          <div class="label">Pair record</div>
+          <div class="value" id="st-pair-val">None</div>
+        </div>
+      </div>
+      <div class="status-item" id="st-job" data-state="off">
+        <span class="pill"></span>
+        <div style="min-width:0">
+          <div class="label">Last action</div>
+          <div class="value" id="st-job-val">Idle</div>
+        </div>
+      </div>
+    </div>
+
+    <details class="toggle-block">
+      <summary>WebUSB connection (idevice-rs)</summary>
+      <p class="hint">
+        Pick your iPhone, generate or load a pair record (same flow as <a href="iphone-advanced.html">iPhone Advanced</a>), then refresh the sysdiagnose archive list below.
+        When the device sets <code>EnableSessionSSL</code>, the page negotiates lockdown
+        <strong>TLS</strong> with <strong>rustls</strong> using the host certificate chain
+        (same shape as the native <code>idevice</code> CLI / pymobiledevice3).
+      </p>
+      <p class="hint">
+        <strong>Diagnostics</strong> now runs ~40 <code>GetValue</code> queries grouped into
+        <em>Identity</em>, <em>Network / cellular</em>, <em>Locale / time</em>,
+        <em>Activation / security</em>, <em>Storage</em>, <em>iTunes / sync</em> and
+        <em>Battery</em>. Headline values are mirrored into the
+        <strong>Device snapshot</strong> card below; the full sectioned report stays in the
+        log for copy / paste.
+      </p>
+      <p class="hint">
+        On <strong>Linux</strong>, Chromium needs exclusive access to the USB interface — stop
+        <code>usbmuxd</code> briefly if claim fails. Verbose mode logs mux + pseudo-TCP frames
+        to the browser console (<code>[idevice-wasm]</code>).
+      </p>
+    </details>
+
+    <!-- Device snapshot card (filled by Diagnostics / Fetch with plist) -->
+    <section class="step" id="device-card-section" hidden>
+      <h2><span class="num">i</span><span class="ttl">Device snapshot</span></h2>
+      <p class="hint" id="device-card-meta"></p>
+      <div id="device-card-grid" class="device-card-grid"></div>
+    </section>
+
+    <!-- Step 1: Device -->
+    <section class="step" id="step-device">
+      <h2><span class="num">1</span><span class="ttl">Device</span></h2>
+      <p class="hint">Authorize one Apple device for this page. The browser scopes USB access per origin + serial.</p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary" id="btn-pick">
+          <span>Request Apple device</span>
+        </button>
+        <button type="button" class="btn" id="btn-mux" data-needs="dev"
+          title="USB mux VERSION (+ SETUP if v2) + pseudo-TCP to lockdownd:62078">
+          <span class="spinner" aria-hidden="true"></span><span>Mux test</span>
+        </button>
+        <button type="button" class="btn" id="btn-qt" data-needs="dev"
+          title="Mux + lockdown QueryType (cleartext)">
+          <span class="spinner" aria-hidden="true"></span><span>QueryType</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Step 2: Pair record -->
+    <section class="step" id="step-pair">
+      <h2><span class="num">2</span><span class="ttl">Pair record</span></h2>
+      <p class="hint">
+        A pair record holds a HostID + RSA host chain trusted by the device. Generate one (Trust
+        prompt on first use) and save it for next time, or load an existing libimobiledevice / usbmuxd
+        XML plist.
+      </p>
+      <div class="row">
+        <div class="seg" role="radiogroup" aria-label="Pair mode">
+          <label><input type="radio" name="pair" value="random" checked /><span>Generate · random</span></label>
+          <label><input type="radio" name="pair" value="legacy" /><span>Generate · legacy</span></label>
+          <label><input type="radio" name="pair" value="plist" /><span>Load plist</span></label>
+        </div>
+      </div>
+
+      <!-- Generate sub-panel -->
+      <div id="pair-generate-panel">
+        <p class="hint">
+          <em>Random</em> → fresh UUIDs each run (libimobiledevice / pymobiledevice3 style).
+          <em>Legacy</em> → fixed HostID, useful if a device gets stuck on UUID handshakes.
+        </p>
+        <div class="btn-row">
+          <button type="button" class="btn btn-primary" id="btn-pair" data-needs="dev">
+            <span class="spinner" aria-hidden="true"></span><span>Pair + save record</span>
+          </button>
+        </div>
+        <p class="hint" id="pair-hint">Tip: unlock the iPhone first; the Trust prompt may take ~10–30 s.</p>
+      </div>
+
+      <!-- Load sub-panel -->
+      <div id="pair-load-panel" hidden>
+        <div class="row">
+          <label for="plist-file">Pair-record XML plist</label>
+          <input type="file" id="plist-file" accept=".plist,.xml,application/xml,text/xml" />
+          <p class="hint" id="plist-status">Binary plists (<code>bplist00</code>) are not parsed; export as XML on macOS with <code>plutil -convert xml1</code>.</p>
+        </div>
+        <div class="row two-col">
+          <div>
+            <label for="hostid">HostID</label>
+            <input type="text" id="hostid" placeholder="UUID from plist (auto-filled)" autocomplete="off" />
+          </div>
+          <div>
+            <label for="buid">SystemBUID</label>
+            <input type="text" id="buid" placeholder="UUID from plist (auto-filled)" autocomplete="off" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Pair record summary card (visible when plistXmlText is loaded) -->
+      <div id="pair-summary" class="hint" hidden style="margin-top:0.55rem;padding:0.55rem 0.7rem;border:1px solid var(--accent-line);background:var(--accent-soft);border-radius:8px;color:var(--text);">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.4rem;">
+          <div>
+            <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--accent);">Pair record loaded</div>
+            <div id="pair-summary-ids" style="font-family:var(--mono);font-size:0.78rem;margin-top:0.15rem;"></div>
+          </div>
+          <div class="btn-row" style="margin:0">
+            <button type="button" class="btn btn-ghost" id="btn-pair-copy" title="Copy XML to clipboard">Copy</button>
+            <button type="button" class="btn btn-ghost" id="btn-pair-download" title="Download as pair-record.plist">Download</button>
+            <button type="button" class="btn btn-ghost btn-danger" id="btn-pair-clear" title="Forget pair record from this page + localStorage">Clear</button>
+          </div>
+        </div>
+      </div>
+    </section>

@@ -409,6 +409,13 @@
             width: 0%;
             transition: width 0.3s;
             animation: progress-animation 1.5s infinite;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 600;
+            min-width: 2.5rem;
         }
 
         @keyframes progress-animation {

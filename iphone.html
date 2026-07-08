@@ -7,6 +7,11 @@
     <link rel="icon" href="favicon.ico" sizes="any">
     <link rel="apple-touch-icon" href="logo.png">
     <link rel="stylesheet" href="assets/site.css">
+    <link rel="stylesheet" href="assets/idevice-workspace.css">
+    <link rel="stylesheet" href="assets/sysdiagnose-picker.css">
+    <link rel="stylesheet" href="assets/sysdiagnose-file-panel.css">
+    <script src="assets/sigma-rules-urls.js"></script>
+    <script src="assets/iphone-sigma.js" defer></script>
     <script src="assets/timeline-view.js" defer></script>
 </head>
 <body>
@@ -25,7 +30,7 @@
                     <button type="button" data-lang="fr" onclick="window.setLang('fr')">FR</button>
                     <button type="button" data-lang="zh" onclick="window.setLang('zh')">中文</button>
                 </div>
-                <span id="wasm-status" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px;" data-i18n="wasmLoading">⏳ Loading...</span>
+                <span id="webusb-status" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px;" data-i18n="webusbLoading">⏳ Loading…</span>
                 <button class="theme-toggle" onclick="toggleTheme()">
                     <span id="theme-icon">🌙</span>
                     <span id="theme-text" data-i18n="themeDark">Dark</span>
@@ -38,6 +43,8 @@
             <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
             <a href="android.html" data-i18n="navAndroidPage">Android (bugreport)</a>
             <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="iphone-advanced.html" data-i18n="navIphoneAdvanced">iPhone Advanced</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
             <a href="intrusion-logs.html" data-i18n="navIntrusionPage">Intrusion logs</a>
             <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
             <a href="artifact-paths.html">Artifact paths</a>
@@ -45,45 +52,313 @@
 
         <div id="status" class="status"></div>
         <div id="progress" class="progress"><div class="progress-bar"></div></div>
+        <div id="sysdiagnose-ingest-progress" class="sysdiagnose-ingest-progress hidden" role="status" aria-live="polite">
+            <div class="sysdiagnose-ingest-progress__header">
+                <span class="sysdiagnose-ingest-progress__title" data-i18n="ingestProgressTitle">Analyzing archive</span>
+                <span id="sysdiagnose-ingest-pct" class="sysdiagnose-ingest-progress__pct">0%</span>
+            </div>
+            <div class="sysdiagnose-ingest-progress__bar" aria-hidden="true">
+                <div id="sysdiagnose-ingest-fill" class="sysdiagnose-ingest-progress__fill" style="width: 0%"></div>
+            </div>
+            <p id="sysdiagnose-ingest-phase" class="sysdiagnose-ingest-progress__phase"></p>
+            <p id="sysdiagnose-ingest-detail" class="sysdiagnose-ingest-progress__detail"></p>
+        </div>
         <div id="loading-spinner" class="loading-spinner">
             <div class="spinner"></div>
             <div class="loading-text" data-i18n="analyzingWait">Working…</div>
         </div>
 
+
         <div class="section">
             <h2 data-i18n="iphoneTitle">Sysdiagnose archive</h2>
-            <p data-i18n="sysdiagnoseDesc">Upload an Apple sysdiagnose archive (.tar.gz). Parsing runs in your browser via sysdiagnose-extractor-library (WASM): metadata, per-parser status, and full JSON below.</p>
-            <div class="upload-zone" id="sysdiagnose-upload-zone" onclick="document.getElementById('sysdiagnose-file-input').click()">
-                <div class="upload-icon">🍎</div>
-                <div data-i18n="sysdiagnoseDrop">Click or drag sysdiagnose .tar.gz here</div>
-                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;" data-i18n="sysdiagnoseFormats">Typically named sysdiagnose_*.tar.gz</div>
+            <p data-i18n="sysdiagnoseDesc">Connect your iPhone over USB (Chromium + WebUSB) to pull an existing sysdiagnose archive, or upload a <code>.tar.gz</code> from your computer. Parsing runs in your browser via sysdiagnose-extractor-library (WASM).</p>
+            <p style="font-size: 0.8125rem; color: var(--text-secondary); margin: 0.5rem 0 1rem;">
+                <span data-i18n="iphoneAdvancedBlurb">For syslog, pcap, crash reports, and lockdown diagnostics, use</span>
+                <a href="iphone-advanced.html" style="color: var(--accent);" data-i18n="navIphoneAdvanced">iPhone Advanced</a>.
+            </p>
+            <div class="tabs tabs-sub" role="tablist">
+                <button type="button" class="tab tab-iphone active" data-iphone-tab="device" onclick="switchIphoneTab('device')" data-i18n="tabFromDevice">From Device</button>
+                <button type="button" class="tab tab-iphone" data-iphone-tab="upload" onclick="switchIphoneTab('upload')" data-i18n="tabUpload">Upload File</button>
             </div>
-            <input type="file" id="sysdiagnose-file-input" accept=".tar.gz,.tgz,application/gzip" onchange="window.handleSysdiagnoseFileSelect(event)">
-            <button id="btn-analyze-sysdiagnose" class="hidden" onclick="window.analyzeSysdiagnoseFile()" data-i18n="analyzeSysdiagnoseBtn">Analyze sysdiagnose</button>
+
+            <div id="tab-iphone-device">
+                <details class="result-card" style="margin: 1rem 0; padding: 0.75rem 1rem;">
+                    <summary style="cursor: pointer; font-weight: 600;" data-i18n="sysdiagnoseTriggerTitle">How to trigger sysdiagnose on the iPhone</summary>
+                    <ol style="margin: 0.75rem 0 0 1.25rem; font-size: 0.875rem; color: var(--text-secondary); line-height: 1.55;">
+                        <li data-i18n="sysdiagnoseTrigger1">Press and release Volume Up, Volume Down, and the Side button together (~0.7s). Too long locks the device.</li>
+                        <li data-i18n="sysdiagnoseTrigger2">Wait about 5 minutes for collection to finish (vibration when done on many models).</li>
+                        <li data-i18n="sysdiagnoseTrigger3">Connect via USB below, pair if needed, then refresh the archive list.</li>
+                    </ol>
+                </details>
+                <div class="idevice-workspace" id="iphone-idevice-connect">
+<!-- Status bar -->
+    <div class="status-bar" aria-label="Session status">
+      <div class="status-item" id="st-device" data-state="off">
+        <span class="pill"></span>
+        <div style="min-width:0">
+          <div class="label">Device</div>
+          <div class="value" id="st-device-val">Not connected</div>
+        </div>
+      </div>
+      <div class="status-item" id="st-pair" data-state="off">
+        <span class="pill"></span>
+        <div style="min-width:0">
+          <div class="label">Pair record</div>
+          <div class="value" id="st-pair-val">None</div>
+        </div>
+      </div>
+      <div class="status-item" id="st-job" data-state="off">
+        <span class="pill"></span>
+        <div style="min-width:0">
+          <div class="label">Last action</div>
+          <div class="value" id="st-job-val">Idle</div>
+        </div>
+      </div>
+    </div>
+
+    <details class="toggle-block">
+      <summary>WebUSB connection (idevice-rs)</summary>
+      <p class="hint">
+        Pick your iPhone, generate or load a pair record (same flow as <a href="iphone-advanced.html">iPhone Advanced</a>), then refresh the sysdiagnose archive list below.
+        When the device sets <code>EnableSessionSSL</code>, the page negotiates lockdown
+        <strong>TLS</strong> with <strong>rustls</strong> using the host certificate chain
+        (same shape as the native <code>idevice</code> CLI / pymobiledevice3).
+      </p>
+      <p class="hint">
+        <strong>Diagnostics</strong> now runs ~40 <code>GetValue</code> queries grouped into
+        <em>Identity</em>, <em>Network / cellular</em>, <em>Locale / time</em>,
+        <em>Activation / security</em>, <em>Storage</em>, <em>iTunes / sync</em> and
+        <em>Battery</em>. Headline values are mirrored into the
+        <strong>Device snapshot</strong> card below; the full sectioned report stays in the
+        log for copy / paste.
+      </p>
+      <p class="hint">
+        On <strong>Linux</strong>, Chromium needs exclusive access to the USB interface — stop
+        <code>usbmuxd</code> briefly if claim fails. Verbose mode logs mux + pseudo-TCP frames
+        to the browser console (<code>[idevice-wasm]</code>).
+      </p>
+    </details>
+    <!-- Step 1: Device -->
+    <section class="step" id="step-device">
+      <h2><span class="num">1</span><span class="ttl">Device</span></h2>
+      <p class="hint">Authorize one Apple device for this page. The browser scopes USB access per origin + serial.</p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary" id="btn-pick">
+          <span>Request Apple device</span>
+        </button>
+        <button type="button" class="btn" id="btn-mux" data-needs="dev"
+          title="USB mux VERSION (+ SETUP if v2) + pseudo-TCP to lockdownd:62078">
+          <span class="spinner" aria-hidden="true"></span><span>Mux test</span>
+        </button>
+        <button type="button" class="btn" id="btn-qt" data-needs="dev"
+          title="Mux + lockdown QueryType (cleartext)">
+          <span class="spinner" aria-hidden="true"></span><span>QueryType</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Step 2: Pair record -->
+    <section class="step" id="step-pair">
+      <h2><span class="num">2</span><span class="ttl">Pair record</span></h2>
+      <p class="hint">
+        A pair record holds a HostID + RSA host chain trusted by the device. Generate one (Trust
+        prompt on first use) and save it for next time, or load an existing libimobiledevice / usbmuxd
+        XML plist.
+      </p>
+      <div class="row">
+        <div class="seg" role="radiogroup" aria-label="Pair mode">
+          <label><input type="radio" name="pair" value="random" checked /><span>Generate · random</span></label>
+          <label><input type="radio" name="pair" value="legacy" /><span>Generate · legacy</span></label>
+          <label><input type="radio" name="pair" value="plist" /><span>Load plist</span></label>
+        </div>
+      </div>
+
+      <!-- Generate sub-panel -->
+      <div id="pair-generate-panel">
+        <p class="hint">
+          <em>Random</em> → fresh UUIDs each run (libimobiledevice / pymobiledevice3 style).
+          <em>Legacy</em> → fixed HostID, useful if a device gets stuck on UUID handshakes.
+        </p>
+        <div class="btn-row">
+          <button type="button" class="btn btn-primary" id="btn-pair" data-needs="dev">
+            <span class="spinner" aria-hidden="true"></span><span>Pair + save record</span>
+          </button>
+        </div>
+        <p class="hint" id="pair-hint">Tip: unlock the iPhone first; the Trust prompt may take ~10–30 s.</p>
+      </div>
+
+      <!-- Load sub-panel -->
+      <div id="pair-load-panel" hidden>
+        <div class="row">
+          <label>Pair-record XML plist</label>
+          <div class="plist-file-row">
+            <input type="file" id="plist-file" accept=".plist,.xml,application/xml,text/xml" hidden />
+            <button type="button" class="btn btn-primary" id="btn-plist-browse">Choose XML plist…</button>
+            <span id="plist-file-name" class="plist-file-name hint">No file chosen</span>
+          </div>
+          <p class="hint" id="plist-status">Binary plists (<code>bplist00</code>) are not parsed; export as XML on macOS with <code>plutil -convert xml1</code>.</p>
+        </div>
+        <div class="row two-col">
+          <div>
+            <label for="hostid">HostID</label>
+            <input type="text" id="hostid" placeholder="UUID from plist (auto-filled)" autocomplete="off" />
+          </div>
+          <div>
+            <label for="buid">SystemBUID</label>
+            <input type="text" id="buid" placeholder="UUID from plist (auto-filled)" autocomplete="off" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Pair record summary card (visible when plistXmlText is loaded) -->
+      <div id="pair-summary" class="hint" hidden style="margin-top:0.55rem;padding:0.55rem 0.7rem;border:1px solid var(--accent-line);background:var(--accent-soft);border-radius:8px;color:var(--text);">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.4rem;">
+          <div>
+            <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--accent);">Pair record loaded</div>
+            <div id="pair-summary-ids" style="font-family:var(--mono);font-size:0.78rem;margin-top:0.15rem;"></div>
+          </div>
+          <div class="btn-row" style="margin:0">
+            <button type="button" class="btn btn-ghost" id="btn-pair-copy" title="Copy XML to clipboard">Copy</button>
+            <button type="button" class="btn btn-ghost" id="btn-pair-download" title="Download as pair-record.plist">Download</button>
+            <button type="button" class="btn btn-ghost btn-danger" id="btn-pair-clear" title="Forget pair record from this page + localStorage">Clear</button>
+          </div>
+        </div>
+      </div>
+    </section>
+                </div>
+
+                                <p class="step-label" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-secondary);margin:1rem 0 0.35rem;font-weight:600;" data-i18n="iphoneStepArchives">3 · Sysdiagnose archives</p>
+                <p id="iphone-device-label" style="font-size: 0.8125rem; color: var(--text-secondary); margin: 0 0 0.75rem;">—</p>
+                <div class="sysdiagnose-archives-toolbar" style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;margin:0 0 0.75rem;">
+                    <button type="button" id="btn-refresh-sysdiagnose" class="sysdiagnose-picker-refresh hidden" data-i18n="refreshList">🔄 Refresh list</button>
+                    <span id="sysdiagnose-archives-hint" class="hint" style="margin:0;font-size:0.8rem;" data-i18n="sysdiagnoseArchivesHint">Pair the device above, then refresh to list archives on the phone.</span>
+                </div>
+                <div id="iphone-listing-status" class="listing-indicator hidden" style="text-align: center; padding: 1rem; margin: 0.5rem 0;">
+                    <div style="margin-bottom: 0.5rem; font-weight: 500;" data-i18n="scanningSysdiagnose">📡 Scanning device for sysdiagnose archives…</div>
+                </div>
+                <div id="sysdiagnose-picker" class="sysdiagnose-picker hidden" aria-live="polite">
+                    <div class="sysdiagnose-picker-head">
+                        <div>
+                            <div class="sysdiagnose-picker-title" data-i18n="sysdiagnosePickerTitle">Choose a sysdiagnose archive</div>
+                            <div id="sysdiagnose-picker-count" class="sysdiagnose-picker-sub"></div>
+                        </div>
+                    </div>
+                    <p class="sysdiagnose-picker-hint" data-i18n="sysdiagnosePickerHint">Select a <code>.tar.gz</code> archive from the device, then analyze it in the browser.</p>
+                    <div id="sysdiagnose-picker-list" class="sysdiagnose-picker-list" role="listbox" aria-label="Sysdiagnose archives on device"></div>
+                    <div id="sysdiagnose-picker-actions" class="sysdiagnose-picker-actions hidden">
+                        <div id="sysdiagnose-selected-panel" class="sysdiagnose-selected-panel hidden" aria-live="polite">
+                            <div class="sysdiagnose-selected-panel__row">
+                                <span class="sysdiagnose-selected-panel__icon" aria-hidden="true">📦</span>
+                                <div class="sysdiagnose-selected-panel__body">
+                                    <div id="sysdiagnose-selected-panel-title" class="sysdiagnose-selected-panel__title">—</div>
+                                    <div id="sysdiagnose-selected-panel-path" class="sysdiagnose-selected-panel__path"></div>
+                                </div>
+                                <span id="sysdiagnose-selected-panel-size" class="sysdiagnose-selected-panel__size">—</span>
+                            </div>
+                        </div>
+                        <button type="button" id="btn-analyze-device-sysdiagnose" class="sysdiagnose-picker-analyze" data-i18n="analyzeSelectedSysdiagnose">Analyze selected archive</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-iphone-upload" class="hidden">
+            <div class="sysdiagnose-file-drop" id="sysdiagnose-upload-zone" role="button" tabindex="0" aria-label="Upload sysdiagnose archive">
+                <div id="sysdiagnose-upload-empty" class="sysdiagnose-file-drop__empty">
+                    <span class="sysdiagnose-file-drop__icon-wrap" aria-hidden="true">🍎</span>
+                    <span class="sysdiagnose-file-drop__prompt" data-i18n="sysdiagnoseDrop">Click or drag sysdiagnose .tar.gz here</span>
+                    <span class="sysdiagnose-file-drop__formats" data-i18n="sysdiagnoseFormats">Typically named sysdiagnose_*.tar.gz</span>
+                    <span class="sysdiagnose-file-drop__browse" data-i18n="sysdiagnoseBrowse">Browse file…</span>
+                </div>
+                <div id="sysdiagnose-upload-selected" class="sysdiagnose-file-drop__selected hidden">
+                    <span class="sysdiagnose-file-drop__file-icon" aria-hidden="true">📦</span>
+                    <div class="sysdiagnose-file-drop__meta">
+                        <span id="sysdiagnose-upload-name" class="sysdiagnose-file-drop__name">—</span>
+                        <span id="sysdiagnose-upload-size" class="sysdiagnose-file-drop__size">—</span>
+                    </div>
+                    <button type="button" id="sysdiagnose-upload-clear" class="sysdiagnose-file-drop__clear" data-i18n="sysdiagnoseClearFile">Clear</button>
+                </div>
+            </div>
+            <input type="file" id="sysdiagnose-file-input" class="hidden" accept=".tar.gz,.tgz,application/gzip" onchange="window.handleSysdiagnoseFileSelect(event)">
+            <div id="sysdiagnose-upload-ready" class="sysdiagnose-upload-ready">
+                <span class="sysdiagnose-upload-ready__title" data-i18n="uploadReadyTitle">Ready to analyze</span>
+                <ul class="sysdiagnose-upload-ready__list">
+                    <li id="sysdiagnose-ready-file" class="sysdiagnose-upload-ready__item">
+                        <span class="sysdiagnose-upload-ready__dot" aria-hidden="true"></span>
+                        <span data-i18n="uploadReadyFile">Archive file selected</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="sysdiagnose-upload-actions">
+                <button id="btn-analyze-sysdiagnose" class="hidden sysdiagnose-picker-analyze" onclick="window.analyzeSysdiagnoseFile()" data-i18n="analyzeSysdiagnoseBtn">Analyze sysdiagnose</button>
+            </div>
+            </div>
         </div>
 
         <div id="results" class="results">
             <div id="sysdiagnose-parsed-wrap" class="section" style="display: none;">
-                <h2 data-i18n="resultsSectionTitle">Analysis results</h2>
-                <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;" data-i18n="resultsSectionBlurb">SAF-aligned analysers summarize the archive; the table lists per-parser status. Use Full Data (JSON) below to download or copy the complete payload.</p>
-                <table class="detail-table" id="sysdiagnose-meta-table" style="margin-bottom: 1.25rem;">
+                <h2 class="sysdiagnose-section-head" style="margin-top: 0;" data-i18n="resultsSectionTitle">Analysis results</h2>
+                <p class="sysdiagnose-section-lead" data-i18n="resultsSectionBlurb">SAF-aligned analysers summarize the archive; the table lists per-parser status. Use Full Data (JSON) below to download or copy the complete payload.</p>
+                <div id="sysdiagnose-file-panel" class="sysdiagnose-file-panel" style="display: none;">
+                    <div class="sysdiagnose-file-panel__hero">
+                        <span class="sysdiagnose-file-panel__icon" aria-hidden="true">📦</span>
+                        <div class="sysdiagnose-file-panel__body">
+                            <div class="sysdiagnose-file-panel__row">
+                                <span id="sysdiagnose-file-panel-name" class="sysdiagnose-file-panel__title">—</span>
+                                <span id="sysdiagnose-file-panel-badge" class="sysdiagnose-file-panel__badge">iOS sysdiagnose</span>
+                            </div>
+                            <p id="sysdiagnose-file-panel-sub" class="sysdiagnose-file-panel__meta"></p>
+                        </div>
+                    </div>
+                    <div id="sysdiagnose-file-panel-stats" class="sysdiagnose-file-panel__stats"></div>
+                    <div id="sysdiagnose-file-panel-chips" class="sysdiagnose-chip-row"></div>
+                </div>
+                <div class="section detection-panel" id="iphone-detection-section" style="display: none;">
+                    <h3 class="sysdiagnose-section-head" data-i18n="pwnedDetection">🔍 Pwned Results Detection</h3>
+                    <div class="sigma-summary-bar" id="iphone-sigma-summary-bar" aria-live="polite"></div>
+                    <div class="detection-subsection">
+                        <div class="detection-subsection-head">
+                            <span class="detection-subsection-title" data-i18n="sigmaRules">Rules</span>
+                            <button type="button" class="section-toggle collapsed" onclick="toggleSection('iphone-sigma-rules')" aria-label="Toggle rules">▼</button>
+                        </div>
+                        <div class="section-content collapsed" id="iphone-sigma-rules-content">
+                            <div id="iphone-sigma-rules-container"></div>
+                        </div>
+                    </div>
+                    <div class="detection-subsection">
+                        <div class="detection-subsection-head">
+                            <span class="detection-subsection-title" data-i18n="sigmaMatches">Matches</span>
+                            <button type="button" class="section-toggle" onclick="toggleSection('iphone-sigma-matches')" aria-label="Toggle matches">▼</button>
+                        </div>
+                        <div class="section-content" id="iphone-sigma-matches-content">
+                            <div id="iphone-sigma-matches-container"></div>
+                        </div>
+                    </div>
+                </div>
+                <table class="detail-table hidden" id="sysdiagnose-meta-table" style="margin-bottom: 1.25rem;" aria-hidden="true">
                     <tbody id="sysdiagnose-summary-body"></tbody>
                 </table>
                 <div id="sysdiagnose-timeline-section" class="sysdiagnose-timeline-card" style="display: none; margin-bottom: 1.25rem;">
-                    <h3 class="sysdiagnose-cards-heading" style="margin-top: 0; margin-bottom: 0.35rem; font-size: 1.05rem;" data-i18n="timelineSectionTitle">Timeline</h3>
-                    <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.65rem;" data-i18n="timelineSectionBlurb">
+                    <h3 class="sysdiagnose-section-head" style="margin-top: 0;" data-i18n="timelineSectionTitle">Timeline</h3>
+                    <p class="sysdiagnose-section-lead" data-i18n="timelineSectionBlurb">
                         Visual band by parser; search and category filters apply. Drag, wheel, and +/− zoom; Shift+drag pans when zoomed.
                     </p>
                     <div id="sysdiagnose-timeline-dl-row"></div>
                     <div id="sysdiagnose-timeline-mount"></div>
                 </div>
-                <h3 class="sysdiagnose-cards-heading" style="margin-top: 0.5rem; margin-bottom: 0.5rem; font-size: 1.05rem;" data-i18n="analyserSectionTitle">Analyser summaries</h3>
-                <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 1rem;" data-i18n="analyserSectionBlurb">Built-in analysers (sdx-cli --run-analysers): apps, summary, coverage, etc. Expand a card for the structured view.</p>
-                <div id="sysdiagnose-analyser-cards"></div>
-                <h3 class="sysdiagnose-cards-heading" style="margin-top: 1.75rem; margin-bottom: 0.5rem; font-size: 1.05rem;" data-i18n="parserModulesTitle">Parser modules</h3>
-                <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 1rem;" data-i18n="parserModulesBlurb">One row per SAF parser module. Parser payloads are included in Full Data (JSON) below.</p>
-                <div class="data-table-container">
-                    <table class="data-table" id="sysdiagnose-parser-table">
+                <h3 class="sysdiagnose-section-head" data-i18n="analyserSectionTitle">Analyser summaries</h3>
+                <p class="sysdiagnose-section-lead" data-i18n="analyserSectionBlurb">Built-in analysers (sdx-cli --run-analysers): apps, summary, coverage, etc. Expand a card for the structured view.</p>
+                <div id="sysdiagnose-analyser-toolbar" class="sysdiagnose-analyser-toolbar hidden">
+                    <span class="sysdiagnose-analyser-toolbar__count" id="sysdiagnose-analyser-count"></span>
+                    <div class="sysdiagnose-analyser-toolbar__actions">
+                        <button type="button" id="sysdiagnose-analyser-expand-all" class="sysdiagnose-analyser-toolbar__btn" data-i18n="analyserExpandAll">Expand all</button>
+                        <button type="button" id="sysdiagnose-analyser-collapse-all" class="sysdiagnose-analyser-toolbar__btn" data-i18n="analyserCollapseAll">Collapse all</button>
+                    </div>
+                </div>
+                <div id="sysdiagnose-analyser-cards" class="sysdiagnose-analyser-cards"></div>
+                <h3 class="sysdiagnose-section-head" data-i18n="parserModulesTitle">Parser modules</h3>
+                <p class="sysdiagnose-section-lead" data-i18n="parserModulesBlurb">One row per SAF parser module. Parser payloads are included in Full Data (JSON) below.</p>
+                <ul id="sysdiagnose-parser-list" class="sysdiagnose-parser-list" role="list" aria-label="Parser modules"></ul>
+                <table class="data-table hidden" id="sysdiagnose-parser-table" aria-hidden="true">
                         <thead>
                             <tr>
                                 <th data-i18n="colParser">Parser</th>
@@ -94,7 +369,6 @@
                         </thead>
                         <tbody id="sysdiagnose-parser-tbody"></tbody>
                     </table>
-                </div>
             </div>
             <div class="result-card">
                 <div class="section-header">
@@ -115,6 +389,8 @@
         <footer style="text-align: center; padding: 1.5rem 0; color: var(--text-secondary); font-size: 0.813rem;">
             <div style="margin-bottom: 0.75rem;">
                 <a href="https://github.com/IsMyPhonePwned/sysdiagnose-extractor-library" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;">sysdiagnose-extractor-library</a>
+                ·
+                <a href="https://github.com/ping2A/idevice-rs" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;">idevice-rs</a>
             </div>
             <p style="margin-top: 0.5rem; font-size: 0.8rem;">
                 <a href="https://github.com/IsMyPhonePwned/" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;" data-i18n="navGitHub">GitHub</a>
@@ -126,30 +402,140 @@
         window.IPHONE_I18N = {
             en: {
                 pageSubtitle: 'iPhone · sysdiagnose',
-                wasmLoading: '⏳ Loading...',
+                wasmLoading: '⏳ Loading…',
                 wasmReady: '✓ Ready',
                 wasmFailed: '❌ Failed to load',
+                webusbLoading: '⏳ Loading…',
+                webusbReady: '✓ Analyzer + WebUSB',
+                webusbDeviceReady: '✓ WebUSB · ⏳ Analyzer',
+                webusbDeviceReadyTitle: 'Device tools ready — analyzer loads on first analyze',
+                webusbFailed: '❌ WebUSB unavailable',
+                webusbPartial: '✓ Analyzer · ⚠ WebUSB',
                 themeDark: 'Dark',
                 themeLight: 'Light',
                 analyzingWait: 'Analyzing…',
                 navHome: 'Home',
                 navAndroidPage: 'Android (bugreport)',
+                navIphoneAdvanced: 'iPhone Advanced',
                 navIntrusionPage: 'Intrusion logs',
+                ideviceLoading: '⏳ idevice…',
+                ideviceReady: '✓ WebUSB',
+                ideviceFailed: '❌ idevice',
+                tabFromDevice: 'From Device',
+                tabUpload: 'Upload File',
+                iphoneAdvancedBlurb: 'For syslog, pcap, crash reports, and lockdown diagnostics, use',
+                iphoneAcquireTitle: '📖 iOS acquisition (WebUSB)',
+                iphoneAcquireWebUsbTitle: 'WebUSB requirements',
+                iphoneAcquireWebUsb1: 'Chromium browser (Chrome, Edge, Brave) on desktop — not Safari/Firefox.',
+                iphoneAcquireWebUsb2: 'Secure context: https:// or http://127.0.0.1/ (use scripts/test-local.sh for local dev).',
+                iphoneAcquireWebUsb3: 'USB cable · unlock iPhone · on Linux stop usbmuxd if it claims the device.',
+                iphoneAcquirePairTitle: 'Pairing (like idevice-rs)',
+                iphoneAcquirePair1: 'Pick iPhone — browser USB picker (user gesture required).',
+                iphoneAcquirePair2: 'Pair record — Generate (random or legacy) or load XML plist. Accept Trust on device (~10–30 s).',
+                iphoneAcquirePair3: 'Pair record cached in this browser — reuse or export via Download .plist.',
+                iphoneAcquireSysTitle: 'Sysdiagnose archive',
+                iphoneAcquireSys1: 'On device: Vol Up + Vol Down + Side ~0.7 s.',
+                iphoneAcquireSys2: 'Wait ~5–10 minutes for collection.',
+                iphoneAcquireSys3: 'Connect, pair, refresh list, download .tar.gz, analyze here.',
+                iphoneAcquireAdvTitle: 'Advanced captures',
+                iphoneAcquireAdvBlurb: 'For syslog, network pcap, crash reports, diagnostics, screenshot: use iPhone Advanced (same pairing, idevice-rs WASM).',
+                iphoneStepDevice: '1 · Device',
+                iphoneStepPair: '2 · Pair record',
+                iphoneStepArchives: '3 · Sysdiagnose archives',
+                pairingIntro: 'Generate a pair record (Trust prompt) or load an XML plist from libimobiledevice / usbmuxd.',
+                pairModeRandom: 'Generate · random',
+                pairModeLegacy: 'Generate · legacy',
+                pairModePlist: 'Load plist',
+                pairHint: 'Tip: unlock the iPhone first; the Trust prompt may take ~10–30 s.',
+                pairPlistLabel: 'Pair-record XML plist',
+                pairPlistHint: 'Binary plists (bplist00) are not supported — export as XML with plutil -convert xml1.',
+                pairModeHintRandom: 'Random → fresh UUIDs. Legacy → fixed HostID if the device gets stuck.',
+                pairLoaded: 'Pair record loaded',
+                pairCopy: 'Copy XML',
+                pairDownload: 'Download .plist',
+                pairClear: 'Clear',
+                sysdiagnoseTriggerTitle: 'How to trigger sysdiagnose on the iPhone',
+                sysdiagnoseTrigger1: 'Press and release Volume Up, Volume Down, and the Side button together (~0.7s). Too long locks the device.',
+                sysdiagnoseTrigger2: 'Wait about 5 minutes for collection to finish (vibration when done on many models).',
+                sysdiagnoseTrigger3: 'Connect via USB below, pair if needed, then refresh the archive list.',
+                deviceDescIphone: 'Chromium only · unlock the iPhone · accept Trust on first pair · stop usbmuxd on Linux if it owns the USB device.',
+                btnPickIphone: 'Pick iPhone (WebUSB)',
+                btnPairIphone: 'Pair & save record',
+                scanningSysdiagnose: '📡 Scanning device for sysdiagnose archives…',
+                selectSysdiagnose: 'Select a sysdiagnose archive…',
+                sysdiagnosePickerTitle: 'Choose a sysdiagnose archive',
+                sysdiagnosePickerHint: 'Select a .tar.gz archive from the device, then analyze it in the browser.',
+                sysdiagnoseSelectedLabel: 'Selected',
+                sysdiagnosePickerCount: '{n} archive(s) on device',
+                sysdiagnoseArchivesHint: 'Pair the device above, then refresh to list archives on the phone.',
+                refreshList: '🔄 Refresh list',
+                analyzeSelectedSysdiagnose: 'Analyze selected archive',
+                noSysdiagnoseFound: 'No sysdiagnose .tar.gz archives found on device. Trigger sysdiagnose first, wait ~5 min, then refresh.',
+                deviceConnected: 'Connected: {name}',
+                pairPrompt: 'No pair record — tap Pair & save record (accept Trust on the iPhone).',
+                downloadingSysdiagnose: 'Downloading sysdiagnose archive…',
+                downloadingSysdiagnoseConnect: 'Connecting to device for download…',
+                downloadingSysdiagnoseProgress: 'Downloading {name}: {read} / {total} ({pct}%) · {elapsed}',
+                downloadComplete: 'Downloaded {name} ({size}) — starting analysis…',
                 iphoneTitle: 'Sysdiagnose archive',
-                sysdiagnoseDesc: 'Upload an Apple sysdiagnose archive (.tar.gz). Parsing runs in your browser via sysdiagnose-extractor-library (WASM): metadata, built-in analyser summaries, per-parser status, and full JSON below.',
+                sysdiagnoseDesc: 'Connect your iPhone over USB (Chromium + WebUSB) to pull an existing sysdiagnose archive, or upload a .tar.gz from your computer. Parsing runs in your browser via sysdiagnose-extractor-library (WASM).',
                 sysdiagnoseDrop: 'Click or drag sysdiagnose .tar.gz here',
                 sysdiagnoseFormats: 'Typically named sysdiagnose_*.tar.gz',
+                sysdiagnoseBrowse: 'Browse file…',
+                sysdiagnoseClearFile: 'Clear',
+                sysdiagnoseFileBadge: 'iOS sysdiagnose',
+                sysdiagnoseBadgeOk: 'All parsers OK',
+                sysdiagnoseBadgePartial: '{ok}/{total} parsers OK',
+                sysdiagnoseBadgeFail: 'Parse errors',
+                sysdiagnoseFileMetaCount: '{n} files in archive',
                 analyzeSysdiagnoseBtn: 'Analyze sysdiagnose',
+                uploadReadyTitle: 'Ready to analyze',
+                uploadReadyFile: 'Archive file selected',
+                ingestProgressTitle: 'Analyzing archive',
+                ingestPhasePrepare: 'Preparing…',
+                ingestPhaseHash: 'Computing SHA-256…',
+                ingestPhaseSigma: 'Loading Sigma rules…',
+                ingestPhaseParse: 'Running SAF parsers & Sigma…',
+                ingestPhaseRender: 'Building results…',
+                chipParsersOk: '{n} parsers OK',
+                chipParsersFail: '{n} failed',
+                chipAnalysersOk: '{n} analysers',
+                chipFiles: '{n} files',
+                pwnedDetection: '🔍 Pwned Results Detection',
+                sigmaRules: 'Rules',
+                sigmaMatches: 'Matches',
+                sigmaChipRules: '{n} rules loaded',
+                sigmaChipMatches: '{n} matches',
+                sigmaChipMatchDetail: '{hits} hits · {rules} rules',
+                sigmaChipClean: 'No matches',
+                sigmaNoRules: 'No rules loaded.',
+                sigmaNoMatches: 'No matches.',
+                sigmaMatchCount: '{n} occurrences',
+                sigmaMatchCountOne: '1 occurrence',
+                sigmaMatchShowLogs: 'Show {n} matched logs',
+                sigmaMatchOccurrence: 'Occurrence {n}',
+                sigmaMatchedLog: 'Matched log',
                 fullDataJsonTitle: '📋 Full Data (JSON)',
                 btnDownloadJson: '📥 Download JSON',
                 btnCopyClipboard: '📋 Copy to Clipboard',
                 navGitHub: 'GitHub',
                 resultsSectionTitle: 'Analysis results',
                 resultsSectionBlurb:
-                    'SAF-aligned analysers summarize the archive; the table lists per-parser status. Use Full Data (JSON) below to download or copy the complete payload.',
+                    'SAF-aligned analysers summarize the archive; the parser list shows per-module status. Use Full Data (JSON) below to download or copy the complete payload.',
                 analyserSectionTitle: 'Analyser summaries',
                 analyserSectionBlurb:
-                    'Built-in analysers (sdx-cli --run-analysers): apps, summary, coverage, etc. Expand a card for the structured view.',
+                    'Built-in analysers (sdx-cli --run-analysers): apps, summary, coverage, etc. Click a card to expand structured output.',
+                analyserExpandAll: 'Expand all',
+                analyserCollapseAll: 'Collapse all',
+                analyserCountLabel: '{n} analysers',
+                analyserPreviewApps: '{n} bundle IDs',
+                analyserPreviewCoverage: '{parsed} / {total} parser keys',
+                analyserPreviewFiles: '{n} archive files',
+                analyserPreviewPlist: '{n} plist files',
+                analyserPreviewRows: '{n} rows',
+                analyserPreviewSummary: 'Markdown investigation summary',
+                analyserPreviewWifi: '{n} location points',
+                analyserPreviewGeneric: 'Structured output available',
                 parserModulesTitle: 'Parser modules',
                 parserModulesBlurb:
                     'One row per SAF parser module. Parser payloads are included in Full Data (JSON) below.',
@@ -299,23 +685,100 @@
                 analyzingWait: 'Analyse…',
                 navHome: 'Accueil',
                 navAndroidPage: 'Android (bug report)',
+                navIphoneAdvanced: 'iPhone avancé',
                 navIntrusionPage: 'Journaux intrusion',
+                webusbLoading: '⏳ Chargement…',
+                webusbReady: '✓ Analyseur + WebUSB',
+                webusbDeviceReady: '✓ WebUSB · ⏳ Analyseur',
+                webusbDeviceReadyTitle: 'Outils appareil prêts — l’analyseur se charge à la première analyse',
+                webusbFailed: '❌ WebUSB indisponible',
+                webusbPartial: '✓ Analyseur · ⚠ WebUSB',
+                tabFromDevice: 'Depuis l’appareil',
+                tabUpload: 'Importer un fichier',
+                iphoneAdvancedBlurb: 'Pour syslog, pcap, rapports de crash et diagnostics lockdown, utilisez',
+                sysdiagnoseTriggerTitle: 'Déclencher sysdiagnose sur l’iPhone',
+                sysdiagnoseTrigger1: 'Appuyez et relâchez Volume +, Volume − et le bouton latéral ensemble (~0,7 s). Trop long verrouille l’appareil.',
+                sysdiagnoseTrigger2: 'Attendez environ 5 minutes (vibration à la fin sur de nombreux modèles).',
+                sysdiagnoseTrigger3: 'Connectez en USB ci-dessous, associez si besoin, puis actualisez la liste.',
+                deviceDescIphone: 'Chromium uniquement · déverrouillez l’iPhone · acceptez la confiance au premier couplage · arrêtez usbmuxd sur Linux si besoin.',
+                btnPickIphone: 'Choisir l’iPhone (WebUSB)',
+                btnPairIphone: 'Associer et enregistrer',
+                scanningSysdiagnose: '📡 Recherche d’archives sysdiagnose…',
+                selectSysdiagnose: 'Choisir une archive sysdiagnose…',
+                sysdiagnosePickerTitle: 'Choisir une archive sysdiagnose',
+                sysdiagnosePickerHint: 'Sélectionnez une archive .tar.gz sur l’appareil, puis analysez-la dans le navigateur.',
+                sysdiagnoseSelectedLabel: 'Sélection',
+                sysdiagnosePickerCount: '{n} archive(s) sur l’appareil',
+                sysdiagnoseArchivesHint: 'Associez l’appareil ci-dessus, puis actualisez pour lister les archives.',
+                refreshList: '🔄 Actualiser',
+                analyzeSelectedSysdiagnose: 'Analyser l’archive sélectionnée',
+                noSysdiagnoseFound: 'Aucune archive sysdiagnose .tar.gz sur l’appareil. Déclenchez sysdiagnose, attendez ~5 min, puis actualisez.',
+                deviceConnected: 'Connecté : {name}',
+                pairPrompt: 'Pas d’enregistrement d’association — touchez Associer (acceptez la confiance sur l’iPhone).',
+                downloadingSysdiagnose: 'Téléchargement de l’archive sysdiagnose…',
+                downloadingSysdiagnoseConnect: 'Connexion à l’appareil pour le téléchargement…',
+                downloadingSysdiagnoseProgress: 'Téléchargement {name} : {read} / {total} ({pct}%) · {elapsed}',
+                downloadComplete: 'Téléchargé {name} ({size}) — analyse en cours…',
                 iphoneTitle: 'Archive sysdiagnose',
                 sysdiagnoseDesc:
-                    'Envoyez une archive sysdiagnose Apple (.tar.gz). L’analyse s’exécute dans le navigateur via sysdiagnose-extractor-library (WASM) : métadonnées, résumés des analyseurs intégrés, statut par parseur et JSON complet ci-dessous.',
+                    'Connectez l’iPhone en USB (Chromium + WebUSB) pour récupérer une archive sysdiagnose, ou importez un .tar.gz. L’analyse s’exécute dans le navigateur (WASM).',
                 sysdiagnoseDrop: 'Cliquez ou déposez le .tar.gz ici',
                 sysdiagnoseFormats: 'Souvent nommé sysdiagnose_*.tar.gz',
+                sysdiagnoseBrowse: 'Parcourir…',
+                sysdiagnoseClearFile: 'Effacer',
+                sysdiagnoseFileBadge: 'Sysdiagnose iOS',
+                sysdiagnoseBadgeOk: 'Tous les parseurs OK',
+                sysdiagnoseBadgePartial: '{ok}/{total} parseurs OK',
+                sysdiagnoseBadgeFail: 'Erreurs d’analyse',
+                sysdiagnoseFileMetaCount: '{n} fichiers dans l’archive',
                 analyzeSysdiagnoseBtn: 'Analyser sysdiagnose',
+                uploadReadyTitle: 'Prêt à analyser',
+                uploadReadyFile: 'Archive sélectionnée',
+                ingestProgressTitle: 'Analyse de l’archive',
+                ingestPhasePrepare: 'Préparation…',
+                ingestPhaseHash: 'Calcul SHA-256…',
+                ingestPhaseSigma: 'Chargement des règles Sigma…',
+                ingestPhaseParse: 'Parseurs SAF et Sigma…',
+                ingestPhaseRender: 'Construction des résultats…',
+                chipParsersOk: '{n} parseurs OK',
+                chipParsersFail: '{n} en échec',
+                chipAnalysersOk: '{n} analyseurs',
+                chipFiles: '{n} fichiers',
+                pwnedDetection: '🔍 Détection Pwned',
+                sigmaRules: 'Règles',
+                sigmaMatches: 'Correspondances',
+                sigmaChipRules: '{n} règles chargées',
+                sigmaChipMatches: '{n} correspondances',
+                sigmaChipMatchDetail: '{hits} occurrences · {rules} règles',
+                sigmaChipClean: 'Aucune correspondance',
+                sigmaNoRules: 'Aucune règle chargée.',
+                sigmaNoMatches: 'Aucune correspondance.',
+                sigmaMatchCount: '{n} occurrences',
+                sigmaMatchCountOne: '1 occurrence',
+                sigmaMatchShowLogs: 'Afficher {n} journaux correspondants',
+                sigmaMatchOccurrence: 'Occurrence {n}',
+                sigmaMatchedLog: 'Journal correspondant',
                 fullDataJsonTitle: '📋 Données complètes (JSON)',
                 btnDownloadJson: '📥 Télécharger JSON',
                 btnCopyClipboard: '📋 Copier',
                 navGitHub: 'GitHub',
                 resultsSectionTitle: 'Résultats d’analyse',
                 resultsSectionBlurb:
-                    'Les analyseurs SAF résument l’archive ; le tableau liste le statut par parseur. Utilisez Données complètes (JSON) ci-dessous pour télécharger ou copier la charge utile complète.',
+                    'Les analyseurs SAF résument l’archive ; la liste des parseurs indique le statut par module. Utilisez Données complètes (JSON) ci-dessous pour télécharger ou copier la charge utile complète.',
                 analyserSectionTitle: 'Résumés des analyseurs',
                 analyserSectionBlurb:
-                    'Analyseurs intégrés (sdx-cli --run-analysers) : apps, summary, coverage, etc. Déployez une carte pour la vue structurée.',
+                    'Analyseurs intégrés (sdx-cli --run-analysers) : apps, summary, coverage, etc. Cliquez une carte pour voir le détail structuré.',
+                analyserExpandAll: 'Tout déplier',
+                analyserCollapseAll: 'Tout replier',
+                analyserCountLabel: '{n} analyseurs',
+                analyserPreviewApps: '{n} bundle IDs',
+                analyserPreviewCoverage: '{parsed} / {total} clés parseur',
+                analyserPreviewFiles: '{n} fichiers dans l’archive',
+                analyserPreviewPlist: '{n} fichiers plist',
+                analyserPreviewRows: '{n} lignes',
+                analyserPreviewSummary: 'Résumé d’investigation (Markdown)',
+                analyserPreviewWifi: '{n} points de localisation',
+                analyserPreviewGeneric: 'Sortie structurée disponible',
                 parserModulesTitle: 'Modules parseurs',
                 parserModulesBlurb:
                     'Une ligne par module SAF. Les données des parseurs sont incluses dans Données complètes (JSON) ci-dessous.',
@@ -466,23 +929,100 @@
                 analyzingWait: '分析中…',
                 navHome: '首页',
                 navAndroidPage: 'Android（bugreport）',
+                navIphoneAdvanced: 'iPhone 高级',
                 navIntrusionPage: '入侵日志',
+                webusbLoading: '⏳ 加载中…',
+                webusbReady: '✓ 分析器 + WebUSB',
+                webusbDeviceReady: '✓ WebUSB · ⏳ 分析器',
+                webusbDeviceReadyTitle: '设备工具已就绪 — 首次分析时加载分析器',
+                webusbFailed: '❌ WebUSB 不可用',
+                webusbPartial: '✓ 分析器 · ⚠ WebUSB',
+                tabFromDevice: '从设备',
+                tabUpload: '上传文件',
+                iphoneAdvancedBlurb: '如需 syslog、pcap、崩溃报告和 lockdown 诊断，请使用',
+                sysdiagnoseTriggerTitle: '如何在 iPhone 上触发 sysdiagnose',
+                sysdiagnoseTrigger1: '同时按下并松开音量+、音量−和侧边键（约 0.7 秒）。按太久会锁屏。',
+                sysdiagnoseTrigger2: '等待约 5 分钟完成采集（许多机型结束时振动）。',
+                sysdiagnoseTrigger3: '通过 USB 连接，必要时配对，然后刷新归档列表。',
+                deviceDescIphone: '仅 Chromium · 解锁 iPhone · 首次配对需信任此电脑 · Linux 上若 usbmuxd 占用 USB 请先停止。',
+                btnPickIphone: '选择 iPhone (WebUSB)',
+                btnPairIphone: '配对并保存记录',
+                scanningSysdiagnose: '📡 正在扫描设备上的 sysdiagnose 归档…',
+                selectSysdiagnose: '选择 sysdiagnose 归档…',
+                sysdiagnosePickerTitle: '选择 sysdiagnose 归档',
+                sysdiagnosePickerHint: '从设备中选择一个 .tar.gz 归档，然后在浏览器中分析。',
+                sysdiagnoseSelectedLabel: '已选',
+                sysdiagnosePickerCount: '设备上 {n} 个归档',
+                sysdiagnoseArchivesHint: '先在上方完成配对，再刷新以列出设备上的归档。',
+                refreshList: '🔄 刷新列表',
+                analyzeSelectedSysdiagnose: '分析所选归档',
+                noSysdiagnoseFound: '设备上未找到 sysdiagnose .tar.gz。请先触发 sysdiagnose，等待约 5 分钟后刷新。',
+                deviceConnected: '已连接：{name}',
+                pairPrompt: '无配对记录 — 点击配对（在 iPhone 上接受信任）。',
+                downloadingSysdiagnose: '正在下载 sysdiagnose 归档…',
+                downloadingSysdiagnoseConnect: '正在连接设备以下载…',
+                downloadingSysdiagnoseProgress: '正在下载 {name}：{read} / {total}（{pct}%）· {elapsed}',
+                downloadComplete: '已下载 {name}（{size}）— 开始分析…',
                 iphoneTitle: 'Sysdiagnose 归档',
                 sysdiagnoseDesc:
-                    '上传 Apple sysdiagnose 归档（.tar.gz）。解析在浏览器内通过 sysdiagnose-extractor-library（WASM）完成：元数据、内置分析器摘要、各解析器状态与下方完整 JSON。',
+                    '通过 USB（Chromium + WebUSB）从 iPhone 拉取已有 sysdiagnose 归档，或上传本机 .tar.gz。解析在浏览器中通过 WASM 完成。',
                 sysdiagnoseDrop: '点击或拖拽 .tar.gz 到此处',
                 sysdiagnoseFormats: '通常为 sysdiagnose_*.tar.gz',
+                sysdiagnoseBrowse: '浏览文件…',
+                sysdiagnoseClearFile: '清除',
+                sysdiagnoseFileBadge: 'iOS sysdiagnose',
+                sysdiagnoseBadgeOk: '全部解析成功',
+                sysdiagnoseBadgePartial: '{ok}/{total} 个解析器成功',
+                sysdiagnoseBadgeFail: '解析错误',
+                sysdiagnoseFileMetaCount: '归档内 {n} 个文件',
                 analyzeSysdiagnoseBtn: '分析 sysdiagnose',
+                uploadReadyTitle: '可以开始分析',
+                uploadReadyFile: '已选择归档文件',
+                ingestProgressTitle: '正在分析归档',
+                ingestPhasePrepare: '准备中…',
+                ingestPhaseHash: '计算 SHA-256…',
+                ingestPhaseSigma: '加载 Sigma 规则…',
+                ingestPhaseParse: '运行 SAF 解析器与 Sigma…',
+                ingestPhaseRender: '生成结果…',
+                chipParsersOk: '{n} 个解析器成功',
+                chipParsersFail: '{n} 个失败',
+                chipAnalysersOk: '{n} 个分析器',
+                chipFiles: '{n} 个文件',
+                pwnedDetection: '🔍 Pwned 检测结果',
+                sigmaRules: '规则',
+                sigmaMatches: '匹配',
+                sigmaChipRules: '已加载 {n} 条规则',
+                sigmaChipMatches: '{n} 个匹配',
+                sigmaChipMatchDetail: '{hits} 次命中 · {rules} 条规则',
+                sigmaChipClean: '无匹配',
+                sigmaNoRules: '未加载规则。',
+                sigmaNoMatches: '无匹配。',
+                sigmaMatchCount: '{n} 次出现',
+                sigmaMatchCountOne: '1 次出现',
+                sigmaMatchShowLogs: '显示 {n} 条匹配日志',
+                sigmaMatchOccurrence: '第 {n} 次',
+                sigmaMatchedLog: '匹配的日志',
                 fullDataJsonTitle: '📋 完整数据（JSON）',
                 btnDownloadJson: '📥 下载 JSON',
                 btnCopyClipboard: '📋 复制',
                 navGitHub: 'GitHub',
                 resultsSectionTitle: '分析结果',
                 resultsSectionBlurb:
-                    'SAF 分析器汇总归档内容；表格列出各解析器状态。在下方「完整数据（JSON）」中可下载或复制完整载荷。',
+                    'SAF 分析器汇总归档内容；解析器列表显示各模块状态。在下方「完整数据（JSON）」中可下载或复制完整载荷。',
                 analyserSectionTitle: '分析器摘要',
                 analyserSectionBlurb:
-                    '内置分析器（sdx-cli --run-analysers）：apps、summary、coverage 等。展开卡片查看结构化内容。',
+                    '内置分析器（sdx-cli --run-analysers）：apps、summary、coverage 等。点击卡片展开结构化内容。',
+                analyserExpandAll: '全部展开',
+                analyserCollapseAll: '全部折叠',
+                analyserCountLabel: '{n} 个分析器',
+                analyserPreviewApps: '{n} 个 Bundle ID',
+                analyserPreviewCoverage: '{parsed} / {total} 个解析器键',
+                analyserPreviewFiles: '归档内 {n} 个文件',
+                analyserPreviewPlist: '{n} 个 plist 文件',
+                analyserPreviewRows: '{n} 行',
+                analyserPreviewSummary: 'Markdown 调查摘要',
+                analyserPreviewWifi: '{n} 个定位点',
+                analyserPreviewGeneric: '可查看结构化输出',
                 parserModulesTitle: '解析器模块',
                 parserModulesBlurb: '每个 SAF 解析器一行。解析器载荷包含在下方「完整数据（JSON）」中。',
                 colParser: '解析器',
@@ -624,6 +1164,7 @@
             var t = window.IPHONE_I18N[lang] || window.IPHONE_I18N.en;
             document.documentElement.lang = (lang === 'zh' ? 'zh' : lang === 'fr' ? 'fr' : 'en');
             document.querySelectorAll('[data-i18n]').forEach(function (el) {
+                if (el.id === 'webusb-status') return;
                 var key = el.getAttribute('data-i18n');
                 if (t[key] !== undefined) el.textContent = t[key];
             });
@@ -632,6 +1173,7 @@
                 var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
                 themeText.textContent = isDark ? t.themeLight : t.themeDark;
             }
+            if (typeof window.refreshWebusbBadge === 'function') window.refreshWebusbBadge();
         }
         window.setLang = function (lang) {
             window.currentLang = lang;
@@ -649,6 +1191,15 @@
             document.getElementById('theme-icon').textContent = next === 'dark' ? '☀️' : '🌙';
             applyLang(window.currentLang);
             localStorage.setItem('theme', next);
+        };
+        window.switchIphoneTab = function (tab) {
+            document.querySelectorAll('.tab-iphone').forEach(function (btn) {
+                btn.classList.toggle('active', btn.getAttribute('data-iphone-tab') === tab);
+            });
+            var dev = document.getElementById('tab-iphone-device');
+            var up = document.getElementById('tab-iphone-upload');
+            if (dev) dev.classList.toggle('hidden', tab !== 'device');
+            if (up) up.classList.toggle('hidden', tab !== 'upload');
         };
         window.toggleSection = function (id) {
             var content = document.getElementById(id + '-content');
@@ -677,9 +1228,347 @@
 
     <script type="module">
         import init, { analyzeSysdiagnose } from './pkg/ismyphonepwned_wasm.js';
+        import {
+            getStoredPairPlist,
+            setConnectedDevice,
+            listSysdiagnoseArchives,
+            downloadSysdiagnoseArchive,
+            formatBytes,
+            diagnoseWebUsb,
+        } from './assets/iphone-idevice.js';
+        import { initIdeviceConnect } from './assets/idevice-connect.js';
 
         let sysdiagnoseFile = null;
         let currentResults = null;
+        let iphoneDevice = null;
+        let sysdiagnoseArchives = [];
+        let selectedSysdiagnosePath = null;
+        let analyzerWasmReady = false;
+        let iphoneIdeviceOk = false;
+        let ideviceConnect = null;
+
+        async function ensureAnalyzerWasm() {
+            if (analyzerWasmReady) return;
+            await init();
+            analyzerWasmReady = true;
+        }
+
+        function escapeHtmlIphone(s) {
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function addFilePanelStat(host, label, value, mono) {
+            if (value === undefined || value === null || value === '') return;
+            var item = document.createElement('div');
+            item.className = 'sysdiagnose-file-panel__stat';
+            var dt = document.createElement('dt');
+            dt.textContent = label;
+            var dd = document.createElement('dd');
+            if (mono) dd.className = 'mono';
+            dd.textContent = String(value);
+            item.appendChild(dt);
+            item.appendChild(dd);
+            host.appendChild(item);
+        }
+
+        function renderSysdiagnoseFilePanel(fi, meta, okN, errN, st) {
+            var panel = document.getElementById('sysdiagnose-file-panel');
+            var nameEl = document.getElementById('sysdiagnose-file-panel-name');
+            var badgeEl = document.getElementById('sysdiagnose-file-panel-badge');
+            var subEl = document.getElementById('sysdiagnose-file-panel-sub');
+            var statsEl = document.getElementById('sysdiagnose-file-panel-stats');
+            if (!panel || !nameEl || !statsEl) return;
+            fi = fi || {};
+            meta = meta || {};
+            okN = okN != null ? okN : 0;
+            errN = errN != null ? errN : 0;
+            var totalP = okN + errN;
+            var fileName = fi.path ? String(fi.path).split('/').pop() : '—';
+            nameEl.textContent = fileName;
+            if (fi.path) nameEl.title = String(fi.path);
+            else nameEl.removeAttribute('title');
+            if (badgeEl) {
+                if (totalP > 0 && errN === 0) {
+                    badgeEl.textContent = trIphone('sysdiagnoseBadgeOk');
+                    badgeEl.className = 'sysdiagnose-file-panel__badge sysdiagnose-file-panel__badge--ok';
+                } else if (totalP > 0 && okN === 0) {
+                    badgeEl.textContent = trIphone('sysdiagnoseBadgeFail');
+                    badgeEl.className = 'sysdiagnose-file-panel__badge sysdiagnose-file-panel__badge--err';
+                } else if (totalP > 0) {
+                    badgeEl.textContent = trIphone('sysdiagnoseBadgePartial')
+                        .replace('{ok}', String(okN))
+                        .replace('{total}', String(totalP));
+                    badgeEl.className = 'sysdiagnose-file-panel__badge sysdiagnose-file-panel__badge--warn';
+                } else {
+                    badgeEl.textContent = trIphone('sysdiagnoseFileBadge');
+                    badgeEl.className = 'sysdiagnose-file-panel__badge';
+                }
+            }
+            if (subEl) {
+                var parts = [];
+                if (meta.acquisition) parts.push(String(meta.acquisition));
+                var bundle = meta.bundle_dir_name != null ? meta.bundle_dir_name : meta.bundleDirName;
+                if (bundle) parts.push(String(bundle));
+                var fc = meta.file_count != null ? meta.file_count : meta.fileCount;
+                if (fc != null) {
+                    parts.push(trIphone('sysdiagnoseFileMetaCount').replace('{n}', Number(fc).toLocaleString()));
+                }
+                subEl.textContent = parts.join(' · ') || trIphone('sysdiagnoseFileBadge');
+            }
+            statsEl.innerHTML = '';
+            var sizeText =
+                fi.size_mb != null
+                    ? fi.size_mb + ' MB'
+                    : fi.size_bytes != null
+                      ? formatBytes(fi.size_bytes)
+                      : null;
+            if (sizeText && fi.size_bytes != null) {
+                sizeText += ' (' + Number(fi.size_bytes).toLocaleString() + ' B)';
+            }
+            addFilePanelStat(statsEl, trIphone('labelFileSize'), sizeText);
+            addFilePanelStat(statsEl, trIphone('labelSha256'), fi.sha256, true);
+            addFilePanelStat(statsEl, trIphone('labelBundle'), meta.bundle_dir_name != null ? meta.bundle_dir_name : meta.bundleDirName);
+            addFilePanelStat(statsEl, trIphone('labelAcquisition'), meta.acquisition);
+            addFilePanelStat(
+                statsEl,
+                trIphone('labelFileCount'),
+                meta.file_count != null ? meta.file_count : meta.fileCount
+            );
+            addFilePanelStat(statsEl, trIphone('labelParsersOk'), okN);
+            addFilePanelStat(statsEl, trIphone('labelParsersErr'), errN);
+            if (st) {
+                if (st.analysers_ok != null) addFilePanelStat(statsEl, trIphone('labelAnalysersOk'), st.analysers_ok);
+                if (st.analysers_error != null) addFilePanelStat(statsEl, trIphone('labelAnalysersErr'), st.analysers_error);
+            }
+            var chipsEl = document.getElementById('sysdiagnose-file-panel-chips');
+            if (chipsEl) {
+                chipsEl.innerHTML = '';
+                if (okN > 0) {
+                    var cOk = document.createElement('span');
+                    cOk.className = 'sysdiagnose-chip sysdiagnose-chip--ok';
+                    cOk.textContent = trIphone('chipParsersOk').replace('{n}', String(okN));
+                    chipsEl.appendChild(cOk);
+                }
+                if (errN > 0) {
+                    var cErr = document.createElement('span');
+                    cErr.className = 'sysdiagnose-chip sysdiagnose-chip--err';
+                    cErr.textContent = trIphone('chipParsersFail').replace('{n}', String(errN));
+                    chipsEl.appendChild(cErr);
+                }
+                if (st && st.analysers_ok != null) {
+                    var cAn = document.createElement('span');
+                    cAn.className = 'sysdiagnose-chip';
+                    cAn.textContent = trIphone('chipAnalysersOk').replace('{n}', String(st.analysers_ok));
+                    chipsEl.appendChild(cAn);
+                }
+                var fcChip = meta.file_count != null ? meta.file_count : meta.fileCount;
+                if (fcChip != null) {
+                    var cFc = document.createElement('span');
+                    cFc.className = 'sysdiagnose-chip';
+                    cFc.textContent = trIphone('chipFiles').replace('{n}', Number(fcChip).toLocaleString());
+                    chipsEl.appendChild(cFc);
+                }
+            }
+            panel.style.display = 'block';
+        }
+
+        function updateSysdiagnoseUploadReady(hasFile) {
+            var item = document.getElementById('sysdiagnose-ready-file');
+            if (item) item.classList.toggle('sysdiagnose-upload-ready__item--ok', !!hasFile);
+        }
+
+        function setSysdiagnoseIngestProgress(visible, percent, phase, detail) {
+            var wrap = document.getElementById('sysdiagnose-ingest-progress');
+            var pctEl = document.getElementById('sysdiagnose-ingest-pct');
+            var fill = document.getElementById('sysdiagnose-ingest-fill');
+            var phaseEl = document.getElementById('sysdiagnose-ingest-phase');
+            var detailEl = document.getElementById('sysdiagnose-ingest-detail');
+            if (!wrap) return;
+            if (!visible) {
+                wrap.classList.add('hidden');
+                return;
+            }
+            wrap.classList.remove('hidden');
+            var pct = Math.max(0, Math.min(100, percent || 0));
+            if (pctEl) pctEl.textContent = Math.round(pct) + '%';
+            if (fill) fill.style.width = (pct > 0 ? pct : 4) + '%';
+            if (phaseEl) phaseEl.textContent = phase || '';
+            if (detailEl) {
+                if (detail) {
+                    detailEl.textContent = detail;
+                    detailEl.classList.remove('hidden');
+                } else {
+                    detailEl.textContent = '';
+                }
+            }
+        }
+
+        function renderSysdiagnoseParserList(entries) {
+            var list = document.getElementById('sysdiagnose-parser-list');
+            if (!list) return;
+            list.innerHTML = '';
+            if (!entries || !entries.length) {
+                list.classList.add('hidden');
+                return;
+            }
+            list.classList.remove('hidden');
+            var sorted = entries.slice().sort(function (a, b) {
+                var aOk = parserEntryOk(parserEntryPlain(a[1])) ? 1 : 0;
+                var bOk = parserEntryOk(parserEntryPlain(b[1])) ? 1 : 0;
+                if (aOk !== bOk) return aOk - bOk;
+                return String(a[0]).localeCompare(String(b[0]));
+            });
+            for (var i = 0; i < sorted.length; i++) {
+                var name = sorted[i][0];
+                var pp = parserEntryPlain(sorted[i][1]);
+                var ok = parserEntryOk(pp);
+                var li = document.createElement('li');
+                li.className = 'sysdiagnose-parser-row ' + (ok ? 'sysdiagnose-parser-row--ok' : 'sysdiagnose-parser-row--fail');
+                li.setAttribute('role', 'listitem');
+                var nameEl = document.createElement('span');
+                nameEl.className = 'sysdiagnose-parser-row__name';
+                nameEl.textContent = name;
+                nameEl.title = name;
+                var metaEl = document.createElement('span');
+                metaEl.className =
+                    'sysdiagnose-parser-row__meta ' + (ok ? 'sysdiagnose-parser-row__meta--ok' : 'sysdiagnose-parser-row__meta--fail');
+                var dur = formatDurationMs(pp);
+                metaEl.textContent = ok ? (dur === '—' ? trIphone('statusOk') : dur) : trIphone('statusErr');
+                li.appendChild(nameEl);
+                li.appendChild(metaEl);
+                if (!ok && pp.error) {
+                    var errEl = document.createElement('span');
+                    errEl.className = 'sysdiagnose-parser-row__error';
+                    errEl.textContent = String(pp.error);
+                    li.appendChild(errEl);
+                }
+                list.appendChild(li);
+            }
+        }
+
+        function updateSysdiagnoseUploadPanel(file) {
+            var zone = document.getElementById('sysdiagnose-upload-zone');
+            var empty = document.getElementById('sysdiagnose-upload-empty');
+            var selected = document.getElementById('sysdiagnose-upload-selected');
+            var nameEl = document.getElementById('sysdiagnose-upload-name');
+            var sizeEl = document.getElementById('sysdiagnose-upload-size');
+            if (!zone || !empty || !selected) return;
+            if (file) {
+                zone.classList.add('sysdiagnose-file-drop--has-file');
+                empty.classList.add('hidden');
+                selected.classList.remove('hidden');
+                if (nameEl) {
+                    nameEl.textContent = file.name;
+                    nameEl.title = file.name;
+                }
+                if (sizeEl) sizeEl.textContent = formatBytes(file.size);
+                updateSysdiagnoseUploadReady(true);
+            } else {
+                zone.classList.remove('sysdiagnose-file-drop--has-file');
+                empty.classList.remove('hidden');
+                selected.classList.add('hidden');
+                if (nameEl) nameEl.removeAttribute('title');
+                updateSysdiagnoseUploadReady(false);
+            }
+        }
+
+        function updateSysdiagnoseSelectedPanel(entry) {
+            var panel = document.getElementById('sysdiagnose-selected-panel');
+            var titleEl = document.getElementById('sysdiagnose-selected-panel-title');
+            var pathEl = document.getElementById('sysdiagnose-selected-panel-path');
+            var sizeEl = document.getElementById('sysdiagnose-selected-panel-size');
+            var actions = document.getElementById('sysdiagnose-picker-actions');
+            if (!panel) return;
+            if (entry) {
+                if (titleEl) {
+                    titleEl.textContent = entry.name;
+                    titleEl.title = entry.name;
+                }
+                if (pathEl) {
+                    pathEl.textContent = entry.path;
+                    pathEl.title = entry.path;
+                }
+                if (sizeEl) sizeEl.textContent = formatBytes(entry.sizeBytes);
+                panel.classList.remove('hidden');
+                if (actions) actions.classList.remove('hidden');
+            } else {
+                panel.classList.add('hidden');
+                if (actions) actions.classList.add('hidden');
+            }
+        }
+
+        function setSysdiagnoseSelection(path) {
+            selectedSysdiagnosePath = path || null;
+            var list = document.getElementById('sysdiagnose-picker-list');
+            var analyzeBtn = document.getElementById('btn-analyze-device-sysdiagnose');
+            if (list) {
+                list.querySelectorAll('.sysdiagnose-card').forEach(function (card) {
+                    var on = card.getAttribute('data-path') === path;
+                    card.classList.toggle('sysdiagnose-card--selected', on);
+                    card.setAttribute('aria-selected', on ? 'true' : 'false');
+                });
+            }
+            var entry = sysdiagnoseArchives.find(function (e) {
+                return e.path === path;
+            });
+            updateSysdiagnoseSelectedPanel(entry || null);
+            if (analyzeBtn) analyzeBtn.disabled = !path;
+        }
+
+        function renderSysdiagnosePicker(entries) {
+            var picker = document.getElementById('sysdiagnose-picker');
+            var list = document.getElementById('sysdiagnose-picker-list');
+            var countEl = document.getElementById('sysdiagnose-picker-count');
+            if (!picker || !list) return;
+
+            sysdiagnoseArchives = entries || [];
+            list.innerHTML = '';
+
+            if (countEl) {
+                countEl.textContent = trIphone('sysdiagnosePickerCount').replace('{n}', String(sysdiagnoseArchives.length));
+            }
+
+            sysdiagnoseArchives.forEach(function (entry) {
+                var card = document.createElement('button');
+                card.type = 'button';
+                card.className = 'sysdiagnose-card';
+                card.setAttribute('role', 'option');
+                card.setAttribute('data-path', entry.path);
+                card.title = entry.path;
+                card.innerHTML =
+                    '<span class="sysdiagnose-card-radio" aria-hidden="true"></span>' +
+                    '<span class="sysdiagnose-card-icon" aria-hidden="true">📦</span>' +
+                    '<span class="sysdiagnose-card-body">' +
+                        '<span class="sysdiagnose-card-title">' + escapeHtmlIphone(entry.name) + '</span>' +
+                        '<span class="sysdiagnose-card-meta">' + escapeHtmlIphone(entry.path) + '</span>' +
+                    '</span>' +
+                    '<span class="sysdiagnose-card-size">' + escapeHtmlIphone(formatBytes(entry.sizeBytes)) + '</span>';
+                card.addEventListener('click', function () {
+                    setSysdiagnoseSelection(entry.path);
+                });
+                list.appendChild(card);
+            });
+
+            picker.classList.remove('hidden');
+
+            if (sysdiagnoseArchives.length === 1) {
+                setSysdiagnoseSelection(sysdiagnoseArchives[0].path);
+            } else {
+                setSysdiagnoseSelection(null);
+            }
+
+            if (!sysdiagnoseArchives.length) {
+                var empty = document.createElement('p');
+                empty.className = 'sysdiagnose-picker-hint';
+                empty.style.margin = '0';
+                empty.textContent = trIphone('noSysdiagnoseFound');
+                list.appendChild(empty);
+            }
+        }
 
         function trIphone(key) {
             var t = window.IPHONE_I18N[window.currentLang] || window.IPHONE_I18N.en;
@@ -828,6 +1717,173 @@
         }
 
         var ANALYSER_UI_MAX_ROWS = 120;
+        var ANALYSER_CARD_ORDER = [
+            'summary',
+            'apps',
+            'coverage',
+            'file_stats',
+            'plist',
+            'ps_matrix',
+            'ps_everywhere',
+            'mcstateshared',
+            'wifi_geolocation',
+            'wifi_geolocation_kml'
+        ];
+        var ANALYSER_AUTO_OPEN = { summary: true, apps: true };
+        var analyserToolbarWired = false;
+
+        function sortAnalyserNames(names) {
+            return names.slice().sort(function (a, b) {
+                var ia = ANALYSER_CARD_ORDER.indexOf(a);
+                var ib = ANALYSER_CARD_ORDER.indexOf(b);
+                ia = ia < 0 ? 999 : ia;
+                ib = ib < 0 ? 999 : ib;
+                if (ia !== ib) return ia - ib;
+                return String(a).localeCompare(String(b));
+            });
+        }
+
+        function analyserCardIcon(name) {
+            var icons = {
+                summary: '📋',
+                apps: '📱',
+                coverage: '📊',
+                file_stats: '📁',
+                plist: '📝',
+                ps_matrix: '⚙️',
+                ps_everywhere: '🔁',
+                mcstateshared: '🔐',
+                wifi_geolocation: '📍',
+                wifi_geolocation_kml: '🗺️'
+            };
+            return icons[name] || '🔬';
+        }
+
+        function analyserCardPreview(name, payload) {
+            if (!payload || typeof payload !== 'object' || Array.isArray(payload) || payload.error != null) {
+                return '';
+            }
+            if (name === 'apps' && payload.apps && typeof payload.apps === 'object') {
+                var nApps = payload.count != null ? payload.count : Object.keys(payload.apps).length;
+                return trIphone('analyserPreviewApps').replace('{n}', String(nApps));
+            }
+            if (name === 'coverage') {
+                return trIphone('analyserPreviewCoverage')
+                    .replace('{parsed}', String(payload.parsed_keys_count != null ? payload.parsed_keys_count : '—'))
+                    .replace('{total}', String(payload.parser_types_total != null ? payload.parser_types_total : '—'));
+            }
+            if (name === 'file_stats' && payload.archive_total_files != null) {
+                return trIphone('analyserPreviewFiles').replace('{n}', String(payload.archive_total_files));
+            }
+            if (name === 'plist' && payload.plist_files_parsed != null) {
+                return trIphone('analyserPreviewPlist').replace('{n}', String(payload.plist_files_parsed));
+            }
+            if (name === 'summary' && payload.format === 'markdown') {
+                return trIphone('analyserPreviewSummary');
+            }
+            if (name === 'ps_everywhere' && payload.count != null) {
+                return trIphone('analyserPreviewRows').replace('{n}', String(payload.count));
+            }
+            if (name === 'ps_matrix' && Array.isArray(payload.rows)) {
+                return trIphone('analyserPreviewRows').replace('{n}', String(payload.rows.length));
+            }
+            if (name === 'mcstateshared' && Array.isArray(payload.rows)) {
+                return trIphone('analyserPreviewRows').replace('{n}', String(payload.rows.length));
+            }
+            if ((name === 'wifi_geolocation' || name === 'wifi_geolocation_kml') && payload.point_count != null) {
+                return trIphone('analyserPreviewWifi').replace('{n}', String(payload.point_count));
+            }
+            return trIphone('analyserPreviewGeneric');
+        }
+
+        function analyserElMuted(text) {
+            var p = document.createElement('p');
+            p.className = 'sysdiagnose-analyser-muted';
+            p.textContent = text;
+            return p;
+        }
+
+        function analyserElLead(text) {
+            var p = document.createElement('p');
+            p.className = 'sysdiagnose-analyser-lead';
+            p.textContent = text;
+            return p;
+        }
+
+        function analyserElStatGrid(pairs) {
+            var grid = document.createElement('div');
+            grid.className = 'sysdiagnose-analyser-stat-grid';
+            for (var i = 0; i < pairs.length; i++) {
+                var item = document.createElement('div');
+                item.className = 'sysdiagnose-analyser-stat';
+                var lb = document.createElement('div');
+                lb.className = 'sysdiagnose-analyser-stat__label';
+                lb.textContent = pairs[i][0];
+                var vv = document.createElement('div');
+                vv.className = 'sysdiagnose-analyser-stat__value';
+                vv.textContent = pairs[i][1] == null ? '—' : String(pairs[i][1]);
+                item.appendChild(lb);
+                item.appendChild(vv);
+                grid.appendChild(item);
+            }
+            return grid;
+        }
+
+        function analyserElColList(title, arr) {
+            var box = document.createElement('div');
+            var ht = document.createElement('div');
+            ht.className = 'sysdiagnose-analyser-col__title';
+            ht.textContent = title;
+            box.appendChild(ht);
+            var ul = document.createElement('ul');
+            ul.className = 'sysdiagnose-analyser-col__list';
+            var list = Array.isArray(arr) ? arr : [];
+            var mx = Math.min(list.length, 200);
+            for (var u = 0; u < mx; u++) {
+                var li = document.createElement('li');
+                li.textContent = String(list[u]);
+                ul.appendChild(li);
+            }
+            if (list.length > mx) {
+                var li2 = document.createElement('li');
+                li2.textContent = '… +' + (list.length - mx);
+                ul.appendChild(li2);
+            }
+            box.appendChild(ul);
+            return box;
+        }
+
+        function setSysdiagnoseAnalyserCardOpen(card, open) {
+            if (!card) return;
+            var body = card.querySelector('.sysdiagnose-analyser-card__body');
+            var chevron = card.querySelector('.sysdiagnose-analyser-card__chevron');
+            if (!body) return;
+            body.classList.toggle('collapsed', !open);
+            card.classList.toggle('sysdiagnose-analyser-card--open', open);
+            if (chevron) chevron.setAttribute('aria-hidden', 'true');
+            card.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+
+        function wireSysdiagnoseAnalyserToolbar() {
+            if (analyserToolbarWired) return;
+            analyserToolbarWired = true;
+            var expandBtn = document.getElementById('sysdiagnose-analyser-expand-all');
+            var collapseBtn = document.getElementById('sysdiagnose-analyser-collapse-all');
+            if (expandBtn) {
+                expandBtn.addEventListener('click', function () {
+                    document.querySelectorAll('.sysdiagnose-analyser-card').forEach(function (card) {
+                        setSysdiagnoseAnalyserCardOpen(card, true);
+                    });
+                });
+            }
+            if (collapseBtn) {
+                collapseBtn.addEventListener('click', function () {
+                    document.querySelectorAll('.sysdiagnose-analyser-card').forEach(function (card) {
+                        setSysdiagnoseAnalyserCardOpen(card, false);
+                    });
+                });
+            }
+        }
 
         function analyserTruncate(s, max) {
             if (s == null) return '';
@@ -854,12 +1910,9 @@
 
         function buildAnalyserScrollTable(headers, rows) {
             var wrap = document.createElement('div');
-            wrap.className = 'data-table-container';
-            wrap.style.maxHeight = 'min(55vh, 22rem)';
-            wrap.style.overflow = 'auto';
-            wrap.style.marginBottom = '0.5rem';
+            wrap.className = 'sysdiagnose-analyser-table-wrap';
             var table = document.createElement('table');
-            table.className = 'data-table';
+            table.className = 'sysdiagnose-analyser-table';
             var thead = document.createElement('thead');
             var trh = document.createElement('tr');
             for (var h = 0; h < headers.length; h++) {
@@ -876,8 +1929,6 @@
                 for (var c = 0; c < row.length; c++) {
                     var td = document.createElement('td');
                     td.textContent = row[c] == null ? '' : String(row[c]);
-                    td.style.wordBreak = 'break-word';
-                    td.style.fontSize = '0.8125rem';
                     tr.appendChild(td);
                 }
                 tbody.appendChild(tr);
@@ -904,13 +1955,12 @@
 
         function analyserAppendDl(parent, label, value) {
             if (value === undefined || value === null || value === '') return;
+            if (!parent.classList.contains('sysdiagnose-analyser-kv')) {
+                parent.className = 'sysdiagnose-analyser-kv';
+            }
             var dt = document.createElement('dt');
             dt.textContent = label;
-            dt.style.fontWeight = '600';
-            dt.style.fontSize = '0.8125rem';
             var dd = document.createElement('dd');
-            dd.style.margin = '0 0 0.35rem 0';
-            dd.style.fontSize = '0.8125rem';
             dd.textContent = String(value);
             parent.appendChild(dt);
             parent.appendChild(dd);
@@ -919,7 +1969,7 @@
         function analyserDeviceBlock(device) {
             if (!device || typeof device !== 'object') return null;
             var dl = document.createElement('dl');
-            dl.style.margin = '0 0 0.75rem 0';
+            dl.className = 'sysdiagnose-analyser-kv';
             analyserAppendDl(dl, 'OS', device.os_version != null ? String(device.os_version) : device.OSVersion);
             analyserAppendDl(dl, 'Build', device.build != null ? String(device.build) : device.BuildVersion);
             analyserAppendDl(dl, 'Product', device.product_name != null ? String(device.product_name) : device.ProductName);
@@ -947,8 +1997,7 @@
 
         function renderSummaryMarkdownToDom(md) {
             var root = document.createElement('div');
-            root.className = 'analyser-summary-md';
-            root.style.cssText = 'font-size: 0.8125rem; line-height: 1.45; color: var(--text-primary);';
+            root.className = 'sysdiagnose-summary-md';
             if (typeof md !== 'string' || !md) return root;
             var lines = md.split('\n');
             var i = 0;
@@ -963,10 +2012,6 @@
                         i++;
                     }
                     var pre = document.createElement('pre');
-                    pre.className = 'json-viewer';
-                    pre.style.maxHeight = '14rem';
-                    pre.style.fontSize = '0.75rem';
-                    pre.style.margin = '0.35rem 0';
                     pre.textContent = buf.join('\n');
                     root.appendChild(pre);
                     if (i < lines.length) i++;
@@ -974,7 +2019,6 @@
                 }
                 if (trimmed.indexOf('## ') === 0) {
                     var hx = document.createElement('h4');
-                    hx.style.cssText = 'margin: 0.85rem 0 0.35rem; font-size: 0.95rem;';
                     hx.textContent = line.replace(/^#+\s*/, '').trim();
                     root.appendChild(hx);
                     i++;
@@ -982,22 +2026,8 @@
                 }
                 var hdr = analyserSplitMdRow(line);
                 if (hdr && hdr.length >= 2 && i + 1 < lines.length && analyserIsMdTableSep(lines[i + 1])) {
-                    var wrap = document.createElement('div');
-                    wrap.className = 'data-table-container';
-                    wrap.style.overflow = 'auto';
-                    wrap.style.margin = '0.35rem 0';
-                    var table = document.createElement('table');
-                    table.className = 'data-table';
-                    var thead = document.createElement('thead');
-                    var trh = document.createElement('tr');
-                    for (var hi = 0; hi < hdr.length; hi++) {
-                        var th = document.createElement('th');
-                        th.textContent = hdr[hi];
-                        trh.appendChild(th);
-                    }
-                    thead.appendChild(trh);
-                    table.appendChild(thead);
-                    var tbody = document.createElement('tbody');
+                    var wrap = buildAnalyserScrollTable(hdr, []);
+                    var tbody = wrap.querySelector('tbody');
                     i += 2;
                     while (i < lines.length) {
                         var cells = analyserSplitMdRow(lines[i]);
@@ -1012,15 +2042,11 @@
                         tbody.appendChild(tr);
                         i++;
                     }
-                    table.appendChild(tbody);
-                    wrap.appendChild(table);
                     root.appendChild(wrap);
                     continue;
                 }
                 if (trimmed.indexOf('- ') === 0) {
                     var ul = document.createElement('ul');
-                    ul.style.margin = '0.35rem 0';
-                    ul.style.paddingLeft = '1.25rem';
                     while (i < lines.length && lines[i].trim().indexOf('- ') === 0) {
                         var li = document.createElement('li');
                         li.textContent = lines[i].trim().slice(2);
@@ -1035,7 +2061,6 @@
                     continue;
                 }
                 var p = document.createElement('p');
-                p.style.margin = '0.35rem 0';
                 p.textContent = line;
                 root.appendChild(p);
                 i++;
@@ -1216,8 +2241,7 @@
         function buildAnalyserStructuredView(analyserId, payload) {
             var id = String(analyserId);
             var root = document.createElement('div');
-            root.className = 'analyser-structured-view';
-            root.style.marginBottom = '0.65rem';
+            root.className = 'sysdiagnose-analyser-view';
 
             if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
                 return root;
@@ -1231,27 +2255,17 @@
                 var ids = Object.keys(apps).sort();
                 var totalApps = ids.length;
                 var count = payload.count != null ? payload.count : totalApps;
-                var head = document.createElement('p');
-                head.style.cssText = 'font-size: 0.8125rem; margin: 0 0 0.5rem; font-weight: 600;';
-                head.textContent = trIphone('labelBundleCount').replace('{n}', String(count));
-                root.appendChild(head);
+                root.appendChild(analyserElLead(trIphone('labelBundleCount').replace('{n}', String(count))));
 
                 if (typeof payload.note === 'string' && payload.note.trim()) {
-                    var noteEl = document.createElement('p');
-                    noteEl.style.cssText =
-                        'font-size: 0.75rem; color: var(--text-secondary); margin: 0 0 0.5rem; line-height: 1.45;';
-                    noteEl.textContent = payload.note.trim();
-                    root.appendChild(noteEl);
+                    root.appendChild(analyserElMuted(payload.note.trim()));
                 }
                 if (payload.hits_cap_per_app != null && payload.hits_cap_per_app !== '') {
-                    var capEl = document.createElement('p');
-                    capEl.style.cssText =
-                        'font-size: 0.75rem; color: var(--text-secondary); margin: 0 0 0.5rem; line-height: 1.4;';
-                    capEl.textContent = trIphone('appsHitsCapNote').replace(
-                        '{n}',
-                        String(payload.hits_cap_per_app)
+                    root.appendChild(
+                        analyserElMuted(
+                            trIphone('appsHitsCapNote').replace('{n}', String(payload.hits_cap_per_app))
+                        )
                     );
-                    root.appendChild(capEl);
                 }
 
                 var searchWrap = document.createElement('div');
@@ -1271,8 +2285,7 @@
                 root.appendChild(searchWrap);
 
                 var listSummary = document.createElement('p');
-                listSummary.style.cssText =
-                    'font-size: 0.75rem; color: var(--text-secondary); margin: 0 0 0.5rem;';
+                listSummary.className = 'sysdiagnose-analyser-muted';
                 root.appendChild(listSummary);
 
                 var rows = [];
@@ -1332,7 +2345,6 @@
                     rows
                 );
                 tableWrap.style.maxHeight = 'min(65vh, 36rem)';
-
                 var tbodyRef = tableWrap.querySelector('tbody');
                 if (tbodyRef) {
                     var trNodes = tbodyRef.querySelectorAll('tr');
@@ -1381,56 +2393,17 @@
             }
 
             if (id === 'coverage') {
-                var grid = document.createElement('div');
-                grid.style.cssText =
-                    'display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0.5rem 1rem; font-size: 0.8125rem; margin-bottom: 0.5rem;';
-                var mk = function (lbl, val) {
-                    var d = document.createElement('div');
-                    var lb = document.createElement('div');
-                    lb.style.fontWeight = '600';
-                    lb.textContent = lbl;
-                    var vv = document.createElement('div');
-                    vv.style.color = 'var(--text-secondary)';
-                    vv.textContent = val == null ? '—' : String(val);
-                    d.appendChild(lb);
-                    d.appendChild(vv);
-                    return d;
-                };
-                grid.appendChild(
-                    mk(trIphone('covColParserTypes'), payload.parser_types_total)
+                root.appendChild(
+                    analyserElStatGrid([
+                        [trIphone('covColParserTypes'), payload.parser_types_total],
+                        [trIphone('covColParsedKeys'), payload.parsed_keys_count],
+                        [trIphone('covColArchiveFiles'), payload.archive_file_count]
+                    ])
                 );
-                grid.appendChild(mk(trIphone('covColParsedKeys'), payload.parsed_keys_count));
-                grid.appendChild(mk(trIphone('covColArchiveFiles'), payload.archive_file_count));
-                root.appendChild(grid);
                 var two = document.createElement('div');
-                two.style.cssText =
-                    'display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; align-items: start;';
-                var col = function (title, arr) {
-                    var box = document.createElement('div');
-                    var ht = document.createElement('div');
-                    ht.style.cssText = 'font-weight: 600; font-size: 0.8125rem; margin-bottom: 0.35rem;';
-                    ht.textContent = title;
-                    box.appendChild(ht);
-                    var ul = document.createElement('ul');
-                    ul.style.cssText =
-                        'margin: 0; padding-left: 1.1rem; max-height: 12rem; overflow: auto; font-size: 0.75rem; color: var(--text-secondary);';
-                    var list = Array.isArray(arr) ? arr : [];
-                    var mx = Math.min(list.length, 200);
-                    for (var u = 0; u < mx; u++) {
-                        var li = document.createElement('li');
-                        li.textContent = String(list[u]);
-                        ul.appendChild(li);
-                    }
-                    if (list.length > mx) {
-                        var li2 = document.createElement('li');
-                        li2.textContent = '… +' + (list.length - mx);
-                        ul.appendChild(li2);
-                    }
-                    box.appendChild(ul);
-                    return box;
-                };
-                two.appendChild(col(trIphone('covListPresent'), payload.parser_keys_present));
-                two.appendChild(col(trIphone('covListMissing'), payload.parser_types_not_in_map));
+                two.className = 'sysdiagnose-analyser-cols';
+                two.appendChild(analyserElColList(trIphone('covListPresent'), payload.parser_keys_present));
+                two.appendChild(analyserElColList(trIphone('covListMissing'), payload.parser_types_not_in_map));
                 root.appendChild(two);
                 return root;
             }
@@ -1634,11 +2607,9 @@
                 root.appendChild(renderSummaryMarkdownToDom(payload.content));
                 if (typeof payload.saf_comparison === 'string' && payload.saf_comparison.trim()) {
                     var safBox = document.createElement('div');
-                    safBox.style.cssText =
-                        'margin-top: 1rem; padding: 0.65rem 0.75rem; font-size: 0.8rem; line-height: 1.45; color: var(--text-secondary); border: 1px solid var(--border); border-radius: 6px; background: var(--bg-secondary);';
+                    safBox.className = 'sysdiagnose-analyser-saf-box';
                     var safH = document.createElement('div');
-                    safH.style.cssText =
-                        'font-weight: 600; color: var(--text-primary); margin-bottom: 0.35rem; font-size: 0.8125rem;';
+                    safH.className = 'sysdiagnose-analyser-saf-box__title';
                     safH.textContent = trIphone('summarySafComparisonLabel');
                     safBox.appendChild(safH);
                     var safP = document.createElement('p');
@@ -1663,7 +2634,7 @@
             }
 
             var dl = document.createElement('dl');
-            dl.style.margin = '0';
+            dl.className = 'sysdiagnose-analyser-kv';
             var keys = Object.keys(payload).sort();
             for (var ki = 0; ki < keys.length; ki++) {
                 var key = keys[ki];
@@ -1793,8 +2764,11 @@
 
         function renderSysdiagnoseAnalyserCards(out) {
             var host = document.getElementById('sysdiagnose-analyser-cards');
+            var toolbar = document.getElementById('sysdiagnose-analyser-toolbar');
+            var countEl = document.getElementById('sysdiagnose-analyser-count');
             if (!host) return;
             host.textContent = '';
+            wireSysdiagnoseAnalyserToolbar();
             var root = sysdiagnoseRootPlain(out);
             var block =
                 root && root.analysers != null && root.analysers !== undefined
@@ -1803,15 +2777,23 @@
                       ? root._analysers
                       : null;
             if (!block || typeof block !== 'object' || Array.isArray(block)) {
+                if (toolbar) toolbar.classList.add('hidden');
                 var miss = document.createElement('p');
-                miss.style.cssText = 'color: var(--text-secondary); font-size: 0.875rem;';
+                miss.className = 'sysdiagnose-section-lead';
                 miss.textContent = trIphone('analysersMissing');
                 host.appendChild(miss);
                 return;
             }
-            var names = Object.keys(block).sort().filter(function (n) {
-                return n !== 'timesketch';
-            });
+            var names = sortAnalyserNames(
+                Object.keys(block).filter(function (n) {
+                    return n !== 'timesketch';
+                })
+            );
+            if (toolbar) toolbar.classList.toggle('hidden', names.length === 0);
+            if (countEl) {
+                countEl.className = 'sysdiagnose-analyser-toolbar__count';
+                countEl.textContent = trIphone('analyserCountLabel').replace('{n}', String(names.length));
+            }
             for (var i = 0; i < names.length; i++) {
                 (function (idx) {
                     var name = names[idx];
@@ -1825,91 +2807,114 @@
                         typeof payload === 'object' &&
                         !Array.isArray(payload) &&
                         payload.error != null;
+                    var preview = isErr ? '' : analyserCardPreview(name, payload);
+                    var startOpen = !!ANALYSER_AUTO_OPEN[name];
 
-                    var card = document.createElement('div');
-                    card.className = 'result-card';
-                    card.style.marginBottom = '0.75rem';
+                    var card = document.createElement('article');
+                    card.className =
+                        'sysdiagnose-analyser-card' + (startOpen ? ' sysdiagnose-analyser-card--open' : '');
+                    card.setAttribute('aria-expanded', startOpen ? 'true' : 'false');
 
                     var header = document.createElement('div');
-                    header.className = 'section-header';
-                    header.style.cssText =
-                        'display: flex; justify-content: space-between; align-items: flex-start; width: 100%; gap: 0.5rem; flex-wrap: nowrap;';
+                    header.className = 'sysdiagnose-analyser-card__head';
+                    header.setAttribute('role', 'button');
+                    header.setAttribute('tabindex', '0');
+                    header.setAttribute('aria-controls', sid + '-content');
 
-                    var leftCol = document.createElement('div');
-                    leftCol.style.cssText = 'flex: 1; min-width: 0;';
+                    var headInner = document.createElement('div');
+                    headInner.className = 'sysdiagnose-analyser-card__head-inner';
 
-                    var h3 = document.createElement('h3');
-                    h3.style.cssText =
-                        'margin: 0; font-size: 1rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;';
-                    var codeEl = document.createElement('code');
-                    codeEl.style.fontSize = '0.875rem';
-                    codeEl.textContent = name;
-                    h3.appendChild(codeEl);
-                    var badge = document.createElement('span');
-                    badge.style.fontSize = '0.75rem';
-                    badge.style.fontWeight = '600';
-                    if (isErr) {
-                        badge.style.color = 'var(--error)';
-                        badge.textContent = trIphone('statusErr');
-                    } else {
-                        badge.style.color = 'var(--success)';
-                        badge.textContent = trIphone('statusOk');
-                    }
-                    h3.appendChild(badge);
-                    leftCol.appendChild(h3);
-                    if (desc) {
-                        var sub = document.createElement('div');
-                        sub.style.cssText =
-                            'font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; line-height: 1.35;';
+                    var icon = document.createElement('span');
+                    icon.className = 'sysdiagnose-analyser-card__icon';
+                    icon.setAttribute('aria-hidden', 'true');
+                    icon.textContent = analyserCardIcon(name);
+
+                    var hero = document.createElement('div');
+                    hero.className = 'sysdiagnose-analyser-card__hero';
+
+                    var titleRow = document.createElement('div');
+                    titleRow.className = 'sysdiagnose-analyser-card__title-row';
+
+                    var nameEl = document.createElement('span');
+                    nameEl.className = 'sysdiagnose-analyser-card__name';
+                    nameEl.textContent = name;
+
+                    titleRow.appendChild(nameEl);
+                    hero.appendChild(titleRow);
+
+                    if (preview) {
+                        var prev = document.createElement('p');
+                        prev.className = 'sysdiagnose-analyser-card__preview';
+                        prev.textContent = preview;
+                        hero.appendChild(prev);
+                    } else if (desc) {
+                        var sub = document.createElement('p');
+                        sub.className = 'sysdiagnose-analyser-card__desc';
                         sub.textContent = desc;
-                        leftCol.appendChild(sub);
+                        hero.appendChild(sub);
                     }
 
-                    var btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.className = 'section-toggle collapsed';
-                    btn.setAttribute('aria-expanded', 'false');
-                    btn.textContent = '▼';
-                    btn.addEventListener('click', function (ev) {
-                        var content = document.getElementById(sid + '-content');
-                        var b = ev.currentTarget;
-                        if (!content || !b) return;
-                        var open = content.classList.contains('collapsed');
-                        if (open) {
-                            content.classList.remove('collapsed');
-                            b.classList.remove('collapsed');
-                            b.setAttribute('aria-expanded', 'true');
-                        } else {
-                            content.classList.add('collapsed');
-                            b.classList.add('collapsed');
-                            b.setAttribute('aria-expanded', 'false');
-                        }
-                    });
+                    headInner.appendChild(icon);
+                    headInner.appendChild(hero);
 
-                    header.appendChild(leftCol);
-                    header.appendChild(btn);
+                    var actions = document.createElement('div');
+                    actions.className = 'sysdiagnose-analyser-card__actions';
 
-                    var section = document.createElement('div');
-                    section.className = 'section-content collapsed';
-                    section.id = sid + '-content';
+                    var badge = document.createElement('span');
+                    badge.className =
+                        'sysdiagnose-analyser-card__badge ' +
+                        (isErr ? 'sysdiagnose-analyser-card__badge--fail' : 'sysdiagnose-analyser-card__badge--ok');
+                    badge.textContent = isErr ? trIphone('statusErr') : trIphone('statusOk');
+
+                    var chevron = document.createElement('span');
+                    chevron.className = 'sysdiagnose-analyser-card__chevron';
+                    chevron.setAttribute('aria-hidden', 'true');
+                    chevron.textContent = '▼';
+
+                    actions.appendChild(badge);
+                    actions.appendChild(chevron);
+
+                    header.appendChild(headInner);
+                    header.appendChild(actions);
 
                     var body = document.createElement('div');
-                    body.className = 'parser-structured-body';
+                    body.className = 'sysdiagnose-analyser-card__body' + (startOpen ? '' : ' collapsed');
+                    body.id = sid + '-content';
+
+                    if (desc && preview) {
+                        var bodyDesc = document.createElement('p');
+                        bodyDesc.className = 'sysdiagnose-analyser-muted';
+                        bodyDesc.textContent = desc;
+                        body.appendChild(bodyDesc);
+                    }
 
                     if (isErr) {
                         var preErr = document.createElement('pre');
-                        preErr.className = 'json-viewer';
-                        preErr.style.maxHeight = 'min(70vh, 28rem)';
-                        preErr.style.color = 'var(--error)';
+                        preErr.className = 'sysdiagnose-analyser-card__error';
                         preErr.textContent = String(payload.error);
                         body.appendChild(preErr);
                     } else {
-                        body.appendChild(buildAnalyserStructuredView(name, payload));
+                        var structured = document.createElement('div');
+                        structured.className = 'parser-structured-body';
+                        structured.appendChild(buildAnalyserStructuredView(name, payload));
+                        body.appendChild(structured);
                     }
-                    section.appendChild(body);
+
+                    function toggleCard() {
+                        var open = body.classList.contains('collapsed');
+                        setSysdiagnoseAnalyserCardOpen(card, open);
+                    }
+
+                    header.addEventListener('click', toggleCard);
+                    header.addEventListener('keydown', function (e) {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggleCard();
+                        }
+                    });
 
                     card.appendChild(header);
-                    card.appendChild(section);
+                    card.appendChild(body);
                     host.appendChild(card);
                 })(i);
             }
@@ -1935,94 +2940,65 @@
                       : null);
             if (!sysdiagnoseResultOk(out) || parsers == null) {
                 wrap.style.display = 'none';
+                var fpHide = document.getElementById('sysdiagnose-file-panel');
+                if (fpHide) fpHide.style.display = 'none';
+                if (typeof hideSysdiagnoseSigmaUI === 'function') hideSysdiagnoseSigmaUI();
+                renderSysdiagnoseParserList([]);
                 hideSysdiagnoseTimelineSection();
                 return { okCount: 0, entries: [] };
             }
             wrap.style.display = 'block';
             var fi = out.file_info;
-            if (fi) {
-                addSummaryRow(sumBody, trIphone('labelUploadedFile'), fi.path || '—');
-                addSummaryRow(
-                    sumBody,
-                    trIphone('labelFileSize'),
-                    fi.size_mb != null
-                        ? fi.size_mb + ' MB (' + Number(fi.size_bytes).toLocaleString() + ' bytes)'
-                        : fi.size_bytes != null
-                          ? Number(fi.size_bytes).toLocaleString() + ' bytes'
-                          : '—'
-                );
-                addSummaryRow(sumBody, trIphone('labelSha256'), fi.sha256 || '—');
-            }
             var meta = mapPlainTop(out.meta);
-            addSummaryRow(sumBody, trIphone('labelEngine'), out.parser);
-            addSummaryRow(
-                sumBody,
-                trIphone('labelBundle'),
-                meta && (meta.bundle_dir_name != null ? meta.bundle_dir_name : meta.bundleDirName)
-            );
-            addSummaryRow(sumBody, trIphone('labelAcquisition'), meta && meta.acquisition);
-            addSummaryRow(
-                sumBody,
-                trIphone('labelFileCount'),
-                meta && (meta.file_count != null ? meta.file_count : meta.fileCount)
-            );
-
             var entries = sysdiagnoseParserEntries(parsers);
             var okN = countParsersOkFromEntries(entries);
             var errN = entries.length - okN;
-            addSummaryRow(sumBody, trIphone('labelParsersOk'), okN);
-            addSummaryRow(sumBody, trIphone('labelParsersErr'), errN);
             var st = mapPlainTop(out.stats);
-            if (st) {
-                if (st.analysers_ok != null) addSummaryRow(sumBody, trIphone('labelAnalysersOk'), st.analysers_ok);
-                if (st.analysers_error != null)
-                    addSummaryRow(sumBody, trIphone('labelAnalysersErr'), st.analysers_error);
-            }
+            renderSysdiagnoseFilePanel(fi, meta, okN, errN, st);
+            if (sumBody) sumBody.textContent = '';
+            if (typeof renderSysdiagnoseSigmaUI === 'function') renderSysdiagnoseSigmaUI(out);
 
-            renderSysdiagnoseTimelineBlock(out);
-            renderSysdiagnoseAnalyserCards(out);
+            var parserListEl = document.getElementById('sysdiagnose-parser-list');
+            if (parserListEl) parserListEl.innerHTML = '';
+            if (analyserHost) analyserHost.textContent = '';
+            var analyserToolbar = document.getElementById('sysdiagnose-analyser-toolbar');
+            if (analyserToolbar) analyserToolbar.classList.add('hidden');
 
-            for (var i = 0; i < entries.length; i++) {
-                var name = entries[i][0];
-                var pp = parserEntryPlain(entries[i][1]);
-                var tr = document.createElement('tr');
-                var tdName = document.createElement('td');
-                var code = document.createElement('code');
-                code.style.fontSize = '0.8125rem';
-                code.textContent = name;
-                tdName.appendChild(code);
-                var tdSt = document.createElement('td');
-                var span = document.createElement('span');
-                span.style.fontWeight = '600';
-                if (parserEntryOk(pp)) {
-                    span.style.color = 'var(--success)';
-                    span.textContent = trIphone('statusOk');
-                } else {
-                    span.style.color = 'var(--error)';
-                    span.textContent = trIphone('statusErr');
-                }
-                tdSt.appendChild(span);
-                var tdDur = document.createElement('td');
-                tdDur.textContent = formatDurationMs(pp) === '—' ? '—' : formatDurationMs(pp);
-                var tdNote = document.createElement('td');
-                tdNote.style.fontSize = '0.8125rem';
-                tdNote.style.color = 'var(--text-secondary)';
-                tdNote.style.wordBreak = 'break-word';
-                if (!parserEntryOk(pp) && pp.error) {
-                    var err = String(pp.error);
-                    tdNote.title = err;
-                    tdNote.textContent = err.length > 120 ? err.slice(0, 120) + '…' : err;
-                } else {
-                    tdNote.textContent = '—';
-                }
-                tr.appendChild(tdName);
-                tr.appendChild(tdSt);
-                tr.appendChild(tdDur);
-                tr.appendChild(tdNote);
-                tbody.appendChild(tr);
-            }
+            requestAnimationFrame(function () {
+                renderSysdiagnoseTimelineBlock(out);
+                requestAnimationFrame(function () {
+                    renderSysdiagnoseParserList(entries);
+                    requestAnimationFrame(function () {
+                        renderSysdiagnoseAnalyserCards(out);
+                    });
+                });
+            });
 
             return { okCount: okN, entries: entries };
+        }
+
+        function scheduleSysdiagnoseJsonOutput() {
+            var jsonOut = document.getElementById('json-output');
+            if (!jsonOut) return;
+            jsonOut.textContent = trIphone('jsonBuilding');
+            var run = function () {
+                try {
+                    jsonOut.textContent = jsonStringifySysdiagnose(currentResults);
+                } catch (stringifyErr) {
+                    console.error('[SYSDIAGNOSE] JSON.stringify failed:', stringifyErr);
+                    jsonOut.textContent =
+                        trIphone('jsonStringifyError') +
+                        '\n\n' +
+                        String(stringifyErr && stringifyErr.message ? stringifyErr.message : stringifyErr) +
+                        '\n\n' +
+                        trIphone('jsonStringifyHint');
+                }
+            };
+            if (typeof requestIdleCallback === 'function') {
+                requestIdleCallback(run, { timeout: 3000 });
+            } else {
+                setTimeout(run, 0);
+            }
         }
 
         function showStatus(msg, type) {
@@ -2037,7 +3013,32 @@
             document.getElementById('progress').classList.add('show');
         }
         function hideProgress() {
-            document.getElementById('progress').classList.remove('show');
+            var wrap = document.getElementById('progress');
+            if (!wrap) return;
+            wrap.classList.remove('show');
+            var bar = wrap.querySelector('.progress-bar');
+            if (bar) {
+                bar.style.width = '0%';
+                bar.textContent = '';
+                bar.style.animation = '';
+            }
+        }
+        function formatElapsedMs(ms) {
+            if (ms < 1000) return Math.round(ms) + ' ms';
+            var s = Math.floor(ms / 1000);
+            if (s < 60) return s + ' s';
+            return Math.floor(s / 60) + ' min ' + (s % 60) + ' s';
+        }
+        var downloadProgressLastAt = 0;
+        function setIphoneProgress(percent, message) {
+            var wrap = document.getElementById('progress');
+            var bar = wrap && wrap.querySelector('.progress-bar');
+            if (!bar) return;
+            var pct = Math.max(0, Math.min(100, percent));
+            bar.style.width = (pct > 0 ? pct : 4) + '%';
+            bar.style.animation = pct > 0 && pct < 100 ? 'none' : '';
+            bar.textContent = pct >= 1 && pct < 100 ? Math.round(pct) + '%' : pct >= 100 ? '100%' : '';
+            if (message) showStatus(message, 'info');
         }
         function showSpinner() {
             document.getElementById('loading-spinner').classList.add('show');
@@ -2050,60 +3051,100 @@
             var file = event.target.files[0];
             if (file) {
                 sysdiagnoseFile = file;
+                updateSysdiagnoseUploadPanel(file);
                 document.getElementById('btn-analyze-sysdiagnose').classList.remove('hidden');
-                var mb = (file.size / 1024 / 1024).toFixed(2);
-                showStatus('✓ ' + file.name + ' (' + mb + ' MB)', 'success');
+                showStatus('✓ ' + file.name + ' (' + formatBytes(file.size) + ')', 'success');
                 console.log('[SYSDIAGNOSE] File selected', { name: file.name, size_bytes: file.size });
             }
         };
 
         var sdZone = document.getElementById('sysdiagnose-upload-zone');
-        sdZone.addEventListener('dragover', function (e) {
-            e.preventDefault();
-            sdZone.classList.add('dragover');
-        });
-        sdZone.addEventListener('dragleave', function () {
-            sdZone.classList.remove('dragover');
-        });
-        sdZone.addEventListener('drop', function (e) {
-            e.preventDefault();
-            sdZone.classList.remove('dragover');
-            var file = e.dataTransfer.files[0];
-            if (file) {
-                sysdiagnoseFile = file;
-                document.getElementById('btn-analyze-sysdiagnose').classList.remove('hidden');
-                var mb = (file.size / 1024 / 1024).toFixed(2);
-                showStatus('✓ ' + file.name + ' (' + mb + ' MB)', 'success');
-                console.log('[SYSDIAGNOSE] File dropped', { name: file.name, size_bytes: file.size });
-            }
-        });
+        var sdInput = document.getElementById('sysdiagnose-file-input');
+        function openSysdiagnoseFilePicker() {
+            if (sdInput) sdInput.click();
+        }
+        if (sdZone) {
+            sdZone.addEventListener('click', function (e) {
+                if (e.target.closest('#sysdiagnose-upload-clear')) return;
+                if (!sysdiagnoseFile) openSysdiagnoseFilePicker();
+            });
+            sdZone.addEventListener('keydown', function (e) {
+                if ((e.key === 'Enter' || e.key === ' ') && !sysdiagnoseFile) {
+                    e.preventDefault();
+                    openSysdiagnoseFilePicker();
+                }
+            });
+            sdZone.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                sdZone.classList.add('dragover');
+            });
+            sdZone.addEventListener('dragleave', function () {
+                sdZone.classList.remove('dragover');
+            });
+            sdZone.addEventListener('drop', function (e) {
+                e.preventDefault();
+                sdZone.classList.remove('dragover');
+                var file = e.dataTransfer.files[0];
+                if (file) {
+                    sysdiagnoseFile = file;
+                    updateSysdiagnoseUploadPanel(file);
+                    document.getElementById('btn-analyze-sysdiagnose').classList.remove('hidden');
+                    var mb = (file.size / 1024 / 1024).toFixed(2);
+                    showStatus('✓ ' + file.name + ' (' + mb + ' MB)', 'success');
+                    console.log('[SYSDIAGNOSE] File dropped', { name: file.name, size_bytes: file.size });
+                }
+            });
+        }
+        var sdClear = document.getElementById('sysdiagnose-upload-clear');
+        if (sdClear) {
+            sdClear.addEventListener('click', function (e) {
+                e.stopPropagation();
+                sysdiagnoseFile = null;
+                updateSysdiagnoseUploadPanel(null);
+                if (sdInput) sdInput.value = '';
+                document.getElementById('btn-analyze-sysdiagnose').classList.add('hidden');
+            });
+        }
 
         window.analyzeSysdiagnoseFile = async function () {
             if (!sysdiagnoseFile) {
                 showStatus('Choose a .tar.gz file first', 'error');
                 return;
             }
+            var buf = await sysdiagnoseFile.arrayBuffer();
+            await analyzeSysdiagnoseBytes(new Uint8Array(buf), sysdiagnoseFile.name);
+        };
+
+        async function analyzeSysdiagnoseBytes(u8, displayName) {
             var _t = window.IPHONE_I18N[window.currentLang] || window.IPHONE_I18N.en;
             document.querySelector('.loading-text').textContent = _t.analyzingWait;
             showSpinner();
-            showProgress();
+            hideProgress();
+            setSysdiagnoseIngestProgress(true, 5, _t.ingestPhasePrepare, displayName);
             try {
+                await ensureAnalyzerWasm();
+                setSysdiagnoseIngestProgress(true, 15, _t.ingestPhaseHash, formatBytes(u8.byteLength));
                 console.log('[SYSDIAGNOSE] Starting analysis', {
-                    name: sysdiagnoseFile.name,
-                    size_bytes: sysdiagnoseFile.size
+                    name: displayName,
+                    size_bytes: u8.byteLength
                 });
-                var tRead = performance.now();
-                var buf = await sysdiagnoseFile.arrayBuffer();
-                var u8 = new Uint8Array(buf);
-                console.log('[SYSDIAGNOSE] arrayBuffer() done', { ms: (performance.now() - tRead).toFixed(1) });
                 var hashPromise = calculateHashIphone(u8);
+                var sigmaPromise = typeof fetchSigmaRules === 'function' ? fetchSigmaRules() : Promise.resolve({ rules: '', rulesInfo: [] });
+                await new Promise(function (r) {
+                    requestAnimationFrame(r);
+                });
+                var sigmaPack = await sigmaPromise;
+                setSysdiagnoseIngestProgress(true, 25, _t.ingestPhaseSigma, String((sigmaPack.rulesInfo || []).filter(function (r) { return r.success; }).length) + ' rules');
+                setSysdiagnoseIngestProgress(true, 30, _t.ingestPhaseParse, displayName);
                 var tWasm = performance.now();
-                var rawWasm = analyzeSysdiagnose(u8);
+                var rawWasm = analyzeSysdiagnose(u8, sigmaPack.rules || '');
                 var out = parseSysdiagnoseWasmResult(rawWasm);
                 var hashHex = await hashPromise;
+                out.sigma_rules_info = sigmaPack.rulesInfo || [];
+                setSysdiagnoseIngestProgress(true, 75, _t.ingestPhaseRender, '');
                 var sizeMB = (u8.byteLength / 1024 / 1024).toFixed(2);
                 out.file_info = {
-                    path: sysdiagnoseFile.name,
+                    path: displayName,
                     size_bytes: u8.byteLength,
                     size_mb: sizeMB,
                     sha256: hashHex
@@ -2129,25 +3170,13 @@
                 });
                 currentResults = out;
                 var sdSummary = renderSysdiagnoseParsed(out);
+                setSysdiagnoseIngestProgress(true, 100, _t.ingestPhaseRender, '');
                 var resultsEl = document.getElementById('results');
-                var jsonOut = document.getElementById('json-output');
                 var actionsEl = document.getElementById('results-actions');
                 resultsEl.classList.add('show');
+                resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 actionsEl.style.display = 'flex';
-                jsonOut.textContent = trIphone('jsonBuilding');
-                setTimeout(function () {
-                    try {
-                        jsonOut.textContent = jsonStringifySysdiagnose(currentResults);
-                    } catch (stringifyErr) {
-                        console.error('[SYSDIAGNOSE] JSON.stringify failed:', stringifyErr);
-                        jsonOut.textContent =
-                            trIphone('jsonStringifyError') +
-                            '\n\n' +
-                            String(stringifyErr && stringifyErr.message ? stringifyErr.message : stringifyErr) +
-                            '\n\n' +
-                            trIphone('jsonStringifyHint');
-                    }
-                }, 0);
+                scheduleSysdiagnoseJsonOutput();
                 if (out && out.ok === false) {
                     console.warn('[SYSDIAGNOSE] Archive / parse hook returned ok=false', out);
                     showStatus(out.error || 'Could not read archive', 'error');
@@ -2170,9 +3199,130 @@
                 showStatus(String(err && err.message ? err.message : err), 'error');
             } finally {
                 hideProgress();
+                setSysdiagnoseIngestProgress(false);
                 hideSpinner();
             }
-        };
+        }
+
+        function updateIphoneDeviceUi() {
+            var label = document.getElementById('iphone-device-label');
+            var refreshBtn = document.getElementById('btn-refresh-sysdiagnose');
+            var archivesHint = document.getElementById('sysdiagnose-archives-hint');
+            var paired = !!getStoredPairPlist();
+            if (!label) return;
+            if (iphoneDevice) {
+                var name = iphoneDevice.productName || 'Apple device';
+                label.textContent = trIphone('deviceConnected').replace('{name}', name);
+            } else {
+                label.textContent = paired ? '—' : trIphone('pairPrompt');
+            }
+            if (refreshBtn) {
+                if (iphoneDevice) {
+                    refreshBtn.classList.remove('hidden');
+                    refreshBtn.disabled = !paired;
+                    refreshBtn.title = paired ? '' : trIphone('pairPrompt');
+                } else {
+                    refreshBtn.classList.add('hidden');
+                    refreshBtn.disabled = false;
+                    refreshBtn.title = '';
+                }
+            }
+            if (archivesHint) {
+                if (iphoneDevice && paired) {
+                    archivesHint.textContent = trIphone('sysdiagnosePickerHint');
+                } else if (iphoneDevice) {
+                    archivesHint.textContent = trIphone('sysdiagnoseArchivesHint');
+                } else {
+                    archivesHint.textContent = trIphone('sysdiagnoseArchivesHint');
+                }
+            }
+        }
+
+        async function refreshSysdiagnoseList() {
+            if (!iphoneDevice) {
+                showStatus(trIphone('btnPickIphone'), 'error');
+                return;
+            }
+            if (!getStoredPairPlist()) {
+                showStatus(trIphone('pairPrompt'), 'warning');
+                return;
+            }
+            var listing = document.getElementById('iphone-listing-status');
+            var picker = document.getElementById('sysdiagnose-picker');
+            if (listing) listing.classList.remove('hidden');
+            if (picker) picker.classList.add('hidden');
+            try {
+                sysdiagnoseArchives = await listSysdiagnoseArchives(iphoneDevice);
+                if (sysdiagnoseArchives.length === 0) {
+                    showStatus(trIphone('noSysdiagnoseFound'), 'warning');
+                    renderSysdiagnosePicker([]);
+                } else {
+                    showStatus(sysdiagnoseArchives.length + ' archive(s) found', 'success');
+                    renderSysdiagnosePicker(sysdiagnoseArchives);
+                }
+            } catch (e) {
+                console.error('[SYSDIAGNOSE] list failed:', e);
+                showStatus(String(e && e.message ? e.message : e), 'error');
+            } finally {
+                if (listing) listing.classList.add('hidden');
+            }
+        }
+
+        function wireIphoneDeviceButtons() {
+            var refreshBtn = document.getElementById('btn-refresh-sysdiagnose');
+            var analyzeBtn = document.getElementById('btn-analyze-device-sysdiagnose');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', function () {
+                    refreshSysdiagnoseList();
+                });
+            }
+            if (analyzeBtn) {
+                analyzeBtn.addEventListener('click', async function () {
+                    var path = selectedSysdiagnosePath;
+                    if (!path || !iphoneDevice) return;
+                    var entry = sysdiagnoseArchives.find(function (e) {
+                        return e.path === path;
+                    });
+                    var downloadT0 = performance.now();
+                    downloadProgressLastAt = 0;
+                    showSpinner();
+                    showProgress();
+                    setIphoneProgress(2, trIphone('downloadingSysdiagnoseConnect'));
+                    try {
+                        var pulled = await downloadSysdiagnoseArchive(iphoneDevice, path, {
+                            keepOnDevice: true,
+                            onProgress: function (read, total) {
+                                var now = performance.now();
+                                if (now - downloadProgressLastAt < 150 && read < total) return;
+                                downloadProgressLastAt = now;
+                                var pct = total > 0 ? (read / total) * 100 : 0;
+                                var name = entry ? entry.name : path.split('/').pop() || 'archive';
+                                var msg = trIphone('downloadingSysdiagnoseProgress')
+                                    .replace('{name}', name)
+                                    .replace('{read}', formatBytes(read))
+                                    .replace('{total}', formatBytes(total))
+                                    .replace('{pct}', String(Math.round(pct)))
+                                    .replace('{elapsed}', formatElapsedMs(now - downloadT0));
+                                setIphoneProgress(pct, msg);
+                            },
+                        });
+                        setIphoneProgress(
+                            100,
+                            trIphone('downloadComplete')
+                                .replace('{name}', pulled.name)
+                                .replace('{size}', formatBytes(pulled.data.byteLength))
+                        );
+                        await analyzeSysdiagnoseBytes(pulled.data, pulled.name);
+                    } catch (e) {
+                        console.error('[SYSDIAGNOSE] device pull failed:', e);
+                        showStatus(String(e && e.message ? e.message : e), 'error');
+                        hideProgress();
+                        setSysdiagnoseIngestProgress(false);
+                        hideSpinner();
+                    }
+                });
+            }
+        }
 
         window.downloadIphoneResults = function () {
             if (currentResults == null) {
@@ -2235,21 +3385,111 @@
         };
 
         async function boot() {
-            var statusEl = document.getElementById('wasm-status');
+            var webusbEl = document.getElementById('webusb-status');
             var _t = window.IPHONE_I18N[window.currentLang] || window.IPHONE_I18N.en;
-            try {
-                statusEl.textContent = _t.wasmLoading;
-                await init();
-                statusEl.textContent = _t.wasmReady;
-                statusEl.style.background = 'rgba(76, 175, 80, 0.1)';
-                statusEl.style.color = 'var(--success)';
-                console.log('🔍 [SYSDIAGNOSE] WebAssembly initialized (Rust log:: → console via console_log, same as bugreport path)');
-            } catch (e) {
-                console.error('[SYSDIAGNOSE] WASM init failed:', e);
-                statusEl.textContent = _t.wasmFailed;
-                statusEl.style.background = 'rgba(244, 67, 54, 0.1)';
-                statusEl.style.color = 'var(--error)';
+            var analyzerOk = false;
+            var ideviceOk = false;
+            var webUsbBlockReason = null;
+
+            function paintWebusbBadge() {
+                var t = window.IPHONE_I18N[window.currentLang] || window.IPHONE_I18N.en;
+                if (!webusbEl) return;
+                if (webUsbBlockReason) {
+                    webusbEl.textContent = t.webusbFailed || '❌ WebUSB';
+                    webusbEl.style.background = 'rgba(244, 67, 54, 0.1)';
+                    webusbEl.style.color = 'var(--error)';
+                    webusbEl.title = webUsbBlockReason;
+                    return;
+                }
+                if (analyzerOk && ideviceOk) {
+                    webusbEl.textContent = t.webusbReady || '✓ Analyzer + WebUSB';
+                    webusbEl.style.background = 'rgba(76, 175, 80, 0.1)';
+                    webusbEl.style.color = 'var(--success)';
+                    webusbEl.title = '';
+                } else if (analyzerOk) {
+                    webusbEl.textContent = t.webusbPartial || '✓ Analyzer · ⚠ WebUSB';
+                    webusbEl.style.background = 'rgba(255, 152, 0, 0.12)';
+                    webusbEl.style.color = 'var(--warning)';
+                    webusbEl.title = '';
+                } else if (ideviceOk) {
+                    webusbEl.textContent = t.webusbDeviceReady || '✓ WebUSB · ⏳ Analyzer';
+                    webusbEl.style.background = 'rgba(76, 175, 80, 0.1)';
+                    webusbEl.style.color = 'var(--success)';
+                    webusbEl.title = t.webusbDeviceReadyTitle || 'Device tools ready — analyzer loads on first analyze';
+                } else {
+                    webusbEl.textContent = t.webusbFailed || t.wasmFailed;
+                    webusbEl.style.background = 'rgba(244, 67, 54, 0.1)';
+                    webusbEl.style.color = 'var(--error)';
+                    webusbEl.title = '';
+                }
             }
+            window.refreshWebusbBadge = function () {
+                if (!analyzerOk && !ideviceOk && !webUsbBlockReason) {
+                    var t = window.IPHONE_I18N[window.currentLang] || window.IPHONE_I18N.en;
+                    if (webusbEl) webusbEl.textContent = t.webusbLoading || t.wasmLoading;
+                } else {
+                    paintWebusbBadge();
+                }
+            };
+
+            if (webusbEl) webusbEl.textContent = _t.webusbLoading || _t.wasmLoading;
+
+            webUsbBlockReason = diagnoseWebUsb();
+
+            var ideviceP = Promise.resolve();
+            if (!webUsbBlockReason) {
+                ideviceP = import('./assets/iphone-idevice.js')
+                    .then(function (m) {
+                        return m.ensureIdeviceWasm();
+                    })
+                    .then(function () {
+                        ideviceOk = true;
+                    })
+                    .catch(function (e) {
+                        console.error('[IDEVICE] WASM init failed:', e);
+                    });
+            }
+
+            await ideviceP;
+            paintWebusbBadge();
+
+            try {
+                if (!webUsbBlockReason) {
+                    ideviceConnect = await initIdeviceConnect({
+                        skipWasm: true,
+                        onStatus: function (msg) {
+                            if (msg) showStatus(msg, msg.indexOf('fail') >= 0 ? 'error' : 'success');
+                        },
+                    });
+                    iphoneDevice = ideviceConnect.getDevice();
+                    if (iphoneDevice) setConnectedDevice(iphoneDevice);
+                }
+            } catch (e) {
+                console.error('[IDEVICE] connect init failed:', e);
+            }
+
+            iphoneIdeviceOk = ideviceOk;
+
+            document.addEventListener('idevice-device-picked', function (ev) {
+                iphoneDevice = ev.detail?.device || ideviceConnect?.getDevice() || null;
+                setConnectedDevice(iphoneDevice);
+                updateIphoneDeviceUi();
+                if (!getStoredPairPlist()) {
+                    showStatus(trIphone('pairPrompt'), 'warning');
+                }
+            });
+            document.addEventListener('idevice-paired', function () {
+                iphoneDevice = ideviceConnect?.getDevice() || iphoneDevice;
+                updateIphoneDeviceUi();
+                showStatus('Pair record saved — tap Refresh list for sysdiagnose archives', 'success');
+            });
+            document.addEventListener('idevice-pair-cleared', function () {
+                updateIphoneDeviceUi();
+            });
+
+            wireIphoneDeviceButtons();
+            updateSysdiagnoseUploadReady(false);
+            updateIphoneDeviceUi();
         }
         boot();
     </script>

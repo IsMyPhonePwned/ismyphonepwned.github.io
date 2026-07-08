@@ -1,0 +1,208 @@
+/* Sysdiagnose archive picker — iPhone "From Device" tab */
+.sysdiagnose-picker {
+    margin-top: 0.75rem;
+    padding: 1rem;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+}
+
+.sysdiagnose-picker-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.65rem;
+}
+
+.sysdiagnose-picker-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.sysdiagnose-picker-sub {
+    margin-top: 0.2rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.sysdiagnose-picker-refresh {
+    flex-shrink: 0;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.8rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.sysdiagnose-picker-refresh:not(:disabled) {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.sysdiagnose-picker-refresh:hover {
+    filter: brightness(1.05);
+}
+
+.sysdiagnose-picker-refresh:not(:disabled):hover {
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.sysdiagnose-picker-refresh:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.sysdiagnose-picker-refresh:disabled:hover {
+    border-color: var(--border);
+    color: var(--text-primary);
+}
+
+.sysdiagnose-picker-hint {
+    margin: 0 0 0.75rem;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--text-secondary);
+}
+
+.sysdiagnose-picker-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sysdiagnose-card {
+    display: grid;
+    grid-template-columns: auto auto 1fr auto;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
+    padding: 0.75rem 0.85rem;
+    text-align: left;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.sysdiagnose-card:hover {
+    border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+    background: color-mix(in srgb, var(--accent) 6%, var(--bg-secondary));
+}
+
+.sysdiagnose-card--selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+    background: color-mix(in srgb, var(--accent) 8%, var(--bg-secondary));
+}
+
+.sysdiagnose-card-radio {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--bg-card);
+}
+
+.sysdiagnose-card--selected .sysdiagnose-card-radio {
+    border-color: var(--accent);
+    background: radial-gradient(circle at center, var(--accent) 42%, transparent 44%);
+}
+
+.sysdiagnose-card-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.sysdiagnose-card-body {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.sysdiagnose-card-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    word-break: break-all;
+}
+
+.sysdiagnose-card-meta {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    word-break: break-all;
+}
+
+.sysdiagnose-card-size {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.sysdiagnose-picker-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    margin-top: 0.85rem;
+    padding-top: 0.85rem;
+    border-top: 1px dashed var(--border);
+}
+
+.sysdiagnose-picker-actions .sysdiagnose-picker-analyze {
+    width: 100%;
+}
+
+.sysdiagnose-picker-selected {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+    flex: 1 1 12rem;
+}
+
+.sysdiagnose-picker-selected-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.sysdiagnose-picker-selected-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+
+.sysdiagnose-picker-analyze {
+    flex-shrink: 0;
+    padding: 0.55rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+}
+
+.sysdiagnose-picker-analyze:hover {
+    filter: brightness(1.05);
+}
+
+.sysdiagnose-picker-analyze:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}

@@ -1,6 +1,6 @@
 /**
  * Sigma rule files loaded by android.html and bugreport-status.html.
- * Served from /rules/ — grouped by category (Amnesty IoCs, Android bugreport, CVE, iOS, spyware).
+ * Served from /rules/ — grouped by category (Amnesty IoCs, Android bugreport/CVE, iOS, spyware).
  */
 window.SIGMA_RULE_URLS = [
     // Amnesty Tech investigations (sigma-zero YAML)
@@ -26,13 +26,13 @@ window.SIGMA_RULE_URLS = [
     // Android bugreport hunts
     '/rules/android/bugreport_anr.yml',
     '/rules/android/bugreport_native_crash.yml',
-    // CVE / exploit signatures
-    '/rules/CVE/CVE-2025-21055.yaml',
-    '/rules/CVE/CVE-2025-27363.yml',
-    '/rules/CVE/CVE-2025-27363-bigpretzel.yml',
-    '/rules/CVE/CVE-2025-27363-messaging-freetype.yml',
-    '/rules/CVE/CVE-2025-27363-eol-android.yml',
-    '/rules/CVE/CVE-2025-27363-load-truetype-glyph.yml',
+    // Android CVE / exploit signatures
+    '/rules/android/CVE/CVE-2025-21055.yaml',
+    '/rules/android/CVE/CVE-2025-27363.yml',
+    '/rules/android/CVE/CVE-2025-27363-bigpretzel.yml',
+    '/rules/android/CVE/CVE-2025-27363-messaging-freetype.yml',
+    '/rules/android/CVE/CVE-2025-27363-eol-android.yml',
+    '/rules/android/CVE/CVE-2025-27363-load-truetype-glyph.yml',
     // iOS DarkSword (sysdiagnose / logarchive / filesystem)
     '/rules/ios/darksword/darksword-network-iocs.yml',
     '/rules/ios/darksword/darksword-implant-strings.yml',

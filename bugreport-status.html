@@ -512,7 +512,7 @@ detection:<br>
 
             <h3 data-i18n="rulesListTitle">Rules list</h3>
             <p id="rules-list-desc" style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
-                Rules are auto-loaded from <code>/rules/</code> (36 files in <code>amnesty/</code>, <code>android/</code>, <code>CVE/</code>, <code>ios/darksword/</code>, <code>spyware/</code>). The analysis page fetches and concatenates them for Sigma evaluation.
+                Rules are auto-loaded from <code>/rules/</code> (36 files in <code>amnesty/</code>, <code>android/</code> including <code>android/CVE/</code>, <code>ios/darksword/</code>, <code>spyware/</code>). The analysis page fetches and concatenates them for Sigma evaluation.
             </p>
             <div id="fetch-status" class="fetch-status" style="display: none;"></div>
             <div id="rules-list-wrapper" style="display: none;">
@@ -722,7 +722,7 @@ detection:<br>
                 sigmaFormat: 'Sigma rule format',
                 sigmaFields: 'Rules follow the Sigma schema. Supported fields include title, id, description, status, level (critical / high / medium / low), and detection selection / condition.',
                 rulesListTitle: 'Rules list',
-                rulesListDesc: 'Rules are auto-loaded from /rules/ (36 files in amnesty/, android/, CVE/, ios/darksword/, spyware/). The analysis page fetches and concatenates them for Sigma evaluation.',
+                rulesListDesc: 'Rules are auto-loaded from /rules/ (36 files in amnesty/, android/ including android/CVE/, ios/darksword/, spyware/). The analysis page fetches and concatenates them for Sigma evaluation.',
                 ruleLevels: 'Rule levels',
                 levelCritical: '— Critical security events (e.g. root access)',
                 levelHigh: '— High-risk behaviour (e.g. suspicious installs, exfiltration)',
@@ -760,7 +760,7 @@ detection:<br>
                 sigmaFormat: 'Format de règle Sigma',
                 sigmaFields: 'Les règles suivent le schéma Sigma. Champs supportés : title, id, description, status, level (critical / high / medium / low), et détection selection / condition.',
                 rulesListTitle: 'Liste des règles',
-                rulesListDesc: 'Les règles sont chargées depuis /rules/ (36 fichiers : amnesty/, android/, CVE/, ios/darksword/, spyware/). La page d\'analyse les concatène pour Sigma.',
+                rulesListDesc: 'Les règles sont chargées depuis /rules/ (36 fichiers : amnesty/, android/ dont android/CVE/, ios/darksword/, spyware/). La page d\'analyse les concatène pour Sigma.',
                 ruleLevels: 'Niveaux de règle',
                 levelCritical: '— Événements de sécurité critiques (ex. accès root)',
                 levelHigh: '— Comportement à haut risque (ex. installations suspectes, exfiltration)',
@@ -798,7 +798,7 @@ detection:<br>
                 sigmaFormat: 'Sigma 规则格式',
                 sigmaFields: '规则遵循 Sigma 架构。支持的字段包括 title、id、description、status、level（critical / high / medium / low）以及检测 selection / condition。',
                 rulesListTitle: '规则列表',
-                rulesListDesc: '规则从 /rules/ 自动加载（36 个文件：amnesty/、android/、CVE/、ios/darksword/、spyware/）。分析页拼接后用于 Sigma 评估。',
+                rulesListDesc: '规则从 /rules/ 自动加载（36 个文件：amnesty/、android/（含 android/CVE/）、ios/darksword/、spyware/）。分析页拼接后用于 Sigma 评估。',
                 ruleLevels: '规则级别',
                 levelCritical: '— 严重安全事件（如 root 访问）',
                 levelHigh: '— 高风险行为（如可疑安装、外泄）',

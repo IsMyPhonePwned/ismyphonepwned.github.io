@@ -13,13 +13,13 @@ detection:
   selection_ports:
     event_type: network_socket
     remote_port:
-      - 8881
-      - 8882
+      - '8881'
+      - '8882'
   selection_local_ports:
     event_type: network_socket
     local_port:
-      - 8881
-      - 8882
+      - '8881'
+      - '8882'
   selection_domain:
     destination_domain|contains:
       - 'shapelie.com'

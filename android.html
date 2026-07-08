@@ -333,57 +333,99 @@
 
         <!-- Results -->
         <div id="results" class="results">
+            <div id="results-hero" class="results-hero results-hero--clean" hidden>
+                <div class="results-hero-main">
+                    <div class="results-hero-icon" id="results-hero-icon" aria-hidden="true">✓</div>
+                    <div>
+                        <div class="results-hero-title" id="results-hero-title" data-i18n="resultsHeroTitleClean">Analysis complete</div>
+                        <div class="results-hero-sub" id="results-hero-sub">—</div>
+                    </div>
+                </div>
+                <div class="results-hero-metrics" id="results-hero-metrics" aria-label="Summary metrics"></div>
+            </div>
+
             <!-- Pwned Results Detection (before Analysis Results) -->
-            <div class="section" id="detection-section">
+            <div class="section detection-panel" id="detection-section">
                 <h2 data-i18n="pwnedDetection">🔍 Pwned Results Detection</h2>
-                <div class="subsection" style="margin-top: 0.75rem;">
-                    <h4 style="font-size: 0.95rem; font-weight: 600; margin: 0 0 0.5rem 0; color: var(--text-secondary);">Sigma</h4>
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.5rem; gap: 0.5rem;">
-                        <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-primary);" data-i18n="sigmaRules">Rules</span>
-                        <button class="section-toggle collapsed" onclick="toggleSection('sigma-rules')">▼</button>
+                <div class="sigma-summary-bar" id="sigma-summary-bar" aria-live="polite"></div>
+                <div class="detection-subsection">
+                    <div class="detection-subsection-head">
+                        <span class="detection-subsection-title" data-i18n="sigmaRules">Rules</span>
+                        <button type="button" class="section-toggle collapsed" onclick="toggleSection('sigma-rules')" aria-label="Toggle rules">▼</button>
                     </div>
-                    <div class="section-content collapsed" id="sigma-rules-content" style="margin-top: 0.5rem;">
-                        <div id="sigma-rules-container" style="font-size: 0.875rem; color: var(--text-primary);"></div>
+                    <div class="section-content collapsed" id="sigma-rules-content">
+                        <div id="sigma-rules-container"></div>
                     </div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.75rem; gap: 0.5rem;">
-                        <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-primary);" data-i18n="sigmaMatches">Matches</span>
-                        <button class="section-toggle" onclick="toggleSection('sigma-matches')">▼</button>
+                </div>
+                <div class="detection-subsection">
+                    <div class="detection-subsection-head">
+                        <span class="detection-subsection-title" data-i18n="sigmaMatches">Matches</span>
+                        <button type="button" class="section-toggle" onclick="toggleSection('sigma-matches')" aria-label="Toggle matches">▼</button>
                     </div>
-                    <div class="section-content" id="sigma-matches-content" style="margin-top: 0.5rem;">
-                        <div id="sigma-matches-container" style="font-size: 0.875rem; color: var(--text-primary);"></div>
+                    <div class="section-content" id="sigma-matches-content">
+                        <div id="sigma-matches-container"></div>
                     </div>
                 </div>
             </div>
 
             <div class="section">
-<h2 data-i18n="analysisResults">📊 Analysis Results</h2>
-                <div id="analysis-timestamp" style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; display: none;">
-                    <span style="opacity: 0.7;" data-i18n="analyzedOn">Analyzed on</span> <span id="timestamp-value"></span>
+                <h2 data-i18n="analysisResults">📊 Analysis Results</h2>
+                <div id="analysis-timestamp" class="analysis-meta" style="display: none;">
+                    <span data-i18n="analyzedOn">Analyzed on</span> <span id="timestamp-value"></span>
                 </div>
 
-                <!-- Device Information -->
-                <div class="result-card">
-                    <h3 data-i18n="deviceInfo">📱 Device Information</h3>
-                    <div class="result-grid">
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="manufacturer">Manufacturer</div>
-                            <div class="result-item-value" id="device-manufacturer">-</div>
+                <div class="results-dashboard">
+                    <!-- Device Information -->
+                    <div class="result-card">
+                        <h3 data-i18n="deviceInfo">📱 Device Information</h3>
+                        <div class="result-grid">
+                            <div class="result-item">
+                                <div class="result-item-label" data-i18n="manufacturer">Manufacturer</div>
+                                <div class="result-item-value device-identity-value" id="device-manufacturer">-</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-item-label" data-i18n="model">Model</div>
+                                <div class="result-item-value device-identity-value" id="device-model">-</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-item-label" data-i18n="androidVersion">Android Version</div>
+                                <div class="result-item-value device-identity-value" id="device-android">-</div>
+                            </div>
+                            <div class="result-item" style="grid-column: 1 / -1;">
+                                <div class="result-item-label" data-i18n="buildId">Build ID</div>
+                                <div class="result-item-value device-identity-value mono" id="device-build">-</div>
+                            </div>
+                            <div class="result-item" style="grid-column: 1 / -1;">
+                                <div class="result-item-label" data-i18n="kernelVersion">Kernel Version</div>
+                                <div class="result-item-value device-identity-value mono" id="device-kernel">-</div>
+                            </div>
                         </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="model">Model</div>
-                            <div class="result-item-value" id="device-model">-</div>
+                    </div>
+
+                    <!-- Battery Status -->
+                    <div class="result-card">
+                        <h3 data-i18n="batteryStatus">🔋 Battery Status</h3>
+                        <div id="battery-badges" class="battery-badges"></div>
+                        <div class="result-item-label" data-i18n="level">Level</div>
+                        <div class="result-item-value" id="battery-level" style="font-size: 1.5rem; margin-bottom: 0.25rem;">-</div>
+                        <div class="battery-gauge-wrap" aria-hidden="true">
+                            <div class="battery-gauge-track">
+                                <div class="battery-gauge-fill" id="battery-gauge-fill" style="width: 0%;"></div>
+                            </div>
                         </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="androidVersion">Android Version</div>
-                            <div class="result-item-value" id="device-android">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="buildId">Build ID</div>
-                            <div class="result-item-value" id="device-build" style="font-size: 0.9rem;">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="kernelVersion">Kernel Version</div>
-                            <div class="result-item-value" id="device-kernel" style="font-size: 0.9rem;">-</div>
+                        <div class="battery-metrics">
+                            <div class="battery-metric">
+                                <div class="battery-metric-label" data-i18n="health">Health</div>
+                                <div class="battery-metric-value" id="battery-health">-</div>
+                            </div>
+                            <div class="battery-metric">
+                                <div class="battery-metric-label" data-i18n="temperature">Temperature</div>
+                                <div class="battery-metric-value" id="battery-temp">-</div>
+                            </div>
+                            <div class="battery-metric">
+                                <div class="battery-metric-label" data-i18n="voltage">Voltage</div>
+                                <div class="battery-metric-value" id="battery-voltage">-</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -424,66 +466,86 @@
                 <!-- System Statistics -->
                 <div class="result-card">
                     <h3 data-i18n="systemStats">📈 System Statistics</h3>
-                    <div class="result-grid">
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="processes">Processes</div>
-                            <div class="result-item-value" id="stats-processes">-</div>
+                    <div class="stat-groups">
+                        <div class="stat-group">
+                            <h4 class="stat-group-title" data-i18n="statGroupApps">Apps &amp; packages</h4>
+                            <div class="result-grid">
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="processes">Processes</div>
+                                    <div class="result-item-value" id="stats-processes">-</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="uniquePackages">Unique Packages</div>
+                                    <div class="result-item-value" id="stats-packages">-</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="statBatteryApps">Apps in battery stats</div>
+                                    <div class="result-item-value" id="stats-battery-apps">-</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="statPackageDetails">Package detail records</div>
+                                    <div class="result-item-value" id="stats-package-details">-</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="statInstallHistory">Install history entries</div>
+                                    <div class="result-item-value" id="stats-install-history">-</div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="uniquePackages">Unique Packages</div>
-                            <div class="result-item-value" id="stats-packages">-</div>
+                        <div class="stat-group">
+                            <h4 class="stat-group-title" data-i18n="statGroupNetwork">Network &amp; connectivity</h4>
+                            <div class="result-grid">
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="statNetworkIfaces">Network interfaces</div>
+                                    <div class="result-item-value" id="stats-network-ifaces">-</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="statNetworkStatsRows">Network statistics rows</div>
+                                    <div class="result-item-value" id="stats-network-stats-rows">-</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="statSockets">Socket entries</div>
+                                    <div class="result-item-value" id="stats-sockets">-</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="statBluetoothDevices">Bluetooth devices</div>
+                                    <div class="result-item-value" id="stats-bluetooth-devices">-</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="statUsbDevices">USB devices (log)</div>
+                                    <div class="result-item-value" id="stats-usb-devices">-</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="statPowerEvents">Power history events</div>
+                                    <div class="result-item-value" id="stats-power-events">-</div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="statBatteryApps">Apps in battery stats</div>
-                            <div class="result-item-value" id="stats-battery-apps">-</div>
+                        <div class="stat-group">
+                            <h4 class="stat-group-title" data-i18n="statGroupSecurity">Security &amp; detection</h4>
+                            <div class="result-grid">
+                                <div class="result-item" id="stats-sigma-rules-item">
+                                    <div class="result-item-label" data-i18n="statSigmaRules">Sigma rules loaded</div>
+                                    <div class="result-item-value" id="stats-sigma-rules">-</div>
+                                </div>
+                                <div class="result-item" id="stats-sigma-matches-item">
+                                    <div class="result-item-label" data-i18n="statSigmaMatches">Sigma matches</div>
+                                    <div class="result-item-value" id="stats-sigma-matches">-</div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="statPackageDetails">Package detail records</div>
-                            <div class="result-item-value" id="stats-package-details">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="statInstallHistory">Install history entries</div>
-                            <div class="result-item-value" id="stats-install-history">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="statPowerEvents">Power history events</div>
-                            <div class="result-item-value" id="stats-power-events">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="statNetworkIfaces">Network interfaces</div>
-                            <div class="result-item-value" id="stats-network-ifaces">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="statNetworkStatsRows">Network statistics rows</div>
-                            <div class="result-item-value" id="stats-network-stats-rows">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="statSockets">Socket entries</div>
-                            <div class="result-item-value" id="stats-sockets">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="statBluetoothDevices">Bluetooth devices</div>
-                            <div class="result-item-value" id="stats-bluetooth-devices">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="statUsbDevices">USB devices (log)</div>
-                            <div class="result-item-value" id="stats-usb-devices">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="statSigmaRules">Sigma rules loaded</div>
-                            <div class="result-item-value" id="stats-sigma-rules">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="statSigmaMatches">Sigma matches</div>
-                            <div class="result-item-value" id="stats-sigma-matches">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="statAnrFiles">ANR files</div>
-                            <div class="result-item-value" id="stats-anr-files">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="statTombstones">Crash tombstones</div>
-                            <div class="result-item-value" id="stats-tombstones">-</div>
+                        <div class="stat-group">
+                            <h4 class="stat-group-title" data-i18n="statGroupCrashes">Crashes &amp; stability</h4>
+                            <div class="result-grid">
+                                <div class="result-item" id="stats-anr-files-item">
+                                    <div class="result-item-label" data-i18n="statAnrFiles">ANR files</div>
+                                    <div class="result-item-value" id="stats-anr-files">-</div>
+                                </div>
+                                <div class="result-item" id="stats-tombstones-item">
+                                    <div class="result-item-label" data-i18n="statTombstones">Crash tombstones</div>
+                                    <div class="result-item-value" id="stats-tombstones">-</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -492,29 +554,6 @@
                 <div class="result-card" id="crash-info-card" style="display: none;">
                     <h3 data-i18n="anrCrash">💥 ANR / Crash</h3>
                     <div id="crash-info-container" style="font-size: 0.875rem; color: var(--text-primary);"></div>
-                </div>
-
-                <!-- Battery Status -->
-                <div class="result-card">
-                    <h3 data-i18n="batteryStatus">🔋 Battery Status</h3>
-                    <div class="result-grid">
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="level">Level</div>
-                            <div class="result-item-value" id="battery-level">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="health">Health</div>
-                            <div class="result-item-value" id="battery-health">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="temperature">Temperature</div>
-                            <div class="result-item-value" id="battery-temp">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label" data-i18n="voltage">Voltage</div>
-                            <div class="result-item-value" id="battery-voltage">-</div>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- Detailed Process List -->
@@ -834,7 +873,7 @@
                 </div>
                 
                 <!-- Results Actions -->
-                <div id="results-actions" style="margin-top: 1.5rem; display: none; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                <div id="results-actions" style="margin-top: 1.5rem; display: none; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
                     <button onclick="downloadResults()" style="background: #4CAF50; color: white;" data-i18n="btnDownloadJson">📥 Download JSON</button>
                     <button type="button" onclick="copyResults()" style="background: var(--accent); color: white;" data-i18n="btnCopyClipboard">📋 Copy to Clipboard</button>
                     <span id="copy-json-feedback" class="copy-json-feedback" hidden aria-live="polite"></span>
@@ -912,6 +951,28 @@
                 pwnedDetection: '🔍 Pwned Results Detection',
                 sigmaRules: 'Rules',
                 sigmaMatches: 'Matches',
+                resultsHeroTitleClean: 'Analysis complete — no Sigma matches',
+                resultsHeroTitleFindings: 'Sigma matches found',
+                resultsHeroSub: '{device} · Android {version}',
+                resultsHeroMetricRules: 'Rules',
+                resultsHeroMetricMatches: 'Matches',
+                resultsHeroMetricProcesses: 'Processes',
+                resultsHeroMetricPackages: 'Packages',
+                sigmaChipRules: '{n} rules loaded',
+                sigmaChipMatches: '{n} matches',
+                sigmaChipMatchDetail: '{hits} hits · {rules} rules',
+                sigmaChipClean: 'No matches',
+                sigmaNoRules: 'No rules loaded.',
+                sigmaNoMatches: 'No matches.',
+                sigmaMatchCount: '{n} occurrences',
+                sigmaMatchCountOne: '1 occurrence',
+                sigmaMatchShowLogs: 'Show {n} matched logs',
+                sigmaMatchOccurrence: 'Occurrence {n}',
+                sigmaMatchedLog: 'Matched log',
+                statGroupApps: 'Apps & packages',
+                statGroupNetwork: 'Network & connectivity',
+                statGroupSecurity: 'Security & detection',
+                statGroupCrashes: 'Crashes & stability',
                 analysisResults: '📊 Analysis Results',
                 analyzedOn: 'Analyzed on',
                 timelineCardTitle: '🗓️ Timeline',
@@ -1081,6 +1142,28 @@
                 pwnedDetection: '🔍 Détection des résultats',
                 sigmaRules: 'Règles',
                 sigmaMatches: 'Correspondances',
+                resultsHeroTitleClean: 'Analyse terminée — aucune correspondance Sigma',
+                resultsHeroTitleFindings: 'Correspondances Sigma détectées',
+                resultsHeroSub: '{device} · Android {version}',
+                resultsHeroMetricRules: 'Règles',
+                resultsHeroMetricMatches: 'Correspondances',
+                resultsHeroMetricProcesses: 'Processus',
+                resultsHeroMetricPackages: 'Paquets',
+                sigmaChipRules: '{n} règles chargées',
+                sigmaChipMatches: '{n} correspondances',
+                sigmaChipMatchDetail: '{hits} correspondances · {rules} règles',
+                sigmaChipClean: 'Aucune correspondance',
+                sigmaNoRules: 'Aucune règle chargée.',
+                sigmaNoMatches: 'Aucune correspondance.',
+                sigmaMatchCount: '{n} occurrences',
+                sigmaMatchCountOne: '1 occurrence',
+                sigmaMatchShowLogs: 'Afficher {n} journaux correspondants',
+                sigmaMatchOccurrence: 'Occurrence {n}',
+                sigmaMatchedLog: 'Journal correspondant',
+                statGroupApps: 'Applications et paquets',
+                statGroupNetwork: 'Réseau et connectivité',
+                statGroupSecurity: 'Sécurité et détection',
+                statGroupCrashes: 'Plantages et stabilité',
                 analysisResults: '📊 Résultats d\'analyse',
                 analyzedOn: 'Analysé le',
                 timelineCardTitle: '🗓️ Chronologie',
@@ -1250,6 +1333,28 @@
                 pwnedDetection: '🔍 检测结果',
                 sigmaRules: '规则',
                 sigmaMatches: '匹配',
+                resultsHeroTitleClean: '分析完成 — 无 Sigma 匹配',
+                resultsHeroTitleFindings: '发现 Sigma 匹配',
+                resultsHeroSub: '{device} · Android {version}',
+                resultsHeroMetricRules: '规则',
+                resultsHeroMetricMatches: '匹配',
+                resultsHeroMetricProcesses: '进程',
+                resultsHeroMetricPackages: '包',
+                sigmaChipRules: '已加载 {n} 条规则',
+                sigmaChipMatches: '{n} 个匹配',
+                sigmaChipMatchDetail: '{hits} 次命中 · {rules} 条规则',
+                sigmaChipClean: '无匹配',
+                sigmaNoRules: '未加载规则。',
+                sigmaNoMatches: '无匹配。',
+                sigmaMatchCount: '{n} 次出现',
+                sigmaMatchCountOne: '1 次出现',
+                sigmaMatchShowLogs: '显示 {n} 条匹配日志',
+                sigmaMatchOccurrence: '第 {n} 次',
+                sigmaMatchedLog: '匹配日志',
+                statGroupApps: '应用与包',
+                statGroupNetwork: '网络与连接',
+                statGroupSecurity: '安全与检测',
+                statGroupCrashes: '崩溃与稳定性',
                 analysisResults: '📊 分析结果',
                 analyzedOn: '分析于',
                 timelineCardTitle: '🗓️ 时间线',
@@ -1805,6 +1910,8 @@
 
         function hideResults() {
             document.getElementById('results').classList.remove('show');
+            const hero = document.getElementById('results-hero');
+            if (hero) hero.hidden = true;
             const actionsEl = document.getElementById('results-actions');
             if (actionsEl) {
                 actionsEl.style.display = 'none';
@@ -2279,6 +2386,534 @@
             }
         }
 
+        function i18nPack() {
+            return (window.BUGREPORT_I18N && window.BUGREPORT_I18N[window.currentLang || 'en']) ||
+                window.BUGREPORT_I18N.en || {};
+        }
+
+        function i18nFmt(key, vars) {
+            let s = i18nPack()[key] || key;
+            if (vars) {
+                Object.keys(vars).forEach(function (k) {
+                    s = s.replace('{' + k + '}', String(vars[k]));
+                });
+            }
+            return s;
+        }
+
+        function sigmaLevelClass(level) {
+            const l = (level || '').toLowerCase();
+            if (l === 'critical') return 'critical';
+            if (l === 'high') return 'high';
+            if (l === 'medium') return 'medium';
+            if (l === 'low') return 'low';
+            return 'unknown';
+        }
+
+        const SIGMA_LEVEL_ORDER = { critical: 0, high: 1, medium: 2, low: 3, unknown: 4 };
+
+        function extractSigmaMatchLog(m) {
+            let ml = m.log_entry ?? m.matched_log;
+            if (ml && typeof ml === 'object' && ml instanceof Map) {
+                ml = Object.fromEntries(ml);
+            }
+            if (ml && typeof ml === 'object' && !Array.isArray(ml)) return ml;
+            return null;
+        }
+
+        function sigmaMatchLogPreview(ml) {
+            if (!ml || typeof ml !== 'object') return '';
+            const ts = ml.timestamp || ml.time || ml.datetime || ml['@timestamp'];
+            const entry = ml.log_entry || ml.message || ml.subject || ml.pkg || ml.package;
+            const parts = [];
+            if (ts) parts.push(String(ts));
+            if (entry) {
+                const s = String(entry);
+                parts.push(s.length > 90 ? s.slice(0, 87) + '…' : s);
+            }
+            if (parts.length) return parts.join(' — ');
+            const keys = Object.keys(ml);
+            if (keys.length) {
+                const k = keys[0];
+                const v = String(ml[k] ?? '');
+                return k + ': ' + (v.length > 60 ? v.slice(0, 57) + '…' : v);
+            }
+            return '';
+        }
+
+        function renderSigmaLogBodyHtml(ml) {
+            if (!ml || typeof ml !== 'object' || Array.isArray(ml) || Object.keys(ml).length === 0) {
+                return '';
+            }
+            const fmt = (v) =>
+                typeof v === 'object' && v !== null
+                    ? escapeHtml(JSON.stringify(v))
+                    : escapeHtml(String(v ?? ''));
+            return Object.entries(ml)
+                .map(
+                    ([k, v]) =>
+                        '<div style="margin-bottom: 0.2rem;"><span style="color: var(--text-secondary);">' +
+                        escapeHtml(k) +
+                        ':</span> ' +
+                        fmt(v) +
+                        '</div>'
+                )
+                .join('');
+        }
+
+        function sigmaMatchGroupKey(m) {
+            const id = (m.rule_id || '').trim();
+            if (id) return id;
+            const title = (m.rule_title || '').trim();
+            if (title) return 'title:' + title;
+            return 'unknown';
+        }
+
+        function groupSigmaMatches(rawMatches) {
+            const matches = rawMatches.map((raw) => mapPlainTop(raw) || raw);
+            const groups = new Map();
+            matches.forEach((m) => {
+                const key = sigmaMatchGroupKey(m);
+                if (!groups.has(key)) {
+                    groups.set(key, {
+                        rule_id: (m.rule_id || '').trim(),
+                        rule_title: (m.rule_title || '').trim(),
+                        level: (m.level || '').trim(),
+                        items: [],
+                    });
+                }
+                const g = groups.get(key);
+                g.items.push(m);
+                if (!g.rule_title && m.rule_title) g.rule_title = String(m.rule_title).trim();
+                if (!g.rule_id && m.rule_id) g.rule_id = String(m.rule_id).trim();
+                const cur = SIGMA_LEVEL_ORDER[sigmaLevelClass(g.level)] ?? 4;
+                const next = SIGMA_LEVEL_ORDER[sigmaLevelClass(m.level)] ?? 4;
+                if (next < cur) g.level = String(m.level).trim();
+            });
+            return Array.from(groups.values()).sort((a, b) => {
+                const la = SIGMA_LEVEL_ORDER[sigmaLevelClass(a.level)] ?? 4;
+                const lb = SIGMA_LEVEL_ORDER[sigmaLevelClass(b.level)] ?? 4;
+                if (la !== lb) return la - lb;
+                return b.items.length - a.items.length;
+            });
+        }
+
+        function renderSigmaMatchesGroupedHtml(rawMatches) {
+            const pack = i18nPack();
+            const groups = groupSigmaMatches(rawMatches);
+            if (!groups.length) {
+                return '<p class="detection-empty">' + escapeHtml(pack.sigmaNoMatches || 'No matches.') + '</p>';
+            }
+            return groups
+                .map((g) => {
+                    const id = g.rule_id ? escapeHtml(g.rule_id) : '-';
+                    const title = g.rule_title ? escapeHtml(g.rule_title) : '-';
+                    const level = g.level ? escapeHtml(g.level) : '-';
+                    const lvlCls = sigmaLevelClass(g.level);
+                    const n = g.items.length;
+                    const countLabel =
+                        n === 1
+                            ? escapeHtml(pack.sigmaMatchCountOne || '1 occurrence')
+                            : escapeHtml(i18nFmt('sigmaMatchCount', { n: n }));
+
+                    let bodyHtml = '';
+                    if (n === 1) {
+                        const ml = extractSigmaMatchLog(g.items[0]);
+                        const logBody = renderSigmaLogBodyHtml(ml);
+                        if (logBody) {
+                            bodyHtml =
+                                '<details class="sigma-matched-log" open><summary>' +
+                                escapeHtml(pack.sigmaMatchedLog || 'Matched log') +
+                                '</summary><div class="sigma-matched-log-body">' +
+                                logBody +
+                                '</div></details>';
+                        }
+                    } else {
+                        const occHtml = g.items
+                            .map((m, i) => {
+                                const ml = extractSigmaMatchLog(m);
+                                const preview = sigmaMatchLogPreview(ml);
+                                const occTitle = i18nFmt('sigmaMatchOccurrence', { n: i + 1 });
+                                const occLabel = escapeHtml(preview ? occTitle + ' — ' + preview : occTitle);
+                                const logBody = renderSigmaLogBodyHtml(ml);
+                                if (!logBody) {
+                                    return (
+                                        '<div class="sigma-match-occurrence sigma-match-occurrence--empty">' +
+                                        '<span class="sigma-match-occurrence-label">' +
+                                        occLabel +
+                                        '</span></div>'
+                                    );
+                                }
+                                return (
+                                    '<details class="sigma-matched-log sigma-match-occurrence"><summary>' +
+                                    occLabel +
+                                    '</summary><div class="sigma-matched-log-body">' +
+                                    logBody +
+                                    '</div></details>'
+                                );
+                            })
+                            .join('');
+                        bodyHtml =
+                            '<details class="sigma-match-occurrences"><summary class="sigma-match-occurrences-summary">' +
+                            escapeHtml(i18nFmt('sigmaMatchShowLogs', { n: n })) +
+                            '</summary><div class="sigma-match-occurrence-list">' +
+                            occHtml +
+                            '</div></details>';
+                    }
+
+                    return (
+                        '<div class="sigma-match-card sigma-match-card--' +
+                        lvlCls +
+                        '"><div class="sigma-match-title">' +
+                        title +
+                        '</div><div class="sigma-match-meta"><span>ID: ' +
+                        id +
+                        '</span><span class="sigma-level-badge sigma-level-badge--' +
+                        lvlCls +
+                        '">' +
+                        level +
+                        '</span><span class="sigma-match-count">' +
+                        countLabel +
+                        '</span></div>' +
+                        bodyHtml +
+                        '</div>'
+                    );
+                })
+                .join('');
+        }
+
+        function updateBatteryGauge(level) {
+            const fill = document.getElementById('battery-gauge-fill');
+            if (!fill) return;
+            const pct = Number.isFinite(level) ? Math.max(0, Math.min(100, level)) : 0;
+            fill.style.width = Number.isFinite(level) ? pct + '%' : '0%';
+            fill.classList.remove('low', 'mid');
+            if (Number.isFinite(level)) {
+                if (pct <= 20) fill.classList.add('low');
+                else if (pct <= 50) fill.classList.add('mid');
+            }
+        }
+
+        function batteryNumOrNull(v) {
+            if (v == null || v === '') return null;
+            const n = Number(v);
+            return Number.isFinite(n) ? n : null;
+        }
+
+        function batteryLatestByTimestamp(rows) {
+            const arr = asWasmArray(rows)
+                .map((r) => mapPlainTop(r) || r)
+                .filter((r) => r && typeof r === 'object');
+            if (!arr.length) return null;
+            arr.sort((a, b) =>
+                String(b.timestamp || b.datetime || '').localeCompare(String(a.timestamp || a.datetime || ''))
+            );
+            return arr[0];
+        }
+
+        function batteryTempCelsius(raw) {
+            const n = batteryNumOrNull(raw);
+            if (n == null) return null;
+            return n / 10;
+        }
+
+        function batteryVoltageVolts(raw) {
+            const n = batteryNumOrNull(raw);
+            if (n == null) return null;
+            return n > 100 ? n / 1000 : n;
+        }
+
+        function mergeBatterySnapshot(base, patch) {
+            const out = Object.assign(
+                { level: null, health: null, temperature: null, voltage: null, status: null, plug: null },
+                base || {}
+            );
+            if (!patch) return out;
+            ['level', 'health', 'temperature', 'voltage', 'status', 'plug'].forEach(function (k) {
+                if (patch[k] != null && patch[k] !== '') out[k] = patch[k];
+            });
+            return out;
+        }
+
+        function batterySnapshotFromHistoryEntry(h) {
+            if (!h || typeof h !== 'object') return null;
+            const level = batteryNumOrNull(h.charge ?? h.soc_percent ?? h.msoc_percent);
+            const temp =
+                batteryTempCelsius(h.temp) ??
+                batteryTempCelsius(h.skin_temp) ??
+                batteryTempCelsius(h.sub_batt_temp) ??
+                batteryTempCelsius(h.tbat);
+            const volt = batteryVoltageVolts(h.volt ?? h.vm_mv ?? h.vavgm_mv);
+            return {
+                level: level != null && level <= 100 ? level : level,
+                health: h.health ? String(h.health) : null,
+                temperature: temp,
+                voltage: volt,
+                status: h.status ? String(h.status) : null,
+                plug: h.plug ? String(h.plug) : null,
+            };
+        }
+
+        function batterySnapshotFromHardwareEntry(e) {
+            if (!e || typeof e !== 'object') return null;
+            const level = batteryNumOrNull(e.soc_percent ?? e.msoc_percent ?? e.ssoc_percent);
+            const temp = batteryTempCelsius(e.tbat ?? e.temp);
+            const volt = batteryVoltageVolts(e.vm_mv ?? e.vavgm_mv ?? e.vs_mv);
+            return {
+                level: level != null && level <= 100 ? level : null,
+                health: null,
+                temperature: temp,
+                voltage: volt,
+                status: null,
+                plug: null,
+            };
+        }
+
+        function batterySnapshotFromParserData(raw) {
+            const d = mapPlainTop(raw) || raw;
+            if (!d || typeof d !== 'object') return null;
+            let snap = null;
+            const hist = batteryLatestByTimestamp(d.battery_history);
+            if (hist) snap = mergeBatterySnapshot(snap, batterySnapshotFromHistoryEntry(hist));
+            const hw = d.hardware_info ? mapPlainTop(d.hardware_info) || d.hardware_info : null;
+            const kernel = hw && hw.kernel_log_entries ? batteryLatestByTimestamp(hw.kernel_log_entries) : null;
+            if (kernel) snap = mergeBatterySnapshot(snap, batterySnapshotFromHardwareEntry(kernel));
+            return snap;
+        }
+
+        function batteryRowDataType(row) {
+            const r = mapPlainTop(row) || row;
+            return String(r.data_type || r.dataType || '').toLowerCase();
+        }
+
+        function batterySnapshotFromTimesketch(data) {
+            let analysers = data.analysers;
+            if (analysers && typeof analysers === 'object' && analysers instanceof Map) {
+                analysers = Object.fromEntries(analysers);
+            }
+            const ts =
+                analysers && typeof analysers === 'object' && !Array.isArray(analysers)
+                    ? mapPlainTop(analysers.timesketch) || analysers.timesketch
+                    : null;
+            const events = ts && ts.error == null ? asWasmArray(ts.events) : [];
+            if (!events.length) return null;
+
+            const historyRows = events
+                .map((e) => mapPlainTop(e) || e)
+                .filter((r) => {
+                    const dt = batteryRowDataType(r);
+                    const msg = String(r.message || '').toLowerCase();
+                    return dt.includes('battery_history') || msg.includes('battery history');
+                });
+            const hardwareRows = events
+                .map((e) => mapPlainTop(e) || e)
+                .filter((r) => {
+                    const dt = batteryRowDataType(r);
+                    const msg = String(r.message || '').toLowerCase();
+                    return dt.includes('battery_hardware') || msg.includes('battery kernel hardware');
+                });
+
+            let snap = null;
+            const hist = batteryLatestByTimestamp(historyRows);
+            if (hist) snap = mergeBatterySnapshot(snap, batterySnapshotFromHistoryEntry(hist));
+            const hw = batteryLatestByTimestamp(hardwareRows);
+            if (hw) snap = mergeBatterySnapshot(snap, batterySnapshotFromHardwareEntry(hw));
+            return snap;
+        }
+
+        function extractBatterySnapshot(data) {
+            if (data.battery_info) {
+                const bi = mapPlainTop(data.battery_info) || data.battery_info;
+                const level = batteryNumOrNull(bi.level);
+                const temp = batteryNumOrNull(bi.temperature);
+                const volt = batteryNumOrNull(bi.voltage);
+                if (level != null || bi.health || temp != null || volt != null) {
+                    return {
+                        level: level,
+                        health: bi.health ? String(bi.health) : null,
+                        temperature: temp,
+                        voltage: volt,
+                        status: null,
+                        plug: null,
+                    };
+                }
+            }
+
+            let po = data.parser_outputs;
+            if (po && po instanceof Map) po = Object.fromEntries(po);
+            const batOut = po && typeof po === 'object' ? po.battery : null;
+            const batParsed = batOut ? mapPlainTop(batOut) || batOut : null;
+            if (batParsed && batParsed.success && batParsed.data != null) {
+                const fromParser = batterySnapshotFromParserData(batParsed.data);
+                if (fromParser && (fromParser.level != null || fromParser.health || fromParser.temperature != null || fromParser.voltage != null)) {
+                    return fromParser;
+                }
+            }
+
+            return batterySnapshotFromTimesketch(data);
+        }
+
+        function displayBatteryStatus(data) {
+            const snap = extractBatterySnapshot(data);
+            const levelEl = document.getElementById('battery-level');
+            const healthEl = document.getElementById('battery-health');
+            const tempEl = document.getElementById('battery-temp');
+            const voltEl = document.getElementById('battery-voltage');
+            const badgesEl = document.getElementById('battery-badges');
+            if (!levelEl) return;
+
+            if (!snap) {
+                levelEl.textContent = '-';
+                updateBatteryGauge(NaN);
+                if (healthEl) healthEl.textContent = '-';
+                if (tempEl) tempEl.textContent = '-';
+                if (voltEl) voltEl.textContent = '-';
+                if (badgesEl) badgesEl.innerHTML = '';
+                return;
+            }
+
+            if (snap.level != null && snap.level <= 100) {
+                levelEl.textContent = snap.level.toFixed(1) + '%';
+                updateBatteryGauge(snap.level);
+            } else if (snap.level != null) {
+                levelEl.textContent = String(snap.level);
+                updateBatteryGauge(NaN);
+            } else {
+                levelEl.textContent = '-';
+                updateBatteryGauge(NaN);
+            }
+
+            if (healthEl) healthEl.textContent = snap.health || '-';
+            if (tempEl) {
+                tempEl.textContent =
+                    snap.temperature != null ? snap.temperature.toFixed(1) + '°C' : '-';
+            }
+            if (voltEl) {
+                voltEl.textContent = snap.voltage != null ? snap.voltage.toFixed(2) + 'V' : '-';
+            }
+
+            if (badgesEl) {
+                const badges = [];
+                const status = snap.status ? String(snap.status) : '';
+                const plug = snap.plug ? String(snap.plug) : '';
+                const sl = status.toLowerCase();
+                if (status && status !== '—') {
+                    const cls =
+                        sl.includes('charg') && !sl.includes('discharg')
+                            ? 'battery-badge battery-badge--charge'
+                            : 'battery-badge';
+                    badges.push('<span class="' + cls + '">' + escapeHtml(status) + '</span>');
+                }
+                if (plug && plug.toLowerCase() !== 'none' && plug !== '—') {
+                    badges.push('<span class="battery-badge">' + escapeHtml(plug) + '</span>');
+                }
+                badgesEl.innerHTML = badges.join('');
+            }
+        }
+
+        function updateSigmaSummaryBar(data) {
+            const bar = document.getElementById('sigma-summary-bar');
+            if (!bar) return;
+            const pack = i18nPack();
+            const rules = asWasmArray(data.sigma_rules_info);
+            const matches = asWasmArray(data.sigma_matches);
+            const chips = [];
+            if (rules.length > 0) {
+                chips.push(
+                    '<span class="sigma-summary-chip sigma-summary-chip--rules">' +
+                    escapeHtml(i18nFmt('sigmaChipRules', { n: rules.length })) +
+                    '</span>'
+                );
+            }
+            if (matches.length > 0) {
+                const groups = groupSigmaMatches(matches);
+                chips.push(
+                    '<span class="sigma-summary-chip sigma-summary-chip--matches">' +
+                    escapeHtml(
+                        groups.length < matches.length
+                            ? i18nFmt('sigmaChipMatchDetail', { hits: matches.length, rules: groups.length })
+                            : i18nFmt('sigmaChipMatches', { n: matches.length })
+                    ) +
+                    '</span>'
+                );
+            } else {
+                chips.push(
+                    '<span class="sigma-summary-chip sigma-summary-chip--clean">' +
+                    escapeHtml(pack.sigmaChipClean || 'No matches') +
+                    '</span>'
+                );
+            }
+            bar.innerHTML = chips.join('');
+        }
+
+        function updateResultsHero(data) {
+            const hero = document.getElementById('results-hero');
+            if (!hero) return;
+            const pack = i18nPack();
+            const matches = asWasmArray(data.sigma_matches);
+            const rules = asWasmArray(data.sigma_rules_info);
+            const matchCount = matches.length;
+            const hasHigh = matches.some(function (rawM) {
+                const m = mapPlainTop(rawM) || rawM;
+                const l = (m.level || '').toLowerCase();
+                return l === 'critical' || l === 'high';
+            });
+
+            hero.hidden = false;
+            hero.classList.remove('results-hero--clean', 'results-hero--warn', 'results-hero--alert');
+            const icon = document.getElementById('results-hero-icon');
+            const title = document.getElementById('results-hero-title');
+            const sub = document.getElementById('results-hero-sub');
+            const metrics = document.getElementById('results-hero-metrics');
+
+            if (matchCount === 0) {
+                hero.classList.add('results-hero--clean');
+                if (icon) icon.textContent = '✓';
+                if (title) title.textContent = pack.resultsHeroTitleClean || 'Analysis complete';
+            } else if (hasHigh) {
+                hero.classList.add('results-hero--alert');
+                if (icon) icon.textContent = '!';
+                if (title) title.textContent = pack.resultsHeroTitleFindings || 'Sigma matches found';
+            } else {
+                hero.classList.add('results-hero--warn');
+                if (icon) icon.textContent = '⚠';
+                if (title) title.textContent = pack.resultsHeroTitleFindings || 'Sigma matches found';
+            }
+
+            const di = data.device_info || {};
+            const deviceLabel = [di.manufacturer, di.model].filter(Boolean).join(' ') || 'Unknown device';
+            const version = di.android_version || '?';
+            if (sub) {
+                sub.textContent = i18nFmt('resultsHeroSub', { device: deviceLabel, version: version });
+            }
+
+            if (metrics) {
+                const procCount = data.process_count != null ? String(data.process_count) : '0';
+                const pkgCount = data.package_count != null ? String(data.package_count) : '0';
+                const matchClass = matchCount > 0 ? (hasHigh ? 'alert' : 'warn') : '';
+                metrics.innerHTML = [
+                    { v: String(rules.length), l: pack.resultsHeroMetricRules || 'Rules', cls: '' },
+                    { v: String(matchCount), l: pack.resultsHeroMetricMatches || 'Matches', cls: matchClass },
+                    { v: procCount, l: pack.resultsHeroMetricProcesses || 'Processes', cls: '' },
+                    { v: pkgCount, l: pack.resultsHeroMetricPackages || 'Packages', cls: '' },
+                ]
+                    .map(function (m) {
+                        return (
+                            '<div class="hero-metric"><div class="hero-metric-value' +
+                            (m.cls ? ' ' + m.cls : '') +
+                            '">' +
+                            escapeHtml(m.v) +
+                            '</div><div class="hero-metric-label">' +
+                            escapeHtml(m.l) +
+                            '</div></div>'
+                        );
+                    })
+                    .join('');
+            }
+
+            updateSigmaSummaryBar(data);
+        }
+
         // Display results
         function displayResults(data) {
             currentResults = data;
@@ -2287,6 +2922,7 @@
                 return;
             }
             showResults();
+            updateResultsHero(data);
 
             // Device info
             if (data.device_info) {
@@ -2297,20 +2933,8 @@
                 document.getElementById('device-kernel').textContent = data.device_info.kernel_version || 'Unknown';
             }
 
-            // Battery info
-            if (data.battery_info) {
-                const bi = data.battery_info;
-                const lvl = bi.level != null ? Number(bi.level) : NaN;
-                document.getElementById('battery-level').textContent =
-                    Number.isFinite(lvl) ? lvl.toFixed(1) + '%' : '-';
-                document.getElementById('battery-health').textContent = bi.health || '-';
-                const temp = bi.temperature != null ? Number(bi.temperature) : NaN;
-                document.getElementById('battery-temp').textContent =
-                    Number.isFinite(temp) ? temp.toFixed(1) + '°C' : '-';
-                const volt = bi.voltage != null ? Number(bi.voltage) : NaN;
-                document.getElementById('battery-voltage').textContent =
-                    Number.isFinite(volt) ? volt.toFixed(2) + 'V' : '-';
-            }
+            // Battery info (parser history/hardware or legacy battery_info summary)
+            displayBatteryStatus(data);
 
             fillSystemStatistics(data);
             try {
@@ -2333,56 +2957,45 @@
 
             // Detection / Sigma rules (title, id, description, status, level, fetch success)
             const sigmaEl = document.getElementById('sigma-rules-container');
+            const pack = i18nPack();
             const info = asWasmArray(data.sigma_rules_info);
             if (info.length > 0) {
-                sigmaEl.innerHTML = info.map((rawR) => {
-                    const r = mapPlainTop(rawR) || rawR;
-                    const fetchBadge = r.success
-                        ? '<span style="color: var(--success);">✓ Fetched</span>'
-                        : '<span style="color: var(--error);">✗ ' + escapeHtml(r.fetchError || 'Failed') + '</span>';
-                    const rows = [
-                        ['URL', escapeHtml(r.url)],
-                        ['Server', fetchBadge],
-                        ['Title', r.title ? escapeHtml(r.title) : '-'],
-                        ['ID', r.id ? escapeHtml(r.id) : '-'],
-                        ['Description', r.description ? escapeHtml(r.description) : '-'],
-                        ['Status', r.status ? escapeHtml(r.status) : '-'],
-                        ['Level', r.level ? escapeHtml(r.level) : '-']
-                    ];
-                    const body = rows.map(([l, v]) => `<div style="margin-bottom: 0.35rem;"><span style="color: var(--text-secondary); font-weight: 500;">${escapeHtml(l)}:</span> ${v}</div>`).join('');
-                    return `<div class="result-card" style="margin-bottom: 0.75rem; padding: 1rem;"><div style="font-size: 0.875rem;">${body}</div></div>`;
-                }).join('');
+                sigmaEl.innerHTML = info
+                    .map((rawR) => {
+                        const r = mapPlainTop(rawR) || rawR;
+                        const fetchBadge = r.success
+                            ? '<span class="sigma-fetch-ok">✓ Fetched</span>'
+                            : '<span class="sigma-fetch-err">✗ ' + escapeHtml(r.fetchError || 'Failed') + '</span>';
+                        const rows = [
+                            ['URL', escapeHtml(r.url)],
+                            ['Server', fetchBadge],
+                            ['Title', r.title ? escapeHtml(r.title) : '-'],
+                            ['ID', r.id ? escapeHtml(r.id) : '-'],
+                            ['Description', r.description ? escapeHtml(r.description) : '-'],
+                            ['Status', r.status ? escapeHtml(r.status) : '-'],
+                            ['Level', r.level ? escapeHtml(r.level) : '-'],
+                        ];
+                        const body = rows
+                            .map(
+                                ([l, v]) =>
+                                    '<div class="sigma-rule-row"><span class="sigma-rule-label">' +
+                                    escapeHtml(l) +
+                                    '</span><span class="sigma-rule-value">' +
+                                    v +
+                                    '</span></div>'
+                            )
+                            .join('');
+                        return '<div class="sigma-rule-card">' + body + '</div>';
+                    })
+                    .join('');
             } else {
-                sigmaEl.textContent = 'No rules loaded.';
+                sigmaEl.innerHTML = '<p class="detection-empty">' + escapeHtml(pack.sigmaNoRules || 'No rules loaded.') + '</p>';
             }
 
-            // Sigma matches (from match_with_log_to_value: rule_id, rule_title, level, log_entry)
+            // Sigma matches — grouped by rule
             const matchesEl = document.getElementById('sigma-matches-container');
             const matches = asWasmArray(data.sigma_matches);
-            if (matches.length > 0) {
-                matchesEl.innerHTML = matches.map((rawM) => {
-                    const m = mapPlainTop(rawM) || rawM;
-                    const id = (m.rule_id && m.rule_id.trim()) ? escapeHtml(m.rule_id) : '-';
-                    const title = (m.rule_title && m.rule_title.trim()) ? escapeHtml(m.rule_title) : '-';
-                    const level = (m.level && m.level.trim()) ? escapeHtml(m.level) : '-';
-                    const l = (m.level || '').toLowerCase();
-                    const levelColor = l === 'critical' ? 'var(--error)' : l === 'high' ? 'var(--warning)' : l === 'medium' ? 'var(--sigma-medium)' : l === 'low' ? 'var(--sigma-low)' : 'var(--text-secondary)';
-                    let matchedLogHtml = '';
-                    let ml = m.log_entry ?? m.matched_log;
-                    // serde_wasm_bindgen can serialize maps as JS Map; Object.keys(Map) is [] so we convert to plain object
-                    if (ml && typeof ml === 'object' && ml instanceof Map) {
-                        ml = Object.fromEntries(ml);
-                    }
-                    if (ml && typeof ml === 'object' && !Array.isArray(ml) && Object.keys(ml).length > 0) {
-                        const fmt = (v) => typeof v === 'object' && v !== null ? escapeHtml(JSON.stringify(v)) : escapeHtml(String(v ?? ''));
-                        const entriesHtml = Object.entries(ml).map(([k, v]) => '<div style="margin-bottom: 0.2rem;"><span style="color: var(--text-secondary);">' + escapeHtml(k) + ':</span> ' + fmt(v) + '</div>').join('');
-                        matchedLogHtml = '<details class="sigma-matched-log"><summary>Matched log</summary><div class="sigma-matched-log-body">' + entriesHtml + '</div></details>';
-                    }
-                    return `<div class="result-card" style="margin-bottom: 0.5rem; padding: 0.75rem 1rem; border-left: 4px solid ${levelColor};"><div style="font-size: 0.875rem;"><div style="margin-bottom: 0.25rem;"><span style="color: var(--text-secondary); font-weight: 500;">Rule:</span> ${title}</div><div style="display: flex; gap: 1rem; flex-wrap: wrap;"><span><span style="color: var(--text-secondary);">ID:</span> ${id}</span><span style="color: ${levelColor}; font-weight: 500;">${level}</span></div>${matchedLogHtml}</div></div>`;
-                }).join('');
-            } else {
-                matchesEl.textContent = 'No matches.';
-            }
+            matchesEl.innerHTML = renderSigmaMatchesGroupedHtml(matches);
 
             // File info
             const fileInfoCard = document.getElementById('file-info-card');
@@ -3457,6 +4070,14 @@
                 const el = document.getElementById(id);
                 if (el) el.textContent = v;
             };
+            const setAlert = function (itemId, value, mode) {
+                const item = document.getElementById(itemId);
+                if (!item) return;
+                item.classList.remove('stat-item-alert', 'stat-item-warn');
+                const num = parseInt(String(value), 10);
+                if (!Number.isFinite(num) || num <= 0) return;
+                item.classList.add(mode === 'warn' ? 'stat-item-warn' : 'stat-item-alert');
+            };
             set('stats-processes', data.process_count != null ? String(data.process_count) : '0');
             set('stats-packages', data.package_count != null ? String(data.package_count) : '0');
             set('stats-battery-apps', String(n(data.battery_apps)));
@@ -3469,7 +4090,9 @@
             const sri = data.sigma_rules_info;
             set('stats-sigma-rules', String(n(sri)));
             const sm = data.sigma_matches;
-            set('stats-sigma-matches', String(n(sm)));
+            const matchCount = n(sm);
+            set('stats-sigma-matches', String(matchCount));
+            setAlert('stats-sigma-matches-item', matchCount, 'alert');
             let anrFiles = 0;
             let tombstones = 0;
             if (data.crash_info && typeof data.crash_info === 'object') {
@@ -3480,6 +4103,8 @@
             }
             set('stats-anr-files', String(anrFiles));
             set('stats-tombstones', String(tombstones));
+            setAlert('stats-anr-files-item', anrFiles, 'warn');
+            setAlert('stats-tombstones-item', tombstones, 'alert');
             const bi = data.bluetooth_info ? mapPlainTop(data.bluetooth_info) : null;
             set('stats-bluetooth-devices', String(bi && Array.isArray(bi.devices) ? bi.devices.length : 0));
             const ui = data.usb_info ? mapPlainTop(data.usb_info) : null;

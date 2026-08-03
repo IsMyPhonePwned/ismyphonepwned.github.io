@@ -7349,13 +7349,29 @@
                 if (statusKey) showStatus(trAndroid(statusKey, { t: clock }), statusType || 'info');
             };
 
+            let debugHeartbeat = null;
+            const stopDebugHeartbeat = function () {
+                if (debugHeartbeat) {
+                    clearInterval(debugHeartbeat);
+                    debugHeartbeat = null;
+                }
+            };
+
             try {
                 if (typeof Adb === 'undefined') {
                     showStatus('⚠️ WebAssembly not loaded yet. Please wait a moment and try again.', 'error');
                     return;
                 }
 
+                console.log('[GENERATE] requesting USB device (user gesture)…');
                 const usbDevice = await requestAdbUsbDeviceFromUser();
+                console.log('[GENERATE] USB device selected:', {
+                    productName: usbDevice.productName,
+                    manufacturerName: usbDevice.manufacturerName,
+                    vendorId: usbDevice.vendorId,
+                    productId: usbDevice.productId,
+                    serialNumber: usbDevice.serialNumber,
+                });
 
                 showStatus(trAndroid('generatePhaseConnect'), 'info');
                 hideResults();
@@ -7369,7 +7385,9 @@
                 adb = new Adb();
                 window.adb = adb;
 
+                console.log('[GENERATE] ADB connectWithUsbDevice…');
                 await adb.connectWithUsbDevice(usbDevice);
+                console.log('[GENERATE] ADB connected (+' + (Date.now() - t0) + 'ms)');
 
                 btnGenerate.disabled = true;
                 document.getElementById('btn-disconnect-generate').classList.remove('hidden');
@@ -7385,9 +7403,24 @@
                     }
                 }, 5000);
 
+                console.log('[GENERATE] calling adb.bugreport() — open DevTools Console for [BUGREPORTZ]/[SYNC]/[WebADB] lines');
+                console.log('[GENERATE] tip: device may sit silent for minutes; heartbeat every 10s below proves JS is still waiting');
+                debugHeartbeat = setInterval(function () {
+                    console.log('[GENERATE] still waiting on adb.bugreport()… elapsed=' + formatElapsedClock(Date.now() - t0) + ' (check for Rust [BUGREPORTZ] / [SYNC] lines above)');
+                }, 10000);
+
                 const bugreportData = await adb.bugreport();
+                stopDebugHeartbeat();
                 const genMs = Date.now() - t0;
                 const sizeMB = (bugreportData.length / 1024 / 1024).toFixed(2);
+                console.log('[GENERATE] adb.bugreport() returned', {
+                    bytes: bugreportData.length,
+                    sizeMB: sizeMB,
+                    elapsedMs: genMs,
+                    magic: bugreportData.length >= 4
+                        ? String.fromCharCode(bugreportData[0], bugreportData[1], bugreportData[2], bugreportData[3])
+                        : '(short)',
+                });
 
                 if (progressInterval) {
                     clearInterval(progressInterval);
@@ -7404,7 +7437,9 @@
                 );
                 if (phaseEl) phaseEl.textContent = trAndroid('generatePhaseHash');
 
+                console.log('[GENERATE] hashing SHA-256…');
                 const hashHex = await calculateHash(bugreportData);
+                console.log('[GENERATE] hash done:', hashHex);
 
                 showStatus(
                     trAndroid('generateStatusAnalyzing', { t: formatElapsedClock(Date.now() - t0) }),
@@ -7413,9 +7448,13 @@
                 if (phaseEl) phaseEl.textContent = trAndroid('generatePhaseAnalyze');
                 setAndroidProgress(96, trAndroid('generatePhaseAnalyze'));
 
+                console.log('[GENERATE] fetchSigmaRules + analyze_bugreport…');
                 const { rules, rulesInfo } = await fetchSigmaRules();
+                const analyzeT0 = Date.now();
                 const rawWasm = await adb.analyze_bugreport(bugreportData, rules);
+                console.log('[GENERATE] analyze_bugreport done in', Date.now() - analyzeT0, 'ms');
                 stopTimers();
+                stopDebugHeartbeat();
                 setAndroidProgress(100, trAndroid('generateStatusComplete', { t: formatElapsedClock(Date.now() - t0) }));
                 if (detailEl) detailEl.classList.add('hidden');
                 currentBugreportBytes = new Uint8Array(bugreportData);
@@ -7440,6 +7479,7 @@
             } catch (error) {
                 console.error('[GENERATE] Generation error:', error);
                 stopTimers();
+                stopDebugHeartbeat();
                 const elapsed = formatElapsedClock(Date.now() - t0);
 
                 let errorMessage = 'Failed to generate bugreport: ';

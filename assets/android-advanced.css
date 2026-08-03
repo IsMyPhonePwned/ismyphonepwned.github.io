@@ -1,0 +1,1142 @@
+/* Android Advanced (WebADB) — polished chrome on top of site.css */
+
+.adb-advanced .page-kicker {
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.adb-advanced .page-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin: 0.15rem 0 0;
+    max-width: 36rem;
+    line-height: 1.45;
+}
+
+.adb-advanced .page-subtitle a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.adb-advanced .page-subtitle a:hover {
+    text-decoration: underline;
+}
+
+.adb-advanced .page-nav .page-nav-current {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Connection strip */
+.adb-advanced .conn-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-card);
+}
+
+.adb-advanced .conn-bar__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.adb-advanced #adb-workspace button,
+.adb-advanced .conn-bar button {
+    width: auto;
+}
+
+.adb-advanced .btn-danger {
+    background: var(--error);
+}
+
+.adb-advanced .btn-danger:hover:not(:disabled) {
+    filter: brightness(1.05);
+}
+
+.adb-advanced .btn-ghost {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+}
+
+.adb-advanced .btn-ghost:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--accent) 10%, var(--bg-secondary));
+}
+
+.adb-advanced .btn-sm {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8125rem;
+}
+
+.adb-advanced .btn-chip {
+    padding: 0.35rem 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 999px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+}
+
+.adb-advanced .btn-chip:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.adb-advanced .btn-chip--danger {
+    color: var(--error);
+    border-color: color-mix(in srgb, var(--error) 40%, var(--border));
+}
+
+.adb-advanced .btn-chip--danger:hover:not(:disabled) {
+    border-color: var(--error);
+    color: var(--error);
+}
+
+.adb-advanced #status.status {
+    display: block !important;
+    flex: 1 1 12rem;
+    margin: 0;
+    padding: 0.55rem 0.85rem;
+    border-radius: 8px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border: 1px solid var(--border);
+}
+
+.adb-advanced .status.disconnected {
+    background: color-mix(in srgb, var(--error) 10%, transparent);
+    color: var(--error);
+    border-color: color-mix(in srgb, var(--error) 45%, var(--border));
+}
+
+.adb-advanced .status.connected {
+    background: color-mix(in srgb, var(--success) 10%, transparent);
+    color: var(--success);
+    border-color: color-mix(in srgb, var(--success) 45%, var(--border));
+}
+
+.adb-advanced .status.working {
+    background: color-mix(in srgb, var(--warning) 12%, transparent);
+    color: var(--warning);
+    border-color: color-mix(in srgb, var(--warning) 45%, var(--border));
+}
+
+/* Tool sections */
+.adb-advanced .tool-section {
+    margin-bottom: 1.25rem;
+    padding: 1.15rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+}
+
+.adb-advanced .tool-section > h2 {
+    margin: 0 0 0.25rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.adb-advanced .tool-section > .tool-lead {
+    margin: 0 0 1rem;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+}
+
+.adb-advanced .tool-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.adb-advanced .tool-panel {
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-secondary);
+    margin-top: 1rem;
+}
+
+.adb-advanced .tool-panel h3 {
+    margin: 0 0 0.5rem;
+    font-size: 0.95rem;
+}
+
+.adb-advanced .tool-panel p {
+    margin: 0 0 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+/* Flash / tips */
+.adb-advanced .flash-msg {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+
+.adb-advanced .flash-msg.success {
+    background: color-mix(in srgb, var(--success) 12%, transparent);
+    color: var(--success);
+    border: 1px solid color-mix(in srgb, var(--success) 40%, var(--border));
+}
+
+.adb-advanced .flash-msg.warning {
+    background: color-mix(in srgb, var(--warning) 12%, transparent);
+    color: var(--warning);
+    border: 1px solid color-mix(in srgb, var(--warning) 40%, var(--border));
+}
+
+.adb-advanced .flash-msg.error {
+    background: color-mix(in srgb, var(--error) 12%, transparent);
+    color: var(--error);
+    border: 1px solid color-mix(in srgb, var(--error) 40%, var(--border));
+}
+
+.adb-advanced .warning {
+    background: color-mix(in srgb, var(--warning) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--warning) 35%, var(--border));
+    border-left: 3px solid var(--warning);
+    padding: 0.85rem 1rem;
+    margin: 0 0 1rem;
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+}
+
+/* Outputs */
+.adb-advanced .output {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    padding: 1rem;
+    border-radius: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.8125rem;
+    max-height: 24rem;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin-top: 0.75rem;
+    border: 1px solid var(--border);
+}
+
+.adb-advanced .file-list {
+    max-height: 18rem;
+    overflow-y: auto;
+    background: var(--bg-secondary);
+    padding: 0.5rem;
+    border-radius: 8px;
+    margin: 0.5rem 0;
+    border: 1px solid var(--border);
+}
+
+.adb-advanced .file-item {
+    padding: 0.5rem 0.65rem;
+    margin: 0.3rem 0;
+    background: var(--bg-card);
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid var(--border);
+    gap: 0.5rem;
+}
+
+.adb-advanced .file-item:hover {
+    background: color-mix(in srgb, var(--accent) 6%, var(--bg-card));
+}
+
+.adb-advanced .progress {
+    width: 100%;
+    height: 1.75rem;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 0.75rem 0;
+    display: none;
+    border: 1px solid var(--border);
+}
+
+.adb-advanced .progress.show {
+    display: block;
+}
+
+.adb-advanced .progress-bar {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.75rem;
+    animation: none;
+}
+
+.adb-advanced .file-info {
+    background: var(--bg-secondary);
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 0.75rem 0;
+    display: none;
+    border: 1px solid var(--border);
+}
+
+.adb-advanced .file-info.show {
+    display: block;
+}
+
+.adb-advanced .file-info h3 {
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+}
+
+.adb-advanced .file-info p {
+    color: var(--text-secondary);
+    margin: 0.25rem 0;
+    font-size: 0.875rem;
+}
+
+.adb-advanced .download-btn {
+    background: var(--success);
+}
+
+.adb-advanced .download-btn:hover:not(:disabled) {
+    filter: brightness(1.05);
+}
+
+.adb-advanced .bugreport-full-detail {
+    display: none;
+    margin: 1rem 0;
+    padding: 1rem 1.1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.adb-advanced .bugreport-full-detail h4 {
+    font-size: 1rem;
+    margin: 0 0 0.5rem;
+}
+
+.adb-advanced .bugreport-full-detail .bugreport-elapsed {
+    margin: 0 0 0.75rem;
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+}
+
+.adb-advanced .bugreport-full-detail ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    line-height: 1.55;
+}
+
+.adb-advanced .bugreport-full-detail code {
+    font-size: 0.8em;
+}
+
+.adb-advanced .download-debug {
+    display: none;
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    font-family: ui-monospace, monospace;
+    font-size: 0.75rem;
+}
+
+.adb-advanced .download-debug__head {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.65rem;
+    color: var(--text-primary);
+}
+
+.adb-advanced .download-debug__meter {
+    background: var(--bg-secondary);
+    border-radius: 999px;
+    height: 1.25rem;
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+.adb-advanced .download-debug__meter > div {
+    background: linear-gradient(90deg, var(--success), color-mix(in srgb, var(--success) 70%, var(--accent)));
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.68rem;
+}
+
+.adb-advanced .download-debug__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.adb-advanced .download-debug__log {
+    margin-top: 0.75rem;
+    padding: 0.65rem;
+    background: var(--bg-secondary);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+}
+
+.adb-advanced .download-debug__log-label {
+    color: var(--text-secondary);
+    font-size: 0.68rem;
+    margin-bottom: 0.35rem;
+}
+
+.adb-advanced #debugLog {
+    max-height: 6.5rem;
+    overflow-y: auto;
+    color: var(--text-primary);
+}
+
+/* Shell terminal */
+.adb-advanced .terminal-section {
+    border-left: 3px solid var(--accent);
+}
+
+.adb-advanced .shell-quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+}
+
+.adb-advanced .terminal-output {
+    background: #0d1117;
+    color: #3fb950;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.8125rem;
+    padding: 0.9rem 1rem;
+    border-radius: 8px;
+    height: 22rem;
+    overflow-y: auto;
+    margin-bottom: 0.65rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    border: 1px solid color-mix(in srgb, #3fb950 35%, var(--border));
+}
+
+.adb-advanced .terminal-output .term-muted {
+    color: #8b949e;
+}
+
+.adb-advanced .shell-input-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.adb-advanced .shell-prompt {
+    color: #3fb950;
+    font-family: ui-monospace, monospace;
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.adb-advanced #shellInput {
+    flex: 1;
+    min-width: 0;
+    background: #0d1117;
+    color: #3fb950;
+    border: 1px solid color-mix(in srgb, #3fb950 35%, var(--border));
+    padding: 0.65rem 0.75rem;
+    font-family: ui-monospace, monospace;
+    font-size: 0.875rem;
+    border-radius: 8px;
+    width: auto;
+}
+
+.adb-advanced #shellInput:focus {
+    outline: 2px solid color-mix(in srgb, #3fb950 45%, transparent);
+    outline-offset: 1px;
+}
+
+.adb-advanced .btn-shell-run {
+    background: #238636;
+    color: #fff;
+    font-weight: 600;
+    padding: 0.65rem 1.1rem;
+}
+
+.adb-advanced .shell-tips {
+    margin-top: 0.65rem;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+/* File manager */
+.adb-advanced .fm-toolbar {
+    padding: 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.adb-advanced .fm-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.65rem;
+}
+
+.adb-advanced .fm-breadcrumb {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.45rem 0.65rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: ui-monospace, monospace;
+    font-size: 0.78rem;
+    overflow-x: auto;
+    min-width: 0;
+    color: var(--text-primary);
+}
+
+.adb-advanced .breadcrumb-part {
+    cursor: pointer;
+    color: var(--accent);
+    white-space: nowrap;
+}
+
+.adb-advanced .breadcrumb-part:hover {
+    text-decoration: underline;
+}
+
+.adb-advanced .breadcrumb-separator {
+    color: var(--text-secondary);
+    margin: 0 0.1rem;
+}
+
+.adb-advanced .fm-paths,
+.adb-advanced .fm-actions {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.65rem;
+}
+
+.adb-advanced .fm-actions {
+    margin-bottom: 0;
+}
+
+.adb-advanced .fm-table-wrap {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--bg-card);
+}
+
+.adb-advanced #fileListContainer {
+    max-height: 28rem;
+    overflow-y: auto;
+}
+
+.adb-advanced #fileTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.adb-advanced #fileTable thead {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--bg-secondary);
+}
+
+.adb-advanced #fileTable th {
+    padding: 0.7rem 0.85rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    user-select: none;
+}
+
+.adb-advanced #fileTable th[data-sort] {
+    cursor: pointer;
+}
+
+.adb-advanced #fileTable th.col-size {
+    text-align: right;
+    width: 7rem;
+}
+
+.adb-advanced #fileTable th.col-type {
+    width: 6.5rem;
+}
+
+.adb-advanced #fileTable th.col-actions {
+    text-align: center;
+    width: 7rem;
+}
+
+.adb-advanced #fileTable td {
+    padding: 0.55rem 0.85rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    font-size: 0.8125rem;
+    vertical-align: middle;
+}
+
+.adb-advanced #fileTable tbody tr:hover {
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.adb-advanced #fileTable tbody tr.selected {
+    background: color-mix(in srgb, var(--accent) 12%, transparent) !important;
+}
+
+.adb-advanced #fileTable td.col-size {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-secondary);
+}
+
+.adb-advanced #fileTable td.col-actions {
+    text-align: center;
+}
+
+.adb-advanced .file-row-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.adb-advanced .file-row-name .file-name-link {
+    flex: 1;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.adb-advanced .file-icon-large {
+    flex-shrink: 0;
+}
+
+.adb-advanced .file-empty {
+    padding: 2.5rem 1rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.adb-advanced .file-empty--error {
+    color: var(--error);
+}
+
+.adb-advanced .btn-file-action {
+    background: var(--accent);
+    color: #fff;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.75rem;
+}
+
+/* Drop zone + context menu + modals */
+.adb-advanced #fileDropZone {
+    display: none !important;
+    position: fixed;
+    inset: 0;
+    background: color-mix(in srgb, var(--warning) 88%, transparent);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+
+.adb-advanced #fileDropZone.active {
+    display: flex !important;
+}
+
+.adb-advanced .drop-zone-inner {
+    text-align: center;
+    color: #fff;
+}
+
+.adb-advanced .drop-zone-inner__icon {
+    font-size: 3.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.adb-advanced .drop-zone-inner__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.adb-advanced .drop-zone-inner__path {
+    font-size: 1rem;
+    margin-top: 0.5rem;
+    opacity: 0.9;
+}
+
+.adb-advanced #fileContextMenu {
+    display: none;
+    position: fixed;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px var(--shadow);
+    z-index: 10000;
+    min-width: 11rem;
+    overflow: hidden;
+}
+
+.adb-advanced .context-menu-item {
+    padding: 0.6rem 0.9rem;
+    cursor: pointer;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    font-size: 0.8125rem;
+    color: var(--text-primary);
+}
+
+.adb-advanced .context-menu-item:last-child {
+    border-bottom: none;
+}
+
+.adb-advanced .context-menu-item:hover {
+    background: var(--bg-secondary);
+}
+
+.adb-advanced .context-menu-item--danger {
+    color: var(--error);
+}
+
+.adb-advanced .modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 10001;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.adb-advanced .modal-card {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    padding: 1.35rem;
+    border-radius: 12px;
+    min-width: min(24rem, 100%);
+    max-width: 28rem;
+    width: 100%;
+    border: 1px solid var(--border);
+    box-shadow: 0 12px 32px var(--shadow);
+}
+
+.adb-advanced .modal-card h3 {
+    margin: 0 0 0.85rem;
+    font-size: 1.05rem;
+}
+
+.adb-advanced .modal-card h3.danger {
+    color: var(--error);
+}
+
+.adb-advanced .modal-card input[type='text'] {
+    width: 100%;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.875rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.adb-advanced .modal-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.adb-advanced .upload-meter {
+    background: var(--bg-secondary);
+    border-radius: 999px;
+    height: 1.35rem;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--border);
+}
+
+.adb-advanced #uploadProgressBar {
+    background: linear-gradient(90deg, var(--warning), color-mix(in srgb, var(--warning) 60%, #fff));
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s;
+}
+
+.adb-advanced #uploadFileName {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.adb-advanced #uploadProgressText,
+.adb-advanced #uploadStatus {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+}
+
+.adb-advanced #uploadStatus {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+}
+
+/* Diagnostics */
+.adb-advanced .diagnostics-section {
+    border-style: dashed;
+    background: color-mix(in srgb, var(--bg-secondary) 55%, var(--bg-card));
+}
+
+.adb-advanced .diagnostics-details {
+    margin: 0;
+}
+
+.adb-advanced .diagnostics-summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    padding: 0.1rem 0;
+}
+
+.adb-advanced .diagnostics-summary::-webkit-details-marker {
+    display: none;
+}
+
+.adb-advanced .diagnostics-summary__main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.adb-advanced .diagnostics-summary__main::before {
+    content: '▸';
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1;
+}
+
+.adb-advanced .diagnostics-details[open] .diagnostics-summary__main::before {
+    content: '▾';
+}
+
+.adb-advanced .diagnostics-summary__title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.adb-advanced .diagnostics-summary__badge {
+    display: inline-block;
+    padding: 0.12rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+}
+
+.adb-advanced .diagnostics-summary__hint {
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+    line-height: 1.35;
+    padding-left: 1.15rem;
+}
+
+.adb-advanced .diagnostics-inner {
+    margin-top: 0.95rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--border);
+}
+
+.adb-advanced .diagnostics-lead {
+    margin: 0 0 0.65rem;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+}
+
+.adb-advanced .diagnostics-when {
+    margin: 0 0 1rem;
+    padding-left: 1.15rem;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+}
+
+.adb-advanced .diagnostics-when li {
+    margin-bottom: 0.2rem;
+}
+
+.adb-advanced .diag-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+    gap: 0.65rem;
+    margin: 0 0 0.85rem;
+}
+
+.adb-advanced .diag-stat {
+    background: var(--bg-card);
+    padding: 0.75rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    min-width: 0;
+}
+
+.adb-advanced .diag-stat__label {
+    color: var(--text-secondary);
+    font-size: 0.68rem;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+}
+
+.adb-advanced .diag-stat__value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+    word-break: break-word;
+}
+
+.adb-advanced .diag-stat__sub {
+    margin-top: 0.2rem;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+}
+
+.adb-advanced .diag-stat__sub--warn {
+    color: var(--warning);
+    font-weight: 600;
+}
+
+.adb-advanced .diag-stat__value--accent {
+    color: var(--accent);
+}
+
+.adb-advanced .diag-stat__value--muted {
+    color: var(--text-secondary);
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.adb-advanced .diag-stat__value--warn {
+    color: var(--warning);
+}
+
+.adb-advanced .diag-stat__value[data-health="ok"] {
+    color: var(--success);
+}
+
+.adb-advanced .diag-stat__value[data-health="bad"],
+.adb-advanced .diag-stat__value[data-health="error"] {
+    color: var(--error);
+}
+
+.adb-advanced .diag-stat__value[data-health="pending"] {
+    color: var(--warning);
+}
+
+.adb-advanced .diagnostics-actions {
+    margin-bottom: 0.85rem;
+}
+
+.adb-advanced .diagnostics-actions button {
+    width: auto;
+}
+
+.adb-advanced .diagnostics-log-wrap {
+    margin-top: 0.25rem;
+}
+
+.adb-advanced .diagnostics-log-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    margin-bottom: 0.35rem;
+}
+
+.adb-advanced .diagnostics-log {
+    margin: 0;
+    padding: 0.65rem 0.75rem;
+    background: var(--bg-card);
+    border-radius: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.75rem;
+    line-height: 1.45;
+    max-height: 12rem;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    display: none;
+}
+
+.adb-advanced .diagnostics-log.is-visible {
+    display: block;
+}
+
+.adb-advanced .diagnostics-log-empty {
+    margin: 0;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    background: var(--bg-card);
+}
+
+.adb-advanced .diagnostics-log-empty.is-hidden {
+    display: none;
+}
+
+.adb-advanced .diag-log-line {
+    margin: 0 0 0.35rem;
+}
+
+.adb-advanced .diag-log-line:last-child {
+    margin-bottom: 0;
+}
+
+.adb-advanced .diag-log-line__time {
+    color: var(--text-secondary);
+    margin-right: 0.35rem;
+}
+
+.adb-advanced .diag-log-line--info {
+    color: var(--accent);
+}
+
+.adb-advanced .diag-log-line--ok {
+    color: var(--success);
+}
+
+.adb-advanced .diag-log-line--warn {
+    color: var(--warning);
+}
+
+.adb-advanced .diag-log-line--error {
+    color: var(--error);
+}
+
+.adb-advanced .diagnostics-details.is-attention:not([open]) .diagnostics-summary__badge {
+    color: var(--warning);
+    border-color: color-mix(in srgb, var(--warning) 45%, var(--border));
+    background: color-mix(in srgb, var(--warning) 12%, var(--bg-secondary));
+}
+
+@media (max-width: 640px) {
+    .adb-advanced .diagnostics-summary__hint {
+        padding-left: 0;
+    }
+
+    .adb-advanced .diagnostics-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .adb-advanced .diagnostics-actions button {
+        width: 100%;
+    }
+}
+
+.adb-advanced .logcat-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.adb-advanced #adb-workspace .logcat-controls input {
+    width: auto;
+    min-width: 7rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.adb-advanced .page-footer-note {
+    margin-top: 1.5rem;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.adb-advanced .page-footer-note a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+@media (max-width: 640px) {
+    .adb-advanced .fm-nav {
+        flex-wrap: wrap;
+    }
+
+    .adb-advanced .fm-breadcrumb {
+        order: 3;
+        flex: 1 1 100%;
+    }
+
+    .adb-advanced .download-debug__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .adb-advanced #fileTable th.col-type,
+    .adb-advanced #fileTable td:nth-child(3) {
+        display: none;
+    }
+}

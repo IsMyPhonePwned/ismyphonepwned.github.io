@@ -10,7 +10,7 @@ logsource:
   product: ios
   category: filesystem
 detection:
-  selection:
+  selection_path:
     file_path|contains:
       - 'wifi_passwords'
       - 'wifi_passwords_securityd.txt'
@@ -23,7 +23,20 @@ detection:
       - 'persona_keychains.kb'
       - 'usersession_keychains.kb'
       - 'installed_apps.txt'
-  condition: selection
+  selection_message:
+    message|contains:
+      - 'wifi_passwords'
+      - 'wifi_passwords_securityd.txt'
+      - 'icloud_dump'
+      - 'keychain_dump.txt'
+      - '/private/var/tmp/keychain-2.db'
+      - 'keychain_copy'
+      - 'keybag_copy'
+      - 'PostLogs.txt'
+      - 'persona_keychains.kb'
+      - 'usersession_keychains.kb'
+      - 'installed_apps.txt'
+  condition: selection_path or selection_message
 level: critical
 tags:
   - attack.collection

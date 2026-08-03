@@ -19,7 +19,7 @@
                 <img src="logo.png" alt="IsMyPhonePwned Logo" class="logo" onerror="this.style.display='none';">
                 <div style="display: flex; flex-direction: column; gap: 0.25rem;">
                     <h1 class="logo-text">IsMyPhonePwned ?</h1>
-                    <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400;" data-i18n="pageVersion">v0.3.0-beta • Updated 8 July 2026</span>
+                    <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400;" data-i18n="pageVersion">v0.3.1-beta • Updated 3 August 2026</span>
                 </div>
             </div>
             <div class="header-actions">
@@ -49,7 +49,15 @@
         </nav>
 
         <div id="status" class="status"></div>
-        <div id="progress" class="progress"><div class="progress-bar"></div></div>
+        <div id="progress" class="progress progress--with-meta">
+            <div class="progress-meta">
+                <span id="progress-label" class="progress-meta__label"></span>
+                <span id="progress-pct" class="progress-pct">0%</span>
+            </div>
+            <div class="progress-track" aria-hidden="true">
+                <div class="progress-bar"></div>
+            </div>
+        </div>
         <div id="loading-spinner" class="loading-spinner">
             <div class="spinner"></div>
             <div class="loading-text" data-i18n="analyzingWait">Analyzing bugreport... Please wait</div>
@@ -296,6 +304,18 @@
                             🔌
                         </button>
                     </div>
+                    <div id="generate-bugreport-detail" class="generate-bugreport-detail hidden" aria-live="polite" aria-atomic="true">
+                        <h4 data-i18n="generateDetailTitle">Bugreport generation in progress</h4>
+                        <p id="generate-bugreport-elapsed" class="generate-bugreport-elapsed">Elapsed: 0:00</p>
+                        <p id="generate-bugreport-phase" class="generate-bugreport-phase"></p>
+                        <ul>
+                            <li data-i18n="generateDetailTip1">The phone is collecting logs and system dumps (<code>bugreportz</code>). Busy devices often need about 5–15 minutes before data is ready.</li>
+                            <li data-i18n="generateDetailTip2">Keep USB connected; avoid running desktop adb or Android Studio against the same device while this runs.</li>
+                            <li data-i18n="generateDetailTip3">Leaving this browser tab visible can reduce throttling; try not to put the phone in deep sleep.</li>
+                            <li data-i18n="generateDetailTip4">When the device finishes, the ZIP is transferred over WebUSB — large reports add more minutes after generation completes.</li>
+                            <li data-i18n="generateDetailTip5">The progress bar is only a rough visual guide; completion is when you see the success message and results.</li>
+                        </ul>
+                    </div>
                 </div>
 
                 <!-- Use Existing from Device -->
@@ -317,9 +337,7 @@
                                 <div class="bugreport-picker-title" data-i18n="bugreportPickerTitle">Choose a bugreport</div>
                                 <div id="bugreport-picker-count" class="bugreport-picker-sub"></div>
                             </div>
-                            <button type="button" id="btn-refresh-list" class="bugreport-picker-refresh hidden" onclick="refreshBugreportList()">
-                                <span data-i18n="refreshList">🔄 Refresh</span>
-                            </button>
+                            <button type="button" id="btn-refresh-list" class="bugreport-picker-refresh hidden" onclick="refreshBugreportList()" data-i18n="refreshList">Refresh</button>
                         </div>
                         <p class="bugreport-picker-hint" data-i18n="bugreportPickerHint">Select the main .zip archive for full analysis. .txt files are companion logs.</p>
                         <div id="bugreport-picker-list" class="bugreport-picker-list" role="listbox" aria-label="Bugreports on device"></div>
@@ -589,6 +607,7 @@
                                     <tr>
                                         <th>PID</th>
                                         <th>Name</th>
+                                        <th>Package</th>
                                         <th>User</th>
                                         <th>CPU%</th>
                                         <th>Memory</th>
@@ -629,6 +648,25 @@
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+
+                <!-- APK downgrades from batterystats daily (MVT / Cellebrite-style hunt) -->
+                <div class="result-card" id="apk-downgrade-card" style="display: none;">
+                    <div class="section-header">
+                        <h3 data-i18n="apkDowngradeTitle">APK downgrades (battery daily)</h3>
+                        <span class="count-badge" id="apk-downgrade-count-badge">0</span>
+                    </div>
+                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('apk-downgrade')">▼</button>
+                    <div class="section-content collapsed" id="apk-downgrade-content">
+                        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.75rem;" data-i18n="apkDowngradeHint">
+                            Version decreases and vers=0 uninstalls from dumpsys batterystats daily Update lines. Forensic tools sometimes leave these trails.
+                        </p>
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="apk-downgrade-search" data-i18n-placeholder="apkDowngradeSearch" placeholder="Filter package, version, or date…">
+                        </div>
+                        <div id="apk-downgrade-list"></div>
                     </div>
                 </div>
 
@@ -738,20 +776,22 @@
                     </div>
                     <button class="section-toggle collapsed" onclick="toggleSection('network-sockets')">▼</button>
                     <div class="section-content collapsed" id="network-sockets-content">
+                        <p class="network-sockets-hint" data-i18n="networkSocketsHint">
+                            Owner is resolved from UID → package (and process when needed). Click a package owner to open that package card; click a socket row for details.
+                        </p>
                         <div class="search-box">
                             <span class="search-icon">🔍</span>
-                            <input type="text" id="network-sockets-search-input" placeholder="Search by protocol, address, port, or state...">
+                            <input type="text" id="network-sockets-search-input" placeholder="Search protocol, address, owner, package, or UID…">
                         </div>
                         <div class="data-table-container">
                             <table class="data-table" id="network-sockets-table">
                                 <thead>
                                     <tr>
                                         <th>Protocol</th>
-                                        <th>Local Address</th>
-                                        <th>Local Port</th>
-                                        <th>Remote Address</th>
-                                        <th>Remote Port</th>
+                                        <th>Local</th>
+                                        <th>Remote</th>
                                         <th>State</th>
+                                        <th>Owner</th>
                                         <th>UID</th>
                                     </tr>
                                 </thead>
@@ -876,22 +916,9 @@
                     </div>
                 </div>
 
-                <!-- Full Data (JSON) -->
-                <div class="result-card">
-                    <div class="section-header">
-                        <h3>📋 Full Data (JSON)</h3>
-                    </div>
-                    <button class="section-toggle collapsed" onclick="toggleSection('json-output')">▼</button>
-                    <div class="section-content collapsed" id="json-output-content">
-                        <div class="json-viewer" id="json-output">Analyzing...</div>
-                    </div>
-                </div>
-                
                 <!-- Results Actions -->
                 <div id="results-actions" style="margin-top: 1.5rem; display: none; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
                     <button onclick="downloadResults()" style="background: #4CAF50; color: white;" data-i18n="btnDownloadJson">📥 Download JSON</button>
-                    <button type="button" onclick="copyResults()" style="background: var(--accent); color: white;" data-i18n="btnCopyClipboard">📋 Copy to Clipboard</button>
-                    <span id="copy-json-feedback" class="copy-json-feedback" hidden aria-live="polite"></span>
                 </div>
             </div>
         </div>
@@ -924,7 +951,7 @@
     <script>
         window.BUGREPORT_I18N = {
             en: {
-                pageVersion: 'v0.3.0-beta • Updated 8 July 2026',
+                pageVersion: 'v0.3.1-beta • Updated 3 August 2026',
                 wasmLoading: '⏳ Loading...',
                 wasmReady: '✓ Ready',
                 wasmFailed: '❌ Failed to load',
@@ -952,6 +979,24 @@
                 analyzeSysdiagnoseBtn: 'Analyze sysdiagnose',
                 generateDesc: 'Connect to your device and generate a fresh bugreport (takes 5-10 minutes).',
                 btnConnectGenerate: 'Connect & Generate Bugreport',
+                generateDetailTitle: 'Bugreport generation in progress',
+                generateElapsed: 'Elapsed: {t}',
+                generatePhaseConnect: 'Connecting to device over WebUSB…',
+                generatePhaseCollect: 'Device is collecting dumps via bugreportz (typically 5–15 min)…',
+                generatePhaseHash: 'Bugreport ready — calculating SHA-256…',
+                generatePhaseAnalyze: 'Analyzing bugreport and evaluating Sigma rules…',
+                generateStatusCollect: 'Generating bugreport… {t} elapsed (typically 5–15 min)',
+                generateStatusDone: 'Bugreport generated in {t} ({size}). Calculating hash…',
+                generateStatusAnalyzing: 'Hash done. Analyzing… ({t} total so far)',
+                generateStatusComplete: 'Analysis complete! Total time: {t}',
+                generateDetailTip1: 'The phone is collecting logs and system dumps (bugreportz). Busy devices often need about 5–15 minutes before data is ready.',
+                generateDetailTip2: 'Keep USB connected; avoid running desktop adb or Android Studio against the same device while this runs.',
+                generateDetailTip3: 'Leaving this browser tab visible can reduce throttling; try not to put the phone in deep sleep.',
+                generateDetailTip4: 'When the device finishes, the ZIP is transferred over WebUSB — large reports add more minutes after generation completes.',
+                generateDetailTip5: 'The progress bar is only a rough visual guide; completion is when you see the success message and results.',
+                generateBtnBusy: 'Generating… {t}',
+                generateBtnRetry: 'Retry Generation',
+                generateTimeout: 'Operation timed out after {t}. Bugreport generation can take 5–15 minutes. Try again, or use “From Device” if a report already exists.',
                 deviceDesc: 'Connect to device and select an existing bugreport.',
                 btnConnectDevice: 'Connect to Device',
                 scanningDevice: '📡 Scanning device for bugreports...',
@@ -968,7 +1013,7 @@
                 bugreportBadgeZip: 'ZIP',
                 bugreportBadgeTxt: 'TXT',
                 bugreportDateUnknown: 'Date unknown',
-                refreshList: '🔄 Refresh',
+                refreshList: 'Refresh',
                 analyzeSelected: 'Analyze bugreport',
                 uploadDesc: 'Upload a bugreport file from your computer.',
                 uploadDrop: 'Click or drag a bugreport file here',
@@ -1010,6 +1055,8 @@
                     'These rows used Unix epoch or year-1970 wall times (usually missing or mis-parsed source fields). They are not included in the CSV, JSONL, or chart above so Timesketch stays meaningful.',
                 timelineDownloadCsv: 'Download CSV',
                 timelineDownloadJsonl: 'Download JSONL',
+                timelineLoadBtn: 'Load interactive timeline',
+                timelineLoadHint: 'Timeline data is ready. Click to render the interactive view (keeps the page responsive on large reports).',
                 timelineSearchPlaceholder: 'Search timeline (message, parser, JSON)…',
                 timelineSearchAriaLabel: 'Filter timeline events by message, parser, or JSON text',
                 timelineDetailSearchPlaceholder: 'Search inside this event…',
@@ -1061,6 +1108,23 @@
                 batteryStatus: '🔋 Battery Status',
                 level: 'Level',
                 health: 'Health',
+                networkSocketsHint: 'Owner is resolved from UID → package (and process when needed). Click a package owner to open that package card; click a socket row for details.',
+                socketOwnerPackage: 'Package',
+                socketOwnerProcess: 'Process',
+                socketOwnerUidOnly: 'UID only — no package match',
+                socketOwnerStale: 'Stale',
+                socketViewPackage: 'View package',
+                socketFilterSockets: 'Filter sockets',
+                socketCountBadge: '{n} sockets',
+                processLinkedPkg: 'Package',
+                apkDowngradeTitle: 'APK downgrades (battery daily)',
+                apkDowngradeHint: 'Version decreases and vers=0 uninstalls from dumpsys batterystats daily Update lines. Forensic tools sometimes leave these trails.',
+                apkDowngradeSearch: 'Filter package, version, or date…',
+                apkDowngradeEmpty: 'No APK downgrades or vers=0 uninstalls in batterystats daily updates.',
+                apkDowngradeBadge: 'Downgrade',
+                apkUninstallBadge: 'Uninstall',
+                sideloadBadge: 'Sideload',
+                knownInstallerBadge: 'Store / system',
                 temperature: 'Temperature',
                 voltage: 'Voltage',
                 systemStats: '📈 System Statistics',
@@ -1115,6 +1179,9 @@
                 btnCopyClipboard: '📋 Copy to Clipboard',
                 copyJsonDone: 'JSON copied to clipboard.',
                 btnCopyParserJson: 'Copy parser JSON',
+                jsonExpandHint: 'Expand to build JSON preview (skipped on load to keep the page responsive).',
+                jsonBuilding: 'Building JSON preview…',
+                parserPayloadExpand: 'Expand to load payload preview',
                 copyParserOk: 'Parser JSON copied to clipboard.',
                 copyParserOkShort: 'Copied',
                 copyParserEmpty: 'Nothing to copy for this parser.',
@@ -1126,7 +1193,7 @@
                 navGitHub: 'GitHub'
             },
             fr: {
-                pageVersion: 'v0.3.0-beta • Mis à jour le 8 juillet 2026',
+                pageVersion: 'v0.3.1-beta • Mis à jour le 3 août 2026',
                 wasmLoading: '⏳ Chargement...',
                 wasmReady: '✓ Prêt',
                 wasmFailed: '❌ Échec du chargement',
@@ -1154,6 +1221,24 @@
                 analyzeSysdiagnoseBtn: 'Analyser sysdiagnose',
                 generateDesc: 'Connectez l\'appareil et générez un bug report (5 à 10 min).',
                 btnConnectGenerate: 'Connexion et génération',
+                generateDetailTitle: 'Génération du bug report en cours',
+                generateElapsed: 'Écoulé : {t}',
+                generatePhaseConnect: 'Connexion à l’appareil via WebUSB…',
+                generatePhaseCollect: 'L’appareil collecte les dumps via bugreportz (souvent 5–15 min)…',
+                generatePhaseHash: 'Bug report prêt — calcul du SHA-256…',
+                generatePhaseAnalyze: 'Analyse du bug report et évaluation des règles Sigma…',
+                generateStatusCollect: 'Génération du bug report… {t} écoulées (souvent 5–15 min)',
+                generateStatusDone: 'Bug report généré en {t} ({size}). Calcul du hash…',
+                generateStatusAnalyzing: 'Hash terminé. Analyse… ({t} au total pour l’instant)',
+                generateStatusComplete: 'Analyse terminée ! Durée totale : {t}',
+                generateDetailTip1: 'Le téléphone collecte les journaux et dumps système (bugreportz). Les appareils chargés mettent souvent environ 5–15 minutes.',
+                generateDetailTip2: 'Gardez l’USB branché ; évitez d’utiliser adb ou Android Studio sur le même appareil pendant ce temps.',
+                generateDetailTip3: 'Garder cet onglet visible peut réduire le ralentissement ; évitez la veille profonde du téléphone.',
+                generateDetailTip4: 'Quand l’appareil a fini, le ZIP est transféré via WebUSB — les gros rapports ajoutent encore des minutes.',
+                generateDetailTip5: 'La barre de progression est indicative ; la fin est le message de succès et l’affichage des résultats.',
+                generateBtnBusy: 'Génération… {t}',
+                generateBtnRetry: 'Réessayer',
+                generateTimeout: 'Délai dépassé après {t}. La génération peut prendre 5–15 minutes. Réessayez, ou utilisez « Depuis l’appareil » si un rapport existe déjà.',
                 deviceDesc: 'Connectez l\'appareil et sélectionnez un bug report existant.',
                 btnConnectDevice: 'Connecter l\'appareil',
                 scanningDevice: '📡 Recherche des bug reports...',
@@ -1170,7 +1255,7 @@
                 bugreportBadgeZip: 'ZIP',
                 bugreportBadgeTxt: 'TXT',
                 bugreportDateUnknown: 'Date inconnue',
-                refreshList: '🔄 Actualiser',
+                refreshList: 'Actualiser',
                 analyzeSelected: 'Analyser le bug report',
                 uploadDesc: 'Envoyez un fichier bug report depuis votre ordinateur.',
                 uploadDrop: 'Cliquez ou glissez un fichier bug report ici',
@@ -1212,6 +1297,8 @@
                     'Ces lignes correspondaient à l’époque Unix ou à l’année 1970 (champs source absents ou mal interprétés). Elles ne figurent pas dans le CSV, le JSONL ni le graphique ci-dessus pour garder une chronologie exploitable dans Timesketch.',
                 timelineDownloadCsv: 'Télécharger CSV',
                 timelineDownloadJsonl: 'Télécharger JSONL',
+                timelineLoadBtn: 'Charger la timeline interactive',
+                timelineLoadHint: 'Les données timeline sont prêtes. Cliquez pour afficher la vue interactive (évite de bloquer la page sur les gros rapports).',
                 timelineSearchPlaceholder: 'Filtrer la chronologie (message, parseur, JSON)…',
                 timelineSearchAriaLabel: 'Filtrer les événements par message, parseur ou texte JSON',
                 timelineDetailSearchPlaceholder: 'Chercher dans cet événement…',
@@ -1263,6 +1350,23 @@
                 batteryStatus: '🔋 État batterie',
                 level: 'Niveau',
                 health: 'Santé',
+                networkSocketsHint: 'Le propriétaire est résolu UID → package (et processus si besoin). Cliquez un package pour ouvrir sa fiche ; cliquez une ligne pour les détails.',
+                socketOwnerPackage: 'Package',
+                socketOwnerProcess: 'Processus',
+                socketOwnerUidOnly: 'UID seul — aucun package trouvé',
+                socketOwnerStale: 'Obsolète',
+                socketViewPackage: 'Voir le package',
+                socketFilterSockets: 'Filtrer les sockets',
+                socketCountBadge: '{n} sockets',
+                processLinkedPkg: 'Package',
+                apkDowngradeTitle: 'Rétrogradations APK (battery daily)',
+                apkDowngradeHint: 'Baisses de version et désinstallations vers=0 dans les lignes Update quotidiennes de dumpsys batterystats. Les outils forensiques laissent parfois ces traces.',
+                apkDowngradeSearch: 'Filtrer package, version ou date…',
+                apkDowngradeEmpty: 'Aucune rétrogradation APK ni désinstallation vers=0 dans les mises à jour quotidiennes batterystats.',
+                apkDowngradeBadge: 'Rétrogradation',
+                apkUninstallBadge: 'Désinstallation',
+                sideloadBadge: 'Sideload',
+                knownInstallerBadge: 'Store / système',
                 temperature: 'Température',
                 voltage: 'Tension',
                 systemStats: '📈 Statistiques système',
@@ -1317,6 +1421,9 @@
                 btnCopyClipboard: '📋 Copier dans le presse-papiers',
                 copyJsonDone: 'JSON copié dans le presse-papiers.',
                 btnCopyParserJson: 'Copier le JSON du parseur',
+                jsonExpandHint: 'Déplier pour générer l’aperçu JSON (non chargé au démarrage pour garder la page fluide).',
+                jsonBuilding: 'Génération de l’aperçu JSON…',
+                parserPayloadExpand: 'Déplier pour charger l’aperçu',
                 copyParserOk: 'JSON du parseur copié dans le presse-papiers.',
                 copyParserOkShort: 'Copié',
                 copyParserEmpty: 'Rien à copier pour ce parseur.',
@@ -1328,7 +1435,7 @@
                 navGitHub: 'GitHub'
             },
             zh: {
-                pageVersion: 'v0.3.0-beta • 更新于 2026年7月8日',
+                pageVersion: 'v0.3.1-beta • 更新于 2026年8月3日',
                 wasmLoading: '⏳ 加载中...',
                 wasmReady: '✓ 就绪',
                 wasmFailed: '❌ 加载失败',
@@ -1356,6 +1463,24 @@
                 analyzeSysdiagnoseBtn: '分析 sysdiagnose',
                 generateDesc: '连接设备并生成新的 bugreport（约 5–10 分钟）。',
                 btnConnectGenerate: '连接并生成 Bugreport',
+                generateDetailTitle: '正在生成 Bugreport',
+                generateElapsed: '已用时：{t}',
+                generatePhaseConnect: '正在通过 WebUSB 连接设备…',
+                generatePhaseCollect: '设备正在通过 bugreportz 收集诊断数据（通常 5–15 分钟）…',
+                generatePhaseHash: 'Bugreport 已就绪 — 正在计算 SHA-256…',
+                generatePhaseAnalyze: '正在分析 bugreport 并评估 Sigma 规则…',
+                generateStatusCollect: '正在生成 bugreport… 已用时 {t}（通常 5–15 分钟）',
+                generateStatusDone: 'Bugreport 已生成，耗时 {t}（{size}）。正在计算哈希…',
+                generateStatusAnalyzing: '哈希完成。正在分析…（目前合计 {t}）',
+                generateStatusComplete: '分析完成！总耗时：{t}',
+                generateDetailTip1: '手机正在收集日志与系统 dump（bugreportz）。繁忙设备通常需要约 5–15 分钟。',
+                generateDetailTip2: '请保持 USB 连接；生成期间请勿对同一设备运行桌面 adb 或 Android Studio。',
+                generateDetailTip3: '保持此浏览器标签页可见可减少节流；尽量避免手机进入深度休眠。',
+                generateDetailTip4: '设备完成后 ZIP 会通过 WebUSB 传输 — 大文件在生成结束后可能再花数分钟。',
+                generateDetailTip5: '进度条仅为粗略提示；真正完成以成功提示与结果展示为准。',
+                generateBtnBusy: '生成中… {t}',
+                generateBtnRetry: '重试生成',
+                generateTimeout: '操作在 {t} 后超时。Bugreport 生成可能需要 5–15 分钟。请重试，或若已有报告请使用「从设备」。',
                 deviceDesc: '连接设备并选择已有的 bugreport。',
                 btnConnectDevice: '连接设备',
                 scanningDevice: '📡 正在扫描设备中的 bugreport...',
@@ -1372,7 +1497,7 @@
                 bugreportBadgeZip: 'ZIP',
                 bugreportBadgeTxt: 'TXT',
                 bugreportDateUnknown: '日期未知',
-                refreshList: '🔄 刷新',
+                refreshList: '刷新',
                 analyzeSelected: '分析 bugreport',
                 uploadDesc: '从电脑上传 bugreport 文件。',
                 uploadDrop: '点击或拖拽 bugreport 文件到此处',
@@ -1414,6 +1539,8 @@
                     '这些行对应 Unix 纪元或 1970 年（多为源字段缺失或解析错误）。为保持 Timesketch 时间线可用，它们未包含在上方的 CSV、JSONL 与图表中。',
                 timelineDownloadCsv: '下载 CSV',
                 timelineDownloadJsonl: '下载 JSONL',
+                timelineLoadBtn: '加载交互式时间线',
+                timelineLoadHint: '时间线数据已就绪。点击后渲染交互视图（大报告时避免卡住页面）。',
                 timelineSearchPlaceholder: '搜索时间线（消息、解析器、JSON）…',
                 timelineSearchAriaLabel: '按消息、解析器或 JSON 文本筛选时间线事件',
                 timelineDetailSearchPlaceholder: '在当前事件中搜索…',
@@ -1462,6 +1589,23 @@
                 batteryStatus: '🔋 电池状态',
                 level: '电量',
                 health: '健康',
+                networkSocketsHint: '所有者由 UID → 应用包（必要时再用进程）解析。点击包名打开对应卡片；点击行查看详情。',
+                socketOwnerPackage: '应用包',
+                socketOwnerProcess: '进程',
+                socketOwnerUidOnly: '仅 UID — 未匹配到应用包',
+                socketOwnerStale: '过期',
+                socketViewPackage: '查看应用包',
+                socketFilterSockets: '筛选套接字',
+                socketCountBadge: '{n} 个套接字',
+                processLinkedPkg: '应用包',
+                apkDowngradeTitle: 'APK 降级（battery daily）',
+                apkDowngradeHint: '来自 dumpsys batterystats 每日 Update 行的版本下降与 vers=0 卸载。取证工具有时会留下这些痕迹。',
+                apkDowngradeSearch: '按包名、版本或日期筛选…',
+                apkDowngradeEmpty: 'batterystats 每日更新中未发现 APK 降级或 vers=0 卸载。',
+                apkDowngradeBadge: '降级',
+                apkUninstallBadge: '卸载',
+                sideloadBadge: '侧载',
+                knownInstallerBadge: '商店 / 系统',
                 temperature: '温度',
                 voltage: '电压',
                 systemStats: '📈 系统统计',
@@ -1516,6 +1660,9 @@
                 btnCopyClipboard: '📋 复制到剪贴板',
                 copyJsonDone: 'JSON 已复制到剪贴板。',
                 btnCopyParserJson: '复制该解析器 JSON',
+                jsonExpandHint: '展开以生成 JSON 预览（为保持页面流畅，加载时跳过）。',
+                jsonBuilding: '正在生成 JSON 预览…',
+                parserPayloadExpand: '展开以加载载荷预览',
                 copyParserOk: '该解析器 JSON 已复制到剪贴板。',
                 copyParserOkShort: '已复制',
                 copyParserEmpty: '此解析器没有可复制内容。',
@@ -1539,6 +1686,8 @@
             if (ps && t.searchProcesses) ps.placeholder = t.searchProcesses;
             var dpf = document.getElementById('parser-device-policy-filter');
             if (dpf && t.devicePolicyFilterPlaceholder) dpf.placeholder = t.devicePolicyFilterPlaceholder;
+            var apkSearch = document.getElementById('apk-downgrade-search');
+            if (apkSearch && t.apkDowngradeSearch) apkSearch.placeholder = t.apkDowngradeSearch;
             if (typeof window.rerenderBugreportPicker === 'function') window.rerenderBugreportPicker();
             var themeText = document.getElementById('theme-text');
             if (themeText) {
@@ -1617,6 +1766,31 @@
                 }
             }
             return raw;
+        }
+
+        function yieldToBrowser() {
+            return new Promise(function (resolve) {
+                window.requestAnimationFrame(function () {
+                    window.setTimeout(resolve, 0);
+                });
+            });
+        }
+
+        async function finishBugreportAnalysis(rawWasm, enrich) {
+            showStatus('Parsing analysis JSON…', 'info');
+            showLoadingSpinner('Parsing results…');
+            await yieldToBrowser();
+            console.time('[ANALYZE] JSON.parse');
+            const result = parseBugreportAnalysis(rawWasm);
+            console.timeEnd('[ANALYZE] JSON.parse');
+            if (typeof enrich === 'function') enrich(result);
+            showStatus('Rendering results…', 'info');
+            showLoadingSpinner('Rendering results…');
+            await yieldToBrowser();
+            console.time('[ANALYZE] displayResults');
+            await displayResults(result);
+            console.timeEnd('[ANALYZE] displayResults');
+            return result;
         }
         
         // Calculate SHA-256 hash
@@ -1780,66 +1954,6 @@
             }
         };
 
-        var copyJsonFeedbackTimer = null;
-        function showCopyJsonFeedback() {
-            const el = document.getElementById('copy-json-feedback');
-            if (!el) return;
-            const pack =
-                (window.BUGREPORT_I18N && window.BUGREPORT_I18N[window.currentLang || 'en']) ||
-                window.BUGREPORT_I18N.en ||
-                {};
-            el.textContent = pack.copyJsonDone || 'JSON copied to clipboard.';
-            el.hidden = false;
-            if (copyJsonFeedbackTimer) clearTimeout(copyJsonFeedbackTimer);
-            copyJsonFeedbackTimer = setTimeout(function () {
-                copyJsonFeedbackTimer = null;
-                el.textContent = '';
-                el.hidden = true;
-            }, 2800);
-        }
-
-        // Copy results
-        window.copyResults = async function() {
-            if (!currentResults) {
-                showStatus('⚠️ No results to copy', 'error');
-                return;
-            }
-            
-            try {
-                const data = {
-                    analysis_timestamp: currentResults.analysis_timestamp || new Date().toISOString(),
-                    file_info: currentResults.file_info,
-                    device_info: currentResults.device_info,
-                    battery_info: currentResults.battery_info,
-                    process_count: currentResults.process_count,
-                    package_count: currentResults.package_count,
-                    sigma_matches: currentResults.sigma_matches || null,
-                    sigma_rules_info: currentResults.sigma_rules_info || [],
-                    logcat_lines: currentResults.logcat_lines,
-                    has_security_analysis: currentResults.has_security_analysis,
-                    packages: currentResults.packages,
-                    processes: currentResults.processes,
-                    battery_apps: currentResults.battery_apps,
-                    package_details: currentResults.package_details || [],
-                    power_history: currentResults.power_history || [],
-                    network_info: currentResults.network_info || [],
-                    network_stats: currentResults.network_stats || [],
-                    sockets: currentResults.sockets || [],
-                    bluetooth_info: currentResults.bluetooth_info || null,
-                    usb_info: currentResults.usb_info || null,
-                    crash_info: currentResults.crash_info || null,
-                    additional_parsers: currentResults.additional_parsers || null
-                };
-                
-                await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-                showStatus('✓ Results copied to clipboard!', 'success');
-                showCopyJsonFeedback();
-            } catch (error) {
-                console.error('Copy error:', error);
-                showStatus('❌ Failed to copy: ' + error.message, 'error');
-            }
-        }
-
         // Initialize WebAssembly
         async function initWasm() {
             const statusEl = document.getElementById('wasm-status');
@@ -1930,12 +2044,55 @@
             document.getElementById('status').className = 'status';
         }
 
-        function showProgress() {
-            document.getElementById('progress').classList.add('show');
+        function showProgress(percent, label) {
+            const wrap = document.getElementById('progress');
+            if (!wrap) return;
+            wrap.classList.add('show');
+            if (percent != null) setAndroidProgress(percent, label);
+            else if (label) {
+                const labelEl = document.getElementById('progress-label');
+                if (labelEl) labelEl.textContent = label;
+            }
         }
 
         function hideProgress() {
-            document.getElementById('progress').classList.remove('show');
+            const wrap = document.getElementById('progress');
+            if (!wrap) return;
+            wrap.classList.remove('show', 'progress--busy');
+            const bar = wrap.querySelector('.progress-bar');
+            if (bar) {
+                bar.style.width = '0%';
+                bar.textContent = '';
+                bar.classList.remove('is-indeterminate');
+                bar.style.animation = '';
+            }
+            const pctEl = document.getElementById('progress-pct');
+            if (pctEl) pctEl.textContent = '0%';
+            const labelEl = document.getElementById('progress-label');
+            if (labelEl) labelEl.textContent = '';
+        }
+
+        /** Update the top progress bar + large percent label (0–100). */
+        function setAndroidProgress(percent, label) {
+            const wrap = document.getElementById('progress');
+            const bar = wrap && wrap.querySelector('.progress-bar');
+            const pctEl = document.getElementById('progress-pct');
+            const labelEl = document.getElementById('progress-label');
+            if (!wrap || !bar) return;
+            wrap.classList.add('show');
+            const pct = Math.max(0, Math.min(100, Number(percent) || 0));
+            const rounded = Math.round(pct);
+            bar.style.width = (pct > 0 ? pct : 4) + '%';
+            bar.textContent = rounded + '%';
+            bar.classList.toggle('is-indeterminate', pct > 0 && pct < 100);
+            if (pct > 0 && pct < 100) {
+                wrap.classList.add('progress--busy');
+            } else {
+                wrap.classList.remove('progress--busy');
+                bar.classList.remove('is-indeterminate');
+            }
+            if (pctEl) pctEl.textContent = rounded + '%';
+            if (labelEl && label != null) labelEl.textContent = label;
         }
 
         function showLoadingSpinner(text = 'Analyzing bugreport... Please wait') {
@@ -2027,45 +2184,83 @@
                     return String(a.pid ?? '').localeCompare(String(b.pid ?? ''), undefined, { numeric: true });
                 });
 
-            // Add processes to table (ordered by PID)
-            procsSorted.forEach((proc) => {
-                const row = document.createElement('tr');
-                row.setAttribute('data-pid', proc.pid || '');
-                row.setAttribute('data-name', (proc.name || '').toLowerCase());
-                row.setAttribute('data-user', (proc.user || '').toLowerCase());
-                
-                row.innerHTML = `
-                    <td>${proc.pid || '-'}</td>
-                    <td>${proc.name || '-'}</td>
-                    <td>${proc.user || '-'}</td>
-                    <td>${proc.cpu_percent !== undefined ? proc.cpu_percent.toFixed(1) + '%' : '-'}</td>
-                    <td>${proc.memory || '-'}</td>
-                `;
-                
-                processTableBody.appendChild(row);
-            });
+            // Batch rows (per-row DOM create freezes on large process lists)
+            processTableBody.innerHTML = procsSorted
+                .map(function (proc) {
+                    const pid = proc.pid != null ? String(proc.pid) : '';
+                    const name = proc.name != null ? String(proc.name) : '';
+                    const user = proc.user != null ? String(proc.user) : '';
+                    const linkedPkg = resolveAndroidProcessPackage(name);
+                    const cpu =
+                        proc.cpu_percent !== undefined && proc.cpu_percent !== null
+                            ? Number(proc.cpu_percent).toFixed(1) + '%'
+                            : '-';
+                    const mem = proc.memory != null ? String(proc.memory) : '-';
+                    const pkgCell = linkedPkg
+                        ? '<button type="button" class="socket-owner-link" data-focus-package="' +
+                          escapeAttr(linkedPkg) +
+                          '" title="' +
+                          escapeAttr(linkedPkg) +
+                          '">' +
+                          escapeHtml(packageOwnerLabel(linkedPkg)) +
+                          '</button>'
+                        : '<span class="socket-owner socket-owner--muted">—</span>';
+                    return (
+                        '<tr data-pid="' +
+                        escapeAttr(pid) +
+                        '" data-name="' +
+                        escapeAttr(name.toLowerCase()) +
+                        '" data-user="' +
+                        escapeAttr(user.toLowerCase()) +
+                        '" data-package="' +
+                        escapeAttr((linkedPkg || '').toLowerCase()) +
+                        '"><td>' +
+                        escapeHtml(pid || '-') +
+                        '</td><td>' +
+                        escapeHtml(name || '-') +
+                        '</td><td class="socket-owner-cell">' +
+                        pkgCell +
+                        '</td><td>' +
+                        escapeHtml(user || '-') +
+                        '</td><td>' +
+                        escapeHtml(cpu) +
+                        '</td><td>' +
+                        escapeHtml(mem) +
+                        '</td></tr>'
+                    );
+                })
+                .join('');
+
+            if (!processTableBody.dataset.pkgDelegated) {
+                processTableBody.dataset.pkgDelegated = '1';
+                processTableBody.addEventListener('click', function (ev) {
+                    const btn = ev.target.closest('.socket-owner-link');
+                    if (!btn || !processTableBody.contains(btn)) return;
+                    ev.preventDefault();
+                    focusPackageByName(btn.getAttribute('data-focus-package'));
+                });
+            }
 
             // Add search functionality
             const searchInput = document.getElementById('process-search');
             if (searchInput) {
-                searchInput.addEventListener('input', (e) => {
-                    const query = e.target.value.toLowerCase();
-                    const rows = processTableBody.querySelectorAll('tr');
-                    let visibleCount = 0;
-
-                    rows.forEach(row => {
-                        const pid = row.getAttribute('data-pid');
-                        const name = row.getAttribute('data-name');
-                        const user = row.getAttribute('data-user');
-                        
-                        if (pid.includes(query) || name.includes(query) || user.includes(query)) {
-                            row.style.display = '';
-                            visibleCount++;
-                        } else {
-                            row.style.display = 'none';
-                        }
+                searchInput.oninput = function (e) {
+                    const query = (e.target.value || '').toLowerCase().trim();
+                    processTableBody.querySelectorAll('tr').forEach(function (row) {
+                        const pid = row.getAttribute('data-pid') || '';
+                        const name = row.getAttribute('data-name') || '';
+                        const user = row.getAttribute('data-user') || '';
+                        const pkg = row.getAttribute('data-package') || '';
+                        row.style.display =
+                            !query ||
+                            pid.includes(query) ||
+                            name.includes(query) ||
+                            user.includes(query) ||
+                            pkg.includes(query)
+                                ? ''
+                                : 'none';
                     });
-                });
+                };
             }
         }
 
@@ -2146,6 +2341,137 @@
             }
         }
 
+        const KNOWN_STORE_INSTALLERS = {
+            'com.android.vending': true,
+            'com.google.android.packageinstaller': true,
+            'com.android.packageinstaller': true,
+            'com.facebook.system': true,
+            'com.samsung.android.app.updatecenter': true,
+            'com.sec.android.app.samsungapps': true,
+            'com.android.managedprovisioning': true,
+            'android': true,
+            'null': true
+        };
+
+        function isKnownStoreInstaller(installer) {
+            if (installer == null) return false;
+            const s = String(installer).trim();
+            if (!s) return false;
+            return !!KNOWN_STORE_INSTALLERS[s];
+        }
+
+        /** Third-party installer (not Play/OEM/system), excluding self-updates and system paths. */
+        function isSideloadInstaller(pkg) {
+            const p = mapPlainTop(pkg) || pkg;
+            const installer = p.installer_package_name || p.installerPackageName || '';
+            if (!installer || isKnownStoreInstaller(installer)) return false;
+            const name = p.package_name || p.pkg || '';
+            if (name && installer === name) return false;
+            const cp = String(p.code_path || p.codePath || p.resource_path || p.resourcePath || '').toLowerCase();
+            if (/^\/(system|vendor|product|system_ext|odm)\//.test(cp)) return false;
+            return true;
+        }
+
+        function extractBatteryDailyUpdates(data) {
+            let po = data && data.parser_outputs;
+            if (po && po instanceof Map) po = Object.fromEntries(po);
+            const batOut = po && typeof po === 'object' ? po.battery : null;
+            const batParsed = batOut ? mapPlainTop(batOut) || batOut : null;
+            if (!batParsed || !batParsed.success || batParsed.data == null) return [];
+            let raw = batParsed.data;
+            if (raw instanceof Map) raw = Object.fromEntries(raw);
+            raw = mapPlainTop(raw) || raw;
+            let daily = raw && raw.daily_updates;
+            if (daily instanceof Map) daily = Array.from(daily.values());
+            if (!Array.isArray(daily)) return [];
+            return daily.map(function (row) {
+                return mapPlainTop(row) || row;
+            });
+        }
+
+        function displayApkDowngradeSection(data) {
+            const card = document.getElementById('apk-downgrade-card');
+            const listEl = document.getElementById('apk-downgrade-list');
+            const badge = document.getElementById('apk-downgrade-count-badge');
+            if (!card || !listEl) return;
+
+            const pack = i18nPack();
+            const daily = extractBatteryDailyUpdates(data);
+            const events = daily
+                .filter(function (row) {
+                    const action = String(row.action || '').toLowerCase();
+                    return action === 'downgrade' || action === 'uninstall';
+                })
+                .sort(function (a, b) {
+                    const rank = function (x) {
+                        return String(x.action || '').toLowerCase() === 'downgrade' ? 0 : 1;
+                    };
+                    const r = rank(a) - rank(b);
+                    if (r !== 0) return r;
+                    return String(b.from || '').localeCompare(String(a.from || ''));
+                });
+
+            if (!events.length) {
+                card.style.display = 'none';
+                listEl.innerHTML = '';
+                if (badge) badge.textContent = '0';
+                return;
+            }
+
+            card.style.display = 'block';
+            if (badge) badge.textContent = String(events.length);
+
+            listEl.innerHTML = events
+                .map(function (ev) {
+                    const action = String(ev.action || '').toLowerCase();
+                    const isDown = action === 'downgrade';
+                    const badgeLabel = isDown
+                        ? pack.apkDowngradeBadge || 'Downgrade'
+                        : pack.apkUninstallBadge || 'Uninstall';
+                    const badgeCls = isDown ? 'apk-daily-badge apk-daily-badge--down' : 'apk-daily-badge apk-daily-badge--uninstall';
+                    const pkg = ev.package_name || '—';
+                    const vers = ev.vers != null ? String(ev.vers) : '—';
+                    const prev = ev.previous_vers != null ? String(ev.previous_vers) : '';
+                    const from = ev.from || '';
+                    const to = ev.to || '';
+                    const window = from && to ? from + ' → ' + to : from || to || '';
+                    const search = [pkg, action, vers, prev, from, to].join(' ').toLowerCase();
+                    const versLine = prev
+                        ? escapeHtml(prev) + ' → ' + escapeHtml(vers)
+                        : 'vers=' + escapeHtml(vers);
+                    return (
+                        '<div class="apk-daily-row" data-search-text="' +
+                        escapeAttr(search) +
+                        '">' +
+                        '<span class="' +
+                        badgeCls +
+                        '">' +
+                        escapeHtml(badgeLabel) +
+                        '</span>' +
+                        '<div class="apk-daily-row__body">' +
+                        '<div class="apk-daily-row__pkg">' +
+                        escapeHtml(pkg) +
+                        '</div>' +
+                        '<div class="apk-daily-row__meta">' +
+                        versLine +
+                        (window ? ' · ' + escapeHtml(window) : '') +
+                        '</div></div></div>'
+                    );
+                })
+                .join('');
+
+            const searchInput = document.getElementById('apk-downgrade-search');
+            if (searchInput) {
+                searchInput.oninput = function (e) {
+                    const query = (e.target.value || '').toLowerCase().trim();
+                    listEl.querySelectorAll('.apk-daily-row').forEach(function (row) {
+                        const hay = row.getAttribute('data-search-text') || '';
+                        row.style.display = !query || hay.includes(query) ? '' : 'none';
+                    });
+                };
+            }
+        }
+
         // Format bytes
         function formatBytes(bytes) {
             if (!bytes || bytes === 0) return '0 B';
@@ -2212,6 +2538,28 @@
             const minutes = Math.floor(seconds / 60);
             const remainingSeconds = seconds % 60;
             return `${minutes}m ${remainingSeconds}s ${milliseconds}ms (${ms.toFixed(2)}ms)`;
+        }
+
+        /** Compact elapsed clock for live UI: 0:05, 3:42, 12:07 */
+        function formatElapsedClock(ms) {
+            const sec = Math.max(0, Math.floor(ms / 1000));
+            const m = Math.floor(sec / 60);
+            const s = sec % 60;
+            return m + ':' + String(s).padStart(2, '0');
+        }
+
+        function trAndroid(key, vars) {
+            const pack =
+                (window.BUGREPORT_I18N && window.BUGREPORT_I18N[window.currentLang || 'en']) ||
+                (window.BUGREPORT_I18N && window.BUGREPORT_I18N.en) ||
+                {};
+            let s = pack[key] != null ? pack[key] : key;
+            if (vars) {
+                Object.keys(vars).forEach(function (k) {
+                    s = s.replace('{' + k + '}', String(vars[k]));
+                });
+            }
+            return s;
         }
 
         // Helper function to format duration from seconds (for compatibility)
@@ -2311,6 +2659,85 @@
             };
         }
 
+        function bugreportTimelineCsvEscape(s) {
+            const t = s == null ? '' : String(s);
+            if (t === '') return '';
+            if (/[",\n\r]/.test(t)) return '"' + t.replace(/"/g, '""') + '"';
+            return t;
+        }
+
+        function bugreportTimelineEventsToCsv(events) {
+            const rows = Array.isArray(events) ? events : [];
+            const preferred = [
+                'message',
+                'datetime',
+                'timestamp_desc',
+                'timestamp',
+                'time_is_approximate',
+                'bugreport_parser',
+                'data_type',
+                'event_time_binding',
+            ];
+            const keySet = {};
+            for (let i = 0; i < rows.length; i++) {
+                const ev = rows[i];
+                if (!ev || typeof ev !== 'object') continue;
+                Object.keys(ev).forEach(function (k) {
+                    keySet[k] = true;
+                });
+            }
+            const keys = preferred.filter(function (k) {
+                return keySet[k];
+            });
+            Object.keys(keySet)
+                .sort()
+                .forEach(function (k) {
+                    if (keys.indexOf(k) < 0) keys.push(k);
+                });
+            const lines = [keys.map(bugreportTimelineCsvEscape).join(',')];
+            for (let r = 0; r < rows.length; r++) {
+                const ev = rows[r] || {};
+                lines.push(
+                    keys
+                        .map(function (k) {
+                            const v = ev[k];
+                            if (v == null) return '';
+                            if (typeof v === 'object') return bugreportTimelineCsvEscape(JSON.stringify(v));
+                            return bugreportTimelineCsvEscape(v);
+                        })
+                        .join(',')
+                );
+            }
+            return lines.join('\n');
+        }
+
+        function bugreportTimelineEventsToJsonl(events) {
+            const rows = Array.isArray(events) ? events : [];
+            return rows
+                .map(function (ev) {
+                    try {
+                        return JSON.stringify(ev);
+                    } catch (e) {
+                        return '{}';
+                    }
+                })
+                .join('\n');
+        }
+
+        function triggerBugreportBlobDownload(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.rel = 'noopener';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.setTimeout(function () {
+                URL.revokeObjectURL(url);
+            }, 2000);
+        }
+
         function displayTimelineSketch(data) {
             const card = document.getElementById('timeline-sketch-card');
             const host = document.getElementById('timeline-sketch-host');
@@ -2325,6 +2752,7 @@
             }
             if (dlRow) dlRow.textContent = '';
             host.textContent = '';
+            host.removeAttribute('data-mounted');
 
             const pack =
                 (window.BUGREPORT_I18N && window.BUGREPORT_I18N[window.currentLang || 'en']) || window.BUGREPORT_I18N.en;
@@ -2349,8 +2777,8 @@
                 events = tsEvents.concat(sigmaOnly);
                 mountOpts = {
                     events,
-                    maxRender: 15000,
-                    flashyColors: true,
+                    maxRender: 5000,
+                    flashyColors: false,
                     labels: timelineLabelsAndroid(),
                 };
             } else {
@@ -2369,8 +2797,8 @@
                 mountOpts = {
                     events,
                     categoryField: 'category',
-                    maxRender: 15000,
-                    flashyColors: true,
+                    maxRender: 5000,
+                    flashyColors: false,
                     labels: timelineLabelsAndroid(),
                 };
             }
@@ -2381,6 +2809,8 @@
                 const nEv = tsEvents.length;
                 const cnt = ts.count != null ? ts.count : nEv;
                 meta.textContent = (pack.timelineTimesketchCount || '{n} rows').replace('{n}', String(cnt));
+            } else if (meta) {
+                meta.textContent = (pack.timelineTimesketchCount || '{n} rows').replace('{n}', String(events.length));
             }
             if (tsOk && epochSkipWrap) {
                 const rawSkip = ts && ts.skipped_epoch_timeline_events;
@@ -2401,36 +2831,70 @@
                     epochSkipWrap.appendChild(det);
                 }
             }
-            if (tsOk && dlRow && typeof ts.csv === 'string' && ts.csv.length) {
-                const aCsv = document.createElement('a');
-                aCsv.href = URL.createObjectURL(new Blob([ts.csv], { type: 'text/csv;charset=utf-8' }));
-                aCsv.download = 'bugreport-timesketch.csv';
-                aCsv.textContent = pack.timelineDownloadCsv || 'Download CSV';
-                aCsv.style.cssText =
-                    'display: inline-block; padding: 0.35rem 0.75rem; margin-right: 0.5rem; margin-bottom: 0.5rem; background: var(--accent); color: white; border-radius: 6px; text-decoration: none; font-size: 0.8125rem;';
-                dlRow.appendChild(aCsv);
-                if (typeof ts.jsonl === 'string' && ts.jsonl.length) {
-                    const aJl = document.createElement('a');
-                    aJl.href = URL.createObjectURL(
-                        new Blob([ts.jsonl], { type: 'application/x-ndjson;charset=utf-8' })
+
+            if (dlRow && events.length) {
+                const btnStyle =
+                    'display: inline-block; padding: 0.35rem 0.75rem; margin-right: 0.5rem; margin-bottom: 0.5rem; background: var(--accent); color: white; border-radius: 6px; border: none; cursor: pointer; font-size: 0.8125rem;';
+                const csvBtn = document.createElement('button');
+                csvBtn.type = 'button';
+                csvBtn.style.cssText = btnStyle;
+                csvBtn.textContent = pack.timelineDownloadCsv || 'Download CSV';
+                csvBtn.addEventListener('click', function () {
+                    const csv =
+                        tsOk && typeof ts.csv === 'string' && ts.csv.length
+                            ? ts.csv
+                            : bugreportTimelineEventsToCsv(events);
+                    triggerBugreportBlobDownload(
+                        new Blob([csv], { type: 'text/csv;charset=utf-8' }),
+                        'bugreport-timesketch.csv'
                     );
-                    aJl.download = 'bugreport-timesketch.jsonl';
-                    aJl.textContent = pack.timelineDownloadJsonl || 'Download JSONL';
-                    aJl.style.cssText = aCsv.style.cssText;
-                    dlRow.appendChild(aJl);
-                }
+                });
+                dlRow.appendChild(csvBtn);
+
+                const jsonlBtn = document.createElement('button');
+                jsonlBtn.type = 'button';
+                jsonlBtn.style.cssText = btnStyle;
+                jsonlBtn.textContent = pack.timelineDownloadJsonl || 'Download JSONL';
+                jsonlBtn.addEventListener('click', function () {
+                    const jsonl =
+                        tsOk && typeof ts.jsonl === 'string' && ts.jsonl.length
+                            ? ts.jsonl
+                            : bugreportTimelineEventsToJsonl(events);
+                    triggerBugreportBlobDownload(
+                        new Blob([jsonl], { type: 'application/x-ndjson;charset=utf-8' }),
+                        'bugreport-timesketch.jsonl'
+                    );
+                });
+                dlRow.appendChild(jsonlBtn);
             }
 
-            if (window.TimelineSketchView && typeof window.TimelineSketchView.mount === 'function') {
+            const hint = document.createElement('p');
+            hint.style.cssText =
+                'font-size: 0.8125rem; color: var(--text-secondary); margin: 0 0 0.65rem; line-height: 1.4;';
+            hint.textContent = pack.timelineLoadHint || 'Click to load the interactive timeline.';
+            host.appendChild(hint);
+
+            const loadBtn = document.createElement('button');
+            loadBtn.type = 'button';
+            loadBtn.textContent = pack.timelineLoadBtn || 'Load interactive timeline';
+            loadBtn.style.cssText =
+                'padding: 0.45rem 0.9rem; background: var(--accent); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;';
+            loadBtn.addEventListener('click', function () {
+                if (host.getAttribute('data-mounted') === '1') return;
+                if (!window.TimelineSketchView || typeof window.TimelineSketchView.mount !== 'function') {
+                    host.textContent = pack.timelineScriptMissing || 'Timeline script missing.';
+                    return;
+                }
+                host.setAttribute('data-mounted', '1');
+                host.textContent = '';
                 try {
                     window.TimelineSketchView.mount(host, mountOpts);
                 } catch (e) {
                     console.error('TimelineSketchView.mount failed', e);
                     host.textContent = pack.timelineRenderError || 'Timeline UI error.';
                 }
-            } else {
-                host.textContent = pack.timelineScriptMissing || 'Timeline script missing.';
-            }
+            });
+            host.appendChild(loadBtn);
         }
 
         function i18nPack() {
@@ -2961,8 +3425,8 @@
             updateSigmaSummaryBar(data);
         }
 
-        // Display results
-        function displayResults(data) {
+        // Display results (chunked so the main thread can paint between heavy sections)
+        async function displayResults(data) {
             currentResults = data;
             if (data == null || typeof data !== 'object') {
                 console.error('displayResults: invalid data');
@@ -2980,10 +3444,10 @@
                 document.getElementById('device-kernel').textContent = data.device_info.kernel_version || 'Unknown';
             }
 
-            // Battery info (parser history/hardware or legacy battery_info summary)
             displayBatteryStatus(data);
-
             fillSystemStatistics(data);
+            await yieldToBrowser();
+
             try {
                 displayTimelineSketch(data);
             } catch (e) {
@@ -3001,6 +3465,7 @@
                         'Timeline UI error. Other results below are still valid; check the browser console.';
                 }
             }
+            await yieldToBrowser();
 
             // Detection / Sigma rules (title, id, description, status, level, fetch success)
             const sigmaEl = document.getElementById('sigma-rules-container');
@@ -3039,10 +3504,10 @@
                 sigmaEl.innerHTML = '<p class="detection-empty">' + escapeHtml(pack.sigmaNoRules || 'No rules loaded.') + '</p>';
             }
 
-            // Sigma matches — grouped by rule
             const matchesEl = document.getElementById('sigma-matches-container');
             const matches = asWasmArray(data.sigma_matches);
             matchesEl.innerHTML = renderSigmaMatchesGroupedHtml(matches);
+            await yieldToBrowser();
 
             // File info
             const fileInfoCard = document.getElementById('file-info-card');
@@ -3064,6 +3529,56 @@
                 if (fileDlBtn) fileDlBtn.style.display = 'none';
             }
 
+            // ANR / Crash — keep existing block by calling into the remaining sync work via continued function
+            displayCrashInfoSection(data);
+            await yieldToBrowser();
+
+            displayProcessDetails(data);
+            displayBatteryDetails(data);
+            displayApkDowngradeSection(data);
+            await yieldToBrowser();
+
+            displayPackageHistory(data);
+            rebuildSocketPackageIndex(data);
+            displayPackageDetails(data);
+            await yieldToBrowser();
+
+            displayPowerHistory(data);
+            displayNetworkInfo(data);
+            displayNetworkStats(data);
+            await yieldToBrowser();
+
+            displayNetworkSockets(data);
+            displayBluetoothInfo(data);
+            displayUsbInfo(data);
+            await yieldToBrowser();
+
+            displayAdditionalParsers(data);
+            await yieldToBrowser();
+            displayParserOutputs(data);
+
+            const timestampEl = document.getElementById('analysis-timestamp');
+            const timestampValueEl = document.getElementById('timestamp-value');
+            if (data.analysis_timestamp) {
+                const date = new Date(data.analysis_timestamp);
+                const options = { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    second: '2-digit'
+                };
+                timestampValueEl.textContent = date.toLocaleString(undefined, options);
+                timestampEl.style.display = 'block';
+            } else {
+                timestampEl.style.display = 'none';
+            }
+
+            document.getElementById('results-actions').style.display = 'flex';
+        }
+
+        function displayCrashInfoSection(data) {
             // ANR / Crash
             const crashCard = document.getElementById('crash-info-card');
             const crashContainer = document.getElementById('crash-info-container');
@@ -3149,7 +3664,6 @@
                         if (timestamp) html += ' <span style="color: var(--text-secondary); font-size: 0.85rem;">' + escapeHtml(timestamp) + '</span>';
                         html += '</summary><div style="margin-top: 0.75rem; font-size: 0.85rem;">';
                         
-                        // Process info
                         if (pid !== '' || tid !== '' || threadName) {
                             html += '<div style="margin-bottom: 0.5rem;"><span style="color: var(--text-secondary); font-weight: 500;">Process Info:</span> ';
                             const infoParts = [];
@@ -3159,12 +3673,10 @@
                             html += infoParts.join(' | ') + '</div>';
                         }
                         
-                        // Fault address
                         if (faultAddr) {
                             html += '<div style="margin-bottom: 0.5rem;"><span style="color: var(--text-secondary); font-weight: 500;">Fault Address:</span> <span style="font-family: monospace;">' + escapeHtml(faultAddr) + '</span></div>';
                         }
                         
-                        // Backtrace
                         if (backtrace.length > 0) {
                             html += '<div style="margin-top: 0.75rem;"><span style="color: var(--text-secondary); font-weight: 500;">Backtrace:</span><ul style="margin: 0.5rem 0 0 1.25rem; font-size: 0.8rem; font-family: monospace;">';
                             backtrace.forEach(bt => {
@@ -3201,64 +3713,6 @@
             } else {
                 crashCard.style.display = 'none';
             }
-
-            // Display detailed process list
-            displayProcessDetails(data);
-
-            // Display detailed battery stats
-            displayBatteryDetails(data);
-
-            // Package installation history
-            displayPackageHistory(data);
-
-            // Package details
-            displayPackageDetails(data);
-
-            // Power history
-            displayPowerHistory(data);
-
-            // Network info
-            displayNetworkInfo(data);
-
-            // Network stats
-            displayNetworkStats(data);
-
-            // Network sockets
-            displayNetworkSockets(data);
-
-            // Bluetooth info
-            displayBluetoothInfo(data);
-
-            // USB info
-            displayUsbInfo(data);
-
-            displayAdditionalParsers(data);
-            displayParserOutputs(data);
-
-            // JSON output
-            document.getElementById('json-output').textContent = JSON.stringify(data, null, 2);
-
-            // Display timestamp
-            const timestampEl = document.getElementById('analysis-timestamp');
-            const timestampValueEl = document.getElementById('timestamp-value');
-            if (data.analysis_timestamp) {
-                const date = new Date(data.analysis_timestamp);
-                const options = { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric', 
-                    hour: '2-digit', 
-                    minute: '2-digit',
-                    second: '2-digit'
-                };
-                timestampValueEl.textContent = date.toLocaleString(undefined, options);
-                timestampEl.style.display = 'block';
-            } else {
-                timestampEl.style.display = 'none';
-            }
-
-            // Show action buttons
-            document.getElementById('results-actions').style.display = 'flex';
         }
 
         function displayPackageHistory(data) {
@@ -4459,6 +4913,42 @@
             });
         }
 
+        function buildParserOutputPayloadHtml(parserKey, entry, pack) {
+            const preStyle =
+                'margin: 0.5rem 0 0; padding: 0.75rem; max-height: 28rem; overflow: auto; ' +
+                'background: var(--bg-secondary, rgba(0,0,0,0.04)); border-radius: 6px; ' +
+                'font-size: 0.75rem; line-height: 1.35; white-space: pre-wrap; word-break: break-word;';
+            const copyBtnLabel = escapeHtml((pack && pack.btnCopyParserJson) || 'Copy parser JSON');
+            const ok = entry && entry.success === true;
+            if (ok && entry.data != null) {
+                const actions =
+                    '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;margin:0.5rem 0 0">' +
+                    '<button type="button" class="btn-parser-copy-json" data-parser-copy-key="' +
+                    escapeHtml(parserKey) +
+                    '">' +
+                    copyBtnLabel +
+                    '</button><span class="copy-parser-inline-feedback" hidden aria-live="polite"></span></div>';
+                let jsonStr;
+                try {
+                    jsonStr = JSON.stringify(deepPlainForJson(entry.data), null, 2);
+                } catch (e) {
+                    return (
+                        actions +
+                        '<pre style="' +
+                        preStyle +
+                        '">' +
+                        escapeHtml('Could not build payload preview: ' + (e && e.message ? e.message : e)) +
+                        '</pre>'
+                    );
+                }
+                return actions + '<pre style="' + preStyle + '">' + escapeHtml(jsonStr) + '</pre>';
+            }
+            if (entry && entry.error != null && entry.error !== '') {
+                return '<pre style="' + preStyle + '">' + escapeHtml(String(entry.error)) + '</pre>';
+            }
+            return '<p style="margin: 0.5rem 0 0; font-size: 0.8125rem; color: var(--text-secondary);">No payload.</p>';
+        }
+
         function displayParserOutputs(data) {
             const card = document.getElementById('parser-outputs-card');
             const container = document.getElementById('parser-outputs-container');
@@ -4484,12 +4974,9 @@
                 (window.BUGREPORT_I18N && window.BUGREPORT_I18N[window.currentLang || 'en']) ||
                 window.BUGREPORT_I18N.en ||
                 {};
-            const copyBtnLabel = escapeHtml(pack.btnCopyParserJson || 'Copy parser JSON');
-            const preStyle =
-                'margin: 0.5rem 0 0; padding: 0.75rem; max-height: 28rem; overflow: auto; ' +
-                'background: var(--bg-secondary, rgba(0,0,0,0.04)); border-radius: 6px; ' +
-                'font-size: 0.75rem; line-height: 1.35; white-space: pre-wrap; word-break: break-word;';
+            const expandHint = escapeHtml(pack.parserPayloadExpand || 'Expand to load payload preview');
 
+            // Headers only — stringify each payload on first open (full dump freezes the UI).
             container.innerHTML = keys
                 .map(function (k) {
                     const entry = mapPlainTop(po[k]) || po[k];
@@ -4498,33 +4985,10 @@
                     const statusHtml = ok
                         ? '<span style="color: var(--success);">OK</span>'
                         : '<span style="color: var(--error);">Failed</span>';
-                    let actions = '';
-                    if (ok && entry.data != null) {
-                        actions =
-                            '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;margin:0.5rem 0 0">' +
-                            '<button type="button" class="btn-parser-copy-json" data-parser-copy-key="' +
-                            escapeHtml(k) +
-                            '">' +
-                            copyBtnLabel +
-                            '</button><span class="copy-parser-inline-feedback" hidden aria-live="polite"></span></div>';
-                    }
-                    let inner = '';
-                    if (ok && entry.data != null) {
-                        const jsonStr = JSON.stringify(deepPlainForJson(entry.data), null, 2);
-                        inner = actions + '<pre style="' + preStyle + '">' + escapeHtml(jsonStr) + '</pre>';
-                    } else if (entry && entry.error != null && entry.error !== '') {
-                        inner =
-                            '<pre style="' +
-                            preStyle +
-                            '">' +
-                            escapeHtml(String(entry.error)) +
-                            '</pre>';
-                    } else {
-                        inner =
-                            '<p style="margin: 0.5rem 0 0; font-size: 0.8125rem; color: var(--text-secondary);">No payload.</p>';
-                    }
                     return (
-                        '<details class="result-card" style="margin-bottom: 0.75rem; padding: 0.75rem 1rem;">' +
+                        '<details class="result-card parser-output-details" data-parser-key="' +
+                        escapeAttr(k) +
+                        '" style="margin-bottom: 0.75rem; padding: 0.75rem 1rem;">' +
                         '<summary style="cursor: pointer; font-weight: 600; list-style: none;">' +
                         escapeHtml(k) +
                         ' — ' +
@@ -4532,9 +4996,10 @@
                         ' · ' +
                         escapeHtml(ms) +
                         ' ms</summary>' +
-                        '<div>' +
-                        inner +
-                        '</div></details>'
+                        '<div data-parser-payload>' +
+                        '<p style="margin: 0.5rem 0 0; font-size: 0.8125rem; color: var(--text-secondary);">' +
+                        expandHint +
+                        '</p></div></details>'
                     );
                 })
                 .join('');
@@ -4549,6 +5014,29 @@
                     const row = btn.parentElement;
                     const fb = row ? row.querySelector('.copy-parser-inline-feedback') : null;
                     void window.copyParserOutputJson(pk, fb);
+                });
+            }
+
+            if (!container.dataset.parserToggleDelegated) {
+                container.dataset.parserToggleDelegated = '1';
+                container.addEventListener('toggle', function (ev) {
+                    const details = ev.target;
+                    if (!details || details.tagName !== 'DETAILS' || !details.open) return;
+                    if (!container.contains(details)) return;
+                    const body = details.querySelector('[data-parser-payload]');
+                    if (!body || body.getAttribute('data-built') === '1') return;
+                    const pk = details.getAttribute('data-parser-key');
+                    if (!pk || !currentResults) return;
+                    body.setAttribute('data-built', '1');
+                    body.textContent = (i18nPack().jsonBuilding || 'Building JSON preview…');
+                    window.setTimeout(function () {
+                        let poLive = currentResults.parser_outputs;
+                        if (poLive && poLive instanceof Map) poLive = Object.fromEntries(poLive);
+                        const entry = poLive
+                            ? mapPlainTop(poLive[pk]) || poLive[pk]
+                            : null;
+                        body.innerHTML = buildParserOutputPayloadHtml(pk, entry, i18nPack());
+                    }, 0);
                 });
             }
         }
@@ -4751,6 +5239,18 @@
                     item.style.display = match ? 'block' : 'none';
                 });
             };
+
+            [packageDetailsListEl, packageDetailsUserListEl].forEach(function (listEl) {
+                if (!listEl || listEl.dataset.socketBadgeDelegated) return;
+                listEl.dataset.socketBadgeDelegated = '1';
+                listEl.addEventListener('click', function (ev) {
+                    const btn = ev.target.closest('[data-filter-sockets]');
+                    if (!btn || !listEl.contains(btn)) return;
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    filterSocketsByPackage(btn.getAttribute('data-filter-sockets'));
+                });
+            });
         }
 
         function buildPackageDetailCardsHtml(packages, cardPrefix, sectionPrefix) {
@@ -4769,7 +5269,8 @@
                     pkg.code_path,
                     pkg.data_dir,
                     pkg.category,
-                    pkg.primary_cpu_abi
+                    pkg.primary_cpu_abi,
+                    pkg.app_id
                 ].filter(function (x) { return x != null && x !== ''; });
                 const searchText = escapeAttr(searchParts.join(' ').toLowerCase());
                 const hintParts = [];
@@ -4780,12 +5281,24 @@
                     hintParts.push(ins.length > 32 ? ins.slice(0, 29) + '…' : ins);
                 }
                 const hintLine = hintParts.join(' · ');
-                html += `<div class="package-detail-item package-detail-app-card" data-package-name="${pkg.package_name.toLowerCase()}" data-search-text="${searchText}">`;
+                const sockCount = packageSocketCounts.get(String(pkg.package_name || '').toLowerCase()) || 0;
+                const appIdAttr = pkg.app_id != null ? String(pkg.app_id) : '';
+                html += `<div class="package-detail-item package-detail-app-card" data-package-name="${pkg.package_name.toLowerCase()}" data-app-id="${escapeAttr(appIdAttr)}" data-search-text="${searchText}">`;
                 html += `<div class="package-detail-card-head" role="button" tabindex="0" aria-expanded="false" aria-controls="${cp}pkg-card-body-${index}" onclick="${tc}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${tc};}">`;
                 html += `<div class="package-detail-card-title">`;
                 html += `<h4>${escapeHtml(pkg.package_name)}</h4>`;
                 if (pkg.version_name) {
                     html += `<span class="version-badge">v${escapeHtml(pkg.version_name)}</span>`;
+                }
+                if (isSideloadInstaller(pkg)) {
+                    const pack = i18nPack();
+                    html += `<span class="pkg-badge pkg-badge-sideload" title="${escapeAttr(pkg.installer_package_name || '')}">${escapeHtml(pack.sideloadBadge || 'Sideload')}</span>`;
+                }
+                if (sockCount > 0) {
+                    const pack = i18nPack();
+                    const label = (pack.socketCountBadge || '{n} sockets').replace('{n}', String(sockCount));
+                    html +=
+                        `<button type="button" class="pkg-badge pkg-badge-sockets" data-filter-sockets="${escapeAttr(pkg.package_name)}" title="${escapeAttr(pack.socketFilterSockets || 'Filter sockets')}">${escapeHtml(label)}</button>`;
                 }
                 if (hintLine) {
                     html += `<span class="package-detail-card-hint">${escapeHtml(hintLine)}</span>`;
@@ -4812,7 +5325,19 @@
                 }
                 html += `</div>`;
                 if (pkg.installer_package_name) {
-                    html += `<dl class="pkg-detail-dl"><dt>Installer</dt><dd>${escapeHtml(pkg.installer_package_name)}</dd></dl>`;
+                    const pack = i18nPack();
+                    const label = formatInstaller(pkg.installer_package_name);
+                    const sideload = isSideloadInstaller(pkg);
+                    html += `<dl class="pkg-detail-dl"><dt>Installer</dt><dd>${escapeHtml(label)}`;
+                    if (sideload) {
+                        html += ` <span class="pkg-badge pkg-badge-sideload">${escapeHtml(pack.sideloadBadge || 'Sideload')}</span>`;
+                    } else if (isKnownStoreInstaller(pkg.installer_package_name)) {
+                        html += ` <span class="pkg-badge pkg-badge-store">${escapeHtml(pack.knownInstallerBadge || 'Store / system')}</span>`;
+                    }
+                    if (label !== pkg.installer_package_name) {
+                        html += `<div class="pkg-installer-raw">${escapeHtml(pkg.installer_package_name)}</div>`;
+                    }
+                    html += `</dd></dl>`;
                 }
                 
                 html += `<div class="package-detail-content">`;
@@ -5868,6 +6393,389 @@
             }
         }
 
+        // --- Socket ↔ package / process linking (aligned with mobipwn networkOwner / networkUidHints) ---
+        let uidPackageMap = new Map();
+        let uidProcessMap = new Map();
+        let packageSocketCounts = new Map();
+        const ANDROID_PER_USER_RANGE = 100000;
+        const ANDROID_AID_APP_START = 10000;
+        const KNOWN_ANDROID_NAMED_UIDS = {
+            root: 0,
+            system: 1000,
+            radio: 1001,
+            phone: 1001,
+            bluetooth: 1002,
+            wifi: 1010,
+            media: 1013,
+            shell: 2000,
+            network_stack: 1073,
+            nobody: 9999
+        };
+        /** Well-known shared UIDs where inventing a single package/process is misleading. */
+        const KNOWN_ANDROID_UID_INFO = {
+            '1073': {
+                process: 'com.android.networkstack.process',
+                explanation:
+                    'UID 1073 is the network stack shared UID; the listen socket has no program name in netstat, but process rows identify com.android.networkstack.process.'
+            }
+        };
+
+        function parseAndroidLinuxUid(user) {
+            const trimmed = String(user || '').trim();
+            if (!trimmed) return null;
+            if (trimmed.startsWith('u')) {
+                const rest = trimmed.slice(1);
+                const underscore = rest.indexOf('_');
+                if (underscore < 0) return null;
+                const userId = Number(rest.slice(0, underscore));
+                const suffix = rest.slice(underscore + 1);
+                if (!Number.isFinite(userId)) return null;
+                const base = userId * ANDROID_PER_USER_RANGE;
+                if (suffix.startsWith('a')) {
+                    const offset = Number(suffix.slice(1));
+                    if (!Number.isFinite(offset)) return null;
+                    return String(base + ANDROID_AID_APP_START + offset);
+                }
+                if (suffix.startsWith('i')) {
+                    const offset = Number(suffix.slice(1));
+                    if (!Number.isFinite(offset)) return null;
+                    return String(base + 99000 + offset);
+                }
+                const named = KNOWN_ANDROID_NAMED_UIDS[suffix];
+                return named != null ? String(base + named) : null;
+            }
+            const named = KNOWN_ANDROID_NAMED_UIDS[trimmed];
+            return named != null ? String(named) : null;
+        }
+
+        function isAppLinuxUid(uid) {
+            const n = Number(uid);
+            return Number.isFinite(n) && n >= ANDROID_AID_APP_START;
+        }
+
+        /** Strict package id (mobipwn) — HAL cmds like hardware.sysinput-service are NOT packages. */
+        function looksLikeAndroidPackage(name) {
+            return /^(com|org|io|android|edu|gov|de|fr|uk|jp|co)\.[a-z0-9_]+(\.[a-z0-9_]+)+$/i.test(
+                String(name || '')
+            );
+        }
+
+        function packageUsesSharedUid(pkg) {
+            const s = pkg && (pkg.sharedUser || pkg.shared_user);
+            if (!s) return false;
+            const t = String(s);
+            return t.indexOf('SharedUserSetting') >= 0 || t.indexOf('android.uid.') >= 0;
+        }
+
+        function packageOwnerLabel(owner) {
+            if (!owner) return '—';
+            if (owner.startsWith('proc:')) return owner.slice(5);
+            if (owner.startsWith('uid:')) return owner;
+            if (looksLikeAndroidPackage(owner)) {
+                const parts = owner.split('.');
+                if (parts.length >= 2) return parts.slice(-2).join('.');
+            }
+            return owner;
+        }
+
+        function uidOwnerPresentation(uidKey) {
+            if (!uidKey || !String(uidKey).startsWith('uid:')) {
+                return { secondary: null, explanation: null };
+            }
+            const uid = String(uidKey).slice(4);
+            const known = KNOWN_ANDROID_UID_INFO[uid];
+            let secondary = known ? known.process : null;
+            if (!secondary && uidProcessMap.has(uid)) {
+                secondary = uidProcessMap.get(uid).name;
+            }
+            if (!secondary && isAppLinuxUid(uid) && uidPackageMap.has(uid)) {
+                secondary = uidPackageMap.get(uid);
+            }
+            return {
+                secondary: secondary || null,
+                explanation: known ? known.explanation : null
+            };
+        }
+
+        function rebuildSocketPackageIndex(data) {
+            uidPackageMap = new Map();
+            uidProcessMap = new Map();
+            packageSocketCounts = new Map();
+
+            asWasmArray(data.package_details).forEach(function (raw) {
+                const pkg = mapPlainTop(raw) || raw;
+                const name = pkg.package_name;
+                if (!name) return;
+                if (packageUsesSharedUid(pkg)) return;
+                const appId = pkg.app_id != null ? Number(pkg.app_id) : NaN;
+                if (Number.isFinite(appId) && appId >= ANDROID_AID_APP_START) {
+                    if (!uidPackageMap.has(String(appId))) uidPackageMap.set(String(appId), name);
+                }
+                if (Array.isArray(pkg.users)) {
+                    pkg.users.forEach(function (uRaw) {
+                        const u = mapPlainTop(uRaw) || uRaw;
+                        const userId = u && u.user_id != null ? Number(u.user_id) : NaN;
+                        if (Number.isFinite(userId) && Number.isFinite(appId) && appId >= ANDROID_AID_APP_START) {
+                            const key = String(userId * ANDROID_PER_USER_RANGE + appId);
+                            if (!uidPackageMap.has(key)) uidPackageMap.set(key, name);
+                        }
+                    });
+                }
+            });
+
+            // Battery apps: only fill missing *app* UIDs — never system/shared UIDs (<10000).
+            asWasmArray(data.battery_apps).forEach(function (raw) {
+                const b = mapPlainTop(raw) || raw;
+                if (!b.package_name || b.uid == null || b.uid === '') return;
+                const key = String(b.uid);
+                if (!isAppLinuxUid(key)) return;
+                if (!uidPackageMap.has(key)) uidPackageMap.set(key, b.package_name);
+            });
+
+            asWasmArray(data.processes).forEach(function (raw) {
+                const p = mapPlainTop(raw) || raw;
+                const uid = parseAndroidLinuxUid(p.user);
+                if (!uid || uid === '0') return;
+                const cmd = p.name || p.cmd || '';
+                if (!cmd) return;
+                const prev = uidProcessMap.get(uid);
+                const cmdPkgLike = looksLikeAndroidPackage(cmd) || (cmd.includes('.') && !cmd.includes(' '));
+                const prevPkgLike =
+                    prev &&
+                    (looksLikeAndroidPackage(prev.name) ||
+                        (prev.name.includes('.') && !prev.name.includes(' ')));
+                // Prefer real package-like cmds; among dotted HALs keep first (matches Rust pick).
+                if (!prev) {
+                    uidProcessMap.set(uid, { name: cmd, user: p.user || '' });
+                } else if (looksLikeAndroidPackage(cmd) && !looksLikeAndroidPackage(prev.name)) {
+                    uidProcessMap.set(uid, { name: cmd, user: p.user || '' });
+                } else if (cmdPkgLike && !prevPkgLike) {
+                    uidProcessMap.set(uid, { name: cmd, user: p.user || '' });
+                }
+                // Never invent package_name for system/shared UIDs from process cmdline.
+                if (looksLikeAndroidPackage(cmd) && isAppLinuxUid(uid) && !uidPackageMap.has(uid)) {
+                    uidPackageMap.set(uid, cmd.split(':')[0]);
+                }
+            });
+
+            asWasmArray(data.sockets).forEach(function (raw) {
+                const socket = mapPlainTop(raw) || raw;
+                const resolved = resolveSocketOwner(socket);
+                if (!resolved.packageName) return;
+                const key = resolved.packageName.toLowerCase();
+                packageSocketCounts.set(key, (packageSocketCounts.get(key) || 0) + 1);
+            });
+        }
+
+        /**
+         * Resolve socket owner like mobipwn `resolveNetworkOwner`:
+         * enriched owner → package_name → program_name → process_cmd → uid:N
+         * System UIDs are not remapped to arbitrary packages.
+         */
+        function resolveSocketOwner(socket) {
+            const s = mapPlainTop(socket) || socket || {};
+            const uid = s.uid != null ? String(s.uid) : '';
+            const attribution = String(s.attribution_status || '').toLowerCase();
+            const ownerType = String(s.owner_type || '').toLowerCase();
+            if (attribution === 'stale_socket' || ownerType === 'stale') {
+                return {
+                    isStale: true,
+                    packageName: null,
+                    processName: null,
+                    ownerRaw: '',
+                    label: 'stale',
+                    kind: 'stale',
+                    uidHint: null
+                };
+            }
+
+            let packageName = null;
+            let processName = null;
+            const ownerRaw = s.owner || '';
+            const ownerIsEnriched =
+                ownerRaw &&
+                ownerType !== 'stale' &&
+                ownerType !== 'unknown' &&
+                ownerRaw !== 'unattributed' &&
+                !String(ownerRaw).startsWith('unattributed');
+
+            if (ownerIsEnriched) {
+                if (ownerType === 'package' || (ownerType !== 'process' && looksLikeAndroidPackage(ownerRaw))) {
+                    packageName = ownerRaw;
+                } else if (ownerType === 'process') {
+                    processName = ownerRaw;
+                } else if (looksLikeAndroidPackage(ownerRaw)) {
+                    packageName = ownerRaw;
+                } else {
+                    processName = ownerRaw;
+                }
+            }
+
+            if (!packageName) {
+                const bundle = s.package_name || s.bundle_id || null;
+                if (bundle) packageName = bundle;
+            }
+
+            if (!packageName && !processName && s.program_name) {
+                if (looksLikeAndroidPackage(s.program_name)) {
+                    packageName = s.program_name.split(':')[0];
+                } else {
+                    processName = s.program_name;
+                }
+            }
+
+            if (!processName) {
+                processName = s.process_cmd || s.process_name || null;
+            }
+
+            // Client UID→package only for app UIDs (never system/shared).
+            if (!packageName && uid && isAppLinuxUid(uid) && uidPackageMap.has(uid)) {
+                packageName = uidPackageMap.get(uid);
+            }
+            if (!processName && uid && uidProcessMap.has(uid)) {
+                processName = uidProcessMap.get(uid).name;
+            }
+
+            // Promote process → package only when it is a real package id AND app UID (or no UID).
+            if (
+                !packageName &&
+                processName &&
+                looksLikeAndroidPackage(processName) &&
+                (!uid || uid === '0' || isAppLinuxUid(uid))
+            ) {
+                packageName = processName.split(':')[0];
+                processName = null;
+            }
+
+            let displaySource = '';
+            let kind = 'none';
+            if (packageName) {
+                displaySource = packageName;
+                kind = 'package';
+            } else if (processName) {
+                displaySource = 'proc:' + processName;
+                kind = 'process';
+            } else if (uid && uid !== '0') {
+                displaySource = 'uid:' + uid;
+                kind = 'uid';
+            }
+
+            const uidHint = kind === 'uid' ? uidOwnerPresentation(displaySource) : null;
+            return {
+                isStale: false,
+                packageName: packageName || null,
+                processName: processName || null,
+                ownerRaw: displaySource,
+                label: packageOwnerLabel(displaySource),
+                kind: kind,
+                uidHint: uidHint
+            };
+        }
+
+        function resolveAndroidProcessPackage(processName) {
+            const name = String(processName || '').trim();
+            if (!name) return null;
+            if (looksLikeAndroidPackage(name)) return name.split(':')[0];
+            const colon = name.indexOf(':');
+            if (colon > 0 && looksLikeAndroidPackage(name.slice(0, colon))) {
+                return name.slice(0, colon);
+            }
+            if (!currentResults) return null;
+            const details = asWasmArray(currentResults.package_details);
+            let best = null;
+            let bestLen = 0;
+            for (let i = 0; i < details.length; i++) {
+                const pkg = mapPlainTop(details[i]) || details[i];
+                const pn = pkg.package_name;
+                if (!pn) continue;
+                if (name === pn || name.startsWith(pn + ':') || name.startsWith(pn + '/')) {
+                    if (pn.length > bestLen) {
+                        best = pn;
+                        bestLen = pn.length;
+                    }
+                }
+            }
+            return best;
+        }
+
+        function clearPackageCrosslinkHighlights() {
+            document.querySelectorAll('.package-detail-item.package-crosslink-active').forEach(function (el) {
+                el.classList.remove('package-crosslink-active');
+            });
+        }
+
+        function ensureSectionExpanded(sectionId) {
+            const content = document.getElementById(sectionId + '-content');
+            const toggleBtn = content && content.parentElement
+                ? content.parentElement.querySelector('.section-toggle')
+                : null;
+            if (content && content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                if (toggleBtn) toggleBtn.classList.remove('collapsed');
+            }
+        }
+
+        function focusPackageByName(packageName) {
+            if (!packageName) return;
+            const name = String(packageName).toLowerCase();
+            clearPackageCrosslinkHighlights();
+
+            const safe = name.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+            let item =
+                document.querySelector('#package-details-user-list .package-detail-item[data-package-name="' + safe + '"]') ||
+                document.querySelector('#package-details-list .package-detail-item[data-package-name="' + safe + '"]');
+
+            if (item && item.closest('#package-details-user-list')) {
+                ensureSectionExpanded('package-details-user');
+                const search = document.getElementById('package-details-user-search-input');
+                if (search) {
+                    search.value = packageName;
+                    search.dispatchEvent(new Event('input'));
+                }
+            } else {
+                ensureSectionExpanded('package-details');
+                const search = document.getElementById('package-details-search-input');
+                if (search) {
+                    search.value = packageName;
+                    search.dispatchEvent(new Event('input'));
+                }
+            }
+
+            item =
+                document.querySelector('#package-details-user-list .package-detail-item[data-package-name="' + safe + '"]') ||
+                document.querySelector('#package-details-list .package-detail-item[data-package-name="' + safe + '"]');
+
+            if (!item) {
+                showStatus('Package not found in details: ' + packageName, 'info');
+                return;
+            }
+
+            item.classList.add('package-crosslink-active');
+            item.style.display = 'block';
+            const body = item.querySelector('.package-detail-body');
+            if (body && body.style.display === 'none') {
+                const head = item.querySelector('.package-detail-card-head');
+                if (head) head.click();
+            }
+            item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        window.focusPackageByName = focusPackageByName;
+
+        function filterSocketsByPackage(packageName) {
+            if (!packageName) return;
+            ensureSectionExpanded('network-sockets');
+            const search = document.getElementById('network-sockets-search-input');
+            if (search) {
+                search.value = packageName;
+                search.dispatchEvent(new Event('input'));
+            }
+            const card = document.getElementById('network-sockets-card');
+            if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        window.filterSocketsByPackage = filterSocketsByPackage;
+
         function displayNetworkSockets(data) {
             const networkSocketsCard = document.getElementById('network-sockets-card');
             const networkSocketsTableBody = document.getElementById('network-sockets-table-body');
@@ -5881,147 +6789,263 @@
 
             networkSocketsCard.style.display = 'block';
             countBadge.textContent = sockRows.length;
+            const pack = i18nPack();
 
-            // Clear table
-            networkSocketsTableBody.innerHTML = '';
+            networkSocketsTableBody.innerHTML = sockRows
+                .map(function (rawSocket) {
+                    const socket = mapPlainTop(rawSocket) || rawSocket;
+                    const resolved = resolveSocketOwner(socket);
+                    const protocol = socket.protocol || '-';
+                    const localAddr = formatSocketEndpoint(socket.local_address, socket.local_ip, socket.local_port);
+                    const remoteAddr = formatSocketEndpoint(
+                        socket.remote_address,
+                        socket.remote_ip || socket.peer_ip,
+                        socket.remote_port
+                    );
+                    const state = socket.state || '-';
+                    const uid = socket.uid != null ? String(socket.uid) : '-';
+                    const ownerSearch = [
+                        resolved.packageName,
+                        resolved.processName,
+                        resolved.ownerRaw,
+                        resolved.label,
+                        uid
+                    ]
+                        .filter(Boolean)
+                        .join(' ')
+                        .toLowerCase();
+                    const search = [
+                        protocol,
+                        localAddr,
+                        remoteAddr,
+                        state,
+                        ownerSearch,
+                        uid
+                    ]
+                        .join(' ')
+                        .toLowerCase();
 
-            // Add sockets to table
-            sockRows.forEach((rawSocket) => {
-                const socket = mapPlainTop(rawSocket) || rawSocket;
-                const row = document.createElement('tr');
-                const protocol = socket.protocol || '-';
-                const localAddr = socket.local_address || '-';
-                const localPort = socket.local_port !== null && socket.local_port !== undefined ? socket.local_port.toString() : '-';
-                const remoteAddr = socket.remote_address || '-';
-                const remotePort = socket.remote_port !== null && socket.remote_port !== undefined ? socket.remote_port.toString() : '-';
-                const state = socket.state || '-';
-                const uid = socket.uid !== null && socket.uid !== undefined ? socket.uid.toString() : '-';
-                
-                row.setAttribute('data-protocol', protocol.toLowerCase());
-                row.setAttribute('data-local', localAddr.toLowerCase());
-                row.setAttribute('data-local-port', localPort);
-                row.setAttribute('data-remote', remoteAddr.toLowerCase());
-                row.setAttribute('data-remote-port', remotePort);
-                row.setAttribute('data-state', state.toLowerCase());
-                
-                row.innerHTML = `
-                    <td><code>${escapeHtml(protocol)}</code></td>
-                    <td><code>${escapeHtml(localAddr)}</code></td>
-                    <td>${localPort !== '-' ? `<code>${localPort}</code>` : '-'}</td>
-                    <td><code>${escapeHtml(remoteAddr)}</code></td>
-                    <td>${remotePort !== '-' ? `<code>${remotePort}</code>` : '-'}</td>
-                    <td>${escapeHtml(state)}</td>
-                    <td>${uid}</td>
-                `;
-                
-                // Add click handler to show details
-                row.style.cursor = 'pointer';
-                row.onclick = () => {
+                    let ownerCell;
+                    if (resolved.isStale) {
+                        ownerCell =
+                            '<span class="socket-owner socket-owner--stale">' +
+                            escapeHtml(pack.socketOwnerStale || 'Stale') +
+                            '</span>';
+                    } else if (resolved.kind === 'package' && resolved.packageName) {
+                        ownerCell =
+                            '<button type="button" class="socket-owner-link" data-focus-package="' +
+                            escapeAttr(resolved.packageName) +
+                            '" title="' +
+                            escapeAttr(resolved.packageName) +
+                            '">' +
+                            escapeHtml(resolved.label) +
+                            '</button>' +
+                            '<div class="socket-owner-meta">' +
+                            escapeHtml(pack.socketOwnerPackage || 'Package') +
+                            '</div>';
+                    } else if (resolved.kind === 'process' && resolved.processName) {
+                        ownerCell =
+                            '<span class="socket-owner" title="' +
+                            escapeAttr(resolved.processName) +
+                            '">' +
+                            escapeHtml(resolved.label) +
+                            '</span>' +
+                            '<div class="socket-owner-meta">' +
+                            escapeHtml(pack.socketOwnerProcess || 'Process') +
+                            '</div>';
+                    } else if (resolved.kind === 'uid' || (uid !== '-' && uid !== '0')) {
+                        const hint = resolved.uidHint || uidOwnerPresentation('uid:' + uid);
+                        ownerCell =
+                            '<span class="socket-owner socket-owner--uid">uid:' +
+                            escapeHtml(uid) +
+                            '</span>';
+                        if (hint && hint.secondary) {
+                            ownerCell +=
+                                '<div class="socket-owner-meta socket-owner-meta--hint" title="' +
+                                escapeAttr(hint.explanation || hint.secondary) +
+                                '">' +
+                                escapeHtml(hint.secondary) +
+                                '</div>';
+                        } else {
+                            ownerCell +=
+                                '<div class="socket-owner-meta">' +
+                                escapeHtml(pack.socketOwnerUidOnly || 'UID only') +
+                                '</div>';
+                        }
+                        if (hint && hint.explanation) {
+                            ownerCell +=
+                                '<div class="socket-owner-footnote">' +
+                                escapeHtml(hint.explanation) +
+                                '</div>';
+                        }
+                    } else {
+                        ownerCell = '<span class="socket-owner socket-owner--muted">—</span>';
+                    }
+
+                    return (
+                        '<tr class="socket-row" data-search-text="' +
+                        escapeAttr(search) +
+                        '" data-uid="' +
+                        escapeAttr(uid) +
+                        '" data-package="' +
+                        escapeAttr((resolved.packageName || '').toLowerCase()) +
+                        '" data-owner="' +
+                        escapeAttr(ownerSearch) +
+                        '">' +
+                        '<td><code>' +
+                        escapeHtml(protocol) +
+                        '</code></td>' +
+                        '<td><code class="socket-endpoint">' +
+                        escapeHtml(localAddr) +
+                        '</code></td>' +
+                        '<td><code class="socket-endpoint">' +
+                        escapeHtml(remoteAddr) +
+                        '</code></td>' +
+                        '<td>' +
+                        escapeHtml(state) +
+                        '</td>' +
+                        '<td class="socket-owner-cell">' +
+                        ownerCell +
+                        '</td>' +
+                        '<td>' +
+                        escapeHtml(uid) +
+                        '</td></tr>'
+                    );
+                })
+                .join('');
+
+            networkSocketsTableBody.querySelectorAll('tr.socket-row').forEach(function (row, idx) {
+                row.addEventListener('click', function (ev) {
+                    if (ev.target.closest('.socket-owner-link')) return;
+                    const socket = mapPlainTop(sockRows[idx]) || sockRows[idx];
                     showSocketDetails(socket);
-                };
-                
-                networkSocketsTableBody.appendChild(row);
+                });
             });
 
-            // Add search functionality
+            if (!networkSocketsTableBody.dataset.ownerDelegated) {
+                networkSocketsTableBody.dataset.ownerDelegated = '1';
+                networkSocketsTableBody.addEventListener('click', function (ev) {
+                    const btn = ev.target.closest('.socket-owner-link');
+                    if (!btn || !networkSocketsTableBody.contains(btn)) return;
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    const pkg = btn.getAttribute('data-focus-package');
+                    if (pkg) focusPackageByName(pkg);
+                });
+            }
+
             const searchInput = document.getElementById('network-sockets-search-input');
             if (searchInput) {
-                searchInput.addEventListener('input', (e) => {
-                    const query = e.target.value.toLowerCase();
-                    const rows = networkSocketsTableBody.querySelectorAll('tr');
-                    let visibleCount = 0;
-
-                    rows.forEach(row => {
-                        const protocol = row.getAttribute('data-protocol') || '';
-                        const local = row.getAttribute('data-local') || '';
-                        const localPort = row.getAttribute('data-local-port') || '';
-                        const remote = row.getAttribute('data-remote') || '';
-                        const remotePort = row.getAttribute('data-remote-port') || '';
-                        const state = row.getAttribute('data-state') || '';
-                        
-                        if (protocol.includes(query) || 
-                            local.includes(query) || 
-                            localPort.includes(query) ||
-                            remote.includes(query) || 
-                            remotePort.includes(query) ||
-                            state.includes(query)) {
-                            row.style.display = '';
-                            visibleCount++;
-                        } else {
-                            row.style.display = 'none';
-                        }
+                searchInput.oninput = function (e) {
+                    const query = (e.target.value || '').toLowerCase().trim();
+                    networkSocketsTableBody.querySelectorAll('tr').forEach(function (row) {
+                        const hay = row.getAttribute('data-search-text') || '';
+                        row.style.display = !query || hay.includes(query) ? '' : 'none';
                     });
-                });
+                };
             }
         }
 
+        function stripSocketIpZone(value) {
+            const s = String(value == null ? '' : value);
+            // Strip Linux/Android zone id (`192.168.8.183%wlan0`, `[fe80::1%wlan0]:546`).
+            return s.replace(/%[A-Za-z0-9_.-]+/g, '');
+        }
+
+        function formatSocketEndpoint(address, ip, port) {
+            if (address) return stripSocketIpZone(address);
+            if (ip != null && ip !== '' && port != null && port !== '') {
+                return stripSocketIpZone(String(ip)) + ':' + String(port);
+            }
+            if (ip) return stripSocketIpZone(ip);
+            if (port != null && port !== '') return ':' + String(port);
+            return '-';
+        }
+
         function showSocketDetails(socket) {
+            const pack = i18nPack();
+            const resolved = resolveSocketOwner(socket);
             let details = '<div class="detail-section">';
             details += '<strong>Socket Details</strong>';
             details += '<table class="detail-table">';
-            
-            if (socket.protocol) {
-                details += `<tr><td>Protocol:</td><td><code>${escapeHtml(socket.protocol)}</code></td></tr>`;
+
+            function addRow(label, value, isCode) {
+                if (value == null || value === '') return;
+                const v = isCode
+                    ? '<code>' + escapeHtml(String(value)) + '</code>'
+                    : escapeHtml(String(value));
+                details += '<tr><td>' + escapeHtml(label) + ':</td><td>' + v + '</td></tr>';
             }
-            if (socket.local_address) {
-                details += `<tr><td>Local Address:</td><td><code>${escapeHtml(socket.local_address)}</code></td></tr>`;
+
+            addRow('Protocol', socket.protocol, true);
+            addRow('Local Address', socket.local_address, true);
+            addRow('Local IP', socket.local_ip, true);
+            if (socket.local_port != null) addRow('Local Port', socket.local_port, true);
+            addRow('Remote Address', socket.remote_address, true);
+            addRow('Remote IP', socket.remote_ip || socket.peer_ip, true);
+            if (socket.remote_port != null) addRow('Remote Port', socket.remote_port, true);
+            addRow('State', socket.state, false);
+            addRow('Direction', socket.socket_direction, false);
+            if (socket.uid != null) addRow('UID', socket.uid, false);
+            if (resolved.kind === 'package' && resolved.packageName) {
+                addRow(pack.socketOwnerPackage || 'Package', resolved.packageName, true);
+            } else if (resolved.kind === 'process' && resolved.processName) {
+                addRow(pack.socketOwnerProcess || 'Process', resolved.processName, true);
+            } else if (resolved.kind === 'uid') {
+                addRow('Owner', 'uid:' + String(socket.uid), true);
+                const hint = resolved.uidHint || uidOwnerPresentation('uid:' + String(socket.uid));
+                if (hint && hint.secondary) addRow('UID hint', hint.secondary, true);
+                if (hint && hint.explanation) addRow('Note', hint.explanation, false);
+            } else if (resolved.isStale) {
+                addRow('Owner', pack.socketOwnerStale || 'Stale', false);
             }
-            if (socket.local_ip) {
-                details += `<tr><td>Local IP:</td><td><code>${escapeHtml(socket.local_ip)}</code></td></tr>`;
+            addRow('Owner type', socket.owner_type, false);
+            addRow('Program', socket.program_name, true);
+            if (socket.program_pid != null) addRow('Program PID', socket.program_pid, false);
+            addRow('Process cmd', socket.process_cmd, true);
+            if (socket.inode != null) addRow('Inode', socket.inode, false);
+            if (socket.recv_q != null) addRow('Receive Queue', socket.recv_q, false);
+            if (socket.send_q != null) addRow('Send Queue', socket.send_q, false);
+            addRow('Socket Key', socket.socket_key, true);
+            addRow('Additional Info', socket.additional_info, true);
+            details += '</table></div>';
+
+            let actions = '';
+            if (resolved.packageName) {
+                actions =
+                    '<div class="socket-detail-actions">' +
+                    '<button type="button" class="socket-detail-pkg-btn" data-pkg="' +
+                    escapeAttr(resolved.packageName) +
+                    '">' +
+                    escapeHtml(pack.socketViewPackage || 'View package') +
+                    '</button></div>';
             }
-            if (socket.local_port !== null && socket.local_port !== undefined) {
-                details += `<tr><td>Local Port:</td><td><code>${socket.local_port}</code></td></tr>`;
-            }
-            if (socket.remote_address) {
-                details += `<tr><td>Remote Address:</td><td><code>${escapeHtml(socket.remote_address)}</code></td></tr>`;
-            }
-            if (socket.remote_ip) {
-                details += `<tr><td>Remote IP:</td><td><code>${escapeHtml(socket.remote_ip)}</code></td></tr>`;
-            }
-            if (socket.remote_port !== null && socket.remote_port !== undefined) {
-                details += `<tr><td>Remote Port:</td><td><code>${socket.remote_port}</code></td></tr>`;
-            }
-            if (socket.state) {
-                details += `<tr><td>State:</td><td>${escapeHtml(socket.state)}</td></tr>`;
-            }
-            if (socket.uid !== null && socket.uid !== undefined) {
-                details += `<tr><td>UID:</td><td>${socket.uid}</td></tr>`;
-            }
-            if (socket.inode !== null && socket.inode !== undefined) {
-                details += `<tr><td>Inode:</td><td>${socket.inode}</td></tr>`;
-            }
-            if (socket.recv_q !== null && socket.recv_q !== undefined) {
-                details += `<tr><td>Receive Queue:</td><td>${socket.recv_q}</td></tr>`;
-            }
-            if (socket.send_q !== null && socket.send_q !== undefined) {
-                details += `<tr><td>Send Queue:</td><td>${socket.send_q}</td></tr>`;
-            }
-            if (socket.socket_key) {
-                details += `<tr><td>Socket Key:</td><td><code>${escapeHtml(socket.socket_key)}</code></td></tr>`;
-            }
-            if (socket.additional_info) {
-                details += `<tr><td>Additional Info:</td><td><code style="font-size: 0.75rem; word-break: break-all;">${escapeHtml(socket.additional_info)}</code></td></tr>`;
-            }
-            
-            details += '</table>';
-            details += '</div>';
-            
-            // Show in a modal or alert (simple alert for now, can be enhanced)
+
             const modal = document.createElement('div');
-            modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;';
-            modal.innerHTML = `
-                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 2rem; max-width: 80%; max-height: 80%; overflow-y: auto; position: relative;">
-                    <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" style="position: absolute; top: 1rem; right: 1rem; background: var(--error); color: white; border: none; border-radius: 4px; padding: 0.5rem 1rem; cursor: pointer;">Close</button>
-                    <h3 style="margin-bottom: 1rem;">Socket Details</h3>
-                    ${details}
-                </div>
-            `;
+            modal.className = 'socket-detail-modal';
+            modal.innerHTML =
+                '<div class="socket-detail-modal__card">' +
+                '<button type="button" class="socket-detail-modal__close">Close</button>' +
+                '<h3>Socket Details</h3>' +
+                details +
+                actions +
+                '</div>';
             document.body.appendChild(modal);
-            modal.onclick = (e) => {
-                if (e.target === modal) {
-                    modal.remove();
-                }
+            const close = function () {
+                modal.remove();
             };
+            modal.querySelector('.socket-detail-modal__close').addEventListener('click', close);
+            modal.addEventListener('click', function (e) {
+                if (e.target === modal) close();
+            });
+            const pkgBtn = modal.querySelector('.socket-detail-pkg-btn');
+            if (pkgBtn) {
+                pkgBtn.addEventListener('click', function () {
+                    const pkg = pkgBtn.getAttribute('data-pkg');
+                    close();
+                    focusPackageByName(pkg);
+                });
+            }
         }
 
         function parseInstallLogs(logs) {
@@ -6078,9 +7102,12 @@
             const installerMap = {
                 'com.android.vending': 'Play Store',
                 'com.sec.android.app.samsungapps': 'Galaxy Store',
+                'com.samsung.android.app.updatecenter': 'Samsung Update Center',
                 'com.android.managedprovisioning': 'System Provisioning',
                 'android': 'Android System',
-                'com.google.android.packageinstaller': 'Package Installer'
+                'com.google.android.packageinstaller': 'Package Installer',
+                'com.android.packageinstaller': 'Package Installer',
+                'com.facebook.system': 'Facebook System Installer'
             };
             return installerMap[installer] || installer;
         }
@@ -6120,7 +7147,7 @@
                 const btn = document.getElementById('btn-connect-device');
                 
                 showStatus('Connecting to device...', 'info');
-                showProgress();
+                showProgress(10, 'Connecting to device…');
                 hideResults();
 
                 adb = new Adb();
@@ -6132,6 +7159,7 @@
                 btn.disabled = true;
                 
                 showStatus('Connected! Listing bugreports...', 'info');
+                setAndroidProgress(40, 'Listing bugreports…');
                 
                 const listingStatus = document.getElementById('listing-status');
                 listingStatus.classList.remove('hidden');
@@ -6208,10 +7236,13 @@
                 
                 const btnGenerate = document.getElementById('btn-generate');
                 if (btnGenerate) {
-                    btnGenerate.textContent = 'Connect & Generate Bugreport';
+                    btnGenerate.textContent = trAndroid('btnConnectGenerate');
                     btnGenerate.disabled = false;
                 }
                 document.getElementById('btn-disconnect-generate').classList.add('hidden');
+                const genDetail = document.getElementById('generate-bugreport-detail');
+                if (genDetail) genDetail.classList.add('hidden');
+                hideProgress();
 
                 hideBugreportPicker();
                 hideResults();
@@ -6233,7 +7264,7 @@
 
             try {
                 showStatus('Refreshing bugreport list...', 'info');
-                showProgress();
+                showProgress(15, 'Refreshing bugreport list…');
                 hideResults();
                 
                 const listingStatus = document.getElementById('listing-status');
@@ -6273,6 +7304,42 @@
 
         // Generate new bugreport
         window.generateBugreport = async function() {
+            const btnGenerate = document.getElementById('btn-generate');
+            const detailEl = document.getElementById('generate-bugreport-detail');
+            const elapsedEl = document.getElementById('generate-bugreport-elapsed');
+            const phaseEl = document.getElementById('generate-bugreport-phase');
+            const btnDefaultLabel = trAndroid('btnConnectGenerate');
+
+            let progressInterval = null;
+            let elapsedInterval = null;
+            let approxPct = 8;
+            const t0 = Date.now();
+
+            const stopTimers = function () {
+                if (progressInterval) {
+                    clearInterval(progressInterval);
+                    progressInterval = null;
+                }
+                if (elapsedInterval) {
+                    clearInterval(elapsedInterval);
+                    elapsedInterval = null;
+                }
+            };
+
+            const tickElapsed = function () {
+                const clock = formatElapsedClock(Date.now() - t0);
+                if (elapsedEl) elapsedEl.textContent = trAndroid('generateElapsed', { t: clock });
+                if (btnGenerate && btnGenerate.disabled) {
+                    btnGenerate.textContent = trAndroid('generateBtnBusy', { t: clock });
+                }
+            };
+
+            const setPhase = function (phaseKey, statusKey, statusType) {
+                const clock = formatElapsedClock(Date.now() - t0);
+                if (phaseEl) phaseEl.textContent = trAndroid(phaseKey);
+                if (statusKey) showStatus(trAndroid(statusKey, { t: clock }), statusType || 'info');
+            };
+
             try {
                 if (typeof Adb === 'undefined') {
                     showStatus('⚠️ WebAssembly not loaded yet. Please wait a moment and try again.', 'error');
@@ -6280,54 +7347,92 @@
                 }
 
                 const usbDevice = await requestAdbUsbDeviceFromUser();
-                
-                const btnGenerate = document.getElementById('btn-generate');
-                
-                showStatus('Connecting to device...', 'info');
-                showProgress();
+
+                showStatus(trAndroid('generatePhaseConnect'), 'info');
                 hideResults();
+                if (detailEl) detailEl.classList.remove('hidden');
+                if (phaseEl) phaseEl.textContent = trAndroid('generatePhaseConnect');
+                tickElapsed();
+                elapsedInterval = setInterval(tickElapsed, 1000);
+                approxPct = 8;
+                setAndroidProgress(approxPct, trAndroid('generatePhaseConnect'));
 
                 adb = new Adb();
                 window.adb = adb;
-                
+
                 await adb.connectWithUsbDevice(usbDevice);
-                
-                btnGenerate.textContent = 'Connected ✓';
+
                 btnGenerate.disabled = true;
-                
                 document.getElementById('btn-disconnect-generate').classList.remove('hidden');
-                
-                showStatus('Generating bugreport (this takes 5-10 minutes)...', 'info');
-                
+
+                setPhase('generatePhaseCollect', 'generateStatusCollect', 'info');
+                approxPct = 12;
+                setAndroidProgress(approxPct, trAndroid('generatePhaseCollect'));
+                // Approximate progress only — ADB does not expose real percentages during bugreportz
+                progressInterval = setInterval(function () {
+                    if (approxPct < 88) {
+                        approxPct = Math.min(88, approxPct + 3);
+                        setAndroidProgress(approxPct, trAndroid('generatePhaseCollect'));
+                    }
+                }, 5000);
+
                 const bugreportData = await adb.bugreport();
+                const genMs = Date.now() - t0;
                 const sizeMB = (bugreportData.length / 1024 / 1024).toFixed(2);
-                
-                showStatus('Bugreport generated! Calculating hash...', 'info');
-                
+
+                if (progressInterval) {
+                    clearInterval(progressInterval);
+                    progressInterval = null;
+                }
+                setAndroidProgress(92, trAndroid('generatePhaseHash'));
+
+                showStatus(
+                    trAndroid('generateStatusDone', {
+                        t: formatElapsedClock(genMs),
+                        size: sizeMB + ' MB',
+                    }),
+                    'info'
+                );
+                if (phaseEl) phaseEl.textContent = trAndroid('generatePhaseHash');
+
                 const hashHex = await calculateHash(bugreportData);
-                
-                showStatus('Hash calculated! Analyzing...', 'info');
+
+                showStatus(
+                    trAndroid('generateStatusAnalyzing', { t: formatElapsedClock(Date.now() - t0) }),
+                    'info'
+                );
+                if (phaseEl) phaseEl.textContent = trAndroid('generatePhaseAnalyze');
+                setAndroidProgress(96, trAndroid('generatePhaseAnalyze'));
 
                 const { rules, rulesInfo } = await fetchSigmaRules();
-                const result = parseBugreportAnalysis(await adb.analyze_bugreport(bugreportData, rules));
-                result.sigma_rules_info = rulesInfo;
-
-                result.file_info = {
-                    path: 'Generated on device',
-                    size_bytes: bugreportData.length,
-                    size_mb: sizeMB,
-                    sha256: hashHex
-                };
-                
-                result.analysis_timestamp = new Date().toISOString();
-                
-                showStatus('Analysis complete!', 'success');
-                hideProgress();
+                const rawWasm = await adb.analyze_bugreport(bugreportData, rules);
+                stopTimers();
+                setAndroidProgress(100, trAndroid('generateStatusComplete', { t: formatElapsedClock(Date.now() - t0) }));
+                if (detailEl) detailEl.classList.add('hidden');
                 currentBugreportBytes = new Uint8Array(bugreportData);
-                displayResults(result);
+                await finishBugreportAnalysis(rawWasm, function (result) {
+                    result.sigma_rules_info = rulesInfo;
+                    result.file_info = {
+                        path: 'Generated on device',
+                        size_bytes: bugreportData.length,
+                        size_mb: sizeMB,
+                        sha256: hashHex
+                    };
+                    result.analysis_timestamp = new Date().toISOString();
+                });
+                showStatus(
+                    trAndroid('generateStatusComplete', { t: formatElapsedClock(Date.now() - t0) }),
+                    'success'
+                );
+                hideProgress();
+                hideLoadingSpinner();
+                btnGenerate.textContent = btnDefaultLabel;
+                btnGenerate.disabled = false;
             } catch (error) {
                 console.error('[GENERATE] Generation error:', error);
-                
+                stopTimers();
+                const elapsed = formatElapsedClock(Date.now() - t0);
+
                 let errorMessage = 'Failed to generate bugreport: ';
                 if (error && error.name === 'NotFoundError') {
                     errorMessage = 'No device selected (picker cancelled or no matching USB device).';
@@ -6338,18 +7443,18 @@
                 } else if (error.toString().includes('permission')) {
                     errorMessage = '⚠️ Permission denied. Please accept USB debugging permission on your device.';
                 } else if (error.toString().includes('timeout')) {
-                    errorMessage = '⚠️ Operation timed out. Bugreport generation can take 5-10 minutes. Try again.';
+                    errorMessage = '⚠️ ' + trAndroid('generateTimeout', { t: elapsed });
                 } else {
-                    errorMessage += error.toString();
+                    errorMessage += error.toString() + ' (elapsed ' + elapsed + ')';
                 }
-                
+
                 showStatus(errorMessage, 'error');
                 hideProgress();
-                
-                const btnGenerate = document.getElementById('btn-generate');
-                btnGenerate.textContent = 'Retry Generation';
+                if (detailEl) detailEl.classList.add('hidden');
+
+                btnGenerate.textContent = trAndroid('generateBtnRetry');
                 btnGenerate.disabled = false;
-                
+
                 document.getElementById('btn-disconnect-generate').classList.add('hidden');
             }
         }
@@ -6363,7 +7468,7 @@
 
             try {
                 showStatus('📥 Downloading bugreport from device...', 'info');
-                showProgress();
+                showProgress(8, 'Downloading bugreport…');
                 showLoadingSpinner('Downloading bugreport from device...');
                 hideResults();
 
@@ -6374,6 +7479,7 @@
                 const sizeMB = (bugreportData.length / 1024 / 1024).toFixed(2);
                 
                 showStatus(`✓ Downloaded ${sizeMB} MB in ${formatDuration(downloadDurationMs)}! Calculating hash...`, 'info');
+                setAndroidProgress(45, 'Calculating SHA-256…');
                 showLoadingSpinner('Calculating file hash...');
                 
                 const startHash = Date.now();
@@ -6381,30 +7487,31 @@
                 const hashDurationMs = Date.now() - startHash;
                 
                 showStatus(`✓ Hash calculated in ${formatDuration(hashDurationMs)}! Now analyzing...`, 'info');
+                setAndroidProgress(70, 'Analyzing bugreport…');
                 showLoadingSpinner('Analyzing bugreport... This may take a minute');
 
                 const { rules, rulesInfo } = await fetchSigmaRules();
+                setAndroidProgress(82, 'Running Sigma rules…');
                 const startAnalysis = Date.now();
-                const result = parseBugreportAnalysis(await adb.analyze_bugreport(bugreportData, rules));
-                result.sigma_rules_info = rulesInfo;
-
+                const rawWasm = await adb.analyze_bugreport(bugreportData, rules);
                 const analysisDurationMs = Date.now() - startAnalysis;
                 const totalDurationMs = Date.now() - startDownload;
-                
-                result.file_info = {
-                    path: selectedBugreportPath,
-                    size_bytes: bugreportData.length,
-                    size_mb: sizeMB,
-                    sha256: hashHex
-                };
-                
-                result.analysis_timestamp = new Date().toISOString();
-                
+                setAndroidProgress(100, 'Analysis complete');
+                currentBugreportBytes = new Uint8Array(bugreportData);
+                await finishBugreportAnalysis(rawWasm, function (result) {
+                    result.sigma_rules_info = rulesInfo;
+                    result.file_info = {
+                        path: selectedBugreportPath,
+                        size_bytes: bugreportData.length,
+                        size_mb: sizeMB,
+                        sha256: hashHex
+                    };
+                    result.analysis_timestamp = new Date().toISOString();
+                });
+                console.log('[ANALYZE-DEVICE] wasm_ms=', analysisDurationMs);
                 showStatus(`✓ Analysis complete! (Total: ${formatDuration(totalDurationMs)})`, 'success');
                 hideProgress();
                 hideLoadingSpinner();
-                currentBugreportBytes = new Uint8Array(bugreportData);
-                displayResults(result);
             } catch (error) {
                 console.error('[ANALYZE-DEVICE] Analysis error:', error);
                 
@@ -6498,7 +7605,7 @@
                 }
                 
                 showStatus(`Reading file (${fileSizeMB} MB)...`, 'info');
-                showProgress();
+                showProgress(12, 'Reading file…');
                 showLoadingSpinner('Reading file...');
                 hideResults();
 
@@ -6506,11 +7613,13 @@
                 const uint8Array = new Uint8Array(arrayBuffer);
 
                 showStatus(`Calculating hash...`, 'info');
+                setAndroidProgress(40, 'Calculating SHA-256…');
                 showLoadingSpinner('Calculating file hash...');
                 
                 const hashHex = await calculateHash(uint8Array);
 
                 showStatus(`Analyzing bugreport (${fileSizeMB} MB)...`, 'info');
+                setAndroidProgress(70, 'Analyzing bugreport…');
                 showLoadingSpinner('Analyzing bugreport... This may take a minute');
 
                 if (!adb) {
@@ -6519,23 +7628,23 @@
                 }
 
                 const { rules, rulesInfo } = await fetchSigmaRules();
-                const result = parseBugreportAnalysis(await adb.analyze_bugreport(uint8Array, rules));
-                result.sigma_rules_info = rulesInfo;
-
-                result.file_info = {
-                    path: uploadedFile.name,
-                    size_bytes: uploadedFile.size,
-                    size_mb: fileSizeMB,
-                    sha256: hashHex
-                };
-                
-                result.analysis_timestamp = new Date().toISOString();
-                
+                setAndroidProgress(85, 'Running Sigma rules…');
+                const rawWasm = await adb.analyze_bugreport(uint8Array, rules);
+                setAndroidProgress(100, 'Analysis complete');
+                currentBugreportBytes = new Uint8Array(uint8Array);
+                await finishBugreportAnalysis(rawWasm, function (result) {
+                    result.sigma_rules_info = rulesInfo;
+                    result.file_info = {
+                        path: uploadedFile.name,
+                        size_bytes: uploadedFile.size,
+                        size_mb: fileSizeMB,
+                        sha256: hashHex
+                    };
+                    result.analysis_timestamp = new Date().toISOString();
+                });
                 showStatus('✓ Analysis complete!', 'success');
                 hideProgress();
                 hideLoadingSpinner();
-                currentBugreportBytes = new Uint8Array(uint8Array);
-                displayResults(result);
             } catch (error) {
                 console.error('Analysis error:', error);
                 

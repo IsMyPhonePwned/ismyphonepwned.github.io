@@ -1,0 +1,44 @@
+title: Spyrtacus Android spyware (packages)
+id: spyware-spyrtacus-packages
+status: stable
+description: |
+  Detects Spyrtacus Android spyware package names from MVT indicators
+  (SIO S.p.A. / Osservatorio Nessuno analysis of sample 8.71).
+  Packages: com.elysium.core, it.taog, org.util.carriersvc, sys.base.service.
+  Sources:
+  - https://github.com/mvt-project/mvt-indicators/pull/51
+  - https://osservatorionessuno.org/blog/2026/04/italian-spyware-maker-sio-still-developing-and-distributing-spyrtacus/
+  - https://github.com/mvt-project/mvt-indicators/tree/main/2026-04-09_sio_spyrtacus
+author: IsMyPhonePwned (adapted from mobipwn / MVT)
+date: 2026/04/09
+level: critical
+detection:
+  selection_pkg:
+    pkg:
+      - 'com.elysium.core'
+      - 'it.taog'
+      - 'org.util.carriersvc'
+      - 'sys.base.service'
+  selection_package_name:
+    package_name:
+      - 'com.elysium.core'
+      - 'it.taog'
+      - 'org.util.carriersvc'
+      - 'sys.base.service'
+  selection_process:
+    process_name|contains:
+      - 'com.elysium.core'
+      - 'it.taog'
+      - 'org.util.carriersvc'
+      - 'sys.base.service'
+  selection_cmd:
+    cmd|contains:
+      - 'com.elysium.core'
+      - 'it.taog'
+      - 'org.util.carriersvc'
+      - 'sys.base.service'
+  condition: selection_pkg or selection_package_name or selection_process or selection_cmd
+tags:
+  - attack.execution
+  - spyware.spyrtacus
+  - mvt

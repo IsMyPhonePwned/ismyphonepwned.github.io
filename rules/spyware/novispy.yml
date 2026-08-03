@@ -8,6 +8,7 @@ detection:
     pkg:
       - 'com.serv.services'
       - 'com.accesibilityservice'
+      - 'com.accessibilityservice'
       - 'com.li.activity'
       - 'com.gu.activity'
   condition: selection_suspicious_package

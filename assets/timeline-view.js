@@ -104,6 +104,26 @@
         return '';
     }
 
+    function eventExtraMeta(ev) {
+        if (!ev || typeof ev !== 'object') return '';
+        var parts = [];
+        if (ev.timestamp_desc != null && String(ev.timestamp_desc).trim()) {
+            parts.push(String(ev.timestamp_desc).trim());
+        }
+        if (ev.source_path != null && String(ev.source_path).trim()) {
+            parts.push(String(ev.source_path).trim());
+        } else if (ev.parser_source != null && String(ev.parser_source).trim()) {
+            parts.push(String(ev.parser_source).trim());
+        }
+        if (ev.event_type != null && String(ev.event_type).trim()) {
+            parts.push(String(ev.event_type).trim());
+        }
+        if (ev.sqlite_table != null && String(ev.sqlite_table).trim()) {
+            parts.push('table: ' + String(ev.sqlite_table).trim());
+        }
+        return parts.join(' · ');
+    }
+
     function defaultCategory(ev) {
         if (!ev || typeof ev !== 'object') return 'event';
         if (ev.bugreport_parser != null && String(ev.bugreport_parser)) return String(ev.bugreport_parser);
@@ -777,6 +797,13 @@
                 rowEl.className = 'timeline-sk-row';
                 rowEl.dataset.tms = String(item.tms);
                 rowEl.style.borderLeftColor = catCol(item.cat);
+                var rowMsg = item.msg.length > 220 ? item.msg.slice(0, 217) + '…' : item.msg;
+                var extraMeta = eventExtraMeta(item.ev);
+                var msgHtml = rowMsg
+                    ? escapeHtml(rowMsg)
+                    : extraMeta
+                      ? ''
+                      : escapeHtml('(' + item.cat + ')');
                 rowEl.innerHTML =
                     '<span class="timeline-sk-row-time">' +
                     escapeHtml(fmtLocal(item.tms)) +
@@ -786,7 +813,10 @@
                     '</span><span class="timeline-sk-row-cat">' +
                     escapeHtml(item.cat) +
                     '</span><span class="timeline-sk-row-msg">' +
-                    escapeHtml(item.msg.length > 220 ? item.msg.slice(0, 217) + '…' : item.msg) +
+                    msgHtml +
+                    (extraMeta
+                        ? '<span class="timeline-sk-row-meta">' + escapeHtml(extraMeta) + '</span>'
+                        : '') +
                     '</span>';
                 (function (evObj, el, tms) {
                     el.addEventListener('click', function () {

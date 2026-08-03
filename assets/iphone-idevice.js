@@ -157,10 +157,12 @@ export async function pickIphoneDevice() {
     return dev;
 }
 
-export async function pairIphoneDevice(device, mode = 'random', verbose = false) {
+export async function pairIphoneDevice(device, mode = 'random', verbose = false, options = {}) {
     await ensureIdeviceWasm();
     const xml = await lockdownPair(device, mode, verbose);
-    storePairPlist(xml);
+    if (options.persist !== false) {
+        storePairPlist(xml);
+    }
     return xml;
 }
 

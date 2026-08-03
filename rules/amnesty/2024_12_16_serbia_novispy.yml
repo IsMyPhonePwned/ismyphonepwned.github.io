@@ -29,6 +29,7 @@ detection:
     process_name|contains:
       - 'com.serv.services'
       - 'com.accessibilityservice'
+      - 'com.accesibilityservice'
       - 'com.li.activity'
       - 'com.gu.activity'
   condition: selection_ip or selection_hash or selection_package

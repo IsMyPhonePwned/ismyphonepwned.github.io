@@ -347,57 +347,83 @@
         bar.innerHTML = chips.join('');
     }
 
-    function renderSysdiagnoseSigmaUI(data) {
+    function renderSigmaRulesContainerHtml(data) {
+        var pack = i18nPack();
+        var info = asWasmArray(data.sigma_rules_info);
+        if (!info.length) {
+            return '<p class="detection-empty">' + escapeHtml(pack.sigmaNoRules || 'No rules loaded.') + '</p>';
+        }
+        return info
+            .map(function (rawR) {
+                var r = mapPlainTop(rawR) || rawR;
+                var fetchBadge = r.success
+                    ? '<span class="sigma-fetch-ok">✓ Fetched</span>'
+                    : '<span class="sigma-fetch-err">✗ ' + escapeHtml(r.fetchError || 'Failed') + '</span>';
+                var rows = [
+                    ['URL', escapeHtml(r.url)],
+                    ['Server', fetchBadge],
+                    ['Title', r.title ? escapeHtml(r.title) : '-'],
+                    ['ID', r.id ? escapeHtml(r.id) : '-'],
+                    ['Description', r.description ? escapeHtml(r.description) : '-'],
+                    ['Status', r.status ? escapeHtml(r.status) : '-'],
+                    ['Level', r.level ? escapeHtml(r.level) : '-'],
+                ];
+                var body = rows
+                    .map(function (row) {
+                        return (
+                            '<div class="sigma-rule-row"><span class="sigma-rule-label">' +
+                            escapeHtml(row[0]) +
+                            '</span><span class="sigma-rule-value">' +
+                            row[1] +
+                            '</span></div>'
+                        );
+                    })
+                    .join('');
+                return '<div class="sigma-rule-card">' + body + '</div>';
+            })
+            .join('');
+    }
+
+    var sigmaDetailsData = null;
+    var sigmaDetailsBuilt = false;
+
+    function ensureSysdiagnoseSigmaDetails() {
+        if (sigmaDetailsBuilt || !sigmaDetailsData) return;
+        sigmaDetailsBuilt = true;
+        var pack = i18nPack();
+        var sigmaEl = document.getElementById('iphone-sigma-rules-container');
+        var matchesEl = document.getElementById('iphone-sigma-matches-container');
+        if (sigmaEl) {
+            sigmaEl.innerHTML = renderSigmaRulesContainerHtml(sigmaDetailsData);
+        }
+        if (matchesEl) {
+            matchesEl.innerHTML = renderSigmaMatchesGroupedHtml(asWasmArray(sigmaDetailsData.sigma_matches));
+        }
+        if (!sigmaEl && !matchesEl) {
+            sigmaDetailsBuilt = false;
+        }
+    }
+
+    function renderSysdiagnoseSigmaUI(data, opts) {
+        opts = opts || {};
+        data = data || {};
+        sigmaDetailsData = data;
+        sigmaDetailsBuilt = false;
         var section = document.getElementById('iphone-detection-section');
         if (!section) return;
-        data = data || {};
         section.style.display = 'block';
         updateSigmaSummaryBar(data);
 
         var pack = i18nPack();
         var sigmaEl = document.getElementById('iphone-sigma-rules-container');
-        var info = asWasmArray(data.sigma_rules_info);
-        if (sigmaEl) {
-            if (info.length > 0) {
-                sigmaEl.innerHTML = info
-                    .map(function (rawR) {
-                        var r = mapPlainTop(rawR) || rawR;
-                        var fetchBadge = r.success
-                            ? '<span class="sigma-fetch-ok">✓ Fetched</span>'
-                            : '<span class="sigma-fetch-err">✗ ' + escapeHtml(r.fetchError || 'Failed') + '</span>';
-                        var rows = [
-                            ['URL', escapeHtml(r.url)],
-                            ['Server', fetchBadge],
-                            ['Title', r.title ? escapeHtml(r.title) : '-'],
-                            ['ID', r.id ? escapeHtml(r.id) : '-'],
-                            ['Description', r.description ? escapeHtml(r.description) : '-'],
-                            ['Status', r.status ? escapeHtml(r.status) : '-'],
-                            ['Level', r.level ? escapeHtml(r.level) : '-'],
-                        ];
-                        var body = rows
-                            .map(function (row) {
-                                return (
-                                    '<div class="sigma-rule-row"><span class="sigma-rule-label">' +
-                                    escapeHtml(row[0]) +
-                                    '</span><span class="sigma-rule-value">' +
-                                    row[1] +
-                                    '</span></div>'
-                                );
-                            })
-                            .join('');
-                        return '<div class="sigma-rule-card">' + body + '</div>';
-                    })
-                    .join('');
-            } else {
-                sigmaEl.innerHTML =
-                    '<p class="detection-empty">' + escapeHtml(pack.sigmaNoRules || 'No rules loaded.') + '</p>';
-            }
-        }
-
         var matchesEl = document.getElementById('iphone-sigma-matches-container');
-        if (matchesEl) {
-            matchesEl.innerHTML = renderSigmaMatchesGroupedHtml(asWasmArray(data.sigma_matches));
+        var hint = '<p class="detection-empty">' + escapeHtml(pack.sigmaExpandHint || 'Expand to load details.') + '</p>';
+        if (opts.deferDetails) {
+            if (sigmaEl) sigmaEl.innerHTML = hint;
+            if (matchesEl) matchesEl.innerHTML = hint;
+            return;
         }
+        ensureSysdiagnoseSigmaDetails();
     }
 
     function hideSysdiagnoseSigmaUI() {
@@ -407,5 +433,6 @@
 
     window.fetchSigmaRules = fetchSigmaRules;
     window.renderSysdiagnoseSigmaUI = renderSysdiagnoseSigmaUI;
+    window.ensureIphoneSigmaDetails = ensureSysdiagnoseSigmaDetails;
     window.hideSysdiagnoseSigmaUI = hideSysdiagnoseSigmaUI;
 })();

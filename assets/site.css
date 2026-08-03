@@ -391,12 +391,15 @@
 
         .progress {
             width: 100%;
-            height: 4px;
+            height: auto;
+            min-height: 1.75rem;
             background: var(--bg-secondary);
-            border-radius: 2px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
             overflow: hidden;
             margin: 1rem 0;
             display: none;
+            box-shadow: inset 0 1px 2px color-mix(in srgb, var(--text-primary) 6%, transparent);
         }
 
         .progress.show {
@@ -404,24 +407,148 @@
         }
 
         .progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+            height: 1.75rem;
+            min-height: 1.75rem;
+            background: linear-gradient(
+                90deg,
+                var(--accent),
+                color-mix(in srgb, var(--accent) 70%, var(--accent-hover, var(--accent)))
+            );
             width: 0%;
-            transition: width 0.3s;
-            animation: progress-animation 1.5s infinite;
+            transition: width 0.3s ease;
+            animation: none;
             display: flex;
             align-items: center;
             justify-content: center;
             color: #fff;
-            font-size: 0.75rem;
+            font-size: 0.875rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.02em;
+            line-height: 1;
+            min-width: 3rem;
+            padding: 0 0.5rem;
+            box-sizing: border-box;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+            border-radius: inherit;
+        }
+
+        .progress--with-meta {
+            display: none;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            overflow: visible;
+            min-height: 0;
+        }
+
+        .progress--with-meta.show {
+            display: grid;
+            gap: 0.4rem;
+        }
+
+        .progress-meta {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
+        .progress-meta__label {
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .progress-pct {
+            flex-shrink: 0;
+            font-size: 1rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            color: var(--accent);
+            letter-spacing: 0.02em;
+        }
+
+        .progress--with-meta .progress-track {
+            height: 1.75rem;
+            border-radius: 10px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: inset 0 1px 2px color-mix(in srgb, var(--text-primary) 6%, transparent);
+        }
+
+        .progress--with-meta .progress-bar {
+            border-radius: 0;
+        }
+
+        .progress-bar.is-indeterminate,
+        .progress.show.progress--busy .progress-bar {
+            animation: progress-animation 1.5s ease-in-out infinite;
+            background-size: 200% 100%;
+            background-image: linear-gradient(
+                90deg,
+                var(--accent),
+                color-mix(in srgb, var(--accent) 55%, #fff),
+                var(--accent)
+            );
+        }
+
+        .generate-bugreport-detail {
+            margin-top: 1rem;
+            padding: 1rem 1.1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .generate-bugreport-detail.hidden {
+            display: none;
+        }
+
+        .generate-bugreport-detail h4 {
+            font-size: 1rem;
+            margin: 0 0 0.5rem 0;
+            color: var(--text-primary);
+        }
+
+        .generate-bugreport-elapsed {
+            margin: 0 0 0.35rem 0;
             font-weight: 600;
-            min-width: 2.5rem;
+            font-size: 1.05rem;
+            color: var(--accent);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .generate-bugreport-phase {
+            margin: 0 0 0.75rem 0;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            line-height: 1.4;
+        }
+
+        .generate-bugreport-detail ul {
+            margin: 0;
+            padding-left: 1.25rem;
+            color: var(--text-secondary);
+            font-size: 0.8125rem;
+            line-height: 1.55;
+        }
+
+        .generate-bugreport-detail code {
+            font-size: 0.8em;
         }
 
         @keyframes progress-animation {
-            0% { opacity: 1; }
-            50% { opacity: 0.6; }
-            100% { opacity: 1; }
+            0% { background-position: 100% 0; opacity: 1; }
+            50% { background-position: 0% 0; opacity: 1; }
+            100% { background-position: -100% 0; opacity: 1; }
         }
 
         /* Loading Spinner */
@@ -1199,6 +1326,212 @@
     color: var(--success);
     border: 1px solid rgba(76, 175, 80, 0.35);
 }
+.pkg-badge-sideload {
+    background: rgba(245, 158, 11, 0.16);
+    color: var(--warning, #d97706);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+.pkg-badge-store {
+    background: rgba(76, 175, 80, 0.12);
+    color: var(--success);
+    border: 1px solid rgba(76, 175, 80, 0.35);
+}
+.pkg-installer-raw {
+    margin-top: 0.2rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    word-break: break-all;
+}
+.apk-daily-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 0.85rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+}
+.apk-daily-row__body {
+    min-width: 0;
+    flex: 1;
+}
+.apk-daily-row__pkg {
+    font-weight: 600;
+    font-size: 0.9rem;
+    word-break: break-all;
+    color: var(--text-primary);
+}
+.apk-daily-row__meta {
+    margin-top: 0.2rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+.apk-daily-badge {
+    flex-shrink: 0;
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+}
+.apk-daily-badge--down {
+    background: rgba(244, 67, 54, 0.14);
+    border-color: rgba(244, 67, 54, 0.4);
+    color: var(--error);
+}
+.apk-daily-badge--uninstall {
+    background: rgba(245, 158, 11, 0.14);
+    border-color: rgba(245, 158, 11, 0.4);
+    color: var(--warning, #d97706);
+}
+.pkg-badge-sockets {
+    background: rgba(33, 150, 243, 0.14);
+    color: var(--accent);
+    border: 1px solid rgba(33, 150, 243, 0.4);
+    cursor: pointer;
+    font-family: inherit;
+}
+.pkg-badge-sockets:hover {
+    filter: brightness(1.05);
+}
+.package-detail-item.package-crosslink-active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.network-sockets-hint {
+    margin: 0 0 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+}
+.socket-row {
+    cursor: pointer;
+}
+.socket-row:hover {
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+.socket-endpoint {
+    font-size: 0.78rem;
+    word-break: break-all;
+}
+.socket-owner-cell {
+    min-width: 7rem;
+}
+.socket-owner-link {
+    display: inline;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    width: auto;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.socket-owner-link:hover {
+    filter: brightness(1.08);
+}
+.socket-owner {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+.socket-owner--muted {
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+.socket-owner--uid {
+    font-family: ui-monospace, monospace;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+.socket-owner--stale {
+    color: var(--warning);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.socket-owner-meta {
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-top: 0.1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.socket-owner-meta--hint {
+    text-transform: none;
+    letter-spacing: 0;
+    font-family: ui-monospace, monospace;
+    font-size: 0.72rem;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+.socket-owner-footnote {
+    margin-top: 0.25rem;
+    font-size: 0.68rem;
+    line-height: 1.35;
+    color: var(--text-secondary);
+    font-weight: 400;
+    max-width: 16rem;
+}
+.socket-detail-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+.socket-detail-modal__card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem 1.75rem;
+    max-width: min(40rem, 92vw);
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+}
+.socket-detail-modal__close {
+    position: absolute;
+    top: 0.85rem;
+    right: 0.85rem;
+    width: auto;
+    padding: 0.4rem 0.75rem;
+    background: var(--error);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+.socket-detail-actions {
+    margin-top: 1rem;
+}
+.socket-detail-pkg-btn {
+    width: auto;
+    padding: 0.55rem 1rem;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
 .pkg-detail-dl {
     display: grid;
     grid-template-columns: minmax(7rem, auto) 1fr;
@@ -1625,6 +1958,14 @@
 .timeline-sk-row-msg {
     font-size: 0.75rem;
     line-height: 1.35;
+    word-break: break-word;
+}
+.timeline-sk-row-meta {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.65rem;
+    line-height: 1.35;
+    color: var(--text-secondary);
     word-break: break-word;
 }
 .timeline-sk-empty {

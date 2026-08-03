@@ -29,18 +29,30 @@
 
 .bugreport-picker-refresh {
     flex-shrink: 0;
-    padding: 0.45rem 0.75rem;
-    font-size: 0.8rem;
+    width: auto;
+    min-width: 0;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.2;
     border-radius: 8px;
     border: 1px solid var(--border);
     background: var(--bg-secondary);
     color: var(--text-primary);
     cursor: pointer;
+    white-space: nowrap;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 
-.bugreport-picker-refresh:hover {
+.bugreport-picker-refresh:hover:not(:disabled) {
     border-color: var(--accent);
     color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, var(--bg-secondary));
+}
+
+.bugreport-picker-refresh:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
 }
 
 .bugreport-picker-hint {
@@ -206,6 +218,7 @@
 
 .bugreport-picker-analyze {
     flex-shrink: 0;
+    width: auto;
     min-width: 11rem;
     padding: 0.8rem 1.25rem;
     font-size: 0.95rem;

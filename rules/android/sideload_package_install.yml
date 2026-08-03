@@ -1,0 +1,61 @@
+title: Package installed outside default installer
+id: android-sideload-package-install
+status: experimental
+description: |
+  Flags Android package *metadata* where installerPackageName is a third-party
+  package — not Play Store, system installer UI, or common OEM/MDM updaters.
+
+  Requires package_name + installerPackageName (same intent as mobipwn
+  data_type=*package_metadata* installer=*). Does NOT match raw PackageManager
+  INSTALL_RESULT / START_INSTALL log lines alone — those lack installer
+  metadata and cause thousands of false positives (e.g. "result of install: 1{…}").
+
+  Excludes known fleet updaters (Facebook system installer, Samsung Update Center,
+  Galaxy Store, managed provisioning). Self-updates (installer == package name)
+  may still appear when fieldref is unavailable; triage those manually.
+
+  Adapted from mobipwn mobile/sideload_package_install.yaml.
+author: IsMyPhonePwned (adapted from mobipwn)
+date: 2026/08/03
+modified: 2026/08/03
+logsource:
+  product: android
+  category: package
+detection:
+  selection:
+    package_name|re: '.+'
+    installerPackageName|re: '.+'
+  filter_known_installers:
+    installerPackageName:
+      - 'com.android.vending'
+      - 'com.google.android.packageinstaller'
+      - 'com.android.packageinstaller'
+      - 'null'
+      - 'None'
+      - 'com.facebook.system'
+      - 'com.samsung.android.app.updatecenter'
+      - 'com.sec.android.app.samsungapps'
+      - 'com.android.managedprovisioning'
+      - 'android'
+      - 'com.google.android.apps.work.clouddpc'
+      - 'com.google.android.gms'
+      - 'com.android.settings'
+  filter_system_code_path:
+    codePath|startswith:
+      - '/system/'
+      - '/vendor/'
+      - '/product/'
+      - '/system_ext/'
+      - '/apex/'
+  filter_system_resource_path:
+    resourcePath|startswith:
+      - '/system/'
+      - '/vendor/'
+      - '/product/'
+      - '/system_ext/'
+      - '/apex/'
+  condition: selection and not filter_known_installers and not filter_system_code_path and not filter_system_resource_path
+level: high
+tags:
+  - attack.persistence
+  - attack.initial_access

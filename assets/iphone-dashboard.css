@@ -1,0 +1,277 @@
+/* iPhone analysis dashboard — Android hero + mobipwn-style curated tabs */
+
+.iphone-dash {
+    margin: 1.25rem 0 1.5rem;
+}
+
+.iphone-dash.hidden {
+    display: none;
+}
+
+.iphone-dash-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0 0 1rem;
+    padding: 0.35rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-secondary);
+}
+
+.iphone-dash-tab {
+    appearance: none;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    padding: 0.45rem 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    width: auto;
+    line-height: 1.2;
+}
+
+.iphone-dash-tab:hover {
+    color: var(--text-primary);
+    background: color-mix(in srgb, var(--accent) 8%, var(--bg-card));
+}
+
+.iphone-dash-tab.is-active {
+    color: var(--accent);
+    background: var(--bg-card);
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.iphone-dash-tab__count {
+    display: inline-block;
+    margin-left: 0.3rem;
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-variant-numeric: tabular-nums;
+    background: color-mix(in srgb, var(--text-secondary) 14%, transparent);
+    color: var(--text-secondary);
+}
+
+.iphone-dash-tab.is-active .iphone-dash-tab__count {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    color: var(--accent);
+}
+
+.iphone-dash-tab__count.is-alert {
+    background: color-mix(in srgb, var(--error) 16%, transparent);
+    color: var(--error);
+}
+
+.iphone-dash-panel {
+    display: none;
+}
+
+.iphone-dash-panel.is-active {
+    display: block;
+}
+
+.iphone-dash-card {
+    margin-bottom: 1rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+}
+
+.iphone-dash-card > h3 {
+    margin: 0 0 0.35rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.iphone-dash-card__lead {
+    margin: 0 0 0.85rem;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+}
+
+.iphone-dash-empty {
+    margin: 0;
+    padding: 0.85rem 1rem;
+    border-radius: 8px;
+    border: 1px dashed var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+}
+
+.iphone-filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0 0 0.75rem;
+}
+
+.iphone-filter-chip {
+    appearance: none;
+    width: auto;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.28rem 0.6rem;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.iphone-filter-chip.is-active {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+    background: color-mix(in srgb, var(--accent) 12%, var(--bg-card));
+}
+
+.iphone-perm-chip,
+.iphone-kind-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.12rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    margin: 0.1rem 0.2rem 0.1rem 0;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+}
+
+.iphone-perm-chip--allow {
+    color: var(--success);
+    border-color: color-mix(in srgb, var(--success) 40%, var(--border));
+    background: color-mix(in srgb, var(--success) 10%, var(--bg-card));
+}
+
+.iphone-perm-chip--deny {
+    color: var(--error);
+    border-color: color-mix(in srgb, var(--error) 40%, var(--border));
+    background: color-mix(in srgb, var(--error) 10%, var(--bg-card));
+}
+
+.iphone-kind-chip--ipa,
+.iphone-kind-chip--sideload_tool {
+    color: var(--warning);
+    border-color: color-mix(in srgb, var(--warning) 45%, var(--border));
+    background: color-mix(in srgb, var(--warning) 12%, var(--bg-card));
+}
+
+.iphone-dash-table-wrap {
+    max-height: min(55vh, 28rem);
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+}
+
+.iphone-dash-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+}
+
+.iphone-dash-table th,
+.iphone-dash-table td {
+    padding: 0.45rem 0.65rem;
+    text-align: left;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    vertical-align: top;
+}
+
+.iphone-dash-table th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-card);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    z-index: 1;
+}
+
+.iphone-dash-table td.mono,
+.iphone-dash-table .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.78rem;
+    word-break: break-all;
+}
+
+.iphone-dash-search {
+    margin-bottom: 0.65rem;
+}
+
+.iphone-findings-band {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    margin: 0 0 1rem;
+}
+
+.iphone-finding-card {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.7rem 0.85rem;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--error) 6%, var(--bg-card));
+    border-left: 3px solid var(--error);
+}
+
+.iphone-finding-card--warn {
+    background: color-mix(in srgb, var(--warning) 8%, var(--bg-card));
+    border-left-color: var(--warning);
+}
+
+.iphone-finding-card__title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.iphone-finding-card__meta {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.iphone-finding-card__sample {
+    font-size: 0.78rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    color: var(--text-secondary);
+    word-break: break-word;
+}
+
+#iphone-results-hero .hero-metric {
+    cursor: default;
+}
+
+#iphone-results-hero .hero-metric[data-dash-jump] {
+    cursor: pointer;
+}
+
+#iphone-results-hero .hero-metric[data-dash-jump]:hover .hero-metric-value {
+    text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+    .iphone-dash-tabs {
+        padding: 0.25rem;
+    }
+
+    .iphone-dash-tab {
+        font-size: 0.72rem;
+        padding: 0.4rem 0.55rem;
+    }
+}

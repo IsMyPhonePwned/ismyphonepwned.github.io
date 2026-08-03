@@ -29,29 +29,25 @@
 
 .sysdiagnose-picker-refresh {
     flex-shrink: 0;
-    padding: 0.45rem 0.75rem;
-    font-size: 0.8rem;
+    width: auto;
+    min-width: 0;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.2;
     border-radius: 8px;
     border: 1px solid var(--border);
     background: var(--bg-secondary);
     color: var(--text-primary);
     cursor: pointer;
-    font-weight: 600;
+    white-space: nowrap;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 
-.sysdiagnose-picker-refresh:not(:disabled) {
-    background: var(--accent);
+.sysdiagnose-picker-refresh:hover:not(:disabled) {
     border-color: var(--accent);
-    color: #fff;
-}
-
-.sysdiagnose-picker-refresh:hover {
-    filter: brightness(1.05);
-}
-
-.sysdiagnose-picker-refresh:not(:disabled):hover {
-    border-color: var(--accent);
-    color: #fff;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, var(--bg-secondary));
 }
 
 .sysdiagnose-picker-refresh:disabled {
@@ -62,6 +58,11 @@
 .sysdiagnose-picker-refresh:disabled:hover {
     border-color: var(--border);
     color: var(--text-primary);
+    background: var(--bg-secondary);
+}
+
+.sysdiagnose-archives-toolbar .sysdiagnose-picker-refresh {
+    align-self: center;
 }
 
 .sysdiagnose-picker-hint {
@@ -188,6 +189,7 @@
 
 .sysdiagnose-picker-analyze {
     flex-shrink: 0;
+    width: auto;
     padding: 0.55rem 1rem;
     font-size: 0.875rem;
     font-weight: 600;

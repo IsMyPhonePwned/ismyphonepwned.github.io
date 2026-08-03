@@ -17,7 +17,7 @@
                 <div style="display: flex; flex-direction: column; gap: 0.25rem;">
                     <h1 class="logo-text">IsMyPhonePwned ?</h1>
                     <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400;" data-i18n="pageSubtitle">Android · Intrusion Logging (AAPM)</span>
-                    <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400;" data-i18n="pageVersion">v0.3.0-beta • Updated 8 July 2026</span>
+                    <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400;" data-i18n="pageVersion">v0.3.1-beta • Updated 3 August 2026</span>
                 </div>
             </div>
             <div class="header-actions">
@@ -112,19 +112,8 @@
                     </table>
                 </div>
             </div>
-            <div class="result-card">
-                <div class="section-header">
-                    <h3 data-i18n="fullDataJsonTitle">📋 Full Data (JSON)</h3>
-                </div>
-                <button type="button" class="section-toggle collapsed" onclick="toggleSection('json-output')">▼</button>
-                <div class="section-content collapsed" id="json-output-content">
-                    <div class="json-viewer" id="json-output" style="min-height: 4rem;">—</div>
-                </div>
-            </div>
             <div id="results-actions" style="margin-top: 1.5rem; display: none; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
                 <button type="button" onclick="window.downloadIlResults()" style="background: #4CAF50; color: white;" data-i18n="btnDownloadJson">📥 Download JSON</button>
-                <button type="button" onclick="window.copyIlResults()" style="background: var(--accent); color: white;" data-i18n="btnCopyClipboard">📋 Copy to Clipboard</button>
-                <span id="copy-json-feedback" class="copy-json-feedback" hidden aria-live="polite"></span>
             </div>
         </div>
 
@@ -142,7 +131,7 @@
         window.IL_I18N = {
             en: {
                 pageSubtitle: 'Android · Intrusion Logging (AAPM)',
-                pageVersion: 'v0.3.0-beta • Updated 8 July 2026',
+                pageVersion: 'v0.3.1-beta • Updated 3 August 2026',
                 wasmLoading: '⏳ Loading...',
                 wasmReady: '✓ Ready',
                 wasmFailed: '❌ Failed to load',
@@ -236,7 +225,7 @@
             },
             fr: {
                 pageSubtitle: 'Android · Intrusion Logging (AAPM)',
-                pageVersion: 'v0.3.0-beta • Mis à jour le 8 juillet 2026',
+                pageVersion: 'v0.3.1-beta • Mis à jour le 3 août 2026',
                 wasmLoading: '⏳ Chargement…',
                 wasmReady: '✓ Prêt',
                 wasmFailed: '❌ Échec du chargement',
@@ -330,7 +319,7 @@
             },
             zh: {
                 pageSubtitle: 'Android · 入侵日志 (AAPM)',
-                pageVersion: 'v0.3.0-beta • 更新于 2026年7月8日',
+                pageVersion: 'v0.3.1-beta • 更新于 2026年8月3日',
                 wasmLoading: '⏳ 加载中…',
                 wasmReady: '✓ 就绪',
                 wasmFailed: '❌ 加载失败',
@@ -826,15 +815,6 @@
                 });
                 document.getElementById('results').classList.add('show');
                 document.getElementById('results-actions').style.display = 'flex';
-                var jsonOut = document.getElementById('json-output');
-                jsonOut.textContent = trIl('jsonBuilding');
-                setTimeout(function () {
-                    try {
-                        jsonOut.textContent = jsonStringify(currentResults);
-                    } catch (e) {
-                        jsonOut.textContent = trIl('jsonStringifyError');
-                    }
-                }, 0);
                 if (out.ok === false) {
                     showStatus(out.error || 'Analysis failed', 'error');
                 } else {
@@ -869,23 +849,6 @@
             a.click();
             URL.revokeObjectURL(url);
             showStatus(trIl('statusDownloadOk'), 'success');
-        };
-
-        window.copyIlResults = async function () {
-            if (currentResults == null) {
-                showStatus(trIl('statusNoResultsCopy'), 'error');
-                return;
-            }
-            try {
-                await navigator.clipboard.writeText(jsonStringify(currentResults));
-                showStatus(trIl('statusCopiedOk'), 'success');
-                var el = document.getElementById('copy-json-feedback');
-                el.textContent = trIl('copyJsonDone');
-                el.hidden = false;
-                setTimeout(function () { el.hidden = true; }, 2800);
-            } catch (e) {
-                showStatus(trIl('statusCopyFailed'), 'error');
-            }
         };
 
         async function boot() {

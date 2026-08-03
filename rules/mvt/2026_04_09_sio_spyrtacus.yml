@@ -1,0 +1,66 @@
+title: MVT Indicators - Spyrtacus / SIO (2026-04-09)
+id: mvt-2026-04-09-sio-spyrtacus
+status: stable
+description: |
+  Spyrtacus Android spyware IoCs (package names, C2 domains/IPs, C2 favicon SHA256)
+  from mvt-project/mvt-indicators 2026-04-09_sio_spyrtacus.
+  Likely developed in Italy by SIO S.p.A.; analyzed by Osservatorio Nessuno (sample 8.71).
+  Delivery via SMS social engineering impersonating an Italian ISP.
+  PR: https://github.com/mvt-project/mvt-indicators/pull/51
+  Report: https://osservatorionessuno.org/blog/2026/04/italian-spyware-maker-sio-still-developing-and-distributing-spyrtacus/
+author: MVT / Osservatorio Nessuno (adapted for sigma-zero)
+date: 2026/04/09
+references:
+  - https://github.com/mvt-project/mvt-indicators/tree/main/2026-04-09_sio_spyrtacus
+  - https://osservatorionessuno.org/blog/2026/04/italian-spyware-maker-sio-still-developing-and-distributing-spyrtacus/
+level: high
+detection:
+  selection_pkg:
+    pkg:
+      - 'com.elysium.core'
+      - 'it.taog'
+      - 'org.util.carriersvc'
+      - 'sys.base.service'
+  selection_package_name:
+    package_name:
+      - 'com.elysium.core'
+      - 'it.taog'
+      - 'org.util.carriersvc'
+      - 'sys.base.service'
+  selection_process:
+    process_name|contains:
+      - 'com.elysium.core'
+      - 'it.taog'
+      - 'org.util.carriersvc'
+      - 'sys.base.service'
+  selection_cmd:
+    cmd|contains:
+      - 'com.elysium.core'
+      - 'it.taog'
+      - 'org.util.carriersvc'
+      - 'sys.base.service'
+  selection_ip:
+    remote_ip:
+      - '5.56.12.150'
+      - '89.46.67.218'
+  selection_domain:
+    destination_domain:
+      - 'supporto-mobile.it'
+      - 'srv.servicemnt.com'
+  selection_hash:
+    file_hash:
+      - 'ef2e1c47166fe0c5ab3bf5216baf6ad6b96f759e15ac218d1a1a3cdcc9e0994f'
+  selection_message:
+    message|contains:
+      - '5.56.12.150'
+      - '89.46.67.218'
+      - 'supporto-mobile.it'
+      - 'srv.servicemnt.com'
+      - 'ef2e1c47166fe0c5ab3bf5216baf6ad6b96f759e15ac218d1a1a3cdcc9e0994f'
+  condition: >
+    selection_pkg or selection_package_name or selection_process or selection_cmd
+    or selection_ip or selection_domain or selection_hash or selection_message
+tags:
+  - attack.command_and_control
+  - spyware.spyrtacus
+  - mvt

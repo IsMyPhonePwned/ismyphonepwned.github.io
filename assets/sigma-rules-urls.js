@@ -1,6 +1,6 @@
 /**
  * Sigma rule files loaded by android.html, iphone.html, and bugreport-status.html.
- * Served from /rules/ — grouped by category (Amnesty IoCs, Android bugreport/CVE, iOS, spyware).
+ * Served from /rules/ — grouped by category (Amnesty IoCs, Android bugreport/CVE, iOS, spyware, MVT).
  */
 window.SIGMA_RULE_URLS = [
     // Amnesty Tech investigations (sigma-zero YAML)
@@ -23,9 +23,14 @@ window.SIGMA_RULE_URLS = [
     // Spyware / vendor-specific
     '/rules/spyware/cellebrite.yml',
     '/rules/spyware/novispy.yml',
+    '/rules/spyware/spyrtacus.yml',
+    // MVT indicator packs
+    '/rules/mvt/2026_04_09_sio_spyrtacus.yml',
     // Android bugreport hunts
     '/rules/android/bugreport_anr.yml',
     '/rules/android/bugreport_native_crash.yml',
+    '/rules/android/sideload_package_install.yml',
+    '/rules/android/apk_downgrade_battery_daily.yml',
     // Android CVE / exploit signatures
     '/rules/android/CVE/CVE-2025-21055.yaml',
     '/rules/android/CVE/CVE-2025-27363.yml',

@@ -368,43 +368,106 @@
     margin-top: 0.25rem;
 }
 
-/* Ingest / analysis progress (mobipwn ingest-progress) */
+/* Ingest / analysis progress */
 .sysdiagnose-ingest-progress {
     display: grid;
-    gap: 0.5rem;
-    padding: 0.75rem;
-    margin: 0.75rem 0;
+    gap: 0.65rem;
+    padding: 1rem 1.1rem;
+    margin: 0.75rem 0 1rem;
     border: 1px solid var(--border);
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--accent) 6%, var(--bg-card));
+    border-radius: 12px;
+    background: var(--bg-card);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.sysdiagnose-ingest-progress.hidden {
+    display: none;
 }
 
 .sysdiagnose-ingest-progress__header {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
-    gap: 0.5rem;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.sysdiagnose-ingest-progress__heading {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 0;
+}
+
+.sysdiagnose-ingest-progress__spinner {
+    width: 0.9rem;
+    height: 0.9rem;
+    border-radius: 50%;
+    border: 2px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+    border-top-color: var(--accent);
+    flex-shrink: 0;
+    animation: sysdiagnose-ingest-spin 0.8s linear infinite;
+}
+
+.sysdiagnose-ingest-progress.is-done .sysdiagnose-ingest-progress__spinner,
+.sysdiagnose-ingest-progress:not([aria-busy="true"]) .sysdiagnose-ingest-progress__spinner {
+    animation: none;
+    border-color: var(--success, #22c55e);
+    border-top-color: var(--success, #22c55e);
+    background: color-mix(in srgb, var(--success, #22c55e) 35%, transparent);
+}
+
+.sysdiagnose-ingest-progress.is-error .sysdiagnose-ingest-progress__spinner {
+    animation: none;
+    border-color: var(--error);
+    border-top-color: var(--error);
+    background: color-mix(in srgb, var(--error) 25%, transparent);
+}
+
+@keyframes sysdiagnose-ingest-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .sysdiagnose-ingest-progress__title {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     font-weight: 600;
     color: var(--text-primary);
 }
 
-.sysdiagnose-ingest-progress__pct {
-    font-size: 0.82rem;
+.sysdiagnose-ingest-progress__metrics {
+    display: flex;
+    align-items: baseline;
+    gap: 0.65rem;
     font-variant-numeric: tabular-nums;
+}
+
+.sysdiagnose-ingest-progress__elapsed {
+    font-size: 0.78rem;
     color: var(--text-secondary);
-    font-family: var(--font-mono, ui-monospace, monospace);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.sysdiagnose-ingest-progress__elapsed[hidden] {
+    display: none !important;
+}
+
+.sysdiagnose-ingest-progress__pct {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--accent);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .sysdiagnose-ingest-progress__bar {
     width: 100%;
-    height: 8px;
-    border-radius: 4px;
-    background: var(--border);
+    height: 10px;
+    border-radius: 999px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
     overflow: hidden;
+    position: relative;
 }
 
 .sysdiagnose-ingest-progress__fill {
@@ -412,24 +475,138 @@
     height: 100%;
     min-width: 0;
     max-width: 100%;
-    background: var(--accent);
-    transition: width 0.25s ease;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 65%, #fff));
+    transition: width 0.35s ease;
+    position: relative;
+}
+
+.sysdiagnose-ingest-progress.is-busy .sysdiagnose-ingest-progress__fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        color-mix(in srgb, #fff 35%, transparent),
+        transparent
+    );
+    animation: sysdiagnose-ingest-sheen 1.4s ease-in-out infinite;
+}
+
+/* Approximate advance while sync WASM freezes JS timers. */
+.sysdiagnose-ingest-progress.is-parsing .sysdiagnose-ingest-progress__fill {
+    transform-origin: left center;
+    animation: sysdiagnose-ingest-creep 100s cubic-bezier(0.12, 0.45, 0.2, 1) forwards;
+}
+
+@keyframes sysdiagnose-ingest-creep {
+    from {
+        transform: scaleX(1);
+    }
+    to {
+        transform: scaleX(2.2);
+    }
+}
+
+.sysdiagnose-ingest-progress.is-done .sysdiagnose-ingest-progress__fill,
+.sysdiagnose-ingest-progress.is-error .sysdiagnose-ingest-progress__fill {
+    animation: none;
+    transform: none;
+    background: linear-gradient(90deg, var(--success, #22c55e), color-mix(in srgb, var(--success, #22c55e) 70%, #fff));
+}
+
+.sysdiagnose-ingest-progress.is-error .sysdiagnose-ingest-progress__fill {
+    background: linear-gradient(90deg, var(--error), color-mix(in srgb, var(--error) 70%, #fff));
+}
+
+@keyframes sysdiagnose-ingest-sheen {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.sysdiagnose-ingest-progress__steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.sysdiagnose-ingest-progress__steps li {
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+}
+
+.sysdiagnose-ingest-progress__steps li.is-done {
+    color: var(--success, #16a34a);
+    border-color: color-mix(in srgb, var(--success, #16a34a) 40%, var(--border));
+    background: color-mix(in srgb, var(--success, #16a34a) 10%, var(--bg-card));
+}
+
+.sysdiagnose-ingest-progress__steps li.is-active {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+    background: color-mix(in srgb, var(--accent) 12%, var(--bg-card));
 }
 
 .sysdiagnose-ingest-progress__phase {
     margin: 0;
-    font-size: 0.88rem;
+    font-size: 0.875rem;
+    font-weight: 500;
     color: var(--text-primary);
+    line-height: 1.35;
 }
 
 .sysdiagnose-ingest-progress__detail {
     margin: 0;
     font-size: 0.78rem;
     color: var(--text-secondary);
-    font-family: var(--font-mono, ui-monospace, monospace);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    word-break: break-all;
+    line-height: 1.4;
+}
+
+.sysdiagnose-ingest-progress__detail.hidden {
+    display: none;
+}
+
+.sysdiagnose-ingest-progress__hint {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    padding: 0.45rem 0.6rem;
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    border: 1px dashed var(--border);
+}
+
+.sysdiagnose-ingest-progress__hint.hidden {
+    display: none;
+}
+
+@media (max-width: 640px) {
+    .sysdiagnose-ingest-progress {
+        padding: 0.85rem;
+    }
+
+    .sysdiagnose-ingest-progress__steps li {
+        font-size: 0.62rem;
+        padding: 0.18rem 0.45rem;
+    }
 }
 
 /* Summary chips under file hero */
@@ -487,6 +664,49 @@
 }
 
 /* Parser module list (mobipwn ingest-progress__parsers) */
+.sysdiagnose-parser-timeline-summary {
+    margin: 0 0 0.75rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--accent) 4%, var(--bg-card));
+}
+
+.sysdiagnose-parser-timeline-summary__title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.sysdiagnose-parser-timeline-summary__blurb {
+    margin: 0 0 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.sysdiagnose-parser-timeline-summary__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.sysdiagnose-parser-timeline-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--text-primary);
+}
+
+.sysdiagnose-parser-timeline-chip--more {
+    background: color-mix(in srgb, var(--text-secondary) 12%, transparent);
+    color: var(--text-secondary);
+}
+
 .sysdiagnose-parser-list {
     list-style: none;
     margin: 0;
@@ -494,24 +714,134 @@
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
-    max-height: min(42vh, 22rem);
+    max-height: min(52vh, 28rem);
     overflow-y: auto;
     border: 1px solid var(--border);
     border-radius: 10px;
     background: var(--bg-card);
 }
 
-.sysdiagnose-parser-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.15rem 0.65rem;
-    padding: 0.45rem 0.65rem;
+.sysdiagnose-parser-item {
     border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
-    font-size: 0.82rem;
 }
 
-.sysdiagnose-parser-row:last-child {
+.sysdiagnose-parser-item:last-child {
     border-bottom: none;
+}
+
+.sysdiagnose-parser-item--ok {
+    border-left: 3px solid color-mix(in srgb, var(--success) 65%, transparent);
+}
+
+.sysdiagnose-parser-item--fail {
+    border-left: 3px solid var(--error);
+}
+
+.sysdiagnose-parser-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 0.15rem 0.65rem;
+    align-items: center;
+    width: 100%;
+    padding: 0.45rem 0.65rem;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.sysdiagnose-parser-row:hover {
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.sysdiagnose-parser-item--open .sysdiagnose-parser-row {
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.sysdiagnose-parser-row__badges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.35rem;
+}
+
+.sysdiagnose-parser-row__timeline {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent);
+    white-space: nowrap;
+}
+
+.sysdiagnose-parser-row__chevron {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    width: 1rem;
+    text-align: center;
+}
+
+.sysdiagnose-parser-row__body {
+    padding: 0 0.65rem 0.65rem 0.85rem;
+}
+
+.sysdiagnose-parser-row__body.collapsed {
+    display: none;
+}
+
+.sysdiagnose-parser-row__detail {
+    padding-top: 0.15rem;
+}
+
+.sysdiagnose-parser-row__stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.65rem;
+    margin-bottom: 0.45rem;
+}
+
+.sysdiagnose-parser-row__stat {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.sysdiagnose-parser-row__keys {
+    margin: 0 0 0.45rem;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.sysdiagnose-parser-row__sample-title {
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.sysdiagnose-parser-row__samples {
+    margin: 0;
+    padding-left: 1.1rem;
+    font-size: 0.72rem;
+    line-height: 1.45;
+    color: var(--text-primary);
+}
+
+.sysdiagnose-parser-row__samples li {
+    margin-bottom: 0.25rem;
+    word-break: break-word;
+}
+
+.sysdiagnose-parser-row__no-sample {
+    margin: 0;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
 }
 
 .sysdiagnose-parser-row--ok {

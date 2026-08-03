@@ -89,22 +89,38 @@ function refreshStatus() {
     } else {
         setStatus('st-device', 'off', 'Not connected');
     }
-    if (plistXmlText) {
-        if (plistHostShort) {
-            setStatus('st-pair', 'ok', 'Loaded · HostID ' + plistHostShort);
-        } else {
-            try {
-                const d = readPlistRootDictStrings(plistXmlText);
-                plistHostShort = d.HostID ? shortId(d.HostID) : null;
-                setStatus('st-pair', 'ok', 'Loaded · HostID ' + (plistHostShort || '?'));
-            } catch {
-                setStatus('st-pair', 'warn', 'Loaded (parse error)');
+    if ($('st-pair')) {
+        if (plistXmlText) {
+            if (plistHostShort) {
+                setStatus('st-pair', 'ok', 'Loaded · HostID ' + plistHostShort);
+            } else {
+                try {
+                    const d = readPlistRootDictStrings(plistXmlText);
+                    plistHostShort = d.HostID ? shortId(d.HostID) : null;
+                    setStatus('st-pair', 'ok', 'Loaded · HostID ' + (plistHostShort || '?'));
+                } catch {
+                    setStatus('st-pair', 'warn', 'Loaded (parse error)');
+                }
             }
+        } else {
+            setStatus('st-pair', 'off', 'None');
         }
-    } else {
-        setStatus('st-pair', 'off', 'None');
     }
     refreshButtonStates();
+}
+
+/**
+ * Load pair XML into memory without UI side-effects (analyzer page).
+ * @param {string} xml
+ */
+function loadPlistQuiet(xml) {
+    plistXmlText = xml;
+    try {
+        const d = readPlistRootDictStrings(xml);
+        plistHostShort = d.HostID ? shortId(d.HostID) : null;
+    } catch {
+        plistHostShort = null;
+    }
 }
 
 /**
@@ -324,7 +340,7 @@ function wireConnectHandlers(opts = {}) {
 }
 
 /**
- * @param {{ onStatus?: (msg: string) => void, skipWasm?: boolean }} [opts]
+ * @param {{ onStatus?: (msg: string) => void, skipWasm?: boolean, quietRestore?: boolean, restorePair?: boolean }} [opts]
  */
 export async function initIdeviceConnect(opts = {}) {
     wireConnectHandlers(opts);
@@ -344,12 +360,20 @@ export async function initIdeviceConnect(opts = {}) {
         }
     }
 
-    try {
-        const cached = localStorage.getItem('idevice-rs.pairRecordXml');
-        if (cached && cached.includes('<plist')) {
-            setPlist(cached, 'restored from cache', { emit: false });
-        }
-    } catch (_) { /* ignore */ }
+    const restorePair = opts.restorePair !== false;
+    if (restorePair) {
+        try {
+            const cached = localStorage.getItem('idevice-rs.pairRecordXml');
+            if (cached && cached.includes('<plist')) {
+                if (opts.quietRestore) {
+                    // Analyzer-style silent restore (no "Last action" paint).
+                    loadPlistQuiet(cached);
+                } else {
+                    setPlist(cached, 'restored from cache', { emit: false });
+                }
+            }
+        } catch (_) { /* ignore */ }
+    }
 
     refreshPairPanel();
     refreshStatus();

@@ -1,0 +1,25 @@
+title: Android APK downgrade (battery daily)
+id: android-apk-downgrade-battery-daily
+status: experimental
+description: |
+  Flags package version decreases recorded in dumpsys batterystats daily
+  Update lines. Used by forensic extraction (Cellebrite-style APK downgrade)
+  and as a rollback indicator. Chronological comparison avoids false positives
+  from newest-first Daily sections (MVT #638 / #804).
+
+  Adapted from mobipwn mobile/apk_downgrade_battery_daily.yaml.
+author: IsMyPhonePwned (adapted from mobipwn / MVT)
+date: 2026/07/01
+logsource:
+  product: android
+  category: battery
+detection:
+  selection_downgrade_event:
+    event_type: battery_daily_downgrade
+  selection_action:
+    action: downgrade
+  condition: selection_downgrade_event or selection_action
+level: medium
+tags:
+  - attack.defense_evasion
+  - forensic.apk_downgrade

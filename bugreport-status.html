@@ -458,7 +458,7 @@
                 <img src="logo.png" alt="" width="48" height="48" style="flex-shrink: 0; object-fit: contain;" onerror="this.style.display='none'">
                 <div style="min-width: 0;">
                 <h1 class="logo-text" data-i18n="pageTitle">Bugreport Analysis — Status & Capabilities</h1>
-                <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.875rem;" data-i18n="pageSubtitle">Rules, parsers, and detection reference • v0.3.0-beta • Updated 8 July 2026</p>
+                <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.875rem;" data-i18n="pageSubtitle">Rules, parsers, and detection reference • v0.3.1-beta • Updated 3 August 2026</p>
                 </div>
             </div>
             <div class="header-actions">
@@ -512,7 +512,7 @@ detection:<br>
 
             <h3 data-i18n="rulesListTitle">Rules list</h3>
             <p id="rules-list-desc" style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
-                Rules are auto-loaded from <code>/rules/</code> (36 files in <code>amnesty/</code>, <code>android/</code> including <code>android/CVE/</code>, <code>ios/darksword/</code>, <code>spyware/</code>). The analysis page fetches and concatenates them for Sigma evaluation.
+                Rules are auto-loaded from <code>/rules/</code> (<span id="rules-list-count">—</span> files in <code>amnesty/</code>, <code>android/</code> including <code>android/CVE/</code>, <code>ios/darksword/</code>, <code>spyware/</code>, <code>mvt/</code>). The analysis page fetches and concatenates them for Sigma evaluation.
             </p>
             <div id="fetch-status" class="fetch-status" style="display: none;"></div>
             <div id="rules-list-wrapper" style="display: none;">
@@ -713,7 +713,7 @@ detection:<br>
         const TRANSLATIONS = {
             en: {
                 pageTitle: 'Bugreport Analysis — Status & Capabilities',
-                pageSubtitle: 'Rules, parsers, and detection reference • v0.3.0-beta • Updated 8 July 2026',
+                pageSubtitle: 'Rules, parsers, and detection reference • v0.3.1-beta • Updated 3 August 2026',
                 themeDark: 'Dark',
                 themeLight: 'Light',
                 lastUpdated: 'Last updated:',
@@ -722,7 +722,7 @@ detection:<br>
                 sigmaFormat: 'Sigma rule format',
                 sigmaFields: 'Rules follow the Sigma schema. Supported fields include title, id, description, status, level (critical / high / medium / low), and detection selection / condition.',
                 rulesListTitle: 'Rules list',
-                rulesListDesc: 'Rules are auto-loaded from /rules/ (36 files in amnesty/, android/ including android/CVE/, ios/darksword/, spyware/). The analysis page fetches and concatenates them for Sigma evaluation.',
+                rulesListDesc: 'Rules are auto-loaded from /rules/ ({n} files in amnesty/, android/ including android/CVE/, ios/darksword/, spyware/, mvt/). The analysis page fetches and concatenates them for Sigma evaluation.',
                 ruleLevels: 'Rule levels',
                 levelCritical: '— Critical security events (e.g. root access)',
                 levelHigh: '— High-risk behaviour (e.g. suspicious installs, exfiltration)',
@@ -751,7 +751,7 @@ detection:<br>
             },
             fr: {
                 pageTitle: 'Analyse de bugreport — État & capacités',
-                pageSubtitle: 'Référence règles, parseurs et détection • v0.3.0-beta • Mis à jour le 8 juillet 2026',
+                pageSubtitle: 'Référence règles, parseurs et détection • v0.3.1-beta • Mis à jour le 3 août 2026',
                 themeDark: 'Sombre',
                 themeLight: 'Clair',
                 lastUpdated: 'Dernière mise à jour :',
@@ -760,7 +760,7 @@ detection:<br>
                 sigmaFormat: 'Format de règle Sigma',
                 sigmaFields: 'Les règles suivent le schéma Sigma. Champs supportés : title, id, description, status, level (critical / high / medium / low), et détection selection / condition.',
                 rulesListTitle: 'Liste des règles',
-                rulesListDesc: 'Les règles sont chargées depuis /rules/ (36 fichiers : amnesty/, android/ dont android/CVE/, ios/darksword/, spyware/). La page d\'analyse les concatène pour Sigma.',
+                rulesListDesc: 'Les règles sont chargées depuis /rules/ ({n} fichiers : amnesty/, android/ dont android/CVE/, ios/darksword/, spyware/, mvt/). La page d\'analyse les concatène pour Sigma.',
                 ruleLevels: 'Niveaux de règle',
                 levelCritical: '— Événements de sécurité critiques (ex. accès root)',
                 levelHigh: '— Comportement à haut risque (ex. installations suspectes, exfiltration)',
@@ -789,7 +789,7 @@ detection:<br>
             },
             zh: {
                 pageTitle: 'Bugreport 分析 — 状态与能力',
-                pageSubtitle: '规则、解析器与检测参考 • v0.3.0-beta • 更新于 2026年7月8日',
+                pageSubtitle: '规则、解析器与检测参考 • v0.3.1-beta • 更新于 2026年8月3日',
                 themeDark: '深色',
                 themeLight: '浅色',
                 lastUpdated: '最后更新：',
@@ -798,7 +798,7 @@ detection:<br>
                 sigmaFormat: 'Sigma 规则格式',
                 sigmaFields: '规则遵循 Sigma 架构。支持的字段包括 title、id、description、status、level（critical / high / medium / low）以及检测 selection / condition。',
                 rulesListTitle: '规则列表',
-                rulesListDesc: '规则从 /rules/ 自动加载（36 个文件：amnesty/、android/（含 android/CVE/）、ios/darksword/、spyware/）。分析页拼接后用于 Sigma 评估。',
+                rulesListDesc: '规则从 /rules/ 自动加载（{n} 个文件：amnesty/、android/（含 android/CVE/）、ios/darksword/、spyware/、mvt/）。分析页拼接后用于 Sigma 评估。',
                 ruleLevels: '规则级别',
                 levelCritical: '— 严重安全事件（如 root 访问）',
                 levelHigh: '— 高风险行为（如可疑安装、外泄）',
@@ -847,7 +847,14 @@ detection:<br>
             });
             const rulesDesc = document.getElementById('rules-list-desc');
             if (rulesDesc && t.rulesListDesc) {
-                rulesDesc.innerHTML = t.rulesListDesc.replace(/\/rules\//g, '<code>/rules/</code>');
+                const n = (window.SIGMA_RULE_URLS && window.SIGMA_RULE_URLS.length) || 0;
+                rulesDesc.innerHTML = t.rulesListDesc
+                    .replace(/\{n\}/g, String(n))
+                    .replace(/\/rules\//g, '<code>/rules/</code>');
+            }
+            const rulesCountEl = document.getElementById('rules-list-count');
+            if (rulesCountEl) {
+                rulesCountEl.textContent = String((window.SIGMA_RULE_URLS && window.SIGMA_RULE_URLS.length) || 0);
             }
             const eval3 = document.getElementById('detection-eval3-li');
             if (eval3 && t.detectionEval3) eval3.innerHTML = t.detectionEval3.replace('---', '<code>---</code>');

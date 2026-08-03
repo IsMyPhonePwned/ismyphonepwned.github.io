@@ -4566,12 +4566,21 @@
         }
 
         function renderAuthenticationParser(el, data) {
-            const events = Array.isArray(data.events) ? data.events : (Array.isArray(data) ? data : []);
+            const events = Array.isArray(data.events) ? data.events.slice() : (Array.isArray(data) ? data.slice() : []);
             const total = data.total_events != null ? data.total_events : events.length;
             if (!events.length) {
                 el.innerHTML = '<p style="color:var(--text-secondary)">No keystore unlock or PowerManager <code>wakeUp</code> events found in SYSTEM LOG.</p>';
                 return;
             }
+            events.sort(function (a, b) {
+                const ea = mapPlainTop(a) || a || {};
+                const eb = mapPlainTop(b) || b || {};
+                const ta = parseBugreportTimeMs(ea.timestamp);
+                const tb = parseBugreportTimeMs(eb.timestamp);
+                const na = Number.isFinite(ta) ? ta : 0;
+                const nb = Number.isFinite(tb) ? tb : 0;
+                return nb - na;
+            });
             let html = '<p style="font-size:0.85rem;color:var(--text-secondary);margin:0 0 0.5rem 0">Total events: <strong>' +
                 escapeHtml(String(total)) + '</strong></p>';
             const rows = events.map(function (ev) {

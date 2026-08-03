@@ -1135,12 +1135,33 @@
         }
 
         function renderAuthenticationParser(el, data) {
-            const events = Array.isArray(data.events) ? data.events : (Array.isArray(data) ? data : []);
+            const events = Array.isArray(data.events) ? data.events.slice() : (Array.isArray(data) ? data.slice() : []);
             const total = data.total_events != null ? data.total_events : events.length;
             if (!events.length) {
                 el.innerHTML = '<p style="color:var(--text-secondary)">No keystore unlock or PowerManager <code>wakeUp</code> events found in SYSTEM LOG.</p>';
                 return;
             }
+            function authEventTimeMs(ev) {
+                const e = mapPlainTop(ev) || ev || {};
+                const raw = e.timestamp != null ? String(e.timestamp).trim() : '';
+                if (!raw) return 0;
+                const n = Number(raw);
+                if (Number.isFinite(n) && n > 0) {
+                    if (n > 1e14) return Math.floor(n / 1000);
+                    if (n < 1e12) return Math.floor(n * 1000);
+                    return n;
+                }
+                const space = raw.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})/);
+                if (space) {
+                    const ms = Date.parse(space[1] + 'T' + space[2] + 'Z');
+                    return Number.isFinite(ms) ? ms : 0;
+                }
+                const ms = Date.parse(raw);
+                return Number.isFinite(ms) ? ms : 0;
+            }
+            events.sort(function (a, b) {
+                return authEventTimeMs(b) - authEventTimeMs(a);
+            });
             let html = '<p style="font-size:0.85rem;color:var(--text-secondary);margin:0 0 0.5rem 0">Total events: <strong>' +
                 escapeHtml(String(total)) + '</strong></p>';
             const rows = events.map(function (ev) {

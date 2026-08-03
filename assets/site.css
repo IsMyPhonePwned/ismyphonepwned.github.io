@@ -348,13 +348,27 @@
             user-select: none;
             list-style: none;
         }
-        .sigma-matched-log summary::-webkit-details-marker { display: none; }
-        .sigma-matched-log summary::before {
-            content: '▶ ';
-            font-size: 0.7em;
+        .sigma-matched-log summary::-webkit-details-marker,
+        .sigma-matched-log summary::marker {
+            display: none;
+            content: '';
         }
-        .sigma-matched-log[open] summary::before {
-            content: '▼ ';
+        .sigma-matched-log summary::before {
+            content: '';
+            display: inline-block;
+            width: 0;
+            height: 0;
+            margin-right: 0.45em;
+            vertical-align: 0.15em;
+            border-style: solid;
+            border-width: 0.28em 0 0.28em 0.42em;
+            border-color: transparent transparent transparent currentColor;
+            opacity: 0.75;
+        }
+        .sigma-matched-log[open] > summary::before {
+            border-width: 0.42em 0.28em 0 0.28em;
+            border-color: currentColor transparent transparent transparent;
+            vertical-align: 0.05em;
         }
         .sigma-matched-log-body {
             margin-top: 0.35rem;
@@ -2377,16 +2391,27 @@
     user-select: none;
     list-style: none;
 }
-.sigma-match-occurrences-summary::-webkit-details-marker {
+.sigma-match-occurrences-summary::-webkit-details-marker,
+.sigma-match-occurrences-summary::marker {
     display: none;
+    content: '';
 }
 .sigma-match-occurrences-summary::before {
-    content: '▶ ';
-    font-size: 0.65em;
-    color: var(--text-secondary);
+    content: '';
+    display: inline-block;
+    width: 0;
+    height: 0;
+    margin-right: 0.45em;
+    vertical-align: 0.15em;
+    border-style: solid;
+    border-width: 0.28em 0 0.28em 0.42em;
+    border-color: transparent transparent transparent currentColor;
+    opacity: 0.85;
 }
 .sigma-match-occurrences[open] > .sigma-match-occurrences-summary::before {
-    content: '▼ ';
+    border-width: 0.42em 0.28em 0 0.28em;
+    border-color: currentColor transparent transparent transparent;
+    vertical-align: 0.05em;
 }
 .sigma-match-occurrence-list {
     display: flex;

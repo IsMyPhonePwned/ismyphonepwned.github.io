@@ -87,12 +87,18 @@
 
         <div class="section">
             <h2 data-i18n="iphoneTitle">Sysdiagnose archive</h2>
-            <p data-i18n="sysdiagnoseDesc">Connect your iPhone over USB (Chromium + WebUSB), pick a sysdiagnose archive from the list, and analyze it in the browser.</p>
+            <p data-i18n="sysdiagnoseDesc">Connect your iPhone over USB (Chromium + WebUSB) to pull an existing sysdiagnose archive, or upload a .tar.gz from your computer. Parsing runs in your browser.</p>
             <p style="font-size: 0.8125rem; color: var(--text-secondary); margin: 0.5rem 0 1rem;">
                 <span data-i18n="iphoneAdvancedBlurb">Syslog, pcap, crash reports, and lockdown diagnostics are on</span>
                 <a href="iphone-advanced.html" style="color: var(--accent);" data-i18n="navIphoneAdvanced">iPhone Advanced</a>.
             </p>
 
+            <div class="tabs tabs-sub" role="tablist">
+                <button type="button" class="tab tab-iphone active" data-iphone-tab="device" onclick="switchIphoneTab('device')" data-i18n="tabFromDevice">From Device</button>
+                <button type="button" class="tab tab-iphone" data-iphone-tab="upload" onclick="switchIphoneTab('upload')" data-i18n="tabUpload">Upload File</button>
+            </div>
+
+            <div id="tab-iphone-device">
             <div class="idevice-workspace" id="iphone-idevice-connect">
                 <details class="toggle-block" style="margin-bottom: 0.85rem;">
                     <summary data-i18n="sysdiagnoseTriggerTitle">How to trigger sysdiagnose on the iPhone</summary>
@@ -185,6 +191,39 @@
                         </div>
                     </div>
                 </section>
+            </div>
+            </div>
+
+            <div id="tab-iphone-upload" class="hidden">
+                <div class="sysdiagnose-file-drop" id="sysdiagnose-upload-zone" role="button" tabindex="0" aria-label="Upload sysdiagnose archive">
+                    <div id="sysdiagnose-upload-empty" class="sysdiagnose-file-drop__empty">
+                        <span class="sysdiagnose-file-drop__icon-wrap" aria-hidden="true">🍎</span>
+                        <span class="sysdiagnose-file-drop__prompt" data-i18n="sysdiagnoseDrop">Click or drag sysdiagnose .tar.gz here</span>
+                        <span class="sysdiagnose-file-drop__formats" data-i18n="sysdiagnoseFormats">Typically named sysdiagnose_*.tar.gz</span>
+                        <span class="sysdiagnose-file-drop__browse" data-i18n="sysdiagnoseBrowse">Browse file…</span>
+                    </div>
+                    <div id="sysdiagnose-upload-selected" class="sysdiagnose-file-drop__selected hidden">
+                        <span class="sysdiagnose-file-drop__file-icon" aria-hidden="true">📦</span>
+                        <div class="sysdiagnose-file-drop__meta">
+                            <span id="sysdiagnose-upload-name" class="sysdiagnose-file-drop__name">—</span>
+                            <span id="sysdiagnose-upload-size" class="sysdiagnose-file-drop__size">—</span>
+                        </div>
+                        <button type="button" id="sysdiagnose-upload-clear" class="sysdiagnose-file-drop__clear" data-i18n="sysdiagnoseClearFile">Clear</button>
+                    </div>
+                </div>
+                <input type="file" id="sysdiagnose-file-input" class="hidden" accept=".tar.gz,.tgz,application/gzip" onchange="window.handleSysdiagnoseFileSelect(event)">
+                <div id="sysdiagnose-upload-ready" class="sysdiagnose-upload-ready">
+                    <span class="sysdiagnose-upload-ready__title" data-i18n="uploadReadyTitle">Ready to analyze</span>
+                    <ul class="sysdiagnose-upload-ready__list">
+                        <li id="sysdiagnose-ready-file" class="sysdiagnose-upload-ready__item">
+                            <span class="sysdiagnose-upload-ready__dot" aria-hidden="true"></span>
+                            <span data-i18n="uploadReadyFile">Archive file selected</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="sysdiagnose-upload-actions">
+                    <button id="btn-analyze-sysdiagnose" class="hidden sysdiagnose-picker-analyze" onclick="window.analyzeSysdiagnoseFile()" data-i18n="analyzeSysdiagnoseBtn">Analyze sysdiagnose</button>
+                </div>
             </div>
         </div>
 
@@ -324,7 +363,7 @@
                     <div id="iphone-dash-apps" class="iphone-dash-panel" role="tabpanel" data-dash-panel="apps" hidden>
                         <div class="iphone-dash-card">
                             <h3 data-i18n="dashAppsTitle">Applications</h3>
-                            <p class="iphone-dash-card__lead" data-i18n="dashAppsBlurb">Bundle IDs discovered across parsers, with evidence hits.</p>
+                            <p class="iphone-dash-card__lead" data-i18n="dashAppsBlurb">Installed apps inventory from powerlogs App Info (mobipwn Packages), plus MI / install / TCC / iTunes sources.</p>
                             <div id="iphone-apps-mount"></div>
                         </div>
                         <div class="iphone-dash-card">
@@ -345,15 +384,20 @@
                     <div id="iphone-dash-processes" class="iphone-dash-panel" role="tabpanel" data-dash-panel="processes" hidden>
                         <div class="iphone-dash-card">
                             <h3 data-i18n="dashProcessesTitle">Processes</h3>
-                            <p class="iphone-dash-card__lead" data-i18n="dashProcessesBlurb">Process snapshots from ps / spindump / related sources.</p>
+                            <p class="iphone-dash-card__lead" data-i18n="dashProcessesBlurb">Live PID inventory from ps_everywhere (mobipwn Running processes). Remotectl-registered services are listed separately; name-only log mentions are omitted.</p>
                             <div id="iphone-processes-mount"></div>
+                        </div>
+                        <div id="iphone-services-card" class="iphone-dash-card hidden">
+                            <h3 data-i18n="dashServicesTitle">Running services</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashServicesBlurb">Remotectl-registered services with no live PID (launchd-style).</p>
+                            <div id="iphone-services-mount"></div>
                         </div>
                     </div>
 
                     <div id="iphone-dash-crashes" class="iphone-dash-panel" role="tabpanel" data-dash-panel="crashes" hidden>
                         <div class="iphone-dash-card">
                             <h3 data-i18n="dashCrashesTitle">Crash reports</h3>
-                            <p class="iphone-dash-card__lead" data-i18n="dashCrashesBlurb">IPS / crashlogs summary from the archive.</p>
+                            <p class="iphone-dash-card__lead" data-i18n="dashCrashesBlurb">Structured .ips crash incidents: exception, signal, reason, faulting thread, and stacks — aligned with mobipwn Crashes.</p>
                             <div id="iphone-crashes-mount"></div>
                         </div>
                     </div>
@@ -528,7 +572,7 @@
                 downloadComplete: 'Downloaded {name} ({size}) — starting analysis…',
                 iphoneTitle: 'Sysdiagnose archive',
                 sysdiagnoseDesc:
-                    'Connect your iPhone over USB (Chromium + WebUSB), pick a sysdiagnose archive from the list, and analyze it in the browser.',
+                    'Connect your iPhone over USB (Chromium + WebUSB) to pull an existing sysdiagnose archive, or upload a .tar.gz from your computer. Parsing runs in your browser.',
                 sysdiagnoseDrop: 'Click or drag sysdiagnose .tar.gz here',
                 sysdiagnoseFormats: 'Typically named sysdiagnose_*.tar.gz',
                 sysdiagnoseBrowse: 'Browse file…',
@@ -539,6 +583,7 @@
                 sysdiagnoseBadgeFail: 'Parse errors',
                 sysdiagnoseFileMetaCount: '{n} files in archive',
                 analyzeSysdiagnoseBtn: 'Analyze sysdiagnose',
+                chooseSysdiagnoseFile: 'Choose a .tar.gz file first',
                 uploadReadyTitle: 'Ready to analyze',
                 uploadReadyFile: 'Archive file selected',
                 ingestProgressTitle: 'Analyzing archive',
@@ -619,20 +664,48 @@
                 dashSideloadTitle: 'Install & sideload enrichment',
                 dashSideloadBlurb: 'MobileInstallation events correlated with IPA / sideload-tool activity.',
                 dashAppsTitle: 'Applications',
-                dashAppsBlurb: 'Bundle IDs discovered across parsers, with evidence hits.',
+                dashAppsBlurb:
+                    'Installed apps inventory from powerlogs App Info (mobipwn Packages), plus MI / install / TCC / iTunes sources.',
                 dashPermsTitle: 'Sensitive permissions (TCC)',
                 dashPermsBlurb: 'Camera, mic, location, and other privacy-sensitive TCC grants by app.',
                 dashNetworkTitle: 'Network IOCs',
                 dashNetworkBlurb: 'Domains, IPs, URLs, and Wi‑Fi identifiers collected across parsers.',
                 dashProcessesTitle: 'Processes',
-                dashProcessesBlurb: 'Process snapshots from ps / spindump / related sources.',
+                dashProcessesBlurb:
+                    'Live PID inventory from ps_everywhere (mobipwn Running processes). Remotectl-registered services are listed separately; name-only log mentions are omitted.',
+                dashServicesTitle: 'Running services',
+                dashServicesBlurb: 'Remotectl-registered services with no live PID (launchd-style).',
                 dashCrashesTitle: 'Crash reports',
-                dashCrashesBlurb: 'IPS / crashlogs summary from the archive.',
+                dashCrashesBlurb:
+                    'Structured .ips crash incidents: exception, signal, reason, faulting thread, and stacks — aligned with mobipwn Crashes.',
                 dashEmptyApps: 'No apps analyser output in this archive.',
                 dashEmptyPerms: 'No sensitive TCC permissions found (or TCC.db missing).',
                 dashEmptyNetwork: 'No network IOC analyser output.',
                 dashEmptyProcesses: 'No process analyser output.',
-                dashEmptyCrashes: 'No crashlogs parser events.',
+                dashEmptyCrashes: 'No crashlogs (.ips) events in this archive.',
+                dashEmptyCrashesFilter: 'No crash content matches “{q}”.',
+                dashCrashReportsN: '{n} crash report',
+                dashCrashReportsNPlural: '{n} crash reports',
+                dashCrashShowMore: 'Show more ({shown} / {total})',
+                dashCrashBadge: 'Crash',
+                dashCrashExpand: 'Show stack',
+                dashCrashCollapse: 'Hide stack',
+                dashCrashFaultingThread: 'Faulting thread',
+                dashCrashLastException: 'Last exception backtrace',
+                dashCrashAsi: 'Application Specific Information',
+                dashCrashImages: 'Binary images',
+                dashCrashNoStack: 'No structured threads on this event (summary-only or legacy text).',
+                dashCrashTopSymbols: 'Top symbols',
+                dashCrashColSymbol: 'Symbol',
+                dashCrashColCount: '#',
+                dashCrashKvException: 'Exception',
+                dashCrashKvCodes: 'Codes',
+                dashCrashKvSignal: 'Signal',
+                dashCrashKvTermination: 'Termination',
+                dashCrashKvPid: 'PID',
+                dashCrashKvAppVer: 'App version',
+                dashCrashKvOs: 'OS',
+                dashCrashKvFormat: 'Format',
                 dashEmptySideload: 'No sideload / IPA enrichment hits.',
                 dashFilterAll: 'All',
                 dashColKind: 'Kind',
@@ -647,6 +720,15 @@
                 dashColBundle: 'Bundle',
                 dashColLabel: 'Label',
                 dashColEnrichments: 'Enrichments',
+                dashColPpid: 'PPID',
+                dashColUid: 'UID',
+                dashColStarted: 'Started',
+                dashColMemory: 'Memory',
+                dashColNote: 'Note',
+                dashProcApprox: '≈ estimated',
+                dashProcThreads: '{n} thr',
+                dashProcParent: 'parent {name}',
+                dashProcServiceBadge: 'service',
                 dashSearchPlaceholder: 'Filter…',
                 dashShowingN: 'Showing {shown} of {total}',
                 analyserSectionTitle: 'Analyser summaries',
@@ -925,7 +1007,7 @@
                 downloadComplete: 'Téléchargé {name} ({size}) — analyse en cours…',
                 iphoneTitle: 'Archive sysdiagnose',
                 sysdiagnoseDesc:
-                    'Connectez l’iPhone en USB (Chromium + WebUSB), choisissez une archive sysdiagnose dans la liste, et analysez-la dans le navigateur.',
+                    'Connectez l’iPhone en USB (Chromium + WebUSB) pour récupérer une archive sysdiagnose, ou importez un .tar.gz depuis votre ordinateur. L’analyse tourne dans le navigateur.',
                 sysdiagnoseDrop: 'Cliquez ou déposez le .tar.gz ici',
                 sysdiagnoseFormats: 'Souvent nommé sysdiagnose_*.tar.gz',
                 sysdiagnoseBrowse: 'Parcourir…',
@@ -936,6 +1018,7 @@
                 sysdiagnoseBadgeFail: 'Erreurs d’analyse',
                 sysdiagnoseFileMetaCount: '{n} fichiers dans l’archive',
                 analyzeSysdiagnoseBtn: 'Analyser sysdiagnose',
+                chooseSysdiagnoseFile: 'Choisissez d’abord un fichier .tar.gz',
                 uploadReadyTitle: 'Prêt à analyser',
                 uploadReadyFile: 'Archive sélectionnée',
                 ingestProgressTitle: 'Analyse de l’archive',
@@ -1016,20 +1099,48 @@
                 dashSideloadTitle: 'Enrichissement install / sideload',
                 dashSideloadBlurb: 'Événements MobileInstallation corrélés à l’activité IPA / outils de sideload.',
                 dashAppsTitle: 'Applications',
-                dashAppsBlurb: 'Bundle IDs découverts dans les parseurs, avec preuves.',
+                dashAppsBlurb:
+                    'Inventaire des apps depuis App Info powerlogs (Packages mobipwn), plus MI / install / TCC / iTunes.',
                 dashPermsTitle: 'Autorisations sensibles (TCC)',
                 dashPermsBlurb: 'Caméra, micro, localisation et autres grants TCC sensibles par app.',
                 dashNetworkTitle: 'IOC réseau',
                 dashNetworkBlurb: 'Domaines, IP, URLs et identifiants Wi‑Fi collectés.',
                 dashProcessesTitle: 'Processus',
-                dashProcessesBlurb: 'Instantanés de processus (ps / spindump / sources liées).',
+                dashProcessesBlurb:
+                    'Inventaire PID live (ps_everywhere), comme Running processes mobipwn. Les services remotectl sont à part ; les mentions logdata/uuid2path sans PID sont omises.',
+                dashServicesTitle: 'Services enregistrés',
+                dashServicesBlurb: 'Services remotectl sans PID live (style launchd).',
                 dashCrashesTitle: 'Rapports de crash',
-                dashCrashesBlurb: 'Résumé IPS / crashlogs de l’archive.',
+                dashCrashesBlurb:
+                    'Incidents .ips structurés : exception, signal, raison, thread fautif et stacks — comme Crashes mobipwn.',
                 dashEmptyApps: 'Pas de sortie analyseur apps.',
                 dashEmptyPerms: 'Aucune autorisation TCC sensible (ou TCC.db absent).',
                 dashEmptyNetwork: 'Pas de sortie analyseur network_iocs.',
                 dashEmptyProcesses: 'Pas de sortie analyseur processus.',
-                dashEmptyCrashes: 'Aucun événement crashlogs.',
+                dashEmptyCrashes: 'Aucun événement crashlogs (.ips) dans cette archive.',
+                dashEmptyCrashesFilter: 'Aucun crash ne correspond à « {q} ».',
+                dashCrashReportsN: '{n} rapport de crash',
+                dashCrashReportsNPlural: '{n} rapports de crash',
+                dashCrashShowMore: 'Afficher plus ({shown} / {total})',
+                dashCrashBadge: 'Crash',
+                dashCrashExpand: 'Afficher la stack',
+                dashCrashCollapse: 'Masquer la stack',
+                dashCrashFaultingThread: 'Thread fautif',
+                dashCrashLastException: 'Dernière backtrace d’exception',
+                dashCrashAsi: 'Application Specific Information',
+                dashCrashImages: 'Images binaires',
+                dashCrashNoStack: 'Pas de threads structurés sur cet événement (résumé seul ou texte legacy).',
+                dashCrashTopSymbols: 'Symboles fréquents',
+                dashCrashColSymbol: 'Symbole',
+                dashCrashColCount: '#',
+                dashCrashKvException: 'Exception',
+                dashCrashKvCodes: 'Codes',
+                dashCrashKvSignal: 'Signal',
+                dashCrashKvTermination: 'Terminaison',
+                dashCrashKvPid: 'PID',
+                dashCrashKvAppVer: 'Version app',
+                dashCrashKvOs: 'OS',
+                dashCrashKvFormat: 'Format',
                 dashEmptySideload: 'Aucun hit sideload / IPA.',
                 dashFilterAll: 'Tous',
                 dashColKind: 'Type',
@@ -1044,6 +1155,15 @@
                 dashColBundle: 'Bundle',
                 dashColLabel: 'Libellé',
                 dashColEnrichments: 'Enrichissements',
+                dashColPpid: 'PPID',
+                dashColUid: 'UID',
+                dashColStarted: 'Démarré',
+                dashColMemory: 'Mémoire',
+                dashColNote: 'Note',
+                dashProcApprox: '≈ estimé',
+                dashProcThreads: '{n} thr',
+                dashProcParent: 'parent {name}',
+                dashProcServiceBadge: 'service',
                 dashSearchPlaceholder: 'Filtrer…',
                 dashShowingN: 'Affichage de {shown} sur {total}',
                 analyserSectionTitle: 'Résumés des analyseurs',
@@ -1318,7 +1438,7 @@
                 downloadingSysdiagnoseProgress: '正在下载 {name}：{read} / {total}（{pct}%）· {elapsed}',
                 downloadComplete: '已下载 {name}（{size}）— 开始分析…',
                 iphoneTitle: 'Sysdiagnose 归档',
-                sysdiagnoseDesc: '通过 USB（Chromium + WebUSB）连接 iPhone，从列表中选择 sysdiagnose 归档，并在浏览器中分析。',
+                sysdiagnoseDesc: '通过 USB（Chromium + WebUSB）从设备拉取 sysdiagnose，或上传本地 .tar.gz。解析在浏览器中完成。',
                 sysdiagnoseDrop: '点击或拖拽 .tar.gz 到此处',
                 sysdiagnoseFormats: '通常为 sysdiagnose_*.tar.gz',
                 sysdiagnoseBrowse: '浏览文件…',
@@ -1329,6 +1449,7 @@
                 sysdiagnoseBadgeFail: '解析错误',
                 sysdiagnoseFileMetaCount: '归档内 {n} 个文件',
                 analyzeSysdiagnoseBtn: '分析 sysdiagnose',
+                chooseSysdiagnoseFile: '请先选择 .tar.gz 文件',
                 uploadReadyTitle: '可以开始分析',
                 uploadReadyFile: '已选择归档文件',
                 ingestProgressTitle: '正在分析归档',
@@ -1409,20 +1530,48 @@
                 dashSideloadTitle: '安装与 sideload 关联',
                 dashSideloadBlurb: 'MobileInstallation 事件与 IPA / sideload 工具活动关联。',
                 dashAppsTitle: '应用程序',
-                dashAppsBlurb: '各解析器发现的 Bundle ID 及证据。',
+                dashAppsBlurb:
+                    '已安装应用清单：powerlogs App Info（同 mobipwn Packages），以及 MI / 安装 / TCC / iTunes 来源。',
                 dashPermsTitle: '敏感权限（TCC）',
                 dashPermsBlurb: '相机、麦克风、定位等敏感 TCC 授权（按应用）。',
                 dashNetworkTitle: '网络 IOC',
                 dashNetworkBlurb: '跨解析器收集的域名、IP、URL 与 Wi‑Fi 标识。',
                 dashProcessesTitle: '进程',
-                dashProcessesBlurb: '来自 ps / spindump 等相关来源的进程快照。',
+                dashProcessesBlurb:
+                    '实时 PID 清单（ps_everywhere），对齐 mobipwn Running processes。remotectl 服务单独列出；无 PID 的 logdata/uuid2path 提及已省略。',
+                dashServicesTitle: '已注册服务',
+                dashServicesBlurb: 'remotectl 注册、无实时 PID 的服务（launchd 风格）。',
                 dashCrashesTitle: '崩溃报告',
-                dashCrashesBlurb: '归档中的 IPS / crashlogs 摘要。',
+                dashCrashesBlurb:
+                    '结构化 .ips 崩溃事件：异常、信号、原因、故障线程与调用栈 — 对齐 mobipwn Crashes。',
                 dashEmptyApps: '无 apps 分析器输出。',
                 dashEmptyPerms: '未找到敏感 TCC 权限（或缺少 TCC.db）。',
                 dashEmptyNetwork: '无 network_iocs 分析器输出。',
                 dashEmptyProcesses: '无进程分析器输出。',
-                dashEmptyCrashes: '无 crashlogs 事件。',
+                dashEmptyCrashes: '此归档无 crashlogs（.ips）事件。',
+                dashEmptyCrashesFilter: '没有匹配“{q}”的崩溃内容。',
+                dashCrashReportsN: '{n} 份崩溃报告',
+                dashCrashReportsNPlural: '{n} 份崩溃报告',
+                dashCrashShowMore: '显示更多（{shown} / {total}）',
+                dashCrashBadge: '崩溃',
+                dashCrashExpand: '显示调用栈',
+                dashCrashCollapse: '隐藏调用栈',
+                dashCrashFaultingThread: '故障线程',
+                dashCrashLastException: '上次异常回溯',
+                dashCrashAsi: 'Application Specific Information',
+                dashCrashImages: '二进制镜像',
+                dashCrashNoStack: '此事件无结构化线程（仅摘要或旧版文本）。',
+                dashCrashTopSymbols: '高频符号',
+                dashCrashColSymbol: '符号',
+                dashCrashColCount: '#',
+                dashCrashKvException: '异常',
+                dashCrashKvCodes: '代码',
+                dashCrashKvSignal: '信号',
+                dashCrashKvTermination: '终止',
+                dashCrashKvPid: 'PID',
+                dashCrashKvAppVer: '应用版本',
+                dashCrashKvOs: '系统',
+                dashCrashKvFormat: '格式',
                 dashEmptySideload: '无 sideload / IPA 命中。',
                 dashFilterAll: '全部',
                 dashColKind: '类型',
@@ -1437,6 +1586,15 @@
                 dashColBundle: 'Bundle',
                 dashColLabel: '标签',
                 dashColEnrichments: '关联信息',
+                dashColPpid: 'PPID',
+                dashColUid: 'UID',
+                dashColStarted: '启动',
+                dashColMemory: '内存',
+                dashColNote: '说明',
+                dashProcApprox: '≈ 估计',
+                dashProcThreads: '{n} thr',
+                dashProcParent: '父进程 {name}',
+                dashProcServiceBadge: '服务',
                 dashSearchPlaceholder: '筛选…',
                 dashShowingN: '显示 {shown} / {total}',
                 analyserSectionTitle: '分析器摘要',
@@ -1664,6 +1822,15 @@
             applyLang(window.currentLang);
             localStorage.setItem('theme', next);
         };
+        window.switchIphoneTab = function (tab) {
+            document.querySelectorAll('.tab-iphone').forEach(function (btn) {
+                btn.classList.toggle('active', btn.getAttribute('data-iphone-tab') === tab);
+            });
+            var dev = document.getElementById('tab-iphone-device');
+            var up = document.getElementById('tab-iphone-upload');
+            if (dev) dev.classList.toggle('hidden', tab !== 'device');
+            if (up) up.classList.toggle('hidden', tab !== 'upload');
+        };
         window.toggleSection = function (id) {
             var content = document.getElementById(id + '-content');
             var btn = event.target;
@@ -1722,6 +1889,7 @@
         let iosLastAction = 'Idle';
         let sysdiagnoseArchives = [];
         let selectedSysdiagnosePath = null;
+        let sysdiagnoseFile = null;
         let analyzerWasmReady = false;
         let iphoneIdeviceOk = false;
 
@@ -2361,6 +2529,37 @@
             } else {
                 panel.classList.add('hidden');
                 if (actions) actions.classList.add('hidden');
+            }
+        }
+
+        function updateSysdiagnoseUploadReady(hasFile) {
+            var item = document.getElementById('sysdiagnose-ready-file');
+            if (item) item.classList.toggle('sysdiagnose-upload-ready__item--ok', !!hasFile);
+        }
+
+        function updateSysdiagnoseUploadPanel(file) {
+            var zone = document.getElementById('sysdiagnose-upload-zone');
+            var empty = document.getElementById('sysdiagnose-upload-empty');
+            var selected = document.getElementById('sysdiagnose-upload-selected');
+            var nameEl = document.getElementById('sysdiagnose-upload-name');
+            var sizeEl = document.getElementById('sysdiagnose-upload-size');
+            if (!zone || !empty || !selected) return;
+            if (file) {
+                zone.classList.add('sysdiagnose-file-drop--has-file');
+                empty.classList.add('hidden');
+                selected.classList.remove('hidden');
+                if (nameEl) {
+                    nameEl.textContent = file.name;
+                    nameEl.title = file.name;
+                }
+                if (sizeEl) sizeEl.textContent = formatBytes(file.size);
+                updateSysdiagnoseUploadReady(true);
+            } else {
+                zone.classList.remove('sysdiagnose-file-drop--has-file');
+                empty.classList.remove('hidden');
+                selected.classList.add('hidden');
+                if (nameEl) nameEl.removeAttribute('title');
+                updateSysdiagnoseUploadReady(false);
             }
         }
 
@@ -3129,6 +3328,72 @@
             return { version: short || ver, versionCode: short && ver && short !== ver ? ver : '' };
         }
 
+        /** Mobipwn-like package timestamp → epoch ms (null when missing / implausible). */
+        function appsParseTimeMs(raw) {
+            if (raw == null) return null;
+            var trimmed = String(raw).trim();
+            if (!trimmed) return null;
+            var asNum = Number(trimmed);
+            if (Number.isFinite(asNum) && asNum > 0) {
+                var nms =
+                    asNum > 1e14
+                        ? Math.floor(asNum / 1000)
+                        : asNum < 1e12
+                          ? Math.floor(asNum * 1000)
+                          : asNum;
+                if (nms >= Date.UTC(2008, 0, 1) && nms <= Date.now() + 86400000) return nms;
+                return null;
+            }
+            var spaceDate = trimmed.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})/);
+            if (spaceDate) {
+                var msSpace = Date.parse(spaceDate[1] + 'T' + spaceDate[2] + 'Z');
+                if (
+                    Number.isFinite(msSpace) &&
+                    msSpace >= Date.UTC(2008, 0, 1) &&
+                    msSpace <= Date.now() + 86400000
+                ) {
+                    return msSpace;
+                }
+            }
+            var syslog = trimmed.match(
+                /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})\s+(\d{4})/i
+            );
+            if (syslog) {
+                var msSys = Date.parse(
+                    syslog[1] + ' ' + syslog[2] + ' ' + syslog[4] + ' ' + syslog[3] + ' UTC'
+                );
+                if (
+                    Number.isFinite(msSys) &&
+                    msSys >= Date.UTC(2008, 0, 1) &&
+                    msSys <= Date.now() + 86400000
+                ) {
+                    return msSys;
+                }
+            }
+            var ms = Date.parse(trimmed);
+            if (
+                Number.isFinite(ms) &&
+                ms >= Date.UTC(2008, 0, 1) &&
+                ms <= Date.now() + 86400000
+            ) {
+                return ms;
+            }
+            return null;
+        }
+
+        function appsScrapeMessageTime(text) {
+            if (!text) return '';
+            var s = String(text);
+            var iso = s.match(/\b(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)\b/);
+            if (iso) return iso[1];
+            var space = s.match(/\b(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\b/);
+            if (space) return space[1];
+            var syslog = s.match(
+                /\b((?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\d{4})\b/i
+            );
+            return syslog ? syslog[1] : '';
+        }
+
         /**
          * Enrich a WASM apps-analyser entry into mobipwn-like package fields
          * (name, version, executable, TCC services) from evidence hits.
@@ -3150,6 +3415,8 @@
             var appType = '';
             var installedAt = '';
             var installedAtMs = null;
+            var weakInstalledAt = '';
+            var weakInstalledAtMs = null;
             var tcc = [];
             var tccSeen = {};
 
@@ -3176,119 +3443,163 @@
                     .filter(Boolean)
                     .map(String)
                     .join(' ');
+                var matchedIn = String(hit.matched_in || '');
+                var isAppInfo =
+                    src.indexOf('powerlogs') >= 0 &&
+                    (/App Info:/i.test(messageBits) ||
+                        hit['app name'] != null ||
+                        hit['bundle id'] != null ||
+                        matchedIn === 'app_info_message' ||
+                        matchedIn === 'app_info_direct' ||
+                        String(hit.apollo_module || '') === 'powerlog_app_info' ||
+                        String(hit.sqlite_table || '') === 'powerlog_app_info');
+                var isMi =
+                    src.indexOf('mobileinstallation') >= 0 || src.indexOf('appinstallation') >= 0;
+                // Prefer fields promoted onto the hit (apps analyser App Info).
+                if (isAppInfo) {
+                    var hitName = hit['app name'] != null ? String(hit['app name']).trim() : '';
+                    var hitExe =
+                        hit['app executable name'] != null
+                            ? String(hit['app executable name']).trim()
+                            : '';
+                    var hitVer =
+                        hit['app bundle version'] != null
+                            ? String(hit['app bundle version']).trim()
+                            : '';
+                    var hitBuild =
+                        hit['app build version'] != null
+                            ? String(hit['app build version']).trim()
+                            : '';
+                    var hitDeleted =
+                        hit['app deleted date'] != null
+                            ? String(hit['app deleted date']).trim()
+                            : '';
+                    var hitType = hit['app type'] != null ? String(hit['app type']).trim() : '';
+                    if (hitName) name = hitName;
+                    if (hitExe) executableName = hitExe;
+                    if (hitVer) version = hitVer;
+                    if (hitBuild) buildVersion = hitBuild;
+                    if (hitDeleted) deletedDate = hitDeleted;
+                    if (hitType) appType = hitType;
+                }
                 if (row && typeof row === 'object') {
-                    if (!name) {
-                        name =
-                            appsPickField(row, [
-                                'app name',
-                                'app_name',
-                                'ZAPPNAME',
-                                'zappname',
-                                'CFBundleDisplayName',
-                                'CFBundleName',
-                                'name',
-                                'product_name'
-                            ]) || name;
-                    }
-                    if (!version) {
-                        version =
-                            appsPickField(row, [
-                                'app bundle version',
-                                'app_bundle_version',
-                                'CFBundleShortVersionString',
-                                'ShortVersion',
-                                'version',
-                                'ZBUNDLEVERSION',
-                                'zbundleversion'
-                            ]) || version;
-                    }
-                    if (!buildVersion) {
-                        buildVersion =
-                            appsPickField(row, [
-                                'app build version',
-                                'app_build_version',
-                                'CFBundleVersion',
-                                'build',
-                                'ZAPPBUILDVERSION'
-                            ]) || buildVersion;
-                    }
-                    if (!executableName) {
-                        executableName =
-                            appsPickField(row, [
-                                'app executable name',
-                                'app_executable_name',
-                                'CFBundleExecutable',
-                                'executable',
-                                'ZAPPEXECUTABLENAME'
-                            ]) || executableName;
-                    }
-                    if (!deletedDate) {
-                        deletedDate =
-                            appsPickField(row, [
-                                'app deleted date',
-                                'app_deleted_date',
-                                'deleted_date',
-                                'ZAPPDELETEDDATE'
-                            ]) || deletedDate;
-                    }
-                    if (!appType) {
-                        appType =
-                            appsPickField(row, ['app type', 'app_type', 'ZAPPTYPE', 'type']) || appType;
-                    }
+                    var rowName =
+                        appsPickField(row, [
+                            'app name',
+                            'app_name',
+                            'ZAPPNAME',
+                            'zappname',
+                            'CFBundleDisplayName',
+                            'CFBundleName',
+                            'name',
+                            'product_name'
+                        ]) || '';
+                    var rowVer =
+                        appsPickField(row, [
+                            'app bundle version',
+                            'app_bundle_version',
+                            'CFBundleShortVersionString',
+                            'ShortVersion',
+                            'version',
+                            'ZBUNDLEVERSION',
+                            'zbundleversion'
+                        ]) || '';
+                    var rowBuild =
+                        appsPickField(row, [
+                            'app build version',
+                            'app_build_version',
+                            'CFBundleVersion',
+                            'build',
+                            'ZAPPBUILDVERSION'
+                        ]) || '';
+                    var rowExe =
+                        appsPickField(row, [
+                            'app executable name',
+                            'app_executable_name',
+                            'CFBundleExecutable',
+                            'executable',
+                            'ZAPPEXECUTABLENAME'
+                        ]) || '';
+                    var rowDeleted =
+                        appsPickField(row, [
+                            'app deleted date',
+                            'app_deleted_date',
+                            'deleted_date',
+                            'ZAPPDELETEDDATE'
+                        ]) || '';
+                    var rowType =
+                        appsPickField(row, ['app type', 'app_type', 'ZAPPTYPE', 'type']) || '';
+                    if (rowName && (!name || isAppInfo)) name = rowName;
+                    if (rowVer && (!version || isAppInfo)) version = rowVer;
+                    if (rowBuild && (!buildVersion || isAppInfo)) buildVersion = rowBuild;
+                    if (rowExe && (!executableName || isAppInfo)) executableName = rowExe;
+                    if (rowDeleted && (!deletedDate || isAppInfo)) deletedDate = rowDeleted;
+                    if (rowType && (!appType || isAppInfo)) appType = rowType;
                     var rowMsg = appsPickField(row, ['message', 'Message', 'ZMESSAGE']);
                     if (rowMsg) messageBits += ' ' + rowMsg;
                 }
                 if (messageBits) {
-                    if (!name && /App Info:/i.test(messageBits)) {
-                        name = appsScrapeKv(messageBits, 'app name') || name;
+                    if (isAppInfo || !name) {
+                        var n2 = appsScrapeKv(messageBits, 'app name');
+                        if (n2 && (isAppInfo || !name)) name = n2;
                     }
-                    if (!version) {
+                    if (isAppInfo || !version) {
                         version =
                             appsScrapeKv(messageBits, 'app bundle version') ||
                             appsScrapeKv(messageBits, 'app build version') ||
                             version;
                     }
-                    if (!buildVersion) {
+                    if (isAppInfo || !buildVersion) {
                         buildVersion = appsScrapeKv(messageBits, 'app build version') || buildVersion;
                     }
-                    if (!executableName) {
-                        executableName = appsScrapeKv(messageBits, 'app executable name') || executableName;
+                    if (isAppInfo || !executableName) {
+                        executableName =
+                            appsScrapeKv(messageBits, 'app executable name') || executableName;
                     }
-                    if (!deletedDate) {
+                    if (isAppInfo || !deletedDate) {
                         deletedDate = appsScrapeKv(messageBits, 'app deleted date') || deletedDate;
                     }
-                    if (!appType) {
+                    if (isAppInfo || !appType) {
                         appType = appsScrapeKv(messageBits, 'app type') || appType;
                     }
-                    if (!version && (src.indexOf('mobileinstallation') >= 0 || src.indexOf('appinstallation') >= 0)) {
+                    if (isMi) {
                         var mi = appsParseMobileInstallVersion(messageBits);
-                        if (mi.version) version = mi.version;
+                        if (mi.version && !version) version = mi.version;
                         if (!buildVersion && mi.versionCode) buildVersion = mi.versionCode;
                     }
                 }
 
-                // Earliest credible install/evidence time (skip TCC; skip powerlog App Info clocks).
-                var skipInstallTime =
-                    src.indexOf('accessibility_tcc') >= 0 ||
-                    (src.indexOf('powerlogs') >= 0 && /App Info:/i.test(messageBits));
-                if (!skipInstallTime) {
+                // Install / evidence time. Prefer MI / Store / backup clocks; App Info is weak
+                // fallback (powerlog inventory timestamp). Skip TCC-only stamps.
+                if (src.indexOf('accessibility_tcc') < 0) {
                     var timeCandidates = [
                         hit.datetime,
                         hit.timestamp,
-                        row && appsPickField(row, ['datetime', 'timestamp', 'time', 'ZTIMESTAMP'])
+                        row && appsPickField(row, ['datetime', 'timestamp', 'time', 'TIMESTAMP', 'ZTIMESTAMP']),
+                        appsScrapeMessageTime(messageBits)
                     ];
                     for (var ti = 0; ti < timeCandidates.length; ti++) {
                         var rawT = timeCandidates[ti] != null ? String(timeCandidates[ti]).trim() : '';
                         if (!rawT) continue;
-                        var ms = Date.parse(rawT);
-                        if (!Number.isFinite(ms)) continue;
-                        if (installedAtMs == null || ms < installedAtMs) {
+                        var ms = appsParseTimeMs(rawT);
+                        if (ms == null) continue;
+                        if (isAppInfo) {
+                            if (weakInstalledAtMs == null || ms < weakInstalledAtMs) {
+                                weakInstalledAtMs = ms;
+                                weakInstalledAt = rawT;
+                            }
+                        } else if (installedAtMs == null || ms < installedAtMs) {
                             installedAtMs = ms;
                             installedAt = rawT;
                         }
                         break;
                     }
                 }
+            }
+
+            if (installedAtMs == null && weakInstalledAtMs != null) {
+                installedAtMs = weakInstalledAtMs;
+                installedAt = weakInstalledAt;
             }
 
             var label = name && name !== bundleId ? name : '';
@@ -3431,11 +3742,15 @@
                 ids.sort(function (a, b) {
                     var ea = enrichCached(a);
                     var eb = enrichCached(b);
+                    var aMs = ea.installedAtMs;
+                    var bMs = eb.installedAtMs;
+                    if (aMs != null && bMs != null && aMs !== bMs) return bMs - aMs;
+                    if (aMs != null && bMs == null) return -1;
+                    if (aMs == null && bMs != null) return 1;
                     var la = (ea.label || a).toLowerCase();
                     var lb = (eb.label || b).toLowerCase();
-                    if (ea.label && !eb.label) return -1;
-                    if (!ea.label && eb.label) return 1;
-                    return la < lb ? -1 : la > lb ? 1 : a.localeCompare(b);
+                    if (la !== lb) return la < lb ? -1 : 1;
+                    return a.localeCompare(b);
                 });
                 var totalApps = ids.length;
                 var count = payload.count != null ? payload.count : totalApps;
@@ -3761,53 +4076,60 @@
             }
 
             if (id === 'ps_everywhere' && Array.isArray(payload.entries)) {
-                var ent = payload.entries;
-                var c3 = Math.min(ent.length, ANALYSER_UI_MAX_ROWS);
+                var allPe = buildIosProcessRows(payload);
+                var livePe = [];
+                for (var y0 = 0; y0 < allPe.length; y0++) {
+                    if (isIosLiveProcess(allPe[y0])) livePe.push(allPe[y0]);
+                }
+                if (!livePe.length) livePe = allPe.filter(function (p) { return !p.serviceHint; });
+                if (!livePe.length) livePe = allPe;
+                var c3 = Math.min(livePe.length, ANALYSER_UI_MAX_ROWS);
                 var er = [];
                 for (var y = 0; y < c3; y++) {
-                    var en = mapPlainTop(ent[y]) || ent[y];
-                    if (!en || typeof en !== 'object') continue;
-                    var cmd =
-                        en.command != null
-                            ? String(en.command)
-                            : en.message != null
-                              ? String(en.message)
-                              : en.name != null
-                                ? String(en.name)
-                                : '—';
-                    var sources = '';
-                    if (Array.isArray(en.sources)) sources = en.sources.join(', ');
-                    else if (en.source != null) sources = String(en.source);
+                    var pr = livePe[y];
+                    var label = pr.name || '—';
+                    if (pr.path && pr.path !== pr.name) label += ' · ' + analyserTruncate(pr.path, 80);
+                    if (pr.args) label += ' ' + analyserTruncate(pr.args, 60);
                     er.push([
-                        en.pid != null ? String(en.pid) : '—',
-                        en.user != null ? String(en.user) : '—',
-                        analyserTruncate(cmd, 220),
-                        sources || '—'
+                        analyserTruncate(label, 220),
+                        pr.pid ? String(pr.pid) : '—',
+                        pr.ppid != null ? String(pr.ppid) : '—',
+                        pr.uid || (pr.user !== '—' ? pr.user : '') || '—',
+                        iosFormatProcessStarted(pr.startedAt) || pr.uptime || '—',
+                        pr.footprint || '—'
                     ]);
                 }
                 root.appendChild(
                     buildAnalyserScrollTable(
                         [
-                            trIphone('psColPid'),
-                            trIphone('psColUser'),
-                            trIphone('psColPath'),
-                            trIphone('psColSources')
+                            trIphone('dashColProcess'),
+                            trIphone('dashColPid'),
+                            trIphone('dashColPpid'),
+                            trIphone('dashColUid'),
+                            trIphone('dashColStarted'),
+                            trIphone('dashColMemory')
                         ],
                         er
                     )
                 );
-                if (payload.count != null) {
+                if (payload.count != null || allPe.length) {
                     var cnt = document.createElement('p');
                     cnt.style.cssText = 'font-size: 0.75rem; color: var(--text-secondary); margin: 0.35rem 0 0;';
-                    cnt.textContent = 'count: ' + String(payload.count);
+                    cnt.textContent =
+                        'live: ' +
+                        String(livePe.length) +
+                        (allPe.length !== livePe.length
+                            ? ' · services: ' + String(allPe.length - livePe.length)
+                            : '') +
+                        (payload.count != null ? ' · raw count: ' + String(payload.count) : '');
                     root.appendChild(cnt);
                 }
-                if (ent.length > c3) {
+                if (livePe.length > c3) {
                     var em = document.createElement('p');
                     em.style.cssText = 'font-size: 0.75rem; color: var(--text-secondary);';
                     em.textContent = trIphone('analyserShowingFirst')
                         .replace('{n}', String(c3))
-                        .replace('{total}', String(ent.length));
+                        .replace('{total}', String(livePe.length));
                     root.appendChild(em);
                 }
                 return root;
@@ -4432,8 +4754,15 @@
 
         function countProcessesAnalyser(out) {
             var pe = getAnalyserPayload(out, 'ps_everywhere');
+            if (pe && asArr(pe.entries).length) {
+                var rows = buildIosProcessRows(pe);
+                var live = 0;
+                for (var i = 0; i < rows.length; i++) {
+                    if (isIosLiveProcess(rows[i])) live++;
+                }
+                return live;
+            }
             if (pe && pe.count != null) return Number(pe.count) || 0;
-            if (pe && Array.isArray(pe.entries)) return pe.entries.length;
             var pm = getAnalyserPayload(out, 'ps_matrix');
             if (pm && Array.isArray(pm.rows)) return pm.rows.length;
             return 0;
@@ -5095,58 +5424,482 @@
             applyFilter();
         }
 
-        function renderIphoneProcessesPanel(out) {
-            var mount = document.getElementById('iphone-processes-mount');
-            if (!mount) return;
-            mount.textContent = '';
-            var pe = getAnalyserPayload(out, 'ps_everywhere');
-            var pm = getAnalyserPayload(out, 'ps_matrix');
-            if (pe && Array.isArray(pe.entries) && pe.entries.length) {
-                var byKey = {};
-                var order = [];
-                for (var i = 0; i < pe.entries.length; i++) {
-                    var en = mapPlainTop(pe.entries[i]) || pe.entries[i];
-                    if (!en || typeof en !== 'object') continue;
-                    var pid = en.pid != null ? Number(en.pid) : NaN;
-                    var cmd =
-                        en.command != null
-                            ? String(en.command)
-                            : en.message != null
-                              ? String(en.message)
-                              : en.name != null
-                                ? String(en.name)
-                                : '';
-                    var key = Number.isFinite(pid) && pid > 0 ? 'pid:' + String(pid) : 'cmd:' + cmd;
-                    var sources = Array.isArray(en.sources)
-                        ? en.sources.map(String)
-                        : en.source != null
-                          ? [String(en.source)]
-                          : [];
-                    var existing = byKey[key];
-                    if (!existing) {
-                        byKey[key] = {
-                            pid: Number.isFinite(pid) ? pid : null,
-                            user: en.user != null ? String(en.user) : '',
-                            cmd: cmd,
-                            sources: sources.slice()
-                        };
-                        order.push(key);
-                    } else {
-                        if (cmd.length > existing.cmd.length) existing.cmd = cmd;
-                        if (!existing.user && en.user != null) existing.user = String(en.user);
-                        for (var s = 0; s < sources.length; s++) {
-                            if (existing.sources.indexOf(sources[s]) < 0) existing.sources.push(sources[s]);
-                        }
+        function iosProcessShortName(command) {
+            var cmd = String(command || '')
+                .replace(/^\d+:\d{2}(?::\d{2})?(?:\.\d+)?\s+/, '')
+                .trim();
+            if (!cmd) return '';
+            var quoted = cmd.match(/"([^"]+)"/);
+            if (/\[unique ID:/i.test(cmd) && quoted && quoted[1]) return quoted[1];
+            var bare = cmd.split(/\s+/)[0] || cmd;
+            var base = bare.startsWith('/') ? bare.split('/').pop() || bare : bare;
+            var colon = base.indexOf(':');
+            if (colon > 0 && !(base.charAt(0) === '[' && base.charAt(base.length - 1) === ']')) {
+                return base.slice(0, colon);
+            }
+            return base.replace(/^\(|\)$/g, '');
+        }
+
+        function iosSplitProcessCommand(command) {
+            var cmd = String(command || '')
+                .replace(/^\d+:\d{2}(?::\d{2})?(?:\.\d+)?\s+/, '')
+                .trim();
+            if (!cmd) return { exe: '', args: '' };
+            var first = cmd.split(/\s+/)[0] || cmd;
+            if (first.indexOf(':') >= 0 && first.charAt(0) !== '/') return { exe: cmd, args: '' };
+            var sp = cmd.search(/\s/);
+            if (sp < 0) return { exe: cmd, args: '' };
+            return { exe: cmd.slice(0, sp), args: cmd.slice(sp + 1).trim() };
+        }
+
+        function iosNormalizeProcessPath(path) {
+            var t = String(path || '').trim();
+            if (!t) return '';
+            if (t.indexOf('/private/') === 0) t = t.slice('/private'.length);
+            return t.replace(/\/+$/, '');
+        }
+
+        function iosParseUptimeSeconds(raw) {
+            var s = String(raw || '')
+                .trim()
+                .toLowerCase();
+            if (!s) return null;
+            var fork = s.match(/^(\d+(?:\.\d+)?)\s*s(?:ecs?)?$/);
+            if (fork) return Math.floor(Number(fork[1]));
+            var secsWord = s.match(/^(\d+)\s*sec/);
+            if (secsWord) return Number(secsWord[1]);
+            var leading = s.match(/^(\d+)\b/);
+            if (leading && /sec|s\b/.test(s)) return Number(leading[1]);
+            return null;
+        }
+
+        function iosFormatUptimeSeconds(seconds) {
+            if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return '';
+            var s = Math.floor(seconds);
+            if (s < 60) return s + 's';
+            var m = Math.floor(s / 60);
+            if (m < 60) {
+                var rem = s % 60;
+                return rem ? m + 'm ' + rem + 's' : m + 'm';
+            }
+            var h = Math.floor(m / 60);
+            if (h < 48) {
+                var remM = m % 60;
+                return remM ? h + 'h ' + remM + 'm' : h + 'h';
+            }
+            var d = Math.floor(h / 24);
+            var remH = h % 24;
+            return remH ? d + 'd ' + remH + 'h' : d + 'd';
+        }
+
+        function iosFormatProcessStarted(isoOrRaw) {
+            if (!isoOrRaw) return '';
+            var d = new Date(isoOrRaw);
+            if (Number.isNaN(d.getTime())) return String(isoOrRaw);
+            try {
+                return d.toLocaleString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (_e) {
+                return d.toISOString().replace('T', ' ').slice(0, 16);
+            }
+        }
+
+        function iosPickProcessField(obj, keys) {
+            if (!obj || typeof obj !== 'object') return '';
+            for (var i = 0; i < keys.length; i++) {
+                var k = keys[i];
+                if (obj[k] != null && String(obj[k]).trim() && String(obj[k]).trim() !== '—') {
+                    return String(obj[k]).trim();
+                }
+            }
+            return '';
+        }
+
+        function iosNumField(obj, keys) {
+            for (var i = 0; i < keys.length; i++) {
+                var v = obj && obj[keys[i]];
+                if (v == null || v === '') continue;
+                var n = typeof v === 'number' ? v : Number(String(v).trim());
+                if (Number.isFinite(n)) return n;
+            }
+            return null;
+        }
+
+        /** Mobipwn-like process row from a ps_everywhere analyser entry. */
+        function parseIosProcessFromEntry(en) {
+            en = mapPlainTop(en) || en;
+            if (!en || typeof en !== 'object') return null;
+            var commandLine =
+                iosPickProcessField(en, ['command_line', 'command', 'message', 'name']) || '';
+            var split = iosSplitProcessCommand(commandLine);
+            var name =
+                iosPickProcessField(en, ['name', 'process']) ||
+                iosProcessShortName(commandLine) ||
+                '';
+            var pid = iosNumField(en, ['pid', 'process_id']) || 0;
+            if (!name && !pid) return null;
+            if (/tasks\/programs running/i.test(commandLine)) return null;
+            if (/^spindump\b/i.test(commandLine.trim()) && !pid) return null;
+
+            var path =
+                iosPickProcessField(en, ['path', 'file_path']) ||
+                (split.exe.charAt(0) === '/' ? split.exe : '') ||
+                '';
+            var args = iosPickProcessField(en, ['args']) || split.args || '';
+            var runTime = iosPickProcessField(en, ['run time', 'run_time']);
+            var sinceFork = iosPickProcessField(en, ['time_since_fork']);
+            var uptimeSeconds = iosParseUptimeSeconds(runTime) || iosParseUptimeSeconds(sinceFork);
+            var uptime =
+                iosFormatUptimeSeconds(uptimeSeconds) ||
+                (sinceFork && !uptimeSeconds ? sinceFork.replace(/\s+/g, '') : '') ||
+                (runTime && !uptimeSeconds ? runTime : '');
+            var rawStart =
+                iosPickProcessField(en, ['datetime', 'timestamp', 'started']) || '';
+            var startedAt = '';
+            var startedEstimated = false;
+            if (rawStart) {
+                var d = new Date(rawStart);
+                if (!Number.isNaN(d.getTime()) && d.getUTCFullYear() >= 2008) {
+                    startedAt = d.toISOString();
+                    startedEstimated = !!(runTime || sinceFork);
+                } else if (String(rawStart).trim()) {
+                    startedAt = String(rawStart).trim();
+                }
+            }
+            if (!startedAt && (uptime || uptimeSeconds != null)) startedEstimated = true;
+
+            var uid = '';
+            var uidRaw = en.uid;
+            if (uidRaw != null && typeof uidRaw !== 'object' && String(uidRaw).trim() !== '') {
+                uid = String(uidRaw).trim();
+            }
+            var user = iosPickProcessField(en, ['user']) || '';
+            var ppid = iosNumField(en, ['ppid', 'parent_pid']);
+            var threads = iosNumField(en, ['threads', 'thread_count', 'threads_total']) || 0;
+            if (!threads && Array.isArray(en.threads)) threads = en.threads.length;
+            var footprint = iosPickProcessField(en, ['footprint', 'memory_limit', 'rss', 'res']) || '';
+            var sources = Array.isArray(en.sources)
+                ? en.sources.map(String)
+                : en.source != null
+                  ? [String(en.source)]
+                  : [];
+            var parser = sources.length ? sources[0] : 'ps_everywhere';
+            var parent = iosPickProcessField(en, ['parent']) || '';
+
+            var proc = {
+                name: name || 'pid ' + String(pid),
+                pid: pid,
+                ppid: ppid,
+                user: user || '—',
+                uid: uid,
+                threads: threads,
+                footprint: footprint,
+                path: path,
+                args: args,
+                commandLine: commandLine || (args ? (path + ' ' + args).trim() : ''),
+                parent: parent,
+                startedAt: startedAt,
+                uptime: uptime,
+                uptimeSeconds: uptimeSeconds,
+                startedEstimated: startedEstimated,
+                sources: sources,
+                parser: parser,
+                serviceHint: ''
+            };
+            proc.serviceHint = iosServiceHint(proc);
+            return proc;
+        }
+
+        function iosServiceHint(proc) {
+            if (!proc) return '';
+            if (proc.pid > 0) return '';
+            var uid = proc.uid != null ? String(proc.uid).trim() : '';
+            if (uid && uid !== '0') return '';
+            if (proc.ppid != null && proc.ppid > 0) return '';
+            var sources = proc.sources || [];
+            var fromRemotectl = false;
+            for (var i = 0; i < sources.length; i++) {
+                if (String(sources[i]) === 'remotectl_dumpstate') {
+                    fromRemotectl = true;
+                    break;
+                }
+            }
+            if (!fromRemotectl && !/^com\.[a-z0-9_.-]+$/i.test(proc.name)) return '';
+            return (
+                proc.name +
+                ' has no UID/PPID because it was only found in remotectl_dumpstate (registered service list)'
+            );
+        }
+
+        /** Sources that only mention a name (not a live process snapshot). */
+        function iosProcessOnlyWeakSources(sources) {
+            if (!sources || !sources.length) return false;
+            for (var i = 0; i < sources.length; i++) {
+                var s = String(sources[i]);
+                if (s !== 'logdata_statistics' && s !== 'uuid2path') return false;
+            }
+            return true;
+        }
+
+        /**
+         * Mobipwn "Running processes": live PID inventory, not remotectl services
+         * and not name-only logdata/uuid2path mentions.
+         */
+        function isIosLiveProcess(proc) {
+            if (!proc || proc.serviceHint) return false;
+            if (proc.pid > 0) return true;
+            if (iosProcessOnlyWeakSources(proc.sources)) return false;
+            return false;
+        }
+
+        function buildIosProcessRows(pe) {
+            var entries = asArr(pe && pe.entries);
+            var byKey = {};
+            var order = [];
+            function hasSource(p, name) {
+                var sources = p.sources || [];
+                for (var i = 0; i < sources.length; i++) {
+                    if (String(sources[i]) === name) return true;
+                }
+                return p.parser === name;
+            }
+            function richness(p) {
+                return (
+                    (p.startedAt ? 3 : 0) +
+                    (p.uptime ? 2 : 0) +
+                    (p.footprint ? 1 : 0) +
+                    (p.threads > 0 ? 1 : 0) +
+                    (p.path ? 1 : 0) +
+                    (p.args ? 3 : 0) +
+                    (p.uid ? 1 : 0) +
+                    (p.ppid != null && p.ppid > 0 ? 1 : 0) +
+                    (hasSource(p, 'taskinfo') ? 2 : 0) +
+                    (hasSource(p, 'ps') || hasSource(p, 'psthread') ? 4 : 0)
+                );
+            }
+            function pickStr(a, b) {
+                var av = String(a || '').trim();
+                if (av && av !== '—') return a;
+                var bv = String(b || '').trim();
+                return bv && bv !== '—' ? b : a;
+            }
+            function pickLonger(a, b) {
+                var av = String(a || '').trim();
+                var bv = String(b || '').trim();
+                if (!bv) return a || '';
+                if (!av) return b || '';
+                return bv.length > av.length ? b : a;
+            }
+            function merge(primary, other) {
+                var m = {
+                    name: primary.name || other.name,
+                    pid: primary.pid || other.pid,
+                    ppid: primary.ppid != null ? primary.ppid : other.ppid,
+                    user: pickStr(primary.user, other.user),
+                    uid: pickStr(primary.uid, other.uid),
+                    threads: primary.threads > 0 ? primary.threads : other.threads,
+                    footprint: pickStr(primary.footprint, other.footprint),
+                    path: pickStr(primary.path, other.path),
+                    args: pickLonger(primary.args, other.args),
+                    commandLine: pickLonger(primary.commandLine, other.commandLine),
+                    parent: pickStr(primary.parent, other.parent),
+                    startedAt: pickStr(primary.startedAt, other.startedAt),
+                    uptime: pickStr(primary.uptime, other.uptime),
+                    uptimeSeconds:
+                        primary.uptimeSeconds != null ? primary.uptimeSeconds : other.uptimeSeconds,
+                    startedEstimated: primary.startedAt || primary.uptime
+                        ? primary.startedEstimated
+                        : other.startedEstimated,
+                    sources: [],
+                    parser: primary.parser || other.parser,
+                    serviceHint: ''
+                };
+                var seen = {};
+                [].concat(primary.sources || [], other.sources || []).forEach(function (s) {
+                    if (!seen[s]) {
+                        seen[s] = true;
+                        m.sources.push(s);
+                    }
+                });
+                m.serviceHint = iosServiceHint(m);
+                return m;
+            }
+
+            for (var i = 0; i < entries.length; i++) {
+                var proc = parseIosProcessFromEntry(entries[i]);
+                if (!proc) continue;
+                var key = proc.pid > 0 ? 'pid:' + String(proc.pid) : '0:' + proc.name;
+                var existing = byKey[key];
+                if (!existing) {
+                    byKey[key] = proc;
+                    order.push(key);
+                } else if (richness(proc) > richness(existing)) {
+                    byKey[key] = merge(proc, existing);
+                } else {
+                    byKey[key] = merge(existing, proc);
+                }
+            }
+
+            var rows = order.map(function (k) {
+                return byKey[k];
+            });
+            rows.sort(function (a, b) {
+                return a.pid - b.pid || a.name.localeCompare(b.name);
+            });
+
+            var pidToName = {};
+            for (var p = 0; p < rows.length; p++) {
+                if (rows[p].pid > 0 && rows[p].name) pidToName[rows[p].pid] = rows[p].name;
+            }
+            for (var q = 0; q < rows.length; q++) {
+                if (rows[q].parent || rows[q].ppid == null || rows[q].ppid <= 0) continue;
+                if (pidToName[rows[q].ppid]) rows[q].parent = pidToName[rows[q].ppid];
+            }
+
+            var pathArgs = {};
+            for (var r = 0; r < rows.length; r++) {
+                var nk = iosNormalizeProcessPath(rows[r].path);
+                if (!nk || !rows[r].args) continue;
+                if (!pathArgs[nk] || rows[r].args.length >= pathArgs[nk].length) {
+                    pathArgs[nk] = rows[r].args;
+                }
+            }
+            for (var s = 0; s < rows.length; s++) {
+                var pk = iosNormalizeProcessPath(rows[s].path);
+                if (!pk || !pathArgs[pk]) continue;
+                if (pathArgs[pk].length > (rows[s].args || '').length) {
+                    rows[s].args = pathArgs[pk];
+                    var full = (rows[s].path + ' ' + pathArgs[pk]).trim();
+                    if (!rows[s].commandLine || rows[s].commandLine.length < full.length) {
+                        rows[s].commandLine = full;
                     }
                 }
-                order.sort(function (a, b) {
-                    var pa = byKey[a].pid;
-                    var pb = byKey[b].pid;
-                    if (pa != null && pb != null && pa !== pb) return pa - pb;
-                    if (pa != null && pb == null) return -1;
-                    if (pa == null && pb != null) return 1;
-                    return byKey[a].cmd.localeCompare(byKey[b].cmd);
-                });
+            }
+            return rows;
+        }
+
+        function buildIosProcessNameCell(proc) {
+            var wrap = document.createElement('div');
+            wrap.className = 'iphone-proc-identity';
+            var title = document.createElement('div');
+            title.className = 'iphone-proc-identity__title';
+            var nameEl = document.createElement('span');
+            nameEl.className = 'iphone-proc-identity__name mono';
+            nameEl.textContent = proc.name;
+            title.appendChild(nameEl);
+            if (proc.sources && proc.sources.length) {
+                var badge = document.createElement('span');
+                badge.className = 'iphone-proc-identity__parser';
+                badge.textContent = proc.sources.length === 1 ? proc.sources[0] : proc.sources[0] + '+' + (proc.sources.length - 1);
+                badge.title = proc.sources.join(', ');
+                title.appendChild(badge);
+            }
+            if (proc.serviceHint) {
+                var svc = document.createElement('span');
+                svc.className = 'iphone-proc-identity__service';
+                svc.textContent = trIphone('dashProcServiceBadge');
+                svc.title = proc.serviceHint;
+                title.appendChild(svc);
+            }
+            wrap.appendChild(title);
+            if (proc.path && proc.path !== proc.name) {
+                var pathLine = document.createElement('div');
+                pathLine.className = 'iphone-proc-identity__meta mono';
+                pathLine.title = proc.path;
+                pathLine.textContent = proc.path;
+                wrap.appendChild(pathLine);
+            }
+            if (proc.args && String(proc.args).trim()) {
+                var argsLine = document.createElement('div');
+                argsLine.className = 'iphone-proc-identity__meta iphone-proc-identity__meta--args mono';
+                argsLine.title = proc.commandLine || proc.args;
+                argsLine.textContent = proc.args;
+                wrap.appendChild(argsLine);
+            }
+            if (proc.parent) {
+                var parentLine = document.createElement('div');
+                parentLine.className = 'iphone-proc-identity__meta';
+                parentLine.textContent = trIphone('dashProcParent').replace('{name}', proc.parent);
+                wrap.appendChild(parentLine);
+            }
+            return wrap;
+        }
+
+        function buildIosStartedCell(proc) {
+            var wrap = document.createElement('div');
+            wrap.className = 'iphone-proc-started';
+            var label = iosFormatProcessStarted(proc.startedAt);
+            if (label) {
+                var main = document.createElement('div');
+                main.textContent = (proc.startedEstimated ? '≈ ' : '') + label;
+                wrap.appendChild(main);
+            }
+            if (proc.uptime) {
+                var up = document.createElement('div');
+                up.className = 'iphone-proc-started__uptime';
+                up.textContent = proc.uptime;
+                wrap.appendChild(up);
+            }
+            if (!label && !proc.uptime) {
+                wrap.textContent = '—';
+            } else if (proc.startedEstimated && label) {
+                wrap.title = trIphone('dashProcApprox');
+            }
+            return wrap;
+        }
+
+        function buildIosMemoryCell(proc) {
+            var wrap = document.createElement('div');
+            wrap.className = 'iphone-proc-mem';
+            var mem = document.createElement('span');
+            mem.textContent = proc.footprint || '—';
+            wrap.appendChild(mem);
+            if (proc.threads > 0) {
+                var thr = document.createElement('span');
+                thr.className = 'iphone-proc-mem__thr';
+                thr.textContent = trIphone('dashProcThreads').replace('{n}', String(proc.threads));
+                wrap.appendChild(thr);
+            }
+            return wrap;
+        }
+
+        function renderIphoneProcessesPanel(out) {
+            var mount = document.getElementById('iphone-processes-mount');
+            var svcCard = document.getElementById('iphone-services-card');
+            var svcMount = document.getElementById('iphone-services-mount');
+            if (!mount) return;
+            mount.textContent = '';
+            if (svcMount) svcMount.textContent = '';
+            if (svcCard) svcCard.classList.add('hidden');
+
+            var pe = getAnalyserPayload(out, 'ps_everywhere');
+            var all = buildIosProcessRows(pe);
+            var live = [];
+            var services = [];
+            for (var i = 0; i < all.length; i++) {
+                if (all[i].serviceHint) services.push(all[i]);
+                else if (isIosLiveProcess(all[i])) live.push(all[i]);
+            }
+
+            if (!live.length && !services.length) {
+                var pm = getAnalyserPayload(out, 'ps_matrix');
+                if (pe) {
+                    mount.appendChild(buildAnalyserStructuredView('ps_everywhere', pe));
+                    return;
+                }
+                if (pm) {
+                    mount.appendChild(buildAnalyserStructuredView('ps_matrix', pm));
+                    return;
+                }
+                mount.appendChild(dashEmptyEl('dashEmptyProcesses'));
+                return;
+            }
+
+            if (live.length) {
                 var search = buildDashSearchInput(function (q) {
                     var trs = mount.querySelectorAll('tbody tr');
                     var shown = 0;
@@ -5157,51 +5910,631 @@
                     }
                     summary.textContent = trIphone('dashShowingN')
                         .replace('{shown}', String(shown))
-                        .replace('{total}', String(order.length));
+                        .replace('{total}', String(live.length));
                 });
+                search.input.placeholder = trIphone('dashColProcess') + ' / PID / UID / path…';
                 var summary = document.createElement('p');
                 summary.className = 'iphone-dash-card__lead';
                 summary.textContent = trIphone('dashShowingN')
-                    .replace('{shown}', String(order.length))
-                    .replace('{total}', String(order.length));
+                    .replace('{shown}', String(live.length))
+                    .replace('{total}', String(live.length));
                 mount.appendChild(search.wrap);
                 mount.appendChild(summary);
                 var rows = [];
-                for (var r = 0; r < order.length; r++) {
-                    var p = byKey[order[r]];
+                for (var r = 0; r < live.length; r++) {
+                    var p = live[r];
                     rows.push({
                         cells: [
-                            p.pid != null ? String(p.pid) : '—',
-                            p.user || '—',
-                            p.cmd || '—',
-                            p.sources.join(', ') || '—'
+                            buildIosProcessNameCell(p),
+                            p.pid ? String(p.pid) : '—',
+                            p.ppid != null ? String(p.ppid) : '—',
+                            p.uid || (p.user !== '—' ? p.user : '') || '—',
+                            buildIosStartedCell(p),
+                            buildIosMemoryCell(p)
                         ],
-                        haystack: [p.pid, p.user, p.cmd, p.sources.join(' ')].join('\n').toLowerCase()
+                        haystack: [
+                            p.name,
+                            p.pid,
+                            p.ppid,
+                            p.uid,
+                            p.user,
+                            p.path,
+                            p.args,
+                            p.commandLine,
+                            p.parent,
+                            p.startedAt,
+                            p.uptime,
+                            p.footprint,
+                            (p.sources || []).join(' ')
+                        ]
+                            .join('\n')
+                            .toLowerCase()
                     });
                 }
                 mount.appendChild(
                     buildDashTable(
                         [
+                            trIphone('dashColProcess'),
                             trIphone('dashColPid'),
-                            trIphone('dashColUser'),
-                            trIphone('dashColPath'),
-                            trIphone('dashColSources')
+                            trIphone('dashColPpid'),
+                            trIphone('dashColUid'),
+                            trIphone('dashColStarted'),
+                            trIphone('dashColMemory')
                         ],
                         rows,
-                        { monoCols: { 0: true, 2: true } }
+                        { monoCols: { 1: true, 2: true, 3: true } }
                     )
                 );
-                return;
+            } else {
+                mount.appendChild(dashEmptyEl('dashEmptyProcesses'));
             }
-            if (pe) {
-                mount.appendChild(buildAnalyserStructuredView('ps_everywhere', pe));
-                return;
+
+            if (services.length && svcCard && svcMount) {
+                svcCard.classList.remove('hidden');
+                var svcRows = [];
+                for (var s = 0; s < services.length; s++) {
+                    var sv = services[s];
+                    svcRows.push({
+                        cells: [
+                            sv.name,
+                            (sv.sources && sv.sources[0]) || sv.parser || 'remotectl_dumpstate',
+                            sv.serviceHint || '—'
+                        ],
+                        haystack: [sv.name, sv.serviceHint, (sv.sources || []).join(' ')].join('\n').toLowerCase()
+                    });
+                }
+                svcMount.appendChild(
+                    buildDashTable(
+                        [trIphone('dashColService'), trIphone('dashColSource'), trIphone('dashColNote')],
+                        svcRows,
+                        { monoCols: { 0: true } }
+                    )
+                );
             }
-            if (pm) {
-                mount.appendChild(buildAnalyserStructuredView('ps_matrix', pm));
-                return;
+        }
+
+        var IOS_CRASH_PAGE = 20;
+
+        function iosCrashPickStr(obj, keys) {
+            if (!obj || typeof obj !== 'object') return '';
+            for (var i = 0; i < keys.length; i++) {
+                var v = obj[keys[i]];
+                if (v == null) continue;
+                var s = String(v).trim();
+                if (s) return s;
             }
-            mount.appendChild(dashEmptyEl('dashEmptyProcesses'));
+            return '';
+        }
+
+        function iosCrashBasename(path) {
+            if (!path) return '';
+            var parts = String(path).split(/[/\\]/).filter(Boolean);
+            return parts.length ? parts[parts.length - 1] : String(path);
+        }
+
+        function iosFormatCrashTimestamp(value) {
+            if (!value) return '';
+            var d = new Date(value);
+            if (Number.isNaN(d.getTime())) return String(value);
+            try {
+                return d.toLocaleString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                return d.toISOString();
+            }
+        }
+
+        function iosFormatExceptionCodes(exception) {
+            if (!exception || typeof exception !== 'object') return '';
+            var codes = exception.codes;
+            if (Array.isArray(codes)) return codes.map(String).filter(Boolean).join(', ');
+            if (codes != null && String(codes).trim()) return String(codes).trim();
+            var raw = exception.rawCodes != null ? exception.rawCodes : exception.subtype;
+            return raw != null && String(raw).trim() ? String(raw).trim() : '';
+        }
+
+        function iosFormatAsi(value) {
+            if (value == null) return '';
+            if (typeof value === 'string') return value.trim();
+            if (Array.isArray(value)) {
+                return value
+                    .map(function (item) {
+                        if (typeof item === 'string') return item.trim();
+                        var rec = mapPlainTop(item);
+                        if (!rec) return '';
+                        return Object.keys(rec)
+                            .map(function (k) {
+                                return rec[k] == null ? '' : String(rec[k]).trim();
+                            })
+                            .filter(Boolean)
+                            .join(': ');
+                    })
+                    .filter(Boolean)
+                    .join('\n');
+            }
+            var rec = mapPlainTop(value);
+            if (!rec) return String(value).trim();
+            return Object.keys(rec)
+                .map(function (k) {
+                    var v = rec[k];
+                    var body = Array.isArray(v) ? v.map(String).join('\n') : v == null ? '' : String(v);
+                    return body ? k + ': ' + body : '';
+                })
+                .filter(Boolean)
+                .join('\n');
+        }
+
+        function iosMapCrashFrame(fr, fallbackIndex) {
+            fr = mapPlainTop(fr) || {};
+            var idx = fr.index != null ? Number(fr.index) : fallbackIndex;
+            if (!Number.isFinite(idx)) idx = fallbackIndex;
+            return {
+                index: idx,
+                symbol:
+                    iosCrashPickStr(fr, ['symbol', 'symbol_location', 'name', 'function']) || '—',
+                image: iosCrashPickStr(fr, ['image', 'imageName', 'path']),
+                imageOffset: iosCrashPickStr(fr, ['image_offset', 'imageOffset', 'offset']),
+                address: iosCrashPickStr(fr, ['address', 'pc'])
+            };
+        }
+
+        function iosMapCrashFrameList(frames, limit) {
+            var arr = asArr(frames);
+            if (limit != null) arr = arr.slice(0, limit);
+            return arr.map(function (fr, i) {
+                return iosMapCrashFrame(fr, i);
+            });
+        }
+
+        function iosFaultingThreadRecord(ext) {
+            var threads = asArr(ext.threads);
+            if (!threads.length) return null;
+            var faultingRaw = ext.faulting_thread;
+            var faulting =
+                typeof faultingRaw === 'number'
+                    ? faultingRaw
+                    : typeof faultingRaw === 'string' && String(faultingRaw).trim()
+                      ? Number(faultingRaw)
+                      : null;
+            var triggered = null;
+            var byId = null;
+            for (var i = 0; i < threads.length; i++) {
+                var t = mapPlainTop(threads[i]) || {};
+                if (t.triggered === true && !triggered) triggered = t;
+                if (
+                    faulting != null &&
+                    Number.isFinite(faulting) &&
+                    t.id != null &&
+                    Number(t.id) === faulting &&
+                    !byId
+                ) {
+                    byId = t;
+                }
+            }
+            return triggered || byId || mapPlainTop(threads[0]) || null;
+        }
+
+        /** Mobipwn-like structured detail from a crashlogs parser event. */
+        function parseIosCrashDetail(ev) {
+            ev = mapPlainTop(ev) || {};
+            var ext = mapPlainTop(ev.data) || {};
+            var report = mapPlainTop(ext.report) || {};
+            var exception =
+                mapPlainTop(ext.exception) || mapPlainTop(report.exception) || null;
+            var termination =
+                mapPlainTop(ext.termination) || mapPlainTop(report.termination) || null;
+            var structure = mapPlainTop(ext.crash_structure) || {};
+            var thread = iosFaultingThreadRecord(ext);
+
+            var process =
+                iosCrashPickStr(ext, ['procName', 'app_name', 'name']) ||
+                iosCrashPickStr(report, ['procName', 'name']) ||
+                iosCrashPickStr(ext, ['bundleID', 'bundle_id', 'bundleIdentifier']) ||
+                '—';
+            var bundle =
+                iosCrashPickStr(ext, ['bundleIdentifier', 'bundleID', 'bundleId', 'bundle_id']) ||
+                iosCrashPickStr(report, ['bundleID', 'bundleIdentifier', 'coalitionName']);
+
+            var exceptionType =
+                iosCrashPickStr(exception, ['type']) ||
+                (typeof ext.exception === 'string' ? ext.exception : '');
+            var exceptionCodes = iosFormatExceptionCodes(exception);
+            var signal =
+                iosCrashPickStr(exception, ['signal']) || iosCrashPickStr(ext, ['signal']);
+            var terminationText = '';
+            if (termination) {
+                terminationText =
+                    iosCrashPickStr(termination, ['indicator', 'namespace', 'code']) ||
+                    [termination.indicator, termination.namespace, termination.code]
+                        .filter(function (x) {
+                            return x != null && String(x).trim();
+                        })
+                        .map(String)
+                        .join(' / ');
+            }
+            var reason =
+                iosCrashPickStr(report, ['reason']) ||
+                iosCrashPickStr(ext, ['reason']) ||
+                iosCrashPickStr(termination, ['reason']);
+            var asi = iosFormatAsi(
+                report.asi != null
+                    ? report.asi
+                    : ext.asi != null
+                      ? ext.asi
+                      : report.ASI
+            );
+
+            var pid =
+                iosCrashPickStr(report, ['pid', 'procid']) ||
+                (report.pid != null ? String(report.pid) : '') ||
+                iosCrashPickStr(ext, ['pid']);
+            var osVersion =
+                iosCrashPickStr(report, ['osVersion', 'os_version']) ||
+                iosCrashPickStr(ext, ['osVersion', 'os_version']);
+            var storeInfo = mapPlainTop(report.storeInfo) || {};
+            var appVersion =
+                iosCrashPickStr(report, [
+                    'appVersion',
+                    'bundleVersion',
+                    'CFBundleVersion',
+                    'version'
+                ]) || iosCrashPickStr(storeInfo, ['appVersion', 'applicationVersion']);
+
+            var crashPath =
+                iosCrashPickStr(ext, ['crash_source', 'file_path', 'path', 'source']) ||
+                iosCrashPickStr(ev, ['source']) ||
+                '';
+            var ipsFormat = iosCrashPickStr(ext, ['ips_format']);
+            var faultingThread =
+                iosCrashPickStr(ext, ['faulting_thread']) ||
+                (ext.faulting_thread != null ? String(ext.faulting_thread) : '') ||
+                (thread && thread.id != null ? String(thread.id) : '');
+            var threadName = iosCrashPickStr(thread, ['name']);
+            var threadQueue = iosCrashPickStr(thread, ['queue', 'dispatch_queue']);
+            var threadsTotal =
+                structure.threads_total != null
+                    ? Number(structure.threads_total) || 0
+                    : asArr(ext.threads).length;
+
+            var frames = thread ? iosMapCrashFrameList(thread.frames, 24) : [];
+            var lastExceptionFrames = iosMapCrashFrameList(ext.last_exception_backtrace, 16);
+            var images = asArr(ext.used_images)
+                .slice(0, 12)
+                .map(function (img, i) {
+                    img = mapPlainTop(img) || {};
+                    return {
+                        index: img.index != null ? Number(img.index) : i,
+                        name: iosCrashPickStr(img, ['name', 'path']) || '—',
+                        uuid: iosCrashPickStr(img, ['uuid']),
+                        arch: iosCrashPickStr(img, ['arch']),
+                        base: iosCrashPickStr(img, ['base'])
+                    };
+                })
+                .filter(function (img) {
+                    return img.name && img.name !== '—';
+                });
+
+            var whenRaw = ev.datetime || ext.timestamp || report.timestamp || report.captureTime || '';
+            var message = ev.message != null ? String(ev.message) : '';
+
+            return {
+                process: process,
+                bundle: bundle,
+                exceptionType: exceptionType,
+                exceptionCodes: exceptionCodes,
+                signal: signal,
+                termination: terminationText,
+                reason: reason,
+                asi: asi,
+                pid: pid,
+                osVersion: osVersion,
+                appVersion: appVersion,
+                ipsFormat: ipsFormat,
+                crashPath: crashPath,
+                crashFile: iosCrashBasename(crashPath),
+                faultingThread: faultingThread,
+                threadName: threadName,
+                threadQueue: threadQueue,
+                threadsTotal: threadsTotal,
+                frameCount: frames.length,
+                frames: frames,
+                lastExceptionFrames: lastExceptionFrames,
+                images: images,
+                whenRaw: whenRaw,
+                whenLabel: iosFormatCrashTimestamp(whenRaw),
+                message: message
+            };
+        }
+
+        function iosCrashHaystack(detail) {
+            return [
+                detail.process,
+                detail.bundle,
+                detail.exceptionType,
+                detail.exceptionCodes,
+                detail.signal,
+                detail.termination,
+                detail.reason,
+                detail.pid,
+                detail.osVersion,
+                detail.appVersion,
+                detail.crashFile,
+                detail.crashPath,
+                detail.threadName,
+                detail.threadQueue,
+                detail.ipsFormat,
+                detail.message,
+                detail.asi,
+                detail.frames
+                    .map(function (f) {
+                        return [f.symbol, f.image, f.address].join(' ');
+                    })
+                    .join('\n')
+            ]
+                .join('\n')
+                .toLowerCase();
+        }
+
+        function iosCrashAppendStack(parent, titleKey, frames) {
+            if (!frames || !frames.length) return;
+            var wrap = document.createElement('div');
+            wrap.className = 'iphone-crash-stack';
+            var h = document.createElement('h5');
+            h.className = 'iphone-crash-stack__title';
+            h.textContent = trIphone(titleKey);
+            wrap.appendChild(h);
+            var ol = document.createElement('ol');
+            ol.className = 'iphone-crash-stack__list';
+            for (var i = 0; i < frames.length; i++) {
+                var fr = frames[i];
+                var li = document.createElement('li');
+                li.className = 'iphone-crash-stack__frame';
+                var idx = document.createElement('span');
+                idx.className = 'iphone-crash-stack__idx mono';
+                idx.textContent = String(fr.index);
+                var sym = document.createElement('code');
+                sym.className = 'iphone-crash-stack__sym';
+                sym.textContent = fr.symbol;
+                var meta = document.createElement('span');
+                meta.className = 'iphone-crash-stack__img mono';
+                var bits = [];
+                if (fr.image) bits.push(fr.image);
+                if (fr.imageOffset) bits.push('+' + fr.imageOffset);
+                if (fr.address) bits.push('@ ' + fr.address);
+                meta.textContent = bits.join(' ');
+                li.appendChild(idx);
+                li.appendChild(sym);
+                if (bits.length) li.appendChild(meta);
+                ol.appendChild(li);
+            }
+            wrap.appendChild(ol);
+            parent.appendChild(wrap);
+        }
+
+        function buildIosCrashIncidentCard(detail) {
+            var li = document.createElement('li');
+            li.className = 'iphone-crash-incident';
+            li._dashHay = iosCrashHaystack(detail);
+
+            var head = document.createElement('div');
+            head.className = 'iphone-crash-incident__head';
+
+            var toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'iphone-crash-incident__toggle';
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.title = trIphone('dashCrashExpand');
+            toggle.textContent = '▸';
+
+            var badge = document.createElement('span');
+            badge.className = 'iphone-crash-badge';
+            badge.textContent = trIphone('dashCrashBadge');
+
+            var proc = document.createElement('strong');
+            proc.className = 'iphone-crash-incident__process mono';
+            proc.textContent = detail.process;
+
+            head.appendChild(toggle);
+            head.appendChild(badge);
+            head.appendChild(proc);
+            if (detail.whenLabel) {
+                var ts = document.createElement('span');
+                ts.className = 'iphone-crash-incident__time';
+                ts.textContent = detail.whenLabel;
+                if (detail.whenRaw) ts.title = String(detail.whenRaw);
+                head.appendChild(ts);
+            }
+            li.appendChild(head);
+
+            var meta = document.createElement('div');
+            meta.className = 'iphone-crash-incident__meta';
+            var chips = [
+                detail.pid ? 'pid ' + detail.pid : '',
+                detail.exceptionType,
+                detail.signal,
+                detail.ipsFormat,
+                detail.threadName ||
+                    (detail.faultingThread !== '' ? 'thread ' + detail.faultingThread : ''),
+                detail.threadsTotal > 0 ? detail.threadsTotal + ' threads' : '',
+                detail.frameCount > 0 ? detail.frameCount + ' frames' : ''
+            ].filter(Boolean);
+            for (var c = 0; c < chips.length; c++) {
+                var chip = document.createElement('span');
+                chip.className = 'iphone-crash-chip mono';
+                chip.textContent = chips[c];
+                meta.appendChild(chip);
+            }
+            if (detail.bundle && detail.bundle !== detail.process) {
+                var bchip = document.createElement('span');
+                bchip.className = 'iphone-crash-chip mono';
+                bchip.textContent = detail.bundle;
+                meta.appendChild(bchip);
+            }
+            li.appendChild(meta);
+
+            if (detail.reason) {
+                var reason = document.createElement('p');
+                reason.className = 'iphone-crash-incident__reason';
+                reason.textContent = detail.reason;
+                li.appendChild(reason);
+            }
+            if (
+                detail.message &&
+                detail.message !== 'Crashlog: ' + detail.process &&
+                detail.message !== 'Crashlog: ' + detail.reason
+            ) {
+                var msg = document.createElement('p');
+                msg.className = 'iphone-crash-incident__message';
+                msg.textContent = detail.message;
+                li.appendChild(msg);
+            }
+            if (detail.crashFile) {
+                var file = document.createElement('p');
+                file.className = 'iphone-crash-incident__file mono';
+                file.textContent = detail.crashFile;
+                if (detail.crashPath) file.title = detail.crashPath;
+                li.appendChild(file);
+            }
+
+            var detailEl = document.createElement('div');
+            detailEl.className = 'iphone-crash-incident__detail';
+            detailEl.hidden = true;
+
+            var kvPairs = [
+                [trIphone('dashCrashKvException'), detail.exceptionType],
+                [trIphone('dashCrashKvCodes'), detail.exceptionCodes],
+                [trIphone('dashCrashKvSignal'), detail.signal],
+                [trIphone('dashCrashKvTermination'), detail.termination],
+                [trIphone('dashCrashKvPid'), detail.pid],
+                [trIphone('dashCrashKvAppVer'), detail.appVersion],
+                [trIphone('dashCrashKvOs'), detail.osVersion],
+                [
+                    trIphone('dashCrashFaultingThread'),
+                    [
+                        detail.faultingThread !== '' ? '#' + detail.faultingThread : '',
+                        detail.threadName,
+                        detail.threadQueue ? 'queue=' + detail.threadQueue : ''
+                    ]
+                        .filter(Boolean)
+                        .join(' · ')
+                ],
+                [trIphone('dashCrashKvFormat'), detail.ipsFormat]
+            ].filter(function (pair) {
+                return pair[1];
+            });
+            if (kvPairs.length) {
+                var dl = document.createElement('dl');
+                dl.className = 'iphone-crash-kv';
+                for (var k = 0; k < kvPairs.length; k++) {
+                    var dt = document.createElement('dt');
+                    dt.textContent = kvPairs[k][0];
+                    var dd = document.createElement('dd');
+                    dd.className = 'mono';
+                    dd.textContent = kvPairs[k][1];
+                    dl.appendChild(dt);
+                    dl.appendChild(dd);
+                }
+                detailEl.appendChild(dl);
+            }
+
+            if (detail.asi) {
+                var asiWrap = document.createElement('div');
+                asiWrap.className = 'iphone-crash-asi';
+                var asiTitle = document.createElement('h5');
+                asiTitle.className = 'iphone-crash-stack__title';
+                asiTitle.textContent = trIphone('dashCrashAsi');
+                var asiPre = document.createElement('pre');
+                asiPre.className = 'iphone-crash-asi__body mono';
+                asiPre.textContent = detail.asi;
+                asiWrap.appendChild(asiTitle);
+                asiWrap.appendChild(asiPre);
+                detailEl.appendChild(asiWrap);
+            }
+
+            iosCrashAppendStack(detailEl, 'dashCrashFaultingThread', detail.frames);
+            iosCrashAppendStack(detailEl, 'dashCrashLastException', detail.lastExceptionFrames);
+
+            if (detail.images.length) {
+                var imgWrap = document.createElement('div');
+                imgWrap.className = 'iphone-crash-stack';
+                var imgH = document.createElement('h5');
+                imgH.className = 'iphone-crash-stack__title';
+                imgH.textContent = trIphone('dashCrashImages');
+                imgWrap.appendChild(imgH);
+                var imgList = document.createElement('ul');
+                imgList.className = 'iphone-crash-images';
+                for (var im = 0; im < detail.images.length; im++) {
+                    var image = detail.images[im];
+                    var ili = document.createElement('li');
+                    ili.className = 'mono';
+                    ili.textContent = [
+                        image.name,
+                        image.arch,
+                        image.uuid ? image.uuid.slice(0, 8) : '',
+                        image.base
+                    ]
+                        .filter(Boolean)
+                        .join(' · ');
+                    imgList.appendChild(ili);
+                }
+                imgWrap.appendChild(imgList);
+                detailEl.appendChild(imgWrap);
+            }
+
+            if (
+                !detail.frames.length &&
+                !detail.lastExceptionFrames.length &&
+                !detail.asi &&
+                !kvPairs.length
+            ) {
+                var empty = document.createElement('p');
+                empty.className = 'iphone-crash-incident__empty';
+                empty.textContent = trIphone('dashCrashNoStack');
+                detailEl.appendChild(empty);
+            }
+
+            li.appendChild(detailEl);
+
+            toggle.addEventListener('click', function () {
+                var open = detailEl.hidden;
+                detailEl.hidden = !open;
+                li.classList.toggle('is-open', open);
+                toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                toggle.textContent = open ? '▾' : '▸';
+                toggle.title = trIphone(open ? 'dashCrashCollapse' : 'dashCrashExpand');
+            });
+
+            return li;
+        }
+
+        function buildIosCrashTopSymbols(details, limit) {
+            var counts = {};
+            for (var i = 0; i < details.length; i++) {
+                var frames = details[i].frames || [];
+                var seen = {};
+                for (var f = 0; f < frames.length; f++) {
+                    var sym = frames[f].symbol;
+                    if (!sym || sym === '—') continue;
+                    if (seen[sym]) continue;
+                    seen[sym] = true;
+                    if (!counts[sym]) {
+                        counts[sym] = { symbol: sym, process: details[i].process, count: 0 };
+                    }
+                    counts[sym].count++;
+                }
+            }
+            return Object.keys(counts)
+                .map(function (k) {
+                    return counts[k];
+                })
+                .sort(function (a, b) {
+                    return b.count - a.count || a.symbol.localeCompare(b.symbol);
+                })
+                .slice(0, limit || 8);
         }
 
         function renderIphoneCrashesPanel(out) {
@@ -5214,65 +6547,139 @@
                 mount.appendChild(dashEmptyEl('dashEmptyCrashes'));
                 return;
             }
-            var search = buildDashSearchInput(function (q) {
-                var trs = mount.querySelectorAll('tbody tr');
-                var shown = 0;
-                for (var i = 0; i < trs.length; i++) {
-                    var ok = !q || (trs[i]._dashHay && trs[i]._dashHay.indexOf(q) >= 0);
-                    trs[i].style.display = ok ? '' : 'none';
-                    if (ok) shown++;
-                }
-                summary.textContent = trIphone('dashShowingN')
-                    .replace('{shown}', String(shown))
-                    .replace('{total}', String(events.length));
+
+            var details = [];
+            for (var i = 0; i < events.length; i++) {
+                details.push(parseIosCrashDetail(events[i]));
+            }
+            details.sort(function (a, b) {
+                var ta = a.whenRaw ? Date.parse(a.whenRaw) : 0;
+                var tb = b.whenRaw ? Date.parse(b.whenRaw) : 0;
+                if (Number.isFinite(tb) && Number.isFinite(ta) && tb !== ta) return tb - ta;
+                return String(a.process).localeCompare(String(b.process));
             });
-            var summary = document.createElement('p');
-            summary.className = 'iphone-dash-card__lead';
+
+            var listLimit = IOS_CRASH_PAGE;
+            var filterQ = '';
+
+            var search = buildDashSearchInput(function (q) {
+                filterQ = q;
+                listLimit = IOS_CRASH_PAGE;
+                refresh();
+            });
+            search.input.placeholder =
+                trIphone('dashColProcess') + ' / exception / signal / pid / symbol…';
+
+            var summary = document.createElement('div');
+            summary.className = 'iphone-crash-summary';
+
+            var listWrap = document.createElement('div');
+            listWrap.className = 'iphone-crash-list-wrap';
+
+            var symbolsMount = document.createElement('div');
+            symbolsMount.className = 'iphone-crash-symbols-mount';
+
             mount.appendChild(search.wrap);
             mount.appendChild(summary);
-            var rows = [];
-            for (var i = 0; i < events.length; i++) {
-                var ev = mapPlainTop(events[i]) || {};
-                var d = mapPlainTop(ev.data) || {};
-                var report = mapPlainTop(d.report) || d;
-                var proc =
-                    d.name ||
-                    d.app_name ||
-                    d.procName ||
-                    report.procName ||
-                    report.name ||
-                    ev.datetime_desc ||
-                    '—';
-                var exc = '';
-                var exObj = report.exception || d.exception;
-                if (exObj && typeof exObj === 'object') {
-                    var ex = mapPlainTop(exObj);
-                    exc = [ex.type, ex.signal].filter(Boolean).join(' / ');
-                } else if (typeof exObj === 'string') {
-                    exc = exObj;
+            mount.appendChild(listWrap);
+            mount.appendChild(symbolsMount);
+
+            function matchingDetails() {
+                if (!filterQ) return details;
+                var outList = [];
+                for (var i = 0; i < details.length; i++) {
+                    if (iosCrashHaystack(details[i]).indexOf(filterQ) >= 0) outList.push(details[i]);
                 }
-                var when = ev.datetime || d.timestamp || report.timestamp || '';
-                var bundle = d.bundleID || d.bundle_id || report.bundleID || '';
-                rows.push({
-                    cells: [String(proc), String(exc || '—'), String(bundle || '—'), String(when || '—')],
-                    haystack: [proc, exc, bundle, when].join('\n').toLowerCase()
-                });
+                return outList;
             }
-            summary.textContent = trIphone('dashShowingN')
-                .replace('{shown}', String(rows.length))
-                .replace('{total}', String(events.length));
-            mount.appendChild(
-                buildDashTable(
-                    [
-                        trIphone('dashColProcess'),
-                        trIphone('dashColException'),
-                        trIphone('dashColBundle'),
-                        trIphone('dashColTime')
-                    ],
-                    rows,
-                    { monoCols: { 2: true } }
-                )
-            );
+
+            function refresh() {
+                var matched = matchingDetails();
+                var visible = matched.slice(0, listLimit);
+                summary.textContent = '';
+                var chip = document.createElement('span');
+                chip.className = 'iphone-crash-stat';
+                var nKey = matched.length === 1 ? 'dashCrashReportsN' : 'dashCrashReportsNPlural';
+                chip.textContent = trIphone(nKey).replace('{n}', String(matched.length));
+                summary.appendChild(chip);
+                if (matched.length !== details.length) {
+                    var filterNote = document.createElement('span');
+                    filterNote.className = 'iphone-crash-summary__note';
+                    filterNote.textContent = trIphone('dashShowingN')
+                        .replace('{shown}', String(visible.length))
+                        .replace('{total}', String(matched.length));
+                    summary.appendChild(filterNote);
+                }
+
+                listWrap.textContent = '';
+                if (!matched.length) {
+                    var empty = document.createElement('p');
+                    empty.className = 'iphone-dash-empty';
+                    empty.textContent = trIphone('dashEmptyCrashesFilter').replace(
+                        '{q}',
+                        filterQ || ''
+                    );
+                    listWrap.appendChild(empty);
+                    symbolsMount.textContent = '';
+                    return;
+                }
+
+                var ul = document.createElement('ul');
+                ul.className = 'iphone-crash-incidents';
+                for (var i = 0; i < visible.length; i++) {
+                    ul.appendChild(buildIosCrashIncidentCard(visible[i]));
+                }
+                listWrap.appendChild(ul);
+
+                if (matched.length > visible.length) {
+                    var moreWrap = document.createElement('div');
+                    moreWrap.className = 'iphone-crash-more';
+                    var moreBtn = document.createElement('button');
+                    moreBtn.type = 'button';
+                    moreBtn.className = 'iphone-crash-more__btn';
+                    moreBtn.textContent = trIphone('dashCrashShowMore')
+                        .replace('{shown}', String(visible.length))
+                        .replace('{total}', String(matched.length));
+                    moreBtn.addEventListener('click', function () {
+                        listLimit = Math.min(listLimit + IOS_CRASH_PAGE, matched.length);
+                        refresh();
+                    });
+                    moreWrap.appendChild(moreBtn);
+                    listWrap.appendChild(moreWrap);
+                }
+
+                symbolsMount.textContent = '';
+                var top = buildIosCrashTopSymbols(matched, 8);
+                if (top.length) {
+                    var sec = document.createElement('section');
+                    sec.className = 'iphone-crash-section';
+                    var h = document.createElement('h4');
+                    h.className = 'iphone-crash-section__title';
+                    h.textContent = trIphone('dashCrashTopSymbols');
+                    sec.appendChild(h);
+                    var rows = [];
+                    for (var s = 0; s < top.length; s++) {
+                        rows.push({
+                            cells: [top[s].process, top[s].symbol, String(top[s].count)],
+                            haystack: [top[s].process, top[s].symbol].join('\n').toLowerCase()
+                        });
+                    }
+                    sec.appendChild(
+                        buildDashTable(
+                            [
+                                trIphone('dashColProcess'),
+                                trIphone('dashCrashColSymbol'),
+                                trIphone('dashCrashColCount')
+                            ],
+                            rows,
+                            { monoCols: { 0: true, 1: true, 2: true } }
+                        )
+                    );
+                    symbolsMount.appendChild(sec);
+                }
+            }
+
+            refresh();
         }
 
         function renderIphoneDashboard(out, okN) {
@@ -5414,6 +6821,73 @@
         function hideSpinner() {
             document.getElementById('loading-spinner').classList.remove('show');
         }
+
+        window.handleSysdiagnoseFileSelect = function (event) {
+            var file = event.target.files[0];
+            if (file) {
+                sysdiagnoseFile = file;
+                updateSysdiagnoseUploadPanel(file);
+                document.getElementById('btn-analyze-sysdiagnose').classList.remove('hidden');
+                showStatus('✓ ' + file.name + ' (' + formatBytes(file.size) + ')', 'success');
+                console.log('[SYSDIAGNOSE] File selected', { name: file.name, size_bytes: file.size });
+            }
+        };
+
+        var sdZone = document.getElementById('sysdiagnose-upload-zone');
+        var sdInput = document.getElementById('sysdiagnose-file-input');
+        function openSysdiagnoseFilePicker() {
+            if (sdInput) sdInput.click();
+        }
+        if (sdZone) {
+            sdZone.addEventListener('click', function (e) {
+                if (e.target.closest('#sysdiagnose-upload-clear')) return;
+                if (!sysdiagnoseFile) openSysdiagnoseFilePicker();
+            });
+            sdZone.addEventListener('keydown', function (e) {
+                if ((e.key === 'Enter' || e.key === ' ') && !sysdiagnoseFile) {
+                    e.preventDefault();
+                    openSysdiagnoseFilePicker();
+                }
+            });
+            sdZone.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                sdZone.classList.add('dragover');
+            });
+            sdZone.addEventListener('dragleave', function () {
+                sdZone.classList.remove('dragover');
+            });
+            sdZone.addEventListener('drop', function (e) {
+                e.preventDefault();
+                sdZone.classList.remove('dragover');
+                var file = e.dataTransfer.files[0];
+                if (file) {
+                    sysdiagnoseFile = file;
+                    updateSysdiagnoseUploadPanel(file);
+                    document.getElementById('btn-analyze-sysdiagnose').classList.remove('hidden');
+                    showStatus('✓ ' + file.name + ' (' + formatBytes(file.size) + ')', 'success');
+                    console.log('[SYSDIAGNOSE] File dropped', { name: file.name, size_bytes: file.size });
+                }
+            });
+        }
+        var sdClear = document.getElementById('sysdiagnose-upload-clear');
+        if (sdClear) {
+            sdClear.addEventListener('click', function (e) {
+                e.stopPropagation();
+                sysdiagnoseFile = null;
+                updateSysdiagnoseUploadPanel(null);
+                if (sdInput) sdInput.value = '';
+                document.getElementById('btn-analyze-sysdiagnose').classList.add('hidden');
+            });
+        }
+
+        window.analyzeSysdiagnoseFile = async function () {
+            if (!sysdiagnoseFile) {
+                showStatus(trIphone('chooseSysdiagnoseFile'), 'error');
+                return;
+            }
+            var buf = await sysdiagnoseFile.arrayBuffer();
+            await analyzeSysdiagnoseBytes(new Uint8Array(buf), sysdiagnoseFile.name);
+        };
 
         async function analyzeSysdiagnoseBytes(u8, displayName) {
             var _t = window.IPHONE_I18N[window.currentLang] || window.IPHONE_I18N.en;

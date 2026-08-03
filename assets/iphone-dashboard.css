@@ -275,3 +275,370 @@
         padding: 0.4rem 0.55rem;
     }
 }
+
+/* Processes tab — mobipwn-aligned identity / timing cells */
+.iphone-proc-identity {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 12rem;
+    max-width: 28rem;
+}
+
+.iphone-proc-identity__title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.45rem;
+}
+
+.iphone-proc-identity__name {
+    font-weight: 600;
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.iphone-proc-identity__parser,
+.iphone-proc-identity__service {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 0.08rem 0.4rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text-secondary) 12%, transparent);
+    color: var(--text-secondary);
+}
+
+.iphone-proc-identity__service {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent);
+}
+
+.iphone-proc-identity__meta {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    word-break: break-word;
+    line-height: 1.35;
+}
+
+.iphone-proc-identity__meta--args {
+    opacity: 0.92;
+}
+
+.iphone-proc-started {
+    font-size: 0.78rem;
+    line-height: 1.35;
+    white-space: nowrap;
+}
+
+.iphone-proc-started__uptime {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.iphone-proc-mem {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    align-items: flex-end;
+    font-variant-numeric: tabular-nums;
+}
+
+.iphone-proc-mem__thr {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+}
+
+/* Crashes tab — mobipwn-aligned incident cards */
+.iphone-crash-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin: 0.35rem 0 0.75rem;
+}
+
+.iphone-crash-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--text-primary);
+}
+
+.iphone-crash-summary__note {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.iphone-crash-incidents {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.iphone-crash-incident {
+    padding: 0.65rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--border));
+    background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--accent) 6%, var(--bg-secondary, transparent)) 0%,
+        color-mix(in srgb, var(--bg-secondary, transparent) 70%, transparent) 100%
+    );
+}
+
+.iphone-crash-incident.is-open {
+    border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
+}
+
+.iphone-crash-incident__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem 0.55rem;
+}
+
+.iphone-crash-incident__toggle {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--bg-card, transparent) 80%, transparent);
+    color: var(--text-secondary);
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 6px;
+    padding: 0;
+    cursor: pointer;
+    font-size: 0.7rem;
+    line-height: 1;
+}
+
+.iphone-crash-incident__toggle:hover {
+    color: var(--text-primary);
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+.iphone-crash-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 0.12rem 0.4rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, #c62828 14%, transparent);
+    color: #c62828;
+    border: 1px solid color-mix(in srgb, #c62828 28%, transparent);
+}
+
+.iphone-crash-incident__process {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.iphone-crash-incident__time {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin-left: auto;
+}
+
+.iphone-crash-incident__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.35rem;
+    margin-top: 0.35rem;
+}
+
+.iphone-crash-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    color: var(--text-primary);
+    font-size: 0.7rem;
+}
+
+.iphone-crash-incident__reason {
+    margin: 0.35rem 0 0;
+    font-size: 0.78rem;
+    color: color-mix(in srgb, var(--accent) 45%, var(--text-primary));
+    line-height: 1.35;
+}
+
+.iphone-crash-incident__message {
+    margin: 0.3rem 0 0;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.iphone-crash-incident__file {
+    margin: 0.3rem 0 0;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    word-break: break-all;
+}
+
+.iphone-crash-incident__detail {
+    margin-top: 0.65rem;
+    padding-top: 0.55rem;
+    border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.iphone-crash-incident__empty {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.iphone-crash-kv {
+    display: grid;
+    grid-template-columns: minmax(6rem, 8.5rem) 1fr;
+    gap: 0.25rem 0.75rem;
+    margin: 0 0 0.65rem;
+    font-size: 0.75rem;
+}
+
+.iphone-crash-kv dt {
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+.iphone-crash-kv dd {
+    margin: 0;
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.iphone-crash-stack {
+    margin: 0.55rem 0 0;
+}
+
+.iphone-crash-stack__title {
+    margin: 0 0 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.iphone-crash-stack__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.iphone-crash-stack__frame {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    gap: 0.15rem 0.45rem;
+    font-size: 0.74rem;
+    align-items: baseline;
+}
+
+.iphone-crash-stack__idx {
+    color: var(--text-secondary);
+}
+
+.iphone-crash-stack__sym {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.74rem;
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.iphone-crash-stack__img {
+    grid-column: 2;
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    word-break: break-all;
+}
+
+.iphone-crash-asi__body {
+    margin: 0;
+    padding: 0.45rem 0.55rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--bg-secondary, transparent) 80%, transparent);
+    font-size: 0.72rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 10rem;
+    overflow: auto;
+}
+
+.iphone-crash-images {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.iphone-crash-more {
+    margin: 0.75rem 0 0;
+}
+
+.iphone-crash-more__btn {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.iphone-crash-more__btn:hover {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+.iphone-crash-section {
+    margin-top: 1.1rem;
+}
+
+.iphone-crash-section__title {
+    margin: 0 0 0.45rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+@media (max-width: 640px) {
+    .iphone-crash-incident__time {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .iphone-crash-kv {
+        grid-template-columns: 1fr;
+        gap: 0.1rem 0;
+    }
+
+    .iphone-crash-kv dt {
+        margin-top: 0.25rem;
+    }
+}

@@ -642,3 +642,12 @@
         margin-top: 0.25rem;
     }
 }
+
+.iphone-battery-soc {
+    font-size: 2rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    margin: 0.25rem 0 0.5rem;
+}

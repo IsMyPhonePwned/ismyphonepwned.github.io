@@ -1,0 +1,492 @@
+/* Android analysis dashboard — curated tabs (mirrors iPhone dash) */
+
+.android-dash {
+    margin: 1.25rem 0 1.5rem;
+}
+
+.android-dash.hidden {
+    display: none;
+}
+
+.android-dash-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0 0 1rem;
+    padding: 0.35rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-secondary);
+}
+
+.android-dash-tab {
+    appearance: none;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    padding: 0.45rem 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    width: auto;
+    line-height: 1.2;
+}
+
+.android-dash-tab:hover {
+    color: var(--text-primary);
+    background: color-mix(in srgb, var(--accent) 8%, var(--bg-card));
+}
+
+.android-dash-tab.is-active {
+    color: var(--accent);
+    background: var(--bg-card);
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.android-dash-tab__count {
+    display: inline-block;
+    margin-left: 0.3rem;
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-variant-numeric: tabular-nums;
+    background: color-mix(in srgb, var(--text-secondary) 14%, transparent);
+    color: var(--text-secondary);
+}
+
+.android-dash-tab.is-active .android-dash-tab__count {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    color: var(--accent);
+}
+
+.android-dash-tab__count.is-alert {
+    background: color-mix(in srgb, var(--error) 16%, transparent);
+    color: var(--error);
+}
+
+.android-dash-panel {
+    display: none;
+}
+
+.android-dash-panel.is-active {
+    display: block;
+}
+
+.android-dash-panel > .result-card,
+.android-dash-panel > .results-dashboard {
+    margin-bottom: 1rem;
+}
+
+.results-hero-metrics .hero-metric[data-dash-jump] {
+    cursor: pointer;
+}
+
+.results-hero-metrics .hero-metric[data-dash-jump]:hover .hero-metric-value {
+    color: var(--accent);
+}
+
+/* Crashes tab — structured incidents (aligned with iPhone crash cards) */
+.android-crash-lead {
+    margin: 0.15rem 0 0.85rem;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+}
+
+.android-crash-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0 0 0.85rem;
+}
+
+.android-crash-stat {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 5.5rem;
+    padding: 0.45rem 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-secondary);
+}
+
+.android-crash-stat strong {
+    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+}
+
+.android-crash-stat span {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.android-crash-search {
+    margin-bottom: 0.75rem;
+}
+
+.android-crash-empty {
+    margin: 0.5rem 0;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+.android-crash-section {
+    margin-top: 1rem;
+}
+
+.android-crash-section__title {
+    margin: 0 0 0.5rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.android-crash-incidents {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.android-crash-incident {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-secondary);
+    padding: 0.65rem 0.75rem;
+}
+
+.android-crash-incident.is-open {
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+    background: var(--bg-card);
+}
+
+.android-crash-incident__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.55rem;
+    cursor: pointer;
+}
+
+.android-crash-incident__toggle {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0;
+    width: 1.1rem;
+    font: inherit;
+    line-height: 1;
+}
+
+.android-crash-incident__toggle:hover {
+    color: var(--accent);
+}
+
+.android-crash-badge {
+    display: inline-block;
+    padding: 0.12rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    background: color-mix(in srgb, var(--text-secondary) 14%, transparent);
+    color: var(--text-secondary);
+}
+
+.android-crash-badge--anr {
+    background: color-mix(in srgb, var(--warning) 18%, transparent);
+    color: var(--warning);
+}
+
+.android-crash-badge--tomb {
+    background: color-mix(in srgb, var(--error) 16%, transparent);
+    color: var(--error);
+}
+
+.android-crash-badge--file {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent);
+}
+
+.android-crash-incident__process {
+    font-size: 0.88rem;
+    color: var(--text-primary);
+}
+
+.android-crash-incident__time {
+    margin-left: auto;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+}
+
+.android-crash-incident__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.4rem;
+}
+
+.android-crash-chip {
+    display: inline-block;
+    padding: 0.1rem 0.4rem;
+    border-radius: 6px;
+    font-size: 0.68rem;
+    background: color-mix(in srgb, var(--text-secondary) 10%, transparent);
+    color: var(--text-secondary);
+}
+
+.android-crash-incident__reason {
+    margin: 0.4rem 0 0;
+    font-size: 0.8rem;
+    color: var(--error);
+    line-height: 1.4;
+}
+
+.android-crash-incident__detail {
+    margin-top: 0.65rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid var(--border);
+}
+
+.android-crash-incident__empty {
+    margin: 0.35rem 0;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.android-crash-kv {
+    display: grid;
+    grid-template-columns: minmax(6rem, 8.5rem) 1fr;
+    gap: 0.25rem 0.75rem;
+    margin: 0 0 0.75rem;
+    font-size: 0.78rem;
+}
+
+.android-crash-kv dt {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.android-crash-kv dd {
+    margin: 0;
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.android-crash-stack {
+    margin-top: 0.55rem;
+}
+
+.android-crash-stack__title {
+    margin: 0 0 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.android-crash-stack__list {
+    margin: 0;
+    padding-left: 1.1rem;
+    font-size: 0.72rem;
+    line-height: 1.45;
+}
+
+.android-crash-stack__frame {
+    margin-bottom: 0.2rem;
+    word-break: break-word;
+}
+
+.android-crash-thread {
+    margin: 0.4rem 0;
+    padding: 0.4rem 0.55rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+}
+
+.android-crash-thread > summary {
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.android-crash-more {
+    margin: 0.55rem 0 0;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+@media (max-width: 640px) {
+    .android-crash-incident__time {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .android-crash-kv {
+        grid-template-columns: 1fr;
+        gap: 0.1rem 0;
+    }
+
+    .android-crash-kv dt {
+        margin-top: 0.25rem;
+    }
+}
+
+/* Compact analyzed-file strip (Overview) */
+.file-info-card {
+    padding: 0.65rem 0.85rem !important;
+}
+
+.file-info-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem 1rem;
+}
+
+.file-info-bar__main {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    min-width: 0;
+    flex: 1 1 16rem;
+}
+
+.file-info-bar__icon {
+    flex: 0 0 auto;
+    width: 1.75rem;
+    height: 1.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--accent) 10%, var(--bg-secondary));
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
+.file-info-bar__text {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.file-info-bar__title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem 0.55rem;
+}
+
+.file-info-bar__label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.file-info-bar__name {
+    font-size: 0.88rem;
+    font-weight: 650;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+
+.file-info-bar__size {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 0.08rem 0.4rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+}
+
+.file-info-bar__path {
+    margin-top: 0.15rem;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    word-break: break-all;
+    line-height: 1.3;
+}
+
+.file-info-bar__hash-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.45rem;
+    margin-top: 0.3rem;
+}
+
+.file-info-bar__hash-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.file-info-bar__hash {
+    margin: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.7rem;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+
+.file-info-bar__copy {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.12rem 0.4rem;
+    border-radius: 4px;
+    cursor: pointer;
+    width: auto;
+    line-height: 1.2;
+}
+
+.file-info-bar__copy:hover,
+.file-info-bar__copy.is-copied {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+.file-info-bar__dl {
+    appearance: none;
+    flex: 0 0 auto;
+    border: 1px solid color-mix(in srgb, var(--success) 45%, var(--border));
+    background: color-mix(in srgb, var(--success) 12%, var(--bg-card));
+    color: var(--success);
+    font-size: 0.75rem;
+    font-weight: 650;
+    padding: 0.4rem 0.7rem;
+    border-radius: 7px;
+    cursor: pointer;
+    width: auto;
+    line-height: 1.2;
+}
+
+.file-info-bar__dl:hover {
+    background: color-mix(in srgb, var(--success) 18%, var(--bg-card));
+}
+
+@media (max-width: 640px) {
+    .file-info-bar__dl {
+        width: 100%;
+    }
+}

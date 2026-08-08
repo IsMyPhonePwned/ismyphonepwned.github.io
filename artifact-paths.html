@@ -325,10 +325,11 @@
                 </div>
             </div>
             <div class="header-actions">
-                <button class="theme-toggle" type="button" onclick="toggleTheme()">
-                    <span id="theme-icon">🌙</span>
-                    <span id="theme-text">Dark</span>
-                </button>
+                <div class="header-toolbar" role="toolbar" aria-label="Theme">
+                    <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-label="Toggle theme" title="Theme">
+                        <span id="theme-icon" aria-hidden="true">🌙</span>
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -743,15 +744,15 @@
             var next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
             html.setAttribute('data-theme', next === 'dark' ? 'dark' : '');
             localStorage.setItem('theme', next);
-            document.getElementById('theme-icon').textContent = next === 'dark' ? '☀️' : '🌙';
-            document.getElementById('theme-text').textContent = next === 'dark' ? 'Light' : 'Dark';
+            var icon = document.getElementById('theme-icon');
+            if (icon) icon.textContent = next === 'dark' ? '☀️' : '🌙';
         }
         (function () {
             var t = localStorage.getItem('theme');
             if (t === 'dark') {
                 document.documentElement.setAttribute('data-theme', 'dark');
-                document.getElementById('theme-icon').textContent = '☀️';
-                document.getElementById('theme-text').textContent = 'Light';
+                var icon = document.getElementById('theme-icon');
+                if (icon) icon.textContent = '☀️';
             }
         })();
     </script>

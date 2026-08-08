@@ -50,3 +50,105 @@ window.SIGMA_RULE_URLS = [
     '/rules/ios/darksword/darksword-ciolino-behavioral.yml',
     '/rules/ios/darksword/darksword-ciolino-exfil-ports.yml'
 ];
+
+/**
+ * Lightweight Sigma/YAML syntax highlighting → safe HTML (escaped text + spans).
+ * Used by the Rules “Show rule content” panels on Android and iPhone.
+ */
+window.highlightSigmaYamlHtml = function (src) {
+    function esc(s) {
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+    function span(cls, text) {
+        return '<span class="yaml-' + cls + '">' + esc(text) + '</span>';
+    }
+    function highlightValue(raw) {
+        if (raw === '') return '';
+        if (/^(true|false|null|yes|no|on|off)$/i.test(raw)) return span('bool', raw);
+        if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(raw)) return span('number', raw);
+        var m = raw.match(/^([&*][A-Za-z0-9_-]+)(.*)$/);
+        if (m) return span('anchor', m[1]) + highlightValue(m[2]);
+        if (/^['"]/.test(raw)) return span('string', raw);
+        if (/^\[/.test(raw) || /^\{/.test(raw)) return span('string', raw);
+        return span('string', raw);
+    }
+
+    var text = String(src == null ? '' : src);
+    var lines = text.split('\n');
+    var out = [];
+
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        var indent = line.match(/^[ \t]*/)[0];
+        var rest = line.slice(indent.length);
+
+        if (!rest) {
+            out.push('');
+            continue;
+        }
+        if (rest.charAt(0) === '#') {
+            out.push(esc(indent) + span('comment', rest));
+            continue;
+        }
+        if (rest === '---' || rest === '...' || rest.indexOf('--- ') === 0) {
+            out.push(esc(indent) + span('doc', rest));
+            continue;
+        }
+
+        var dash = '';
+        if (rest.charAt(0) === '-' && (rest.length === 1 || /[ \t]/.test(rest.charAt(1)))) {
+            dash = '-';
+            rest = rest.slice(1).replace(/^[ \t]+/, '');
+            if (!rest) {
+                out.push(esc(indent) + span('punct', dash));
+                continue;
+            }
+            if (rest.indexOf(':') < 0 || /^['"]/.test(rest)) {
+                out.push(esc(indent) + span('punct', dash) + ' ' + highlightValue(rest));
+                continue;
+            }
+        }
+
+        var keyMatch = rest.match(/^([^:#\n]+?)([ \t]*:)([ \t]*)(.*)$/);
+        if (keyMatch) {
+            var key = keyMatch[1];
+            var colon = keyMatch[2];
+            var gap = keyMatch[3];
+            var val = keyMatch[4];
+            var row =
+                esc(indent) +
+                (dash ? span('punct', dash) + ' ' : '') +
+                span('key', key) +
+                span('punct', colon);
+            if (val) {
+                if (val.charAt(0) === '#') {
+                    row += esc(gap) + span('comment', val);
+                } else if (val.charAt(0) === '|' || val.charAt(0) === '>') {
+                    row += esc(gap) + span('punct', val);
+                } else {
+                    var hash = val.indexOf(' #');
+                    if (hash >= 0) {
+                        row +=
+                            esc(gap) +
+                            highlightValue(val.slice(0, hash)) +
+                            span('comment', val.slice(hash));
+                    } else {
+                        row += esc(gap) + highlightValue(val);
+                    }
+                }
+            }
+            out.push(row);
+            continue;
+        }
+
+        out.push(
+            esc(indent) + (dash ? span('punct', dash) + (rest ? ' ' : '') : '') + highlightValue(rest)
+        );
+    }
+
+    return out.join('\n');
+};

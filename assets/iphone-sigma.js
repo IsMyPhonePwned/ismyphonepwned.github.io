@@ -112,6 +112,7 @@
                     description: meta.description != null ? meta.description : null,
                     status: meta.status != null ? meta.status : null,
                     level: meta.level != null ? meta.level : null,
+                    content: r.success ? r.text || '' : null,
                 };
             });
             var count = rulesInfo.filter(function (r) {
@@ -129,187 +130,21 @@
         }
     }
 
-    var SIGMA_LEVEL_ORDER = { critical: 0, high: 1, medium: 2, low: 3, unknown: 4 };
-
-    function sigmaLevelClass(level) {
-        var l = (level || '').toLowerCase();
-        if (l === 'critical') return 'critical';
-        if (l === 'high') return 'high';
-        if (l === 'medium') return 'medium';
-        if (l === 'low') return 'low';
-        return 'unknown';
-    }
-
-    function extractSigmaMatchLog(m) {
-        var ml = m.log_entry != null ? m.log_entry : m.matched_log;
-        if (ml && typeof ml === 'object' && ml instanceof Map) {
-            ml = Object.fromEntries(ml);
-        }
-        if (ml && typeof ml === 'object' && !Array.isArray(ml)) return ml;
-        return null;
-    }
-
-    function sigmaMatchLogPreview(ml) {
-        if (!ml || typeof ml !== 'object') return '';
-        var ts = ml.timestamp || ml.time || ml.datetime || ml['@timestamp'];
-        var entry = ml.log_entry || ml.message || ml.subject || ml.pkg || ml.package;
-        var parts = [];
-        if (ts) parts.push(String(ts));
-        if (entry) {
-            var s = String(entry);
-            parts.push(s.length > 90 ? s.slice(0, 87) + '…' : s);
-        }
-        if (parts.length) return parts.join(' — ');
-        var keys = Object.keys(ml);
-        if (keys.length) {
-            var k = keys[0];
-            var v = String(ml[k] != null ? ml[k] : '');
-            return k + ': ' + (v.length > 60 ? v.slice(0, 57) + '…' : v);
-        }
-        return '';
-    }
-
-    function renderSigmaLogBodyHtml(ml) {
-        if (!ml || typeof ml !== 'object' || Array.isArray(ml) || Object.keys(ml).length === 0) {
-            return '';
-        }
-        function fmt(v) {
-            return typeof v === 'object' && v !== null ? escapeHtml(JSON.stringify(v)) : escapeHtml(String(v != null ? v : ''));
-        }
-        return Object.entries(ml)
-            .map(function (kv) {
-                return (
-                    '<div style="margin-bottom: 0.2rem;"><span style="color: var(--text-secondary);">' +
-                    escapeHtml(kv[0]) +
-                    ':</span> ' +
-                    fmt(kv[1]) +
-                    '</div>'
-                );
-            })
-            .join('');
-    }
-
-    function sigmaMatchGroupKey(m) {
-        var id = (m.rule_id || '').trim();
-        if (id) return id;
-        var title = (m.rule_title || '').trim();
-        if (title) return 'title:' + title;
-        return 'unknown';
-    }
-
     function groupSigmaMatches(rawMatches) {
-        var matches = rawMatches.map(function (raw) {
-            return mapPlainTop(raw) || raw;
-        });
-        var groups = new Map();
-        matches.forEach(function (m) {
-            var key = sigmaMatchGroupKey(m);
-            if (!groups.has(key)) {
-                groups.set(key, {
-                    rule_id: (m.rule_id || '').trim(),
-                    rule_title: (m.rule_title || '').trim(),
-                    level: (m.level || '').trim(),
-                    items: [],
-                });
-            }
-            var g = groups.get(key);
-            g.items.push(m);
-            if (!g.rule_title && m.rule_title) g.rule_title = String(m.rule_title).trim();
-            if (!g.rule_id && m.rule_id) g.rule_id = String(m.rule_id).trim();
-            var cur = SIGMA_LEVEL_ORDER[sigmaLevelClass(g.level)] != null ? SIGMA_LEVEL_ORDER[sigmaLevelClass(g.level)] : 4;
-            var next = SIGMA_LEVEL_ORDER[sigmaLevelClass(m.level)] != null ? SIGMA_LEVEL_ORDER[sigmaLevelClass(m.level)] : 4;
-            if (next < cur) g.level = String(m.level).trim();
-        });
-        return Array.from(groups.values()).sort(function (a, b) {
-            var la = SIGMA_LEVEL_ORDER[sigmaLevelClass(a.level)] != null ? SIGMA_LEVEL_ORDER[sigmaLevelClass(a.level)] : 4;
-            var lb = SIGMA_LEVEL_ORDER[sigmaLevelClass(b.level)] != null ? SIGMA_LEVEL_ORDER[sigmaLevelClass(b.level)] : 4;
-            if (la !== lb) return la - lb;
-            return b.items.length - a.items.length;
-        });
+        return window.SigmaMatchUI.groupMatches(rawMatches);
     }
 
     function renderSigmaMatchesGroupedHtml(rawMatches) {
-        var pack = i18nPack();
-        var groups = groupSigmaMatches(rawMatches);
-        if (!groups.length) {
-            return '<p class="detection-empty">' + escapeHtml(pack.sigmaNoMatches || 'No matches.') + '</p>';
-        }
-        return groups
-            .map(function (g) {
-                var id = g.rule_id ? escapeHtml(g.rule_id) : '-';
-                var title = g.rule_title ? escapeHtml(g.rule_title) : '-';
-                var level = g.level ? escapeHtml(g.level) : '-';
-                var lvlCls = sigmaLevelClass(g.level);
-                var n = g.items.length;
-                var countLabel =
-                    n === 1
-                        ? escapeHtml(pack.sigmaMatchCountOne || '1 occurrence')
-                        : escapeHtml(i18nFmt('sigmaMatchCount', { n: n }));
+        return window.SigmaMatchUI.renderGroupedHtml(rawMatches, {
+            escapeHtml: escapeHtml,
+            i18nFmt: i18nFmt,
+            i18nPack: i18nPack(),
+        });
+    }
 
-                var bodyHtml = '';
-                if (n === 1) {
-                    var ml = extractSigmaMatchLog(g.items[0]);
-                    var logBody = renderSigmaLogBodyHtml(ml);
-                    if (logBody) {
-                        bodyHtml =
-                            '<details class="sigma-matched-log" open><summary>' +
-                            escapeHtml(pack.sigmaMatchedLog || 'Matched log') +
-                            '</summary><div class="sigma-matched-log-body">' +
-                            logBody +
-                            '</div></details>';
-                    }
-                } else {
-                    var occHtml = g.items
-                        .map(function (m, i) {
-                            var mlOcc = extractSigmaMatchLog(m);
-                            var preview = sigmaMatchLogPreview(mlOcc);
-                            var occTitle = i18nFmt('sigmaMatchOccurrence', { n: i + 1 });
-                            var occLabel = escapeHtml(preview ? occTitle + ' — ' + preview : occTitle);
-                            var logBodyOcc = renderSigmaLogBodyHtml(mlOcc);
-                            if (!logBodyOcc) {
-                                return (
-                                    '<div class="sigma-match-occurrence sigma-match-occurrence--empty">' +
-                                    '<span class="sigma-match-occurrence-label">' +
-                                    occLabel +
-                                    '</span></div>'
-                                );
-                            }
-                            return (
-                                '<details class="sigma-matched-log sigma-match-occurrence"><summary>' +
-                                occLabel +
-                                '</summary><div class="sigma-matched-log-body">' +
-                                logBodyOcc +
-                                '</div></details>'
-                            );
-                        })
-                        .join('');
-                    bodyHtml =
-                        '<details class="sigma-match-occurrences"><summary class="sigma-match-occurrences-summary">' +
-                        escapeHtml(i18nFmt('sigmaMatchShowLogs', { n: n })) +
-                        '</summary><div class="sigma-match-occurrence-list">' +
-                        occHtml +
-                        '</div></details>';
-                }
-
-                return (
-                    '<div class="sigma-match-card sigma-match-card--' +
-                    lvlCls +
-                    '"><div class="sigma-match-title">' +
-                    title +
-                    '</div><div class="sigma-match-meta"><span>ID: ' +
-                    id +
-                    '</span><span class="sigma-level-badge sigma-level-badge--' +
-                    lvlCls +
-                    '">' +
-                    level +
-                    '</span><span class="sigma-match-count">' +
-                    countLabel +
-                    '</span></div>' +
-                    bodyHtml +
-                    '</div>'
-                );
-            })
-            .join('');
+    function wireSigmaMatchesContainer(root) {
+        if (!root || !window.SigmaMatchUI || !window.SigmaMatchUI.wireMatchesContainer) return;
+        window.SigmaMatchUI.wireMatchesContainer(root, { i18nPack: i18nPack() });
     }
 
     function updateSigmaSummaryBar(data) {
@@ -337,6 +172,9 @@
                     ) +
                     '</span>'
             );
+            if (window.SigmaMatchUI && window.SigmaMatchUI.levelBreakdownChipsHtml) {
+                chips.push(window.SigmaMatchUI.levelBreakdownChipsHtml(matches, escapeHtml, i18nFmt));
+            }
         } else {
             chips.push(
                 '<span class="sigma-summary-chip sigma-summary-chip--clean">' +
@@ -379,9 +217,35 @@
                         );
                     })
                     .join('');
-                return '<div class="sigma-rule-card">' + body + '</div>';
+                var content = typeof r.content === 'string' ? r.content.trim() : '';
+                var contentHtml =
+                    content && typeof window.highlightSigmaYamlHtml === 'function'
+                        ? window.highlightSigmaYamlHtml(content)
+                        : escapeHtml(content);
+                var contentBlock = content
+                    ? '<details class="sigma-rule-content"><summary class="sigma-rule-content__summary">' +
+                      escapeHtml(pack.sigmaShowContent || 'Show rule content') +
+                      '</summary><pre class="sigma-rule-content__pre">' +
+                      contentHtml +
+                      '</pre></details>'
+                    : '';
+                return '<div class="sigma-rule-card">' + body + contentBlock + '</div>';
             })
             .join('');
+    }
+
+    function wireSigmaRuleContentToggles(root) {
+        if (!root) return;
+        var pack = i18nPack();
+        root.querySelectorAll('details.sigma-rule-content').forEach(function (det) {
+            det.addEventListener('toggle', function () {
+                var sum = det.querySelector('summary');
+                if (!sum) return;
+                sum.textContent = det.open
+                    ? pack.sigmaHideContent || 'Hide rule content'
+                    : pack.sigmaShowContent || 'Show rule content';
+            });
+        });
     }
 
     var sigmaDetailsData = null;
@@ -395,9 +259,11 @@
         var matchesEl = document.getElementById('iphone-sigma-matches-container');
         if (sigmaEl) {
             sigmaEl.innerHTML = renderSigmaRulesContainerHtml(sigmaDetailsData);
+            wireSigmaRuleContentToggles(sigmaEl);
         }
         if (matchesEl) {
             matchesEl.innerHTML = renderSigmaMatchesGroupedHtml(asWasmArray(sigmaDetailsData.sigma_matches));
+            wireSigmaMatchesContainer(matchesEl);
         }
         if (!sigmaEl && !matchesEl) {
             sigmaDetailsBuilt = false;

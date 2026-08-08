@@ -350,14 +350,31 @@
         .rule-content-pre {
             font-family: monospace;
             font-size: 0.75rem;
-            white-space: pre;
-            word-break: break-all;
+            white-space: pre-wrap;
+            word-break: break-word;
             overflow-wrap: anywhere;
             margin: 0;
             color: var(--text-primary);
             max-width: 100%;
             -webkit-overflow-scrolling: touch;
+            line-height: 1.5;
         }
+        .rule-content-pre .yaml-key { color: #2563eb; font-weight: 650; }
+        .rule-content-pre .yaml-string { color: #0f766e; }
+        .rule-content-pre .yaml-number { color: #c2410c; }
+        .rule-content-pre .yaml-bool { color: #7c3aed; font-weight: 600; }
+        .rule-content-pre .yaml-comment { color: #64748b; font-style: italic; }
+        .rule-content-pre .yaml-punct { color: #94a3b8; }
+        .rule-content-pre .yaml-doc { color: #db2777; font-weight: 700; }
+        .rule-content-pre .yaml-anchor { color: #0891b2; }
+        [data-theme="dark"] .rule-content-pre .yaml-key { color: #93c5fd; }
+        [data-theme="dark"] .rule-content-pre .yaml-string { color: #5eead4; }
+        [data-theme="dark"] .rule-content-pre .yaml-number { color: #fdba74; }
+        [data-theme="dark"] .rule-content-pre .yaml-bool { color: #c4b5fd; }
+        [data-theme="dark"] .rule-content-pre .yaml-comment { color: #94a3b8; }
+        [data-theme="dark"] .rule-content-pre .yaml-punct { color: #64748b; }
+        [data-theme="dark"] .rule-content-pre .yaml-doc { color: #f9a8d4; }
+        [data-theme="dark"] .rule-content-pre .yaml-anchor { color: #67e8f9; }
 
         .fetch-status {
             font-size: 0.875rem;
@@ -458,19 +475,21 @@
                 <img src="logo.png" alt="" width="48" height="48" style="flex-shrink: 0; object-fit: contain;" onerror="this.style.display='none'">
                 <div style="min-width: 0;">
                 <h1 class="logo-text" data-i18n="pageTitle">Bugreport Analysis — Status & Capabilities</h1>
-                <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.875rem;" data-i18n="pageSubtitle">Rules, parsers, and detection reference • v0.3.1-beta • Updated 3 August 2026</p>
+                <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.875rem;" data-i18n="pageSubtitle">Rules, parsers, and detection reference • v0.3.2-beta • Updated 8 August 2026</p>
                 </div>
             </div>
             <div class="header-actions">
-                <div class="lang-switcher" role="group" aria-label="Language">
-                    <button type="button" data-lang="en" class="active" onclick="setLang('en')">EN</button>
-                    <button type="button" data-lang="fr" onclick="setLang('fr')">FR</button>
-                    <button type="button" data-lang="zh" onclick="setLang('zh')">中文</button>
+                <div class="header-toolbar" role="toolbar" aria-label="Language and theme">
+                    <div class="lang-switcher" role="group" aria-label="Language">
+                        <button type="button" data-lang="en" class="active" onclick="setLang('en')">EN</button>
+                        <button type="button" data-lang="fr" onclick="setLang('fr')">FR</button>
+                        <button type="button" data-lang="zh" onclick="setLang('zh')">ZH</button>
+                    </div>
+                    <span class="header-toolbar__sep" aria-hidden="true"></span>
+                    <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" title="Theme">
+                        <span id="theme-icon" aria-hidden="true">🌙</span>
+                    </button>
                 </div>
-                <button class="theme-toggle" onclick="toggleTheme()">
-                    <span id="theme-icon">🌙</span>
-                    <span id="theme-text" data-i18n="themeDark">Dark</span>
-                </button>
             </div>
         </header>
 
@@ -708,12 +727,12 @@ detection:<br>
 
     <script>
         // Timestamp: update this when the status page content or capabilities change
-        const STATUS_LAST_UPDATED = '2026-07-05T12:00:00Z';
+        const STATUS_LAST_UPDATED = '2026-08-08T12:00:00Z';
 
         const TRANSLATIONS = {
             en: {
                 pageTitle: 'Bugreport Analysis — Status & Capabilities',
-                pageSubtitle: 'Rules, parsers, and detection reference • v0.3.1-beta • Updated 3 August 2026',
+                pageSubtitle: 'Rules, parsers, and detection reference • v0.3.2-beta • Updated 8 August 2026',
                 themeDark: 'Dark',
                 themeLight: 'Light',
                 lastUpdated: 'Last updated:',
@@ -751,7 +770,7 @@ detection:<br>
             },
             fr: {
                 pageTitle: 'Analyse de bugreport — État & capacités',
-                pageSubtitle: 'Référence règles, parseurs et détection • v0.3.1-beta • Mis à jour le 3 août 2026',
+                pageSubtitle: 'Référence règles, parseurs et détection • v0.3.2-beta • Mis à jour le 8 août 2026',
                 themeDark: 'Sombre',
                 themeLight: 'Clair',
                 lastUpdated: 'Dernière mise à jour :',
@@ -789,7 +808,7 @@ detection:<br>
             },
             zh: {
                 pageTitle: 'Bugreport 分析 — 状态与能力',
-                pageSubtitle: '规则、解析器与检测参考 • v0.3.1-beta • 更新于 2026年8月3日',
+                pageSubtitle: '规则、解析器与检测参考 • v0.3.2-beta • 更新于 2026年8月8日',
                 themeDark: '深色',
                 themeLight: '浅色',
                 lastUpdated: '最后更新：',
@@ -858,10 +877,11 @@ detection:<br>
             }
             const eval3 = document.getElementById('detection-eval3-li');
             if (eval3 && t.detectionEval3) eval3.innerHTML = t.detectionEval3.replace('---', '<code>---</code>');
-            const themeText = document.getElementById('theme-text');
-            if (themeText) {
+            const themeBtn = document.querySelector('.theme-toggle');
+            if (themeBtn) {
                 const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-                themeText.textContent = isDark ? t.themeLight : t.themeDark;
+                themeBtn.title = isDark ? t.themeLight : t.themeDark;
+                themeBtn.setAttribute('aria-label', isDark ? t.themeLight : t.themeDark);
             }
             const toggleBtn = document.getElementById('toggle-rules-list-btn');
             if (toggleBtn && t.hideList && t.showList) toggleBtn.textContent = fetchedRulesVisible ? t.hideList : t.showList;
@@ -888,9 +908,9 @@ detection:<br>
             const currentTheme = html.getAttribute('data-theme');
             const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
             html.setAttribute('data-theme', newTheme);
-            document.getElementById('theme-icon').textContent = newTheme === 'dark' ? '☀️' : '🌙';
-            const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
-            document.getElementById('theme-text').textContent = newTheme === 'dark' ? t.themeLight : t.themeDark;
+            const icon = document.getElementById('theme-icon');
+            if (icon) icon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+            setLang(currentLang);
             localStorage.setItem('theme', newTheme);
         }
 
@@ -978,7 +998,11 @@ detection:<br>
                     if (content) html += '<button type="button" id="rule-toggle-btn-' + idx + '" class="secondary rule-content-toggle" onclick="toggleRuleContent(' + idx + ')">' + (t.showContent || 'Show content') + '</button>';
                     html += '</div>';
                     if (content) {
-                        html += '<div id="rule-content-' + idx + '" class="rule-content" style="display: none;"><pre class="rule-content-pre">' + escapeHtml(content) + '</pre></div>';
+                        const contentHtml =
+                            typeof window.highlightSigmaYamlHtml === 'function'
+                                ? window.highlightSigmaYamlHtml(content)
+                                : escapeHtml(content);
+                        html += '<div id="rule-content-' + idx + '" class="rule-content" style="display: none;"><pre class="rule-content-pre sigma-rule-content__pre">' + contentHtml + '</pre></div>';
                     }
                     html += '</div>';
                 });

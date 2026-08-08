@@ -17,20 +17,32 @@
                 <div style="display: flex; flex-direction: column; gap: 0.25rem;">
                     <h1 class="logo-text">IsMyPhonePwned ?</h1>
                     <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400;" data-i18n="pageSubtitle">Android · Intrusion Logging (AAPM)</span>
-                    <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400;" data-i18n="pageVersion">v0.3.1-beta • Updated 3 August 2026</span>
+                    <span class="page-version">
+                        <span data-i18n="pageVersion">v0.3.2-beta • Updated 8 August 2026</span>
+                        <span class="page-version-edition" title="DEF CON edition">
+                            <img class="page-version-edition-logo" src="assets/defcon31-logo.png" alt="" width="18" height="18" decoding="async">
+                            <span>defcon edition</span>
+                        </span>
+                    </span>
                 </div>
             </div>
             <div class="header-actions">
-                <div class="lang-switcher" role="group" aria-label="Language">
-                    <button type="button" data-lang="en" class="active" onclick="window.setLang('en')">EN</button>
-                    <button type="button" data-lang="fr" onclick="window.setLang('fr')">FR</button>
-                    <button type="button" data-lang="zh" onclick="window.setLang('zh')">中文</button>
+                <div class="header-toolbar" role="toolbar" aria-label="Language, runtime, and theme">
+                    <div class="lang-switcher" role="group" aria-label="Language">
+                        <button type="button" data-lang="en" class="active" onclick="window.setLang('en')">EN</button>
+                        <button type="button" data-lang="fr" onclick="window.setLang('fr')">FR</button>
+                        <button type="button" data-lang="zh" onclick="window.setLang('zh')">ZH</button>
+                    </div>
+                    <span class="header-toolbar__sep" aria-hidden="true"></span>
+                    <span id="wasm-status" class="runtime-status is-loading" data-state="loading" role="status" aria-live="polite">
+                        <span class="runtime-status__dot" aria-hidden="true"></span>
+                        <span class="runtime-status__label" data-i18n="wasmLoading">Loading…</span>
+                    </span>
+                    <span class="header-toolbar__sep" aria-hidden="true"></span>
+                    <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" title="Theme">
+                        <span id="theme-icon" aria-hidden="true">🌙</span>
+                    </button>
                 </div>
-                <span id="wasm-status" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px;" data-i18n="wasmLoading">⏳ Loading...</span>
-                <button class="theme-toggle" onclick="toggleTheme()">
-                    <span id="theme-icon">🌙</span>
-                    <span id="theme-text" data-i18n="themeDark">Dark</span>
-                </button>
             </div>
         </header>
 
@@ -131,10 +143,12 @@
         window.IL_I18N = {
             en: {
                 pageSubtitle: 'Android · Intrusion Logging (AAPM)',
-                pageVersion: 'v0.3.1-beta • Updated 3 August 2026',
-                wasmLoading: '⏳ Loading...',
-                wasmReady: '✓ Ready',
-                wasmFailed: '❌ Failed to load',
+                pageVersion: 'v0.3.2-beta • Updated 8 August 2026',
+                wasmLoading: 'Loading…',
+                wasmReady: 'Ready',
+                wasmFailed: 'Failed',
+                themeToggleToDark: 'Switch to dark theme',
+                themeToggleToLight: 'Switch to light theme',
                 themeDark: 'Dark',
                 themeLight: 'Light',
                 analyzingWait: 'Analyzing…',
@@ -225,10 +239,12 @@
             },
             fr: {
                 pageSubtitle: 'Android · Intrusion Logging (AAPM)',
-                pageVersion: 'v0.3.1-beta • Mis à jour le 3 août 2026',
-                wasmLoading: '⏳ Chargement…',
-                wasmReady: '✓ Prêt',
-                wasmFailed: '❌ Échec du chargement',
+                pageVersion: 'v0.3.2-beta • Mis à jour le 8 août 2026',
+                wasmLoading: 'Chargement…',
+                wasmReady: 'Prêt',
+                wasmFailed: 'Échec',
+                themeToggleToDark: 'Passer en thème sombre',
+                themeToggleToLight: 'Passer en thème clair',
                 themeDark: 'Sombre',
                 themeLight: 'Clair',
                 analyzingWait: 'Analyse…',
@@ -319,10 +335,12 @@
             },
             zh: {
                 pageSubtitle: 'Android · 入侵日志 (AAPM)',
-                pageVersion: 'v0.3.1-beta • 更新于 2026年8月3日',
-                wasmLoading: '⏳ 加载中…',
-                wasmReady: '✓ 就绪',
-                wasmFailed: '❌ 加载失败',
+                pageVersion: 'v0.3.2-beta • 更新于 2026年8月8日',
+                wasmLoading: '加载中…',
+                wasmReady: '就绪',
+                wasmFailed: '失败',
+                themeToggleToDark: '切换到深色主题',
+                themeToggleToLight: '切换到浅色主题',
                 themeDark: '深色',
                 themeLight: '浅色',
                 analyzingWait: '分析中…',
@@ -417,13 +435,24 @@
             var t = window.IL_I18N[lang] || window.IL_I18N.en;
             document.documentElement.lang = (lang === 'zh' ? 'zh' : lang === 'fr' ? 'fr' : 'en');
             document.querySelectorAll('[data-i18n]').forEach(function (el) {
+                if (el.closest('#wasm-status')) return;
                 var key = el.getAttribute('data-i18n');
                 if (t[key] !== undefined) el.textContent = t[key];
             });
-            var themeText = document.getElementById('theme-text');
-            if (themeText) {
-                var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-                themeText.textContent = isDark ? t.themeLight : t.themeDark;
+            var themeBtn = document.querySelector('.theme-toggle');
+            var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            if (themeBtn) {
+                themeBtn.title = isDark ? t.themeToggleToLight || t.themeLight : t.themeToggleToDark || t.themeDark;
+                themeBtn.setAttribute(
+                    'aria-label',
+                    isDark ? t.themeToggleToLight || t.themeLight : t.themeToggleToDark || t.themeDark
+                );
+            }
+            var wasmEl = document.getElementById('wasm-status');
+            if (wasmEl && wasmEl.dataset.state) {
+                var labelMap = { loading: t.wasmLoading, ready: t.wasmReady, error: t.wasmFailed };
+                var lbl = wasmEl.querySelector('.runtime-status__label');
+                if (lbl && labelMap[wasmEl.dataset.state]) lbl.textContent = labelMap[wasmEl.dataset.state];
             }
         }
         window.setLang = function (lang) {
@@ -853,18 +882,24 @@
 
         async function boot() {
             var statusEl = document.getElementById('wasm-status');
+            function paint(state, label) {
+                if (!statusEl) return;
+                statusEl.dataset.state = state;
+                statusEl.className = 'runtime-status is-' + state;
+                statusEl.style.background = '';
+                statusEl.style.color = '';
+                var labelEl = statusEl.querySelector('.runtime-status__label');
+                if (labelEl) labelEl.textContent = label;
+                else statusEl.textContent = label;
+            }
             try {
-                statusEl.textContent = trIl('wasmLoading');
+                paint('loading', trIl('wasmLoading'));
                 await init();
-                statusEl.textContent = trIl('wasmReady');
-                statusEl.style.background = 'rgba(76, 175, 80, 0.1)';
-                statusEl.style.color = 'var(--success)';
+                paint('ready', trIl('wasmReady'));
                 console.log('[INTRUSION_LOGS] WebAssembly initialized');
             } catch (e) {
                 console.error('[INTRUSION_LOGS] WASM init failed:', e);
-                statusEl.textContent = trIl('wasmFailed');
-                statusEl.style.background = 'rgba(244, 67, 54, 0.1)';
-                statusEl.style.color = 'var(--error)';
+                paint('error', trIl('wasmFailed'));
             }
         }
         boot();

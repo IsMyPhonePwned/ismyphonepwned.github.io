@@ -16,19 +16,27 @@
                 <div style="display: flex; flex-direction: column; gap: 0.25rem;">
                     <h1 class="logo-text">IsMyPhonePwned ?</h1>
                     <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400;" data-i18n="pageSubtitle">Local device analysis</span>
-                    <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400;" data-i18n="pageVersion">v0.3.1-beta • Updated 3 August 2026</span>
+                    <span class="page-version">
+                        <span data-i18n="pageVersion">v0.3.2-beta • Updated 8 August 2026</span>
+                        <span class="page-version-edition" title="DEF CON edition">
+                            <img class="page-version-edition-logo" src="assets/defcon31-logo.png" alt="" width="18" height="18" decoding="async">
+                            <span>defcon edition</span>
+                        </span>
+                    </span>
                 </div>
             </div>
             <div class="header-actions">
-                <div class="lang-switcher" role="group" aria-label="Language">
-                    <button type="button" data-lang="en" class="active" onclick="window.setLang('en')">EN</button>
-                    <button type="button" data-lang="fr" onclick="window.setLang('fr')">FR</button>
-                    <button type="button" data-lang="zh" onclick="window.setLang('zh')">中文</button>
+                <div class="header-toolbar" role="toolbar" aria-label="Language and theme">
+                    <div class="lang-switcher" role="group" aria-label="Language">
+                        <button type="button" data-lang="en" class="active" onclick="window.setLang('en')">EN</button>
+                        <button type="button" data-lang="fr" onclick="window.setLang('fr')">FR</button>
+                        <button type="button" data-lang="zh" onclick="window.setLang('zh')">ZH</button>
+                    </div>
+                    <span class="header-toolbar__sep" aria-hidden="true"></span>
+                    <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" title="Theme">
+                        <span id="theme-icon" aria-hidden="true">🌙</span>
+                    </button>
                 </div>
-                <button class="theme-toggle" onclick="toggleTheme()">
-                    <span id="theme-icon">🌙</span>
-                    <span id="theme-text" data-i18n="themeDark">Dark</span>
-                </button>
             </div>
         </header>
 
@@ -83,9 +91,11 @@
         window.HUB_I18N = {
             en: {
                 pageSubtitle: 'Local device analysis',
-                pageVersion: 'v0.3.1-beta • Updated 3 August 2026',
+                pageVersion: 'v0.3.2-beta • Updated 8 August 2026',
                 themeDark: 'Dark',
                 themeLight: 'Light',
+                themeToggleToDark: 'Switch to dark theme',
+                themeToggleToLight: 'Switch to light theme',
                 hubIntro: 'Choose your platform. All analysis runs locally in your browser; nothing is uploaded to a server.',
                 hubAndroidTitle: 'Android',
                 hubAndroidBody: 'Connect over WebUSB, generate or upload a bugreport, and review parsers, Sigma rules, packages, and more.',
@@ -99,9 +109,11 @@
             },
             fr: {
                 pageSubtitle: 'Analyse locale de l’appareil',
-                pageVersion: 'v0.3.1-beta • Mis à jour le 3 août 2026',
+                pageVersion: 'v0.3.2-beta • Mis à jour le 8 août 2026',
                 themeDark: 'Sombre',
                 themeLight: 'Clair',
+                themeToggleToDark: 'Passer en thème sombre',
+                themeToggleToLight: 'Passer en thème clair',
                 hubIntro: 'Choisissez votre plateforme. Toute l’analyse se fait localement dans le navigateur ; rien n’est envoyé à un serveur.',
                 hubAndroidTitle: 'Android',
                 hubAndroidBody: 'Connexion WebUSB, génération ou envoi d’un bugreport, parseurs, règles Sigma, paquets, etc.',
@@ -115,9 +127,11 @@
             },
             zh: {
                 pageSubtitle: '本地设备分析',
-                pageVersion: 'v0.3.1-beta • 更新于 2026年8月3日',
+                pageVersion: 'v0.3.2-beta • 更新于 2026年8月8日',
                 themeDark: '深色',
                 themeLight: '浅色',
+                themeToggleToDark: '切换到深色主题',
+                themeToggleToLight: '切换到浅色主题',
                 hubIntro: '选择平台。分析在浏览器本地完成，不会上传到服务器。',
                 hubAndroidTitle: 'Android',
                 hubAndroidBody: '通过 WebUSB 连接，生成或上传 bugreport，查看解析器、Sigma 规则、包信息等。',
@@ -138,10 +152,14 @@
                 var key = el.getAttribute('data-i18n');
                 if (t[key] !== undefined) el.textContent = t[key];
             });
-            var themeText = document.getElementById('theme-text');
-            if (themeText) {
-                var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-                themeText.textContent = isDark ? t.themeLight : t.themeDark;
+            var themeBtn = document.querySelector('.theme-toggle');
+            var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            if (themeBtn) {
+                themeBtn.title = isDark ? t.themeToggleToLight || t.themeLight : t.themeToggleToDark || t.themeDark;
+                themeBtn.setAttribute(
+                    'aria-label',
+                    isDark ? t.themeToggleToLight || t.themeLight : t.themeToggleToDark || t.themeDark
+                );
             }
         }
         window.setLang = function (lang) {

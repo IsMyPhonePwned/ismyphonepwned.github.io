@@ -12,8 +12,10 @@
     <link rel="stylesheet" href="assets/sysdiagnose-file-panel.css">
     <link rel="stylesheet" href="assets/iphone-dashboard.css">
     <script src="assets/sigma-rules-urls.js"></script>
+    <script src="assets/sigma-match-ui.js"></script>
     <script src="assets/iphone-sigma.js" defer></script>
     <script src="assets/timeline-view.js" defer></script>
+    <script src="assets/iphone-mobipwn-panels.js" defer></script>
 </head>
 <body>
     <div class="container">
@@ -23,20 +25,32 @@
                 <div style="display: flex; flex-direction: column; gap: 0.25rem;">
                     <h1 class="logo-text">IsMyPhonePwned ?</h1>
                     <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400;" data-i18n="pageSubtitle">iPhone · sysdiagnose</span>
-                    <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400;" data-i18n="pageVersion">v0.3.1-beta • Updated 3 August 2026</span>
+                    <span class="page-version">
+                        <span data-i18n="pageVersion">v0.3.2-beta • Updated 8 August 2026</span>
+                        <span class="page-version-edition" title="DEF CON edition">
+                            <img class="page-version-edition-logo" src="assets/defcon31-logo.png" alt="" width="18" height="18" decoding="async">
+                            <span>defcon edition</span>
+                        </span>
+                    </span>
                 </div>
             </div>
             <div class="header-actions">
-                <div class="lang-switcher" role="group" aria-label="Language">
-                    <button type="button" data-lang="en" class="active" onclick="window.setLang('en')">EN</button>
-                    <button type="button" data-lang="fr" onclick="window.setLang('fr')">FR</button>
-                    <button type="button" data-lang="zh" onclick="window.setLang('zh')">中文</button>
+                <div class="header-toolbar" role="toolbar" aria-label="Language, runtime, and theme">
+                    <div class="lang-switcher" role="group" aria-label="Language">
+                        <button type="button" data-lang="en" class="active" onclick="window.setLang('en')">EN</button>
+                        <button type="button" data-lang="fr" onclick="window.setLang('fr')">FR</button>
+                        <button type="button" data-lang="zh" onclick="window.setLang('zh')">ZH</button>
+                    </div>
+                    <span class="header-toolbar__sep" aria-hidden="true"></span>
+                    <span id="webusb-status" class="runtime-status is-loading" data-state="loading" role="status" aria-live="polite">
+                        <span class="runtime-status__dot" aria-hidden="true"></span>
+                        <span class="runtime-status__label" data-i18n="webusbLoading">Loading…</span>
+                    </span>
+                    <span class="header-toolbar__sep" aria-hidden="true"></span>
+                    <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" title="Theme">
+                        <span id="theme-icon" aria-hidden="true">🌙</span>
+                    </button>
                 </div>
-                <span id="webusb-status" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px;" data-i18n="webusbLoading">⏳ Loading…</span>
-                <button class="theme-toggle" onclick="toggleTheme()">
-                    <span id="theme-icon">🌙</span>
-                    <span id="theme-text" data-i18n="themeDark">Dark</span>
-                </button>
             </div>
         </header>
 
@@ -288,6 +302,9 @@
                         <button type="button" class="iphone-dash-tab is-active" role="tab" aria-selected="true" data-dash="overview" data-i18n="dashTabOverview">Overview</button>
                         <button type="button" class="iphone-dash-tab" role="tab" aria-selected="false" data-dash="apps" data-i18n="dashTabApps">Apps</button>
                         <button type="button" class="iphone-dash-tab" role="tab" aria-selected="false" data-dash="network" data-i18n="dashTabNetwork">Network</button>
+                        <button type="button" class="iphone-dash-tab" role="tab" aria-selected="false" data-dash="external" data-i18n="dashTabExternal">External</button>
+                        <button type="button" class="iphone-dash-tab" role="tab" aria-selected="false" data-dash="auth" data-i18n="dashTabAuth">Authentication</button>
+                        <button type="button" class="iphone-dash-tab" role="tab" aria-selected="false" data-dash="battery" data-i18n="dashTabBattery">Battery</button>
                         <button type="button" class="iphone-dash-tab" role="tab" aria-selected="false" data-dash="processes" data-i18n="dashTabProcesses">Processes</button>
                         <button type="button" class="iphone-dash-tab" role="tab" aria-selected="false" data-dash="crashes" data-i18n="dashTabCrashes">Crashes</button>
                     </nav>
@@ -358,6 +375,31 @@
                             <p class="iphone-dash-card__lead" data-i18n="dashSideloadBlurb">MobileInstallation events correlated with IPA / sideload-tool activity.</p>
                             <div id="iphone-sideload-mount"></div>
                         </div>
+                        <div id="iphone-accounts-card" class="iphone-dash-card hidden">
+                            <h3 data-i18n="dashAccountsTitle">Accounts</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashAccountsBlurb">Apple IDs, owner emails, and related identity rows from the accounts parser.</p>
+                            <div id="iphone-accounts-mount"></div>
+                        </div>
+                        <div id="iphone-storage-card" class="iphone-dash-card hidden">
+                            <h3 data-i18n="dashStorageTitle">Storage</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashStorageBlurb">Mounted volumes and capacity from the disks parser.</p>
+                            <div id="iphone-storage-mount"></div>
+                        </div>
+                        <div id="iphone-activation-card" class="iphone-dash-card hidden">
+                            <h3 data-i18n="dashActivationTitle">Activation</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashActivationBlurb">Activation state and hardware hints from mobileactivation.</p>
+                            <div id="iphone-activation-mount"></div>
+                        </div>
+                        <div id="iphone-paired-card" class="iphone-dash-card hidden">
+                            <h3 data-i18n="dashPairedTitle">Paired / trusted entries</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashPairedBlurb">Keychain / pairing labels from security_sysdiagnose.</p>
+                            <div id="iphone-paired-mount"></div>
+                        </div>
+                        <div id="iphone-ioservice-card" class="iphone-dash-card hidden">
+                            <h3 data-i18n="dashIoserviceTitle">IOService hardware</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashIoserviceBlurb">Compact IOService property preview (serial, model, chip).</p>
+                            <div id="iphone-ioservice-mount"></div>
+                        </div>
                     </div>
 
                     <div id="iphone-dash-apps" class="iphone-dash-panel" role="tabpanel" data-dash-panel="apps" hidden>
@@ -374,10 +416,134 @@
                     </div>
 
                     <div id="iphone-dash-network" class="iphone-dash-panel" role="tabpanel" data-dash-panel="network" hidden>
-                        <div class="iphone-dash-card">
+                        <div class="iphone-dash-card" id="iphone-network-domains-card">
+                            <h3 data-i18n="dashNetDomainsTitle">Connected domains</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashNetDomainsBlurb">Unique hosts rolled up from IOCs, Safari, KnowledgeC, Screen Time, and related parsers (mobipwn Connected domains).</p>
+                            <div id="iphone-network-domains-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card" id="iphone-network-iocs-card">
                             <h3 data-i18n="dashNetworkTitle">Network IOCs</h3>
-                            <p class="iphone-dash-card__lead" data-i18n="dashNetworkBlurb">Domains, IPs, URLs, and Wi‑Fi identifiers collected across parsers.</p>
+                            <p class="iphone-dash-card__lead" data-i18n="dashNetworkBlurb">Domains, IPs, URLs, SSIDs, and BSSIDs collected across parsers.</p>
                             <div id="iphone-network-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card hidden" id="iphone-network-safari-card">
+                            <h3 data-i18n="dashNetSafariTitle">Safari history</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashNetSafariBlurb">Browsing visits from Safari History.db.</p>
+                            <div id="iphone-network-safari-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card hidden" id="iphone-network-knowledge-card">
+                            <h3 data-i18n="dashNetKnowledgeTitle">App web usage</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashNetKnowledgeBlurb">KnowledgeC web / Safari usage by app.</p>
+                            <div id="iphone-network-knowledge-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card hidden" id="iphone-network-screentime-card">
+                            <h3 data-i18n="dashNetScreentimeTitle">Screen Time domains</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashNetScreentimeBlurb">Domains attributed to apps by Screen Time.</p>
+                            <div id="iphone-network-screentime-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card hidden" id="iphone-network-netusage-card">
+                            <h3 data-i18n="dashNetUsageTitle">Netusage routes</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashNetUsageBlurb">Wi‑Fi and cellular route usage from netusage.</p>
+                            <div id="iphone-network-netusage-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card hidden" id="iphone-network-vpn-card">
+                            <h3 data-i18n="dashNetVpnTitle">VPN / proxy config</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashNetVpnBlurb">Network Extension / proxy hints from networkextension parsers.</p>
+                            <div id="iphone-network-vpn-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card hidden" id="iphone-network-swcutil-card">
+                            <h3 data-i18n="dashNetSwcutilTitle">Associated domains</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashNetSwcutilBlurb">swcutil NETWORK associated-domain approvals.</p>
+                            <div id="iphone-network-swcutil-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card hidden" id="iphone-network-push-card">
+                            <h3 data-i18n="dashNetPushTitle">Push server endpoints</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashNetPushBlurb">Powerlog push agent hostnames and IPs.</p>
+                            <div id="iphone-network-push-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card hidden" id="iphone-network-quarantine-card">
+                            <h3 data-i18n="dashNetQuarantineTitle">Quarantine download URLs</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashNetQuarantineBlurb">Origin / data URLs from quarantine events.</p>
+                            <div id="iphone-network-quarantine-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card hidden" id="iphone-network-interaction-card">
+                            <h3 data-i18n="dashNetInteractionTitle">Shared / interaction URLs</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashNetInteractionBlurb">Content URLs and domain identifiers from interactionC.</p>
+                            <div id="iphone-network-interaction-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card hidden" id="iphone-network-plist-card">
+                            <h3 data-i18n="dashNetPlistTitle">URLs in plists</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashNetPlistBlurb">URL / host hits extracted from preference plists.</p>
+                            <div id="iphone-network-plist-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card hidden" id="iphone-network-powerlog-card">
+                            <h3 data-i18n="dashNetPowerlogTitle">Process network bytes</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashNetPowerlogBlurb">Wi‑Fi and cellular byte counters from powerlog Process Data Usage.</p>
+                            <div id="iphone-network-powerlog-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card hidden" id="iphone-network-transparency-card">
+                            <h3 data-i18n="dashNetTransparencyTitle">Transparency contact URIs</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashNetTransparencyBlurb">im://mailto and im://tel contacts from transparency_json.</p>
+                            <div id="iphone-network-transparency-mount"></div>
+                        </div>
+                    </div>
+
+                    <div id="iphone-dash-external" class="iphone-dash-panel" role="tabpanel" data-dash-panel="external" hidden>
+                        <div class="iphone-dash-card hidden" id="iphone-wifi-scan-card">
+                            <h3 data-i18n="dashWifiScanTitle">Wi‑Fi scan</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashWifiScanBlurb">Nearby SSIDs, BSSIDs, channel, RSSI, and security from wifiscan.</p>
+                            <div id="iphone-wifi-scan-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card hidden" id="iphone-wifi-saved-card">
+                            <h3 data-i18n="dashWifiSavedTitle">Saved Wi‑Fi networks</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashWifiSavedBlurb">Known / preferred networks from wifinetworks.</p>
+                            <div id="iphone-wifi-saved-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card hidden" id="iphone-wifi-known-card">
+                            <h3 data-i18n="dashWifiKnownTitle">Wi‑Fi geolocation</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashWifiKnownBlurb">BSS locations with latitude/longitude from wifi_known_networks.</p>
+                            <div id="iphone-wifi-known-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card hidden" id="iphone-wifi-security-card">
+                            <h3 data-i18n="dashWifiSecurityTitle">Wi‑Fi security entries</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashWifiSecurityBlurb">Keychain Wi‑Fi labels from wifisecurity.</p>
+                            <div id="iphone-wifi-security-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card hidden" id="iphone-usb-devices-card">
+                            <h3 data-i18n="dashUsbDevicesTitle">USB devices</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashUsbDevicesBlurb">Attached USB products from iousb.</p>
+                            <div id="iphone-usb-devices-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card hidden" id="iphone-usb-lockdown-card">
+                            <h3 data-i18n="dashUsbLockdownTitle">USB / pairing (lockdownd)</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashUsbLockdownBlurb">Attach, pair, trust, and usbmux messages from lockdownd.</p>
+                            <div id="iphone-usb-lockdown-mount"></div>
+                        </div>
+                    </div>
+
+                    <div id="iphone-dash-auth" class="iphone-dash-panel" role="tabpanel" data-dash-panel="auth" hidden>
+                        <div class="iphone-dash-card hidden" id="iphone-auth-summary-card">
+                            <h3 data-i18n="dashAuthSummaryTitle">Lock / unlock summary</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashAuthSummaryBlurb">Counts of unlock, lock, auto-lock, and failed authentication events.</p>
+                            <div id="iphone-auth-summary-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card hidden" id="iphone-auth-events-card">
+                            <h3 data-i18n="dashAuthEventsTitle">Lock / unlock events</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashAuthEventsBlurb">Powerlog, KnowledgeC, lockdown, and unified-log authentication / lock-state rows.</p>
+                            <div id="iphone-auth-events-mount"></div>
+                        </div>
+                    </div>
+
+                    <div id="iphone-dash-battery" class="iphone-dash-panel" role="tabpanel" data-dash-panel="battery" hidden>
+                        <div class="iphone-dash-card hidden" id="iphone-battery-hero-card">
+                            <h3 data-i18n="dashBatteryTitle">Battery</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashBatteryBlurb">State of charge and power status from battery_bdc (and powerlogs Battery Level).</p>
+                            <div id="iphone-battery-hero-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card hidden" id="iphone-battery-samples-card">
+                            <h3 data-i18n="dashBatterySamplesTitle">Recent battery samples</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashBatterySamplesBlurb">Recent SoC / charging / external-power samples.</p>
+                            <div id="iphone-battery-samples-mount"></div>
                         </div>
                     </div>
 
@@ -461,18 +627,23 @@
         window.IPHONE_I18N = {
             en: {
                 pageSubtitle: 'iPhone · sysdiagnose',
-                pageVersion: 'v0.3.1-beta • Updated 3 August 2026',
+                pageVersion: 'v0.3.2-beta • Updated 8 August 2026',
                 wasmLoading: '⏳ Loading…',
                 wasmReady: '✓ Ready',
                 wasmFailed: '❌ Failed to load',
-                webusbLoading: '⏳ Loading…',
-                webusbReady: '✓ Analyzer + WebUSB',
-                webusbDeviceReady: '✓ WebUSB · ⏳ Analyzer',
+                webusbLoading: 'Loading…',
+                webusbReady: 'Ready',
+                webusbDeviceReady: 'WebUSB',
                 webusbDeviceReadyTitle: 'Device tools ready — analyzer loads on first analyze',
-                webusbFailed: '❌ WebUSB unavailable',
-                webusbPartial: '✓ Analyzer · ⚠ WebUSB',
+                webusbFailed: 'Unavailable',
+                webusbPartial: 'No WebUSB',
+                webusbReadyTitle: 'Analyzer and WebUSB ready',
+                webusbPartialTitle: 'Analyzer ready — WebUSB unavailable',
+                webusbFailedTitle: 'WebUSB unavailable in this browser',
                 themeDark: 'Dark',
                 themeLight: 'Light',
+                themeToggleToDark: 'Switch to dark theme',
+                themeToggleToLight: 'Switch to light theme',
                 analyzingWait: 'Analyzing…',
                 navHome: 'Home',
                 navAndroidPage: 'Android (bugreport)',
@@ -613,19 +784,37 @@
                 sigmaChipClean: 'No matches',
                 sigmaExpandHint: 'Expand this section to load details.',
                 sigmaNoRules: 'No rules loaded.',
+                sigmaShowContent: 'Show rule content',
+                sigmaHideContent: 'Hide rule content',
                 sigmaNoMatches: 'No matches.',
                 sigmaMatchCount: '{n} occurrences',
                 sigmaMatchCountOne: '1 occurrence',
                 sigmaMatchShowLogs: 'Show {n} matched logs',
+                sigmaMatchHideLogs: 'Hide matched logs',
                 sigmaMatchOccurrence: 'Occurrence {n}',
                 sigmaMatchedLog: 'Matched log',
+                sigmaMatchFilterPlaceholder: 'Filter matches…',
+                sigmaMatchFilterAll: 'All levels',
+                sigmaMatchFilterEmpty: 'No matches for this filter.',
+                sigmaMatchMoreFields: 'More fields ({n})',
+                sigmaMatchExpandAll: 'Expand all',
+                sigmaMatchCollapseAll: 'Collapse all',
+                sigmaMatchExpandRules: 'Expand all rules',
+                sigmaMatchCollapseRules: 'Collapse all rules',
+                sigmaMatchCopyLog: 'Copy JSON',
+                sigmaMatchCopied: 'Copied',
+                sigmaMatchWhen: 'When',
+                sigmaMatchWhere: 'Where',
+                sigmaMatchWhenUnknown: 'No timestamp',
+                sigmaMatchRawJson: 'Full matched log (JSON)',
+                sigmaChipLevel: '{level}: {n}',
                 fullDataJsonTitle: '📋 Full Data (JSON)',
                 btnDownloadJson: '📥 Download JSON',
                 btnCopyClipboard: '📋 Copy to Clipboard',
                 navGitHub: 'GitHub',
                 resultsSectionTitle: 'Analysis results',
                 resultsSectionBlurb:
-                    'Investigation overview first, then curated Apps / Network / Processes / Crashes panels. Full analyser cards and parser modules remain below.',
+                    'Investigation overview first, then curated Apps / Network / External / Authentication / Battery / Processes / Crashes panels. Full analyser cards and parser modules remain below.',
                 resultsHeroTitleClean: 'Analysis complete',
                 resultsHeroTitleFindings: 'Sigma matches found',
                 resultsHeroSub: '{device} · iOS {version}',
@@ -637,6 +826,9 @@
                 dashTabOverview: 'Overview',
                 dashTabApps: 'Apps',
                 dashTabNetwork: 'Network',
+                dashTabExternal: 'External',
+                dashTabAuth: 'Authentication',
+                dashTabBattery: 'Battery',
                 dashTabProcesses: 'Processes',
                 dashTabCrashes: 'Crashes',
                 dashDeviceTitle: 'Device',
@@ -669,7 +861,121 @@
                 dashPermsTitle: 'Sensitive permissions (TCC)',
                 dashPermsBlurb: 'Camera, mic, location, and other privacy-sensitive TCC grants by app.',
                 dashNetworkTitle: 'Network IOCs',
-                dashNetworkBlurb: 'Domains, IPs, URLs, and Wi‑Fi identifiers collected across parsers.',
+                dashNetworkBlurb: 'Domains, IPs, URLs, SSIDs, and BSSIDs collected across parsers.',
+                dashNetDomainsTitle: 'Connected domains',
+                dashNetDomainsBlurb:
+                    'Unique hosts rolled up from IOCs, Safari, KnowledgeC, Screen Time, and related parsers (mobipwn Connected domains).',
+                dashNetSafariTitle: 'Safari history',
+                dashNetSafariBlurb: 'Browsing visits from Safari History.db.',
+                dashNetKnowledgeTitle: 'App web usage',
+                dashNetKnowledgeBlurb: 'KnowledgeC web / Safari usage by app.',
+                dashNetScreentimeTitle: 'Screen Time domains',
+                dashNetScreentimeBlurb: 'Domains attributed to apps by Screen Time.',
+                dashNetUsageTitle: 'Netusage routes',
+                dashNetUsageBlurb: 'Wi‑Fi and cellular route usage from netusage.',
+                dashNetVpnTitle: 'VPN / proxy config',
+                dashNetVpnBlurb: 'Network Extension / proxy hints from networkextension parsers.',
+                dashNetSwcutilTitle: 'Associated domains',
+                dashNetSwcutilBlurb: 'swcutil NETWORK associated-domain approvals.',
+                dashNetPushTitle: 'Push server endpoints',
+                dashNetPushBlurb: 'Powerlog push agent hostnames and IPs.',
+                dashNetQuarantineTitle: 'Quarantine download URLs',
+                dashNetQuarantineBlurb: 'Origin / data URLs from quarantine events.',
+                dashNetInteractionTitle: 'Shared / interaction URLs',
+                dashNetInteractionBlurb: 'Content URLs and domain identifiers from interactionC.',
+                dashNetPlistTitle: 'URLs in plists',
+                dashNetPlistBlurb: 'URL / host hits extracted from preference plists.',
+                dashNetPowerlogTitle: 'Process network bytes',
+                dashNetPowerlogBlurb: 'Wi‑Fi and cellular byte counters from powerlog Process Data Usage.',
+                dashNetTransparencyTitle: 'Transparency contact URIs',
+                dashNetTransparencyBlurb: 'im://mailto and im://tel contacts from transparency_json.',
+                dashAccountsTitle: 'Accounts',
+                dashAccountsBlurb: 'Apple IDs, owner emails, and related identity rows from the accounts parser.',
+                dashStorageTitle: 'Storage',
+                dashStorageBlurb: 'Mounted volumes and capacity from the disks parser.',
+                dashActivationTitle: 'Activation',
+                dashActivationBlurb: 'Activation state and hardware hints from mobileactivation.',
+                dashPairedTitle: 'Paired / trusted entries',
+                dashPairedBlurb: 'Keychain / pairing labels from security_sysdiagnose.',
+                dashIoserviceTitle: 'IOService hardware',
+                dashIoserviceBlurb: 'Compact IOService property preview (serial, model, chip).',
+                dashWifiScanTitle: 'Wi‑Fi scan',
+                dashWifiScanBlurb: 'Nearby SSIDs, BSSIDs, channel, RSSI, and security from wifiscan.',
+                dashWifiSavedTitle: 'Saved Wi‑Fi networks',
+                dashWifiSavedBlurb: 'Known / preferred networks from wifinetworks.',
+                dashWifiKnownTitle: 'Wi‑Fi geolocation',
+                dashWifiKnownBlurb: 'BSS locations with latitude/longitude from wifi_known_networks.',
+                dashWifiSecurityTitle: 'Wi‑Fi security entries',
+                dashWifiSecurityBlurb: 'Keychain Wi‑Fi labels from wifisecurity.',
+                dashUsbDevicesTitle: 'USB devices',
+                dashUsbDevicesBlurb: 'Attached USB products from iousb.',
+                dashUsbLockdownTitle: 'USB / pairing (lockdownd)',
+                dashUsbLockdownBlurb: 'Attach, pair, trust, and usbmux messages from lockdownd.',
+                dashAuthSummaryTitle: 'Lock / unlock summary',
+                dashAuthSummaryBlurb: 'Counts of unlock, lock, auto-lock, and failed authentication events.',
+                dashAuthEventsTitle: 'Lock / unlock events',
+                dashAuthEventsBlurb: 'Powerlog, KnowledgeC, lockdown, and unified-log authentication / lock-state rows.',
+                dashAuthUnlocked: 'Unlocked',
+                dashAuthLocked: 'Locked',
+                dashAuthAutolock: 'Auto-lock',
+                dashAuthFailed: 'Failed auth',
+                dashBatteryTitle: 'Battery',
+                dashBatteryBlurb: 'State of charge and power status from battery_bdc (and powerlogs Battery Level).',
+                dashBatterySamplesTitle: 'Recent battery samples',
+                dashBatterySamplesBlurb: 'Recent SoC / charging / external-power samples.',
+                dashColAccount: 'Account',
+                dashColMount: 'Mount',
+                dashColLabel: 'Label',
+                dashColSize: 'Size',
+                dashColUsed: 'Used',
+                dashColAvail: 'Avail',
+                dashColCapacity: 'Capacity',
+                dashColState: 'State',
+                dashColSoc: 'SoC',
+                dashColBaseband: 'Baseband',
+                dashColName: 'Name',
+                dashColSection: 'Section',
+                dashColService: 'Service',
+                dashColContext: 'Context',
+                dashColKey: 'Key',
+                dashColProcess: 'Process',
+                dashColWifiIn: 'Wi‑Fi ↓',
+                dashColWifiOut: 'Wi‑Fi ↑',
+                dashColCellIn: 'Cell ↓',
+                dashColCellOut: 'Cell ↑',
+                dashColSsid: 'SSID',
+                dashColBssid: 'BSSID',
+                dashColChannel: 'Channel',
+                dashColRssi: 'RSSI',
+                dashColSecurity: 'Security',
+                dashColLat: 'Latitude',
+                dashColLon: 'Longitude',
+                dashColDesc: 'Description',
+                dashColProduct: 'Product',
+                dashColVendor: 'Vendor',
+                dashColIds: 'IDs',
+                dashColSerial: 'Serial',
+                dashColEvent: 'Event',
+                dashColDetail: 'Detail',
+                dashColMessage: 'Message',
+                dashColCharging: 'Charging',
+                dashColExternal: 'External',
+                dashColDomain: 'Domain',
+                dashColHits: 'Hits',
+                dashColSources: 'Sources',
+                dashColPath: 'Path',
+                dashColTitle: 'Title',
+                dashColVisits: 'Visits',
+                dashColWhen: 'When',
+                dashColBytesIn: '↓ bytes',
+                dashColBytesOut: '↑ bytes',
+                dashColNetwork: 'Network',
+                dashColStatus: 'Status',
+                dashColSeconds: 'Seconds',
+                dashColAgent: 'Agent',
+                dashEmptyNetwork: 'No network IOC analyser output.',
+                dashEmptyNetworkSection: 'No data in this archive.',
+                dashNetHitsTruncated: 'Hit list truncated by analyser (cap reached).',
                 dashProcessesTitle: 'Processes',
                 dashProcessesBlurb:
                     'Live PID inventory from ps_everywhere (mobipwn Running processes). Remotectl-registered services are listed separately; name-only log mentions are omitted.',
@@ -680,7 +986,6 @@
                     'Structured .ips crash incidents: exception, signal, reason, faulting thread, and stacks — aligned with mobipwn Crashes.',
                 dashEmptyApps: 'No apps analyser output in this archive.',
                 dashEmptyPerms: 'No sensitive TCC permissions found (or TCC.db missing).',
-                dashEmptyNetwork: 'No network IOC analyser output.',
                 dashEmptyProcesses: 'No process analyser output.',
                 dashEmptyCrashes: 'No crashlogs (.ips) events in this archive.',
                 dashEmptyCrashesFilter: 'No crash content matches “{q}”.',
@@ -928,23 +1233,28 @@
             },
             fr: {
                 pageSubtitle: 'iPhone · sysdiagnose',
-                pageVersion: 'v0.3.1-beta • Mis à jour le 3 août 2026',
+                pageVersion: 'v0.3.2-beta • Mis à jour le 8 août 2026',
                 wasmLoading: '⏳ Chargement...',
                 wasmReady: '✓ Prêt',
                 wasmFailed: '❌ Échec du chargement',
                 themeDark: 'Sombre',
                 themeLight: 'Clair',
+                themeToggleToDark: 'Passer en thème sombre',
+                themeToggleToLight: 'Passer en thème clair',
                 analyzingWait: 'Analyse…',
                 navHome: 'Accueil',
                 navAndroidPage: 'Android (bug report)',
                 navIphoneAdvanced: 'iPhone avancé',
                 navIntrusionPage: 'Journaux intrusion',
-                webusbLoading: '⏳ Chargement…',
-                webusbReady: '✓ Analyseur + WebUSB',
-                webusbDeviceReady: '✓ WebUSB · ⏳ Analyseur',
+                webusbLoading: 'Chargement…',
+                webusbReady: 'Prêt',
+                webusbDeviceReady: 'WebUSB',
                 webusbDeviceReadyTitle: 'Outils appareil prêts — l’analyseur se charge à la première analyse',
-                webusbFailed: '❌ WebUSB indisponible',
-                webusbPartial: '✓ Analyseur · ⚠ WebUSB',
+                webusbFailed: 'Indisponible',
+                webusbPartial: 'Sans WebUSB',
+                webusbReadyTitle: 'Analyseur et WebUSB prêts',
+                webusbPartialTitle: 'Analyseur prêt — WebUSB indisponible',
+                webusbFailedTitle: 'WebUSB indisponible dans ce navigateur',
                 tabFromDevice: 'Depuis l’appareil',
                 tabUpload: 'Importer un fichier',
                 iphoneAdvancedBlurb: 'Syslog, pcap, rapports de crash et diagnostics lockdown sont sur',
@@ -1048,19 +1358,37 @@
                 sigmaChipClean: 'Aucune correspondance',
                 sigmaExpandHint: 'Développez cette section pour charger les détails.',
                 sigmaNoRules: 'Aucune règle chargée.',
+                sigmaShowContent: 'Afficher le contenu de la règle',
+                sigmaHideContent: 'Masquer le contenu de la règle',
                 sigmaNoMatches: 'Aucune correspondance.',
                 sigmaMatchCount: '{n} occurrences',
                 sigmaMatchCountOne: '1 occurrence',
                 sigmaMatchShowLogs: 'Afficher {n} journaux correspondants',
+                sigmaMatchHideLogs: 'Masquer les journaux',
                 sigmaMatchOccurrence: 'Occurrence {n}',
                 sigmaMatchedLog: 'Journal correspondant',
+                sigmaMatchFilterPlaceholder: 'Filtrer les correspondances…',
+                sigmaMatchFilterAll: 'Tous les niveaux',
+                sigmaMatchFilterEmpty: 'Aucune correspondance pour ce filtre.',
+                sigmaMatchMoreFields: 'Plus de champs ({n})',
+                sigmaMatchExpandAll: 'Tout développer',
+                sigmaMatchCollapseAll: 'Tout réduire',
+                sigmaMatchExpandRules: 'Développer toutes les règles',
+                sigmaMatchCollapseRules: 'Réduire toutes les règles',
+                sigmaMatchCopyLog: 'Copier JSON',
+                sigmaMatchCopied: 'Copié',
+                sigmaMatchWhen: 'Quand',
+                sigmaMatchWhere: 'Où',
+                sigmaMatchWhenUnknown: 'Sans horodatage',
+                sigmaMatchRawJson: 'Journal correspondant complet (JSON)',
+                sigmaChipLevel: '{level} : {n}',
                 fullDataJsonTitle: '📋 Données complètes (JSON)',
                 btnDownloadJson: '📥 Télécharger JSON',
                 btnCopyClipboard: '📋 Copier',
                 navGitHub: 'GitHub',
                 resultsSectionTitle: 'Résultats d’analyse',
                 resultsSectionBlurb:
-                    'Vue d’enquête d’abord, puis panneaux Apps / Réseau / Processus / Crashes. Les cartes d’analyseurs et modules parseurs restent en dessous.',
+                    'Vue d’enquête d’abord, puis panneaux Apps / Réseau / Externes / Authentification / Batterie / Processus / Crashes. Les cartes d’analyseurs et modules parseurs restent en dessous.',
                 resultsHeroTitleClean: 'Analyse terminée',
                 resultsHeroTitleFindings: 'Correspondances Sigma trouvées',
                 resultsHeroSub: '{device} · iOS {version}',
@@ -1072,6 +1400,9 @@
                 dashTabOverview: 'Aperçu',
                 dashTabApps: 'Apps',
                 dashTabNetwork: 'Réseau',
+                dashTabExternal: 'Externes',
+                dashTabAuth: 'Authentification',
+                dashTabBattery: 'Batterie',
                 dashTabProcesses: 'Processus',
                 dashTabCrashes: 'Crashes',
                 dashDeviceTitle: 'Appareil',
@@ -1104,7 +1435,120 @@
                 dashPermsTitle: 'Autorisations sensibles (TCC)',
                 dashPermsBlurb: 'Caméra, micro, localisation et autres grants TCC sensibles par app.',
                 dashNetworkTitle: 'IOC réseau',
-                dashNetworkBlurb: 'Domaines, IP, URLs et identifiants Wi‑Fi collectés.',
+                dashNetworkBlurb: 'Domaines, IP, URLs, SSID et BSSID collectés.',
+                dashNetDomainsTitle: 'Domaines connectés',
+                dashNetDomainsBlurb:
+                    'Hôtes uniques agrégés depuis IOC, Safari, KnowledgeC, Screen Time et parseurs liés (Connected domains mobipwn).',
+                dashNetSafariTitle: 'Historique Safari',
+                dashNetSafariBlurb: 'Visites depuis Safari History.db.',
+                dashNetKnowledgeTitle: 'Usage web des apps',
+                dashNetKnowledgeBlurb: 'Usage web / Safari KnowledgeC par app.',
+                dashNetScreentimeTitle: 'Domaines Screen Time',
+                dashNetScreentimeBlurb: 'Domaines attribués aux apps par Screen Time.',
+                dashNetUsageTitle: 'Routes netusage',
+                dashNetUsageBlurb: 'Usage Wi‑Fi et cellulaire depuis netusage.',
+                dashNetVpnTitle: 'VPN / proxy',
+                dashNetVpnBlurb: 'Indices Network Extension / proxy.',
+                dashNetSwcutilTitle: 'Domaines associés',
+                dashNetSwcutilBlurb: 'Approbations associated-domain swcutil NETWORK.',
+                dashNetPushTitle: 'Serveurs push',
+                dashNetPushBlurb: 'Hostnames et IP push agent (powerlogs).',
+                dashNetQuarantineTitle: 'URLs quarantaine',
+                dashNetQuarantineBlurb: 'URLs origin / data des événements quarantaine.',
+                dashNetInteractionTitle: 'URLs partagées / interaction',
+                dashNetInteractionBlurb: 'URLs de contenu et identifiants de domaine (interactionC).',
+                dashNetPlistTitle: 'URLs dans les plists',
+                dashNetPlistBlurb: 'URL / hôtes extraits des plists de préférences.',
+                dashNetPowerlogTitle: 'Octets réseau par processus',
+                dashNetPowerlogBlurb: 'Compteurs Wi‑Fi et cellulaire (Process Data Usage powerlog).',
+                dashNetTransparencyTitle: 'URI contacts Transparency',
+                dashNetTransparencyBlurb: 'Contacts im://mailto et im://tel (transparency_json).',
+                dashAccountsTitle: 'Comptes',
+                dashAccountsBlurb: 'Apple ID, e-mails propriétaire et identités (parseur accounts).',
+                dashStorageTitle: 'Stockage',
+                dashStorageBlurb: 'Volumes montés et capacité (parseur disks).',
+                dashActivationTitle: 'Activation',
+                dashActivationBlurb: 'État d’activation et indices matériels (mobileactivation).',
+                dashPairedTitle: 'Entrées appairées / de confiance',
+                dashPairedBlurb: 'Libellés keychain / appairage (security_sysdiagnose).',
+                dashIoserviceTitle: 'Matériel IOService',
+                dashIoserviceBlurb: 'Aperçu compact des propriétés IOService (série, modèle, puce).',
+                dashWifiScanTitle: 'Scan Wi‑Fi',
+                dashWifiScanBlurb: 'SSID, BSSID, canal, RSSI et sécurité à proximité (wifiscan).',
+                dashWifiSavedTitle: 'Réseaux Wi‑Fi enregistrés',
+                dashWifiSavedBlurb: 'Réseaux connus / préférés (wifinetworks).',
+                dashWifiKnownTitle: 'Géolocalisation Wi‑Fi',
+                dashWifiKnownBlurb: 'Emplacements BSS avec latitude/longitude (wifi_known_networks).',
+                dashWifiSecurityTitle: 'Entrées sécurité Wi‑Fi',
+                dashWifiSecurityBlurb: 'Libellés keychain Wi‑Fi (wifisecurity).',
+                dashUsbDevicesTitle: 'Périphériques USB',
+                dashUsbDevicesBlurb: 'Produits USB attachés (iousb).',
+                dashUsbLockdownTitle: 'USB / appairage (lockdownd)',
+                dashUsbLockdownBlurb: 'Messages attach, pair, trust et usbmux (lockdownd).',
+                dashAuthSummaryTitle: 'Résumé verrouillage / déverrouillage',
+                dashAuthSummaryBlurb: 'Compteurs unlock, lock, auto-lock et authentifications échouées.',
+                dashAuthEventsTitle: 'Événements verrouillage / déverrouillage',
+                dashAuthEventsBlurb: 'Lignes powerlog, KnowledgeC, lockdown et logs unifiés.',
+                dashAuthUnlocked: 'Déverrouillé',
+                dashAuthLocked: 'Verrouillé',
+                dashAuthAutolock: 'Verrouillage auto',
+                dashAuthFailed: 'Auth échouée',
+                dashBatteryTitle: 'Batterie',
+                dashBatteryBlurb: 'État de charge et alimentation (battery_bdc / powerlogs Battery Level).',
+                dashBatterySamplesTitle: 'Échantillons batterie récents',
+                dashBatterySamplesBlurb: 'Échantillons SoC / charge / alimentation externe récents.',
+                dashColAccount: 'Compte',
+                dashColMount: 'Montage',
+                dashColLabel: 'Libellé',
+                dashColSize: 'Taille',
+                dashColUsed: 'Utilisé',
+                dashColAvail: 'Dispo',
+                dashColCapacity: 'Capacité',
+                dashColState: 'État',
+                dashColSoc: 'SoC',
+                dashColBaseband: 'Baseband',
+                dashColName: 'Nom',
+                dashColSection: 'Section',
+                dashColService: 'Service',
+                dashColContext: 'Contexte',
+                dashColKey: 'Clé',
+                dashColProcess: 'Processus',
+                dashColWifiIn: 'Wi‑Fi ↓',
+                dashColWifiOut: 'Wi‑Fi ↑',
+                dashColCellIn: 'Cell ↓',
+                dashColCellOut: 'Cell ↑',
+                dashColSsid: 'SSID',
+                dashColBssid: 'BSSID',
+                dashColChannel: 'Canal',
+                dashColRssi: 'RSSI',
+                dashColSecurity: 'Sécurité',
+                dashColLat: 'Latitude',
+                dashColLon: 'Longitude',
+                dashColDesc: 'Description',
+                dashColProduct: 'Produit',
+                dashColVendor: 'Fabricant',
+                dashColIds: 'IDs',
+                dashColSerial: 'Série',
+                dashColEvent: 'Événement',
+                dashColDetail: 'Détail',
+                dashColMessage: 'Message',
+                dashColCharging: 'Charge',
+                dashColExternal: 'Externe',
+                dashColDomain: 'Domaine',
+                dashColHits: 'Hits',
+                dashColSources: 'Sources',
+                dashColPath: 'Chemin',
+                dashColTitle: 'Titre',
+                dashColVisits: 'Visites',
+                dashColWhen: 'Quand',
+                dashColBytesIn: '↓ octets',
+                dashColBytesOut: '↑ octets',
+                dashColNetwork: 'Réseau',
+                dashColStatus: 'Statut',
+                dashColSeconds: 'Secondes',
+                dashColAgent: 'Agent',
+                dashEmptyNetworkSection: 'Pas de données dans cette archive.',
+                dashNetHitsTruncated: 'Liste de hits tronquée par l’analyseur (plafond atteint).',
                 dashProcessesTitle: 'Processus',
                 dashProcessesBlurb:
                     'Inventaire PID live (ps_everywhere), comme Running processes mobipwn. Les services remotectl sont à part ; les mentions logdata/uuid2path sans PID sont omises.',
@@ -1363,23 +1807,28 @@
             },
             zh: {
                 pageSubtitle: 'iPhone · sysdiagnose',
-                pageVersion: 'v0.3.1-beta • 更新于 2026年8月3日',
+                pageVersion: 'v0.3.2-beta • 更新于 2026年8月8日',
                 wasmLoading: '⏳ 加载中...',
                 wasmReady: '✓ 就绪',
                 wasmFailed: '❌ 加载失败',
                 themeDark: '深色',
                 themeLight: '浅色',
+                themeToggleToDark: '切换到深色主题',
+                themeToggleToLight: '切换到浅色主题',
                 analyzingWait: '分析中…',
                 navHome: '首页',
                 navAndroidPage: 'Android（bugreport）',
                 navIphoneAdvanced: 'iPhone 高级',
                 navIntrusionPage: '入侵日志',
-                webusbLoading: '⏳ 加载中…',
-                webusbReady: '✓ 分析器 + WebUSB',
-                webusbDeviceReady: '✓ WebUSB · ⏳ 分析器',
+                webusbLoading: '加载中…',
+                webusbReady: '就绪',
+                webusbDeviceReady: 'WebUSB',
                 webusbDeviceReadyTitle: '设备工具已就绪 — 首次分析时加载分析器',
-                webusbFailed: '❌ WebUSB 不可用',
-                webusbPartial: '✓ 分析器 · ⚠ WebUSB',
+                webusbFailed: '不可用',
+                webusbPartial: '无 WebUSB',
+                webusbReadyTitle: '分析器与 WebUSB 已就绪',
+                webusbPartialTitle: '分析器已就绪 — WebUSB 不可用',
+                webusbFailedTitle: '当前浏览器不支持 WebUSB',
                 tabFromDevice: '从设备',
                 tabUpload: '上传文件',
                 iphoneAdvancedBlurb: 'syslog、pcap、崩溃报告和 lockdown 诊断请使用',
@@ -1479,19 +1928,37 @@
                 sigmaChipClean: '无匹配',
                 sigmaExpandHint: '展开此部分以加载详情。',
                 sigmaNoRules: '未加载规则。',
+                sigmaShowContent: '显示规则内容',
+                sigmaHideContent: '隐藏规则内容',
                 sigmaNoMatches: '无匹配。',
                 sigmaMatchCount: '{n} 次出现',
                 sigmaMatchCountOne: '1 次出现',
                 sigmaMatchShowLogs: '显示 {n} 条匹配日志',
+                sigmaMatchHideLogs: '隐藏匹配日志',
                 sigmaMatchOccurrence: '第 {n} 次',
                 sigmaMatchedLog: '匹配的日志',
+                sigmaMatchFilterPlaceholder: '筛选匹配…',
+                sigmaMatchFilterAll: '全部级别',
+                sigmaMatchFilterEmpty: '没有符合筛选条件的匹配。',
+                sigmaMatchMoreFields: '更多字段（{n}）',
+                sigmaMatchExpandAll: '全部展开',
+                sigmaMatchCollapseAll: '全部折叠',
+                sigmaMatchExpandRules: '展开全部规则',
+                sigmaMatchCollapseRules: '折叠全部规则',
+                sigmaMatchCopyLog: '复制 JSON',
+                sigmaMatchCopied: '已复制',
+                sigmaMatchWhen: '时间',
+                sigmaMatchWhere: '位置',
+                sigmaMatchWhenUnknown: '无时间戳',
+                sigmaMatchRawJson: '完整匹配日志（JSON）',
+                sigmaChipLevel: '{level}：{n}',
                 fullDataJsonTitle: '📋 完整数据（JSON）',
                 btnDownloadJson: '📥 下载 JSON',
                 btnCopyClipboard: '📋 复制',
                 navGitHub: 'GitHub',
                 resultsSectionTitle: '分析结果',
                 resultsSectionBlurb:
-                    '先看调查总览，再进入应用 / 网络 / 进程 / 崩溃面板。完整分析器卡片与解析器模块仍在下方。',
+                    '先看调查总览，再进入应用 / 网络 / 外设 / 认证 / 电池 / 进程 / 崩溃面板。完整分析器卡片与解析器模块仍在下方。',
                 resultsHeroTitleClean: '分析完成',
                 resultsHeroTitleFindings: '发现 Sigma 匹配',
                 resultsHeroSub: '{device} · iOS {version}',
@@ -1503,6 +1970,9 @@
                 dashTabOverview: '总览',
                 dashTabApps: '应用',
                 dashTabNetwork: '网络',
+                dashTabExternal: '外设',
+                dashTabAuth: '认证',
+                dashTabBattery: '电池',
                 dashTabProcesses: '进程',
                 dashTabCrashes: '崩溃',
                 dashDeviceTitle: '设备',
@@ -1535,7 +2005,120 @@
                 dashPermsTitle: '敏感权限（TCC）',
                 dashPermsBlurb: '相机、麦克风、定位等敏感 TCC 授权（按应用）。',
                 dashNetworkTitle: '网络 IOC',
-                dashNetworkBlurb: '跨解析器收集的域名、IP、URL 与 Wi‑Fi 标识。',
+                dashNetworkBlurb: '跨解析器收集的域名、IP、URL、SSID 与 BSSID。',
+                dashNetDomainsTitle: '已连接域名',
+                dashNetDomainsBlurb:
+                    '从 IOC、Safari、KnowledgeC、Screen Time 等相关解析器汇总的唯一主机（对齐 mobipwn Connected domains）。',
+                dashNetSafariTitle: 'Safari 历史',
+                dashNetSafariBlurb: '来自 Safari History.db 的浏览记录。',
+                dashNetKnowledgeTitle: '应用网页使用',
+                dashNetKnowledgeBlurb: 'KnowledgeC 网页 / Safari 使用（按应用）。',
+                dashNetScreentimeTitle: '屏幕使用时间域名',
+                dashNetScreentimeBlurb: 'Screen Time 归因到应用的域名。',
+                dashNetUsageTitle: 'Netusage 路由',
+                dashNetUsageBlurb: '来自 netusage 的 Wi‑Fi / 蜂窝路由用量。',
+                dashNetVpnTitle: 'VPN / 代理配置',
+                dashNetVpnBlurb: 'Network Extension / 代理相关提示。',
+                dashNetSwcutilTitle: '关联域名',
+                dashNetSwcutilBlurb: 'swcutil NETWORK associated-domain 审批。',
+                dashNetPushTitle: '推送服务器端点',
+                dashNetPushBlurb: 'Powerlog 推送代理主机名与 IP。',
+                dashNetQuarantineTitle: '隔离下载 URL',
+                dashNetQuarantineBlurb: '隔离事件中的 origin / data URL。',
+                dashNetInteractionTitle: '共享 / 交互 URL',
+                dashNetInteractionBlurb: '来自 interactionC 的内容 URL 与域名标识。',
+                dashNetPlistTitle: 'Plist 中的 URL',
+                dashNetPlistBlurb: '从偏好设置 plist 提取的 URL / 主机。',
+                dashNetPowerlogTitle: '进程网络字节',
+                dashNetPowerlogBlurb: 'Powerlog Process Data Usage 的 Wi‑Fi / 蜂窝字节计数。',
+                dashNetTransparencyTitle: 'Transparency 联系人 URI',
+                dashNetTransparencyBlurb: 'transparency_json 中的 im://mailto 与 im://tel。',
+                dashAccountsTitle: '账户',
+                dashAccountsBlurb: 'accounts 解析器中的 Apple ID、所有者邮箱等相关身份。',
+                dashStorageTitle: '存储',
+                dashStorageBlurb: 'disks 解析器中的挂载卷与容量。',
+                dashActivationTitle: '激活',
+                dashActivationBlurb: 'mobileactivation 中的激活状态与硬件提示。',
+                dashPairedTitle: '配对 / 信任条目',
+                dashPairedBlurb: 'security_sysdiagnose 中的钥匙串 / 配对标签。',
+                dashIoserviceTitle: 'IOService 硬件',
+                dashIoserviceBlurb: 'IOService 属性预览（序列号、型号、芯片）。',
+                dashWifiScanTitle: 'Wi‑Fi 扫描',
+                dashWifiScanBlurb: 'wifiscan 中的附近 SSID、BSSID、信道、RSSI 与安全性。',
+                dashWifiSavedTitle: '已保存 Wi‑Fi',
+                dashWifiSavedBlurb: 'wifinetworks 中的已知 / 首选网络。',
+                dashWifiKnownTitle: 'Wi‑Fi 地理定位',
+                dashWifiKnownBlurb: 'wifi_known_networks 中带经纬度的 BSS 位置。',
+                dashWifiSecurityTitle: 'Wi‑Fi 安全条目',
+                dashWifiSecurityBlurb: 'wifisecurity 中的钥匙串 Wi‑Fi 标签。',
+                dashUsbDevicesTitle: 'USB 设备',
+                dashUsbDevicesBlurb: 'iousb 中的已连接 USB 产品。',
+                dashUsbLockdownTitle: 'USB / 配对（lockdownd）',
+                dashUsbLockdownBlurb: 'lockdownd 中的 attach、pair、trust、usbmux 消息。',
+                dashAuthSummaryTitle: '锁定 / 解锁摘要',
+                dashAuthSummaryBlurb: '解锁、锁定、自动锁定与认证失败计数。',
+                dashAuthEventsTitle: '锁定 / 解锁事件',
+                dashAuthEventsBlurb: 'Powerlog、KnowledgeC、lockdown 与统一日志中的认证 / 锁定状态。',
+                dashAuthUnlocked: '已解锁',
+                dashAuthLocked: '已锁定',
+                dashAuthAutolock: '自动锁定',
+                dashAuthFailed: '认证失败',
+                dashBatteryTitle: '电池',
+                dashBatteryBlurb: 'battery_bdc（及 powerlogs Battery Level）中的电量与供电状态。',
+                dashBatterySamplesTitle: '近期电池采样',
+                dashBatterySamplesBlurb: '近期 SoC / 充电 / 外部供电采样。',
+                dashColAccount: '账户',
+                dashColMount: '挂载点',
+                dashColLabel: '标签',
+                dashColSize: '大小',
+                dashColUsed: '已用',
+                dashColAvail: '可用',
+                dashColCapacity: '容量',
+                dashColState: '状态',
+                dashColSoc: '电量',
+                dashColBaseband: '基带',
+                dashColName: '名称',
+                dashColSection: '分区',
+                dashColService: '服务',
+                dashColContext: '上下文',
+                dashColKey: '键',
+                dashColProcess: '进程',
+                dashColWifiIn: 'Wi‑Fi ↓',
+                dashColWifiOut: 'Wi‑Fi ↑',
+                dashColCellIn: '蜂窝 ↓',
+                dashColCellOut: '蜂窝 ↑',
+                dashColSsid: 'SSID',
+                dashColBssid: 'BSSID',
+                dashColChannel: '信道',
+                dashColRssi: 'RSSI',
+                dashColSecurity: '安全性',
+                dashColLat: '纬度',
+                dashColLon: '经度',
+                dashColDesc: '描述',
+                dashColProduct: '产品',
+                dashColVendor: '厂商',
+                dashColIds: 'ID',
+                dashColSerial: '序列号',
+                dashColEvent: '事件',
+                dashColDetail: '详情',
+                dashColMessage: '消息',
+                dashColCharging: '充电',
+                dashColExternal: '外部供电',
+                dashColDomain: '域名',
+                dashColHits: '次数',
+                dashColSources: '来源',
+                dashColPath: '路径',
+                dashColTitle: '标题',
+                dashColVisits: '访问',
+                dashColWhen: '时间',
+                dashColBytesIn: '↓ 字节',
+                dashColBytesOut: '↑ 字节',
+                dashColNetwork: '网络',
+                dashColStatus: '状态',
+                dashColSeconds: '秒',
+                dashColAgent: '代理',
+                dashEmptyNetworkSection: '此归档无相关数据。',
+                dashNetHitsTruncated: '分析器已截断命中列表（达到上限）。',
                 dashProcessesTitle: '进程',
                 dashProcessesBlurb:
                     '实时 PID 清单（ps_everywhere），对齐 mobipwn Running processes。remotectl 服务单独列出；无 PID 的 logdata/uuid2path 提及已省略。',
@@ -1793,14 +2376,18 @@
             var t = window.IPHONE_I18N[lang] || window.IPHONE_I18N.en;
             document.documentElement.lang = (lang === 'zh' ? 'zh' : lang === 'fr' ? 'fr' : 'en');
             document.querySelectorAll('[data-i18n]').forEach(function (el) {
-                if (el.id === 'webusb-status') return;
+                if (el.closest('#webusb-status')) return;
                 var key = el.getAttribute('data-i18n');
                 if (t[key] !== undefined) el.textContent = t[key];
             });
-            var themeText = document.getElementById('theme-text');
-            if (themeText) {
-                var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-                themeText.textContent = isDark ? t.themeLight : t.themeDark;
+            var themeBtn = document.querySelector('.theme-toggle');
+            var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            if (themeBtn) {
+                themeBtn.title = isDark ? t.themeToggleToLight || t.themeLight : t.themeToggleToDark || t.themeDark;
+                themeBtn.setAttribute(
+                    'aria-label',
+                    isDark ? t.themeToggleToLight || t.themeLight : t.themeToggleToDark || t.themeDark
+                );
             }
             if (typeof window.refreshWebusbBadge === 'function') window.refreshWebusbBadge();
             if (typeof window.refreshIphoneConnectUi === 'function') window.refreshIphoneConnectUi();
@@ -4682,7 +5269,33 @@
             'icloud'
         ];
         var iphoneDashWired = false;
-        var iphoneDashLazy = { apps: false, network: false, processes: false, crashes: false, perms: false };
+        var iphoneDashLazy = {
+            apps: false,
+            network: false,
+            processes: false,
+            crashes: false,
+            perms: false,
+            overviewExtra: false,
+            external: false,
+            auth: false,
+            battery: false
+        };
+
+        function wireIphoneDashApi() {
+            window.IphoneDashApi = {
+                iosLooseField: iosLooseField,
+                iosParserEvents: iosParserEvents,
+                mapPlainTop: mapPlainTop,
+                asArr: asArr,
+                getAnalyserPayload: getAnalyserPayload,
+                getParserPayload: getParserPayload,
+                mountDashFilterableTable: mountDashFilterableTable,
+                setIphoneNetworkCardVisible: setIphoneNetworkCardVisible,
+                dashEmptyEl: dashEmptyEl,
+                trIphone: trIphone,
+                escapeHtmlIphone: escapeHtmlIphone
+            };
+        }
 
         function getSysdiagnoseAnalysers(out) {
             var root = sysdiagnoseRootPlain(out);
@@ -4989,7 +5602,10 @@
                 apps: counts.apps,
                 network: counts.network,
                 processes: counts.processes,
-                crashes: counts.crashes
+                crashes: counts.crashes,
+                external: counts.external,
+                auth: counts.auth,
+                battery: counts.battery
             };
             Object.keys(map).forEach(function (key) {
                 var btn = document.querySelector('#iphone-dash-tabs [data-dash="' + key + '"]');
@@ -5159,6 +5775,8 @@
             var ipv4 = asArr(net.ipv4).length;
             var urls = asArr(net.urls).length;
             var ssids = asArr(net.ssids).length;
+            var bssids = asArr(net.bssids).length;
+            var netTotal = domains + ipv4 + urls + ssids + bssids;
             var sigmaN = sigmaMatchesList(out).length;
             var crashN = countCrashEvents(out);
             var st = mapPlainTop(out && out.stats) || {};
@@ -5183,13 +5801,29 @@
 
             updateIphoneTabCounts({
                 apps: appsN,
-                network: domains + ipv4 + urls + ssids,
+                network: netTotal,
                 processes: procN,
-                crashes: crashN
+                crashes: crashN,
+                external:
+                    window.IphoneMobipwnPanels && window.IphoneMobipwnPanels.countExternal
+                        ? window.IphoneMobipwnPanels.countExternal(out)
+                        : null,
+                auth:
+                    window.IphoneMobipwnPanels && window.IphoneMobipwnPanels.countAuth
+                        ? window.IphoneMobipwnPanels.countAuth(out)
+                        : null,
+                battery:
+                    window.IphoneMobipwnPanels && window.IphoneMobipwnPanels.countBattery
+                        ? window.IphoneMobipwnPanels.countBattery(out)
+                        : null
             });
 
             renderIphoneSideloadCard(out);
-            return { apps: appsN, processes: procN, crashes: crashN, network: domains + ipv4 + urls };
+            if (window.IphoneMobipwnPanels && window.IphoneMobipwnPanels.renderOverviewIdentity) {
+                window.IphoneMobipwnPanels.renderOverviewIdentity(out);
+                iphoneDashLazy.overviewExtra = true;
+            }
+            return { apps: appsN, processes: procN, crashes: crashN, network: netTotal };
         }
 
         function renderIphoneSideloadCard(out) {
@@ -5244,7 +5878,13 @@
         }
 
         function ensureIphoneDashPanel(name, out) {
-            if (name === 'apps') {
+            wireIphoneDashApi();
+            if (name === 'overview' && !iphoneDashLazy.overviewExtra) {
+                if (window.IphoneMobipwnPanels && window.IphoneMobipwnPanels.renderOverviewIdentity) {
+                    window.IphoneMobipwnPanels.renderOverviewIdentity(out);
+                }
+                iphoneDashLazy.overviewExtra = true;
+            } else if (name === 'apps') {
                 if (!iphoneDashLazy.apps) {
                     renderIphoneAppsPanel(out);
                     iphoneDashLazy.apps = true;
@@ -5256,6 +5896,21 @@
             } else if (name === 'network' && !iphoneDashLazy.network) {
                 renderIphoneNetworkPanel(out);
                 iphoneDashLazy.network = true;
+            } else if (name === 'external' && !iphoneDashLazy.external) {
+                if (window.IphoneMobipwnPanels && window.IphoneMobipwnPanels.renderExternalPanel) {
+                    window.IphoneMobipwnPanels.renderExternalPanel(out);
+                }
+                iphoneDashLazy.external = true;
+            } else if (name === 'auth' && !iphoneDashLazy.auth) {
+                if (window.IphoneMobipwnPanels && window.IphoneMobipwnPanels.renderAuthPanel) {
+                    window.IphoneMobipwnPanels.renderAuthPanel(out);
+                }
+                iphoneDashLazy.auth = true;
+            } else if (name === 'battery' && !iphoneDashLazy.battery) {
+                if (window.IphoneMobipwnPanels && window.IphoneMobipwnPanels.renderBatteryPanel) {
+                    window.IphoneMobipwnPanels.renderBatteryPanel(out);
+                }
+                iphoneDashLazy.battery = true;
             } else if (name === 'processes' && !iphoneDashLazy.processes) {
                 renderIphoneProcessesPanel(out);
                 iphoneDashLazy.processes = true;
@@ -5329,68 +5984,374 @@
             );
         }
 
-        function renderIphoneNetworkPanel(out) {
-            var mount = document.getElementById('iphone-network-mount');
-            if (!mount) return;
-            mount.textContent = '';
+        function iosHostFromUrlOrDomain(raw) {
+            var s = String(raw || '').trim();
+            if (!s) return '';
+            try {
+                if (/^https?:\/\//i.test(s)) {
+                    var u = new URL(s);
+                    return (u.hostname || '').toLowerCase();
+                }
+            } catch (e) { /* ignore */ }
+            s = s.replace(/^\/\//, '');
+            var slash = s.indexOf('/');
+            if (slash >= 0) s = s.slice(0, slash);
+            var at = s.lastIndexOf('@');
+            if (at >= 0) s = s.slice(at + 1);
+            var colon = s.indexOf(':');
+            if (colon >= 0 && s.indexOf(']') < 0) s = s.slice(0, colon);
+            return s.toLowerCase().replace(/\.$/, '');
+        }
+
+        function iosLooseField(obj) {
+            var candidates = Array.prototype.slice.call(arguments, 1);
+            if (!obj || typeof obj !== 'object') return '';
+            var plain = mapPlainTop(obj) || obj;
+            var bags = [plain];
+            if (plain.data != null && typeof plain.data === 'object') {
+                bags.push(mapPlainTop(plain.data) || plain.data);
+            }
+            for (var bi = 0; bi < bags.length; bi++) {
+                var bag = bags[bi];
+                if (!bag || typeof bag !== 'object') continue;
+                var keys = Object.keys(bag);
+                var norm = {};
+                for (var ki = 0; ki < keys.length; ki++) {
+                    norm[String(keys[ki]).toLowerCase().replace(/[\s_-]+/g, '')] = bag[keys[ki]];
+                }
+                for (var ci = 0; ci < candidates.length; ci++) {
+                    var want = String(candidates[ci]).toLowerCase().replace(/[\s_-]+/g, '');
+                    if (norm[want] != null && String(norm[want]).trim() !== '') {
+                        return String(norm[want]).trim();
+                    }
+                }
+            }
+            return '';
+        }
+
+        function iosParserEvents(out, name) {
+            var data = getParserPayload(out, name);
+            if (!data) return [];
+            if (Array.isArray(data)) return data;
+            return asArr(data.events || data.rows || data.entries || data.lines);
+        }
+
+        function iosCollectNetworkIocHits(out) {
             var net = getAnalyserPayload(out, 'network_iocs');
-            if (!net) {
-                mount.appendChild(dashEmptyEl('dashEmptyNetwork'));
-                return;
-            }
-            var hits = asArr(net.hits);
-            if (!hits.length) {
-                // Fall back to unique lists
-                ['domain', 'ipv4', 'url', 'ssid'].forEach(function (kind) {
-                    var key = kind === 'domain' ? 'domains' : kind === 'url' ? 'urls' : kind === 'ssid' ? 'ssids' : 'ipv4';
-                    asArr(net[key]).forEach(function (v) {
-                        hits.push({ kind: kind, value: v, source_parser: '' });
+            var hits = [];
+            if (net) {
+                hits = asArr(net.hits).map(function (h) {
+                    var p = mapPlainTop(h) || h || {};
+                    return {
+                        kind: String(p.kind || 'other'),
+                        value: String(p.value || ''),
+                        source_parser: String(p.source_parser || ''),
+                        json_path: String(p.json_path || '')
+                    };
+                });
+                if (!hits.length) {
+                    [
+                        ['domain', 'domains'],
+                        ['ipv4', 'ipv4'],
+                        ['url', 'urls'],
+                        ['ssid', 'ssids'],
+                        ['bssid', 'bssids']
+                    ].forEach(function (pair) {
+                        asArr(net[pair[1]]).forEach(function (v) {
+                            hits.push({ kind: pair[0], value: String(v), source_parser: '', json_path: '' });
+                        });
                     });
+                }
+            }
+            return { net: net, hits: hits.filter(function (h) { return h.value; }) };
+        }
+
+        function iosConnectedDomainsFromHits(hits, extra) {
+            var map = {};
+            function bump(domain, source, sampleUrl) {
+                var d = String(domain || '').trim().toLowerCase();
+                if (!d || d.indexOf('.') < 0) return;
+                if (!map[d]) {
+                    map[d] = { domain: d, hits: 0, sources: [], sampleUrl: '' };
+                }
+                var cur = map[d];
+                cur.hits += 1;
+                if (source && cur.sources.indexOf(source) < 0) cur.sources.push(source);
+                if (!cur.sampleUrl && sampleUrl) cur.sampleUrl = sampleUrl;
+            }
+            (hits || []).forEach(function (h) {
+                if (h.kind === 'domain') bump(h.value, h.source_parser || 'network_iocs');
+                else if (h.kind === 'url') bump(iosHostFromUrlOrDomain(h.value), h.source_parser || 'network_iocs', h.value);
+            });
+            (extra || []).forEach(function (e) {
+                bump(e.domain, e.source, e.sampleUrl);
+            });
+            return Object.keys(map)
+                .map(function (k) { return map[k]; })
+                .sort(function (a, b) {
+                    return b.hits - a.hits || a.domain.localeCompare(b.domain);
+                });
+        }
+
+        function iosSafariVisits(out) {
+            var rows = iosParserEvents(out, 'safari_history');
+            var outRows = [];
+            var seen = {};
+            for (var i = 0; i < rows.length && outRows.length < 40; i++) {
+                var ev = mapPlainTop(rows[i]) || rows[i];
+                var mod = iosLooseField(ev, 'apollo_module', 'module');
+                var msg = iosLooseField(ev, 'message');
+                if (mod && mod !== 'safari_history' && !/safari browsing/i.test(msg)) continue;
+                var url = iosLooseField(ev, 'url');
+                if (!url) continue;
+                var when = iosLooseField(ev, 'visit time', 'visit_time', 'datetime', 'timestamp');
+                var key = url + ':' + when;
+                if (seen[key]) continue;
+                seen[key] = true;
+                outRows.push({
+                    url: url,
+                    domain: iosLooseField(ev, 'destination_domain') || iosHostFromUrlOrDomain(url),
+                    title: iosLooseField(ev, 'title'),
+                    visits: iosLooseField(ev, 'visit count', 'visit_count') || '—',
+                    when: when || '—'
                 });
             }
-            if (!hits.length) {
-                mount.appendChild(dashEmptyEl('dashEmptyNetwork'));
+            return outRows;
+        }
+
+        function iosKnowledgeWeb(out) {
+            var rows = iosParserEvents(out, 'knowledgec');
+            var outRows = [];
+            var seen = {};
+            for (var i = 0; i < rows.length && outRows.length < 40; i++) {
+                var ev = mapPlainTop(rows[i]) || rows[i];
+                var mod = iosLooseField(ev, 'apollo_module', 'module');
+                var msg = iosLooseField(ev, 'message');
+                var ok =
+                    /knowledge_app_webusage|knowledge_safari_browsing|knowledge_app_activity_safari/i.test(mod) ||
+                    /application web usage|safari browsing|safari activity/i.test(msg);
+                if (!ok) continue;
+                var url = iosLooseField(ev, 'digital health url', 'content url', 'url', 'webpageurl');
+                var domain =
+                    iosLooseField(ev, 'digital health domain', 'domain', 'destination_domain', 'webdomain') ||
+                    iosHostFromUrlOrDomain(url);
+                var app = iosLooseField(ev, 'app name', 'app_name') || iosLooseField(ev, 'bundle id', 'bundle_id');
+                if (!app && !domain && !url) continue;
+                var when = iosLooseField(ev, 'start', 'datetime', 'timestamp');
+                var key = mod + ':' + app + ':' + domain + ':' + url + ':' + when;
+                if (seen[key]) continue;
+                seen[key] = true;
+                outRows.push({
+                    app: app || '—',
+                    domain: domain || '—',
+                    url: url || '',
+                    seconds: iosLooseField(ev, 'usage in seconds', 'usage_in_seconds') || '—',
+                    when: when || '—'
+                });
+            }
+            return outRows;
+        }
+
+        function iosScreentimeDomains(out) {
+            var rows = iosParserEvents(out, 'screentime');
+            var map = {};
+            for (var i = 0; i < rows.length; i++) {
+                var ev = mapPlainTop(rows[i]) || rows[i];
+                var domain =
+                    iosLooseField(ev, 'domain', 'webdomain', 'destination_domain') ||
+                    iosHostFromUrlOrDomain(iosLooseField(ev, 'url'));
+                if (!domain || domain.indexOf('.') < 0) continue;
+                if (!map[domain]) {
+                    map[domain] = {
+                        domain: domain,
+                        hits: 0,
+                        bundle: iosLooseField(ev, 'bundle id', 'bundle_id', 'app') || '—',
+                        category: iosLooseField(ev, 'category') || '—'
+                    };
+                }
+                map[domain].hits += 1;
+            }
+            return Object.keys(map)
+                .map(function (k) { return map[k]; })
+                .sort(function (a, b) { return b.hits - a.hits || a.domain.localeCompare(b.domain); })
+                .slice(0, 40);
+        }
+
+        function iosNetusageRoutes(out) {
+            var rows = iosParserEvents(out, 'netusage');
+            var outRows = [];
+            var seen = {};
+            for (var i = 0; i < rows.length && outRows.length < 40; i++) {
+                var ev = mapPlainTop(rows[i]) || rows[i];
+                var mod = iosLooseField(ev, 'apollo_module', 'module');
+                var msg = iosLooseField(ev, 'message');
+                if (
+                    mod !== 'netusage_zliverouteperf' &&
+                    mod !== 'netusage_zliveusage' &&
+                    !/network usage/i.test(msg)
+                ) {
+                    continue;
+                }
+                var networkType = iosLooseField(ev, 'network type', 'network_type');
+                var identifier = iosLooseField(ev, 'network identifier', 'network_identifier');
+                var ssid = iosLooseField(ev, 'ssid', 'network name', 'network_name', 'wifi network name');
+                var bssid = iosLooseField(ev, 'bssid', 'wifi bssid');
+                var bytesIn = iosLooseField(ev, 'bytes in', 'bytesin') || '—';
+                var bytesOut = iosLooseField(ev, 'bytes out', 'bytesout') || '—';
+                var isWifi = /wifi/i.test(networkType) || !!ssid;
+                var display =
+                    ssid ||
+                    (identifier && !/^[0-9a-f:-]{11,}$/i.test(identifier) ? identifier : '') ||
+                    identifier ||
+                    networkType ||
+                    'route';
+                var key = networkType + ':' + identifier + ':' + display + ':' + bytesIn;
+                if (seen[key]) continue;
+                seen[key] = true;
+                outRows.push({
+                    name: display,
+                    network: (isWifi ? 'Wi‑Fi' : networkType || 'Cellular') + (bssid ? ' · ' + bssid : ''),
+                    bytesIn: bytesIn,
+                    bytesOut: bytesOut,
+                    when: iosLooseField(ev, 'timestamp', 'datetime') || '—',
+                    isWifi: isWifi
+                });
+            }
+            return outRows.sort(function (a, b) {
+                if (a.isWifi !== b.isWifi) return a.isWifi ? -1 : 1;
+                return a.name.localeCompare(b.name);
+            });
+        }
+
+        function iosNetworkExtensionHints(out) {
+            var names = ['networkextension', 'networkextensioncache'];
+            var outRows = [];
+            var seen = {};
+            for (var n = 0; n < names.length; n++) {
+                var rows = iosParserEvents(out, names[n]);
+                for (var i = 0; i < rows.length && outRows.length < 30; i++) {
+                    var ev = mapPlainTop(rows[i]) || rows[i];
+                    var value =
+                        iosLooseField(ev, 'value', 'url', 'server', 'remote address', 'remote_address', 'hostname') ||
+                        iosLooseField(ev, 'message');
+                    if (!value) continue;
+                    var path = iosLooseField(ev, 'path', 'key', 'source_path') || names[n];
+                    var key = value + ':' + path;
+                    if (seen[key]) continue;
+                    seen[key] = true;
+                    outRows.push({ value: value, path: path });
+                }
+            }
+            return outRows;
+        }
+
+        function iosSwcutilDomains(out) {
+            var rows = iosParserEvents(out, 'swcutil');
+            var outRows = [];
+            var seen = {};
+            for (var i = 0; i < rows.length && outRows.length < 40; i++) {
+                var ev = mapPlainTop(rows[i]) || rows[i];
+                var domain =
+                    iosLooseField(ev, 'domain', 'associated domain', 'associated_domain') ||
+                    iosHostFromUrlOrDomain(iosLooseField(ev, 'url'));
+                if (!domain || domain.indexOf('.') < 0) continue;
+                if (seen[domain]) continue;
+                seen[domain] = true;
+                outRows.push({
+                    domain: domain,
+                    status: iosLooseField(ev, 'status', 'state', 'approval') || '—'
+                });
+            }
+            return outRows;
+        }
+
+        function iosPowerlogPush(out) {
+            var rows = iosParserEvents(out, 'powerlogs');
+            var outRows = [];
+            var seen = {};
+            for (var i = 0; i < rows.length && outRows.length < 30; i++) {
+                var ev = mapPlainTop(rows[i]) || rows[i];
+                var mod = iosLooseField(ev, 'apollo_module', 'module');
+                var msg = iosLooseField(ev, 'message');
+                if (!/push/i.test(mod) && !/PLPUSHAGENT|push agent|apns/i.test(msg)) continue;
+                var host =
+                    iosLooseField(ev, 'serverhostname', 'server hostname', 'hostname', 'host') ||
+                    iosLooseField(ev, 'server ip', 'server_ip', 'dest_ip');
+                if (!host) continue;
+                var key = host + ':' + iosLooseField(ev, 'bundle id', 'bundle_id');
+                if (seen[key]) continue;
+                seen[key] = true;
+                outRows.push({
+                    host: host,
+                    bundle: iosLooseField(ev, 'bundle id', 'bundle_id', 'topic') || '—',
+                    conn: iosLooseField(ev, 'connection type', 'connection_type') || '—'
+                });
+            }
+            return outRows;
+        }
+
+        function iosQuarantineUrls(out) {
+            var rows = iosParserEvents(out, 'quarantine_events');
+            var outRows = [];
+            var seen = {};
+            for (var i = 0; i < rows.length && outRows.length < 30; i++) {
+                var ev = mapPlainTop(rows[i]) || rows[i];
+                var origin = iosLooseField(ev, 'origin url string', 'origin_url_string', 'origin_url');
+                var dataUrl = iosLooseField(ev, 'data url string', 'data_url_string', 'data_url');
+                if (!origin && !dataUrl) continue;
+                var key = origin + '|' + dataUrl;
+                if (seen[key]) continue;
+                seen[key] = true;
+                outRows.push({
+                    url: origin || dataUrl,
+                    agent: iosLooseField(ev, 'agent name', 'agent_name', 'agent bundle id', 'agent_bundle_id') || '—',
+                    when: iosLooseField(ev, 'datetime', 'timestamp') || '—'
+                });
+            }
+            return outRows;
+        }
+
+        function mountDashFilterableTable(mount, headers, rows, opts) {
+            opts = opts || {};
+            mount.textContent = '';
+            if (!rows.length) {
+                mount.appendChild(dashEmptyEl('dashEmptyNetworkSection'));
                 return;
             }
-
-            var kinds = {};
-            var rows = [];
-            for (var i = 0; i < hits.length; i++) {
-                var h = mapPlainTop(hits[i]) || {};
-                var kind = String(h.kind || 'other');
-                kinds[kind] = (kinds[kind] || 0) + 1;
-                rows.push({
-                    kind: kind,
-                    cells: [kind, String(h.value || ''), String(h.source_parser || '')],
-                    haystack: [kind, h.value, h.source_parser].join('\n').toLowerCase()
-                });
+            var kinds = opts.kindChips ? {} : null;
+            if (kinds) {
+                for (var i = 0; i < rows.length; i++) {
+                    var k = rows[i].kind || 'other';
+                    kinds[k] = (kinds[k] || 0) + 1;
+                }
             }
-
-            var chips = document.createElement('div');
-            chips.className = 'iphone-filter-chips';
             var activeKind = 'all';
-            function addChip(id, label) {
-                var b = document.createElement('button');
-                b.type = 'button';
-                b.className = 'iphone-filter-chip' + (id === 'all' ? ' is-active' : '');
-                b.textContent = label;
-                b.addEventListener('click', function () {
-                    activeKind = id;
-                    var all = chips.querySelectorAll('.iphone-filter-chip');
-                    for (var ci = 0; ci < all.length; ci++) all[ci].classList.remove('is-active');
-                    b.classList.add('is-active');
-                    applyFilter();
-                });
-                chips.appendChild(b);
+            var chips = null;
+            if (kinds) {
+                chips = document.createElement('div');
+                chips.className = 'iphone-filter-chips';
+                function addChip(id, label) {
+                    var b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'iphone-filter-chip' + (id === 'all' ? ' is-active' : '');
+                    b.textContent = label;
+                    b.addEventListener('click', function () {
+                        activeKind = id;
+                        var all = chips.querySelectorAll('.iphone-filter-chip');
+                        for (var ci = 0; ci < all.length; ci++) all[ci].classList.remove('is-active');
+                        b.classList.add('is-active');
+                        applyFilter();
+                    });
+                    chips.appendChild(b);
+                }
+                addChip('all', trIphone('dashFilterAll'));
+                Object.keys(kinds)
+                    .sort()
+                    .forEach(function (kk) {
+                        addChip(kk, kk + ' (' + kinds[kk] + ')');
+                    });
+                mount.appendChild(chips);
             }
-            addChip('all', trIphone('dashFilterAll'));
-            Object.keys(kinds)
-                .sort()
-                .forEach(function (k) {
-                    addChip(k, k + ' (' + kinds[k] + ')');
-                });
-            mount.appendChild(chips);
-
             var search = buildDashSearchInput(function () {
                 applyFilter();
             });
@@ -5398,20 +6359,21 @@
             var summary = document.createElement('p');
             summary.className = 'iphone-dash-card__lead';
             mount.appendChild(summary);
-            var table = buildDashTable(
-                [trIphone('dashColKind'), trIphone('dashColValue'), trIphone('dashColSource')],
-                rows,
-                { monoCols: { 1: true, 2: true } }
-            );
+            if (opts.note) {
+                var note = document.createElement('p');
+                note.className = 'iphone-dash-card__lead';
+                note.textContent = opts.note;
+                mount.appendChild(note);
+            }
+            var table = buildDashTable(headers, rows, { monoCols: opts.monoCols || {} });
             mount.appendChild(table);
-
             function applyFilter() {
                 var q = search.input.value.trim().toLowerCase();
                 var trs = table.querySelectorAll('tbody tr');
                 var shown = 0;
                 for (var ti = 0; ti < trs.length; ti++) {
                     var tr = trs[ti];
-                    var kindOk = activeKind === 'all' || tr.getAttribute('data-kind') === activeKind;
+                    var kindOk = !kinds || activeKind === 'all' || tr.getAttribute('data-kind') === activeKind;
                     var textOk = !q || (tr._dashHay && tr._dashHay.indexOf(q) >= 0);
                     var ok = kindOk && textOk;
                     tr.style.display = ok ? '' : 'none';
@@ -5423,6 +6385,222 @@
             }
             applyFilter();
         }
+
+        function setIphoneNetworkCardVisible(cardId, visible) {
+            var card = document.getElementById(cardId);
+            if (!card) return;
+            card.classList.toggle('hidden', !visible);
+        }
+
+        function renderIphoneNetworkPanel(out) {
+            var iocPack = iosCollectNetworkIocHits(out);
+            var hits = iocPack.hits;
+            var safari = iosSafariVisits(out);
+            var knowledge = iosKnowledgeWeb(out);
+            var screentime = iosScreentimeDomains(out);
+            var netusage = iosNetusageRoutes(out);
+            var vpn = iosNetworkExtensionHints(out);
+            var swc = iosSwcutilDomains(out);
+            var push = iosPowerlogPush(out);
+            var quarantine = iosQuarantineUrls(out);
+
+            var extraDomains = [];
+            safari.forEach(function (v) {
+                extraDomains.push({ domain: v.domain, source: 'safari_history', sampleUrl: v.url });
+            });
+            knowledge.forEach(function (v) {
+                extraDomains.push({ domain: v.domain, source: 'knowledgec', sampleUrl: v.url });
+            });
+            screentime.forEach(function (v) {
+                extraDomains.push({ domain: v.domain, source: 'screentime' });
+            });
+            quarantine.forEach(function (v) {
+                extraDomains.push({
+                    domain: iosHostFromUrlOrDomain(v.url),
+                    source: 'quarantine_events',
+                    sampleUrl: v.url
+                });
+            });
+            swc.forEach(function (v) {
+                extraDomains.push({ domain: v.domain, source: 'swcutil' });
+            });
+
+            var connected = iosConnectedDomainsFromHits(hits, extraDomains).slice(0, 40);
+            var domainsMount = document.getElementById('iphone-network-domains-mount');
+            if (domainsMount) {
+                var domainRows = connected.map(function (d) {
+                    return {
+                        cells: [d.domain, String(d.hits), d.sources.join(', ') || '—', d.sampleUrl || '—'],
+                        haystack: [d.domain, d.sources.join(' '), d.sampleUrl].join('\n').toLowerCase()
+                    };
+                });
+                mountDashFilterableTable(
+                    domainsMount,
+                    [
+                        trIphone('dashColDomain'),
+                        trIphone('dashColHits'),
+                        trIphone('dashColSources'),
+                        trIphone('dashColValue')
+                    ],
+                    domainRows,
+                    { monoCols: { 0: true, 3: true } }
+                );
+                setIphoneNetworkCardVisible('iphone-network-domains-card', true);
+            }
+
+            var iocMount = document.getElementById('iphone-network-mount');
+            if (iocMount) {
+                if (!hits.length) {
+                    iocMount.textContent = '';
+                    iocMount.appendChild(dashEmptyEl('dashEmptyNetwork'));
+                } else {
+                    var iocRows = hits.map(function (h) {
+                        return {
+                            kind: h.kind,
+                            cells: [h.kind, h.value, h.source_parser || '—', h.json_path || '—'],
+                            haystack: [h.kind, h.value, h.source_parser, h.json_path].join('\n').toLowerCase()
+                        };
+                    });
+                    mountDashFilterableTable(
+                        iocMount,
+                        [
+                            trIphone('dashColKind'),
+                            trIphone('dashColValue'),
+                            trIphone('dashColSource'),
+                            trIphone('dashColPath')
+                        ],
+                        iocRows,
+                        {
+                            kindChips: true,
+                            monoCols: { 1: true, 2: true, 3: true },
+                            note: iocPack.net && iocPack.net.hits_truncated ? trIphone('dashNetHitsTruncated') : ''
+                        }
+                    );
+                }
+                setIphoneNetworkCardVisible('iphone-network-iocs-card', true);
+            }
+
+            function fillSection(cardId, mountId, headers, rows, tableOpts) {
+                var mount = document.getElementById(mountId);
+                if (!mount) return;
+                setIphoneNetworkCardVisible(cardId, !!rows.length);
+                if (!rows.length) {
+                    mount.textContent = '';
+                    return;
+                }
+                mountDashFilterableTable(mount, headers, rows, tableOpts || { monoCols: { 0: true } });
+            }
+
+            fillSection(
+                'iphone-network-safari-card',
+                'iphone-network-safari-mount',
+                [trIphone('dashColDomain'), trIphone('dashColValue'), trIphone('dashColTitle'), trIphone('dashColVisits'), trIphone('dashColWhen')],
+                safari.map(function (v) {
+                    return {
+                        cells: [v.domain, v.url, v.title || '—', v.visits, v.when],
+                        haystack: [v.domain, v.url, v.title].join('\n').toLowerCase()
+                    };
+                }),
+                { monoCols: { 0: true, 1: true } }
+            );
+
+            fillSection(
+                'iphone-network-knowledge-card',
+                'iphone-network-knowledge-mount',
+                [trIphone('dashColApp'), trIphone('dashColDomain'), trIphone('dashColValue'), trIphone('dashColSeconds'), trIphone('dashColWhen')],
+                knowledge.map(function (v) {
+                    return {
+                        cells: [v.app, v.domain, v.url || '—', v.seconds, v.when],
+                        haystack: [v.app, v.domain, v.url].join('\n').toLowerCase()
+                    };
+                }),
+                { monoCols: { 0: true, 1: true, 2: true } }
+            );
+
+            fillSection(
+                'iphone-network-screentime-card',
+                'iphone-network-screentime-mount',
+                [trIphone('dashColDomain'), trIphone('dashColHits'), trIphone('dashColApp'), trIphone('dashColKind')],
+                screentime.map(function (v) {
+                    return {
+                        cells: [v.domain, String(v.hits), v.bundle, v.category],
+                        haystack: [v.domain, v.bundle, v.category].join('\n').toLowerCase()
+                    };
+                }),
+                { monoCols: { 0: true, 2: true } }
+            );
+
+            fillSection(
+                'iphone-network-netusage-card',
+                'iphone-network-netusage-mount',
+                [trIphone('dashColNetwork'), trIphone('dashColValue'), trIphone('dashColBytesIn'), trIphone('dashColBytesOut'), trIphone('dashColWhen')],
+                netusage.map(function (v) {
+                    return {
+                        cells: [v.network, v.name, v.bytesIn, v.bytesOut, v.when],
+                        haystack: [v.network, v.name].join('\n').toLowerCase()
+                    };
+                }),
+                { monoCols: { 1: true } }
+            );
+
+            fillSection(
+                'iphone-network-vpn-card',
+                'iphone-network-vpn-mount',
+                [trIphone('dashColValue'), trIphone('dashColPath')],
+                vpn.map(function (v) {
+                    return {
+                        cells: [v.value, v.path],
+                        haystack: [v.value, v.path].join('\n').toLowerCase()
+                    };
+                }),
+                { monoCols: { 0: true, 1: true } }
+            );
+
+            fillSection(
+                'iphone-network-swcutil-card',
+                'iphone-network-swcutil-mount',
+                [trIphone('dashColDomain'), trIphone('dashColStatus')],
+                swc.map(function (v) {
+                    return {
+                        cells: [v.domain, v.status],
+                        haystack: [v.domain, v.status].join('\n').toLowerCase()
+                    };
+                }),
+                { monoCols: { 0: true } }
+            );
+
+            fillSection(
+                'iphone-network-push-card',
+                'iphone-network-push-mount',
+                [trIphone('dashColValue'), trIphone('dashColApp'), trIphone('dashColNetwork')],
+                push.map(function (v) {
+                    return {
+                        cells: [v.host, v.bundle, v.conn],
+                        haystack: [v.host, v.bundle, v.conn].join('\n').toLowerCase()
+                    };
+                }),
+                { monoCols: { 0: true, 1: true } }
+            );
+
+            fillSection(
+                'iphone-network-quarantine-card',
+                'iphone-network-quarantine-mount',
+                [trIphone('dashColValue'), trIphone('dashColAgent'), trIphone('dashColWhen')],
+                quarantine.map(function (v) {
+                    return {
+                        cells: [v.url, v.agent, v.when],
+                        haystack: [v.url, v.agent].join('\n').toLowerCase()
+                    };
+                }),
+                { monoCols: { 0: true } }
+            );
+
+            wireIphoneDashApi();
+            if (window.IphoneMobipwnPanels && window.IphoneMobipwnPanels.renderNetworkExtras) {
+                window.IphoneMobipwnPanels.renderNetworkExtras(out);
+            }
+        }
+
 
         function iosProcessShortName(command) {
             var cmd = String(command || '')
@@ -6686,7 +7864,18 @@
             var dash = document.getElementById('iphone-dash');
             if (!dash) return;
             dash.classList.remove('hidden');
-            iphoneDashLazy = { apps: false, network: false, processes: false, crashes: false, perms: false };
+            iphoneDashLazy = {
+                apps: false,
+                network: false,
+                processes: false,
+                crashes: false,
+                perms: false,
+                overviewExtra: false,
+                external: false,
+                auth: false,
+                battery: false
+            };
+            wireIphoneDashApi();
             wireIphoneDashTabs();
             updateIphoneResultsHero(out, okN);
             fillIphoneDeviceCard(out);
@@ -7387,48 +8576,63 @@
             var ideviceOk = false;
             var webUsbBlockReason = null;
 
+            function setWebusbStatus(state, label, title) {
+                if (!webusbEl) return;
+                webusbEl.dataset.state = state;
+                webusbEl.className = 'runtime-status is-' + state;
+                webusbEl.style.background = '';
+                webusbEl.style.color = '';
+                webusbEl.style.opacity = '';
+                webusbEl.style.display = '';
+                var labelEl = webusbEl.querySelector('.runtime-status__label');
+                if (labelEl) labelEl.textContent = label;
+                else webusbEl.textContent = label;
+                webusbEl.title = title || '';
+            }
+
             function paintWebusbBadge() {
                 var t = window.IPHONE_I18N[window.currentLang] || window.IPHONE_I18N.en;
                 if (!webusbEl) return;
                 if (webUsbBlockReason) {
-                    webusbEl.textContent = t.webusbFailed || '❌ WebUSB';
-                    webusbEl.style.background = 'rgba(244, 67, 54, 0.1)';
-                    webusbEl.style.color = 'var(--error)';
-                    webusbEl.title = webUsbBlockReason;
+                    setWebusbStatus(
+                        'error',
+                        t.webusbFailed || 'Unavailable',
+                        webUsbBlockReason || t.webusbFailedTitle || ''
+                    );
                     return;
                 }
                 if (analyzerOk && ideviceOk) {
-                    webusbEl.textContent = t.webusbReady || '✓ Analyzer + WebUSB';
-                    webusbEl.style.background = 'rgba(76, 175, 80, 0.1)';
-                    webusbEl.style.color = 'var(--success)';
-                    webusbEl.title = '';
+                    setWebusbStatus('ready', t.webusbReady || 'Ready', t.webusbReadyTitle || '');
                 } else if (analyzerOk) {
-                    webusbEl.textContent = t.webusbPartial || '✓ Analyzer · ⚠ WebUSB';
-                    webusbEl.style.background = 'rgba(255, 152, 0, 0.12)';
-                    webusbEl.style.color = 'var(--warning)';
-                    webusbEl.title = '';
+                    setWebusbStatus(
+                        'warn',
+                        t.webusbPartial || 'No WebUSB',
+                        t.webusbPartialTitle || ''
+                    );
                 } else if (ideviceOk) {
-                    webusbEl.textContent = t.webusbDeviceReady || '✓ WebUSB · ⏳ Analyzer';
-                    webusbEl.style.background = 'rgba(76, 175, 80, 0.1)';
-                    webusbEl.style.color = 'var(--success)';
-                    webusbEl.title = t.webusbDeviceReadyTitle || 'Device tools ready — analyzer loads on first analyze';
+                    setWebusbStatus(
+                        'ready',
+                        t.webusbDeviceReady || 'WebUSB',
+                        t.webusbDeviceReadyTitle || ''
+                    );
                 } else {
-                    webusbEl.textContent = t.webusbFailed || t.wasmFailed;
-                    webusbEl.style.background = 'rgba(244, 67, 54, 0.1)';
-                    webusbEl.style.color = 'var(--error)';
-                    webusbEl.title = '';
+                    setWebusbStatus(
+                        'error',
+                        t.webusbFailed || t.wasmFailed || 'Unavailable',
+                        t.webusbFailedTitle || ''
+                    );
                 }
             }
             window.refreshWebusbBadge = function () {
                 if (!analyzerOk && !ideviceOk && !webUsbBlockReason) {
                     var t = window.IPHONE_I18N[window.currentLang] || window.IPHONE_I18N.en;
-                    if (webusbEl) webusbEl.textContent = t.webusbLoading || t.wasmLoading;
+                    setWebusbStatus('loading', t.webusbLoading || t.wasmLoading || 'Loading…', '');
                 } else {
                     paintWebusbBadge();
                 }
             };
 
-            if (webusbEl) webusbEl.textContent = _t.webusbLoading || _t.wasmLoading;
+            setWebusbStatus('loading', _t.webusbLoading || _t.wasmLoading || 'Loading…', '');
 
             webUsbBlockReason = diagnoseWebUsb();
 

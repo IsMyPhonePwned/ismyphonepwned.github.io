@@ -303,6 +303,230 @@
             gap: 0.5rem;
         }
 
+        .howto-guide {
+            --howto-tone: var(--accent);
+            --howto-tone-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+            margin-bottom: 1.25rem;
+            padding: 0;
+            border: 1px solid color-mix(in srgb, var(--howto-tone) 28%, var(--border));
+            border-radius: 12px;
+            background:
+                linear-gradient(
+                    135deg,
+                    color-mix(in srgb, var(--howto-tone) 10%, var(--bg-card)) 0%,
+                    color-mix(in srgb, var(--howto-tone) 3%, var(--bg-card)) 48%,
+                    var(--bg-card) 100%
+                );
+            overflow: hidden;
+            box-shadow: 0 1px 0 color-mix(in srgb, var(--howto-tone) 12%, transparent);
+        }
+
+        .howto-guide--ios {
+            --howto-tone: #0A84FF;
+        }
+
+        [data-theme="dark"] .howto-guide--ios {
+            --howto-tone: #64B5F6;
+        }
+
+        .howto-guide__head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.8rem 0.95rem;
+            background: color-mix(in srgb, var(--howto-tone) 8%, transparent);
+            border-bottom: 1px solid color-mix(in srgb, var(--howto-tone) 16%, transparent);
+        }
+
+        .howto-guide__title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            min-width: 0;
+        }
+
+        .howto-guide__badge {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.7rem;
+            height: 1.7rem;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            color: #fff;
+            background: linear-gradient(
+                160deg,
+                color-mix(in srgb, var(--howto-tone) 92%, #fff) 0%,
+                color-mix(in srgb, var(--howto-tone) 78%, #000) 100%
+            );
+            box-shadow: 0 1px 2px color-mix(in srgb, var(--howto-tone) 35%, transparent);
+        }
+
+        .howto-guide__title {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+        }
+
+        .howto-guide__head .section-toggle {
+            color: var(--howto-tone);
+        }
+
+        .howto-guide__head .section-toggle:hover {
+            color: var(--accent-hover);
+        }
+
+        .howto-guide__body {
+            margin-top: 0;
+            padding: 0.9rem 0.95rem 1rem;
+        }
+
+        .howto-guide__body.collapsed {
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+
+        .howto-guide__intro {
+            margin: 0 0 0.85rem;
+            font-size: 0.8125rem;
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+
+        .howto-guide__blocks {
+            display: grid;
+            gap: 0.65rem;
+        }
+
+        .howto-guide__block {
+            margin: 0;
+            padding: 0.7rem 0.75rem 0.75rem;
+            border-radius: 10px;
+            border: 1px solid color-mix(in srgb, var(--howto-block) 22%, var(--border));
+            background:
+                linear-gradient(
+                    180deg,
+                    color-mix(in srgb, var(--howto-block) 10%, var(--bg-card)) 0%,
+                    color-mix(in srgb, var(--howto-block) 3%, var(--bg-card)) 100%
+                );
+            border-left: 3px solid var(--howto-block);
+            --howto-block: var(--accent);
+        }
+
+        .howto-guide__block--usb {
+            --howto-block: var(--accent);
+        }
+
+        .howto-guide__block--trigger {
+            --howto-block: var(--warning);
+        }
+
+        .howto-guide__block--device {
+            --howto-block: #00897B;
+        }
+
+        [data-theme="dark"] .howto-guide__block--device {
+            --howto-block: #26A69A;
+        }
+
+        .howto-guide__block--upload {
+            --howto-block: var(--success);
+        }
+
+        .howto-guide__label {
+            margin: 0 0 0.45rem;
+            font-size: 0.72rem;
+            font-weight: 750;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: color-mix(in srgb, var(--howto-block) 72%, var(--text-primary));
+        }
+
+        .howto-guide__list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            counter-reset: howto-step;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            line-height: 1.5;
+            display: grid;
+            gap: 0.4rem;
+        }
+
+        .howto-guide__list li {
+            position: relative;
+            padding-left: 1.85rem;
+            counter-increment: howto-step;
+        }
+
+        .howto-guide__list li::before {
+            content: counter(howto-step);
+            position: absolute;
+            left: 0;
+            top: 0.1rem;
+            width: 1.35rem;
+            height: 1.35rem;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.68rem;
+            font-weight: 750;
+            color: #fff;
+            background: color-mix(in srgb, var(--howto-block) 88%, #000);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--howto-block) 18%, transparent);
+        }
+
+        .howto-guide__codes {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            display: grid;
+            gap: 0.4rem;
+        }
+
+        .howto-guide__codes li {
+            position: relative;
+            font-size: 0.8125rem;
+            line-height: 1.45;
+            color: var(--text-primary);
+            padding: 0.5rem 0.65rem 0.5rem 0.75rem;
+            border-radius: 8px;
+            background: color-mix(in srgb, var(--bg-card) 70%, var(--howto-block) 8%);
+            border: 1px solid color-mix(in srgb, var(--howto-block) 14%, var(--border));
+            border-left: 3px solid var(--howto-code, var(--howto-block));
+        }
+
+        .howto-guide__codes li:nth-child(1) { --howto-code: #1E88E5; }
+        .howto-guide__codes li:nth-child(2) { --howto-code: #FF6F00; }
+        .howto-guide__codes li:nth-child(3) { --howto-code: #E53935; }
+        .howto-guide__codes li:nth-child(4) { --howto-code: #C62828; }
+        .howto-guide__codes li:nth-child(5) { --howto-code: #43A047; }
+
+        .howto-guide__note {
+            margin: 0.55rem 0 0;
+            padding: 0.45rem 0.6rem;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            line-height: 1.45;
+            color: color-mix(in srgb, var(--warning) 55%, var(--text-primary));
+            background: color-mix(in srgb, var(--warning) 12%, var(--bg-card));
+            border: 1px solid color-mix(in srgb, var(--warning) 28%, transparent);
+        }
+
+        .howto-guide__note--muted {
+            color: var(--text-secondary);
+            background: color-mix(in srgb, var(--howto-block) 8%, var(--bg-card));
+            border-color: color-mix(in srgb, var(--howto-block) 18%, var(--border));
+        }
+
         .section-toggle {
             background: transparent;
             border: none;
@@ -373,23 +597,100 @@
         }
 
         .upload-zone {
-            border: 2px dashed var(--border);
-            border-radius: 8px;
-            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: center;
+            min-height: 5.5rem;
+            padding: 1.1rem 1rem;
+            margin-bottom: 0.75rem;
+            border: 1.5px dashed color-mix(in srgb, var(--border) 70%, var(--accent) 30%);
+            border-radius: 10px;
+            background: color-mix(in srgb, var(--accent) 4%, var(--bg-card));
             text-align: center;
             cursor: pointer;
-            transition: all 0.2s;
-            margin-bottom: 1rem;
+            transition: border-color 0.15s ease, background 0.15s ease;
         }
 
-        .upload-zone:hover {
-            border-color: var(--accent);
-            background: var(--bg-secondary);
-        }
-
+        .upload-zone:hover,
         .upload-zone.dragover {
-            border-color: var(--accent);
-            background: var(--bg-secondary);
+            border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+            background: color-mix(in srgb, var(--accent) 8%, var(--bg-card));
+        }
+
+        .upload-zone--has-file {
+            min-height: 0;
+            text-align: left;
+            border-style: solid;
+            border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+            cursor: default;
+        }
+
+        .upload-zone__empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.2rem;
+        }
+
+        .upload-zone__prompt {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+        }
+
+        .upload-zone__hint {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .upload-zone__selected {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .upload-zone__meta {
+            flex: 1 1 auto;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+            overflow: hidden;
+        }
+
+        .upload-zone__name {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .upload-zone__size {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .upload-zone__clear {
+            flex-shrink: 0;
+            margin: 0;
+            padding: 0;
+            border: none;
+            background: none;
+            color: var(--accent);
+            font-size: 0.78rem;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .upload-zone__analyze {
+            width: 100%;
+            margin-top: 0;
         }
 
         .upload-icon {
@@ -1361,7 +1662,7 @@
                 max-width: 9.5rem;
             }
             .upload-zone {
-                padding: 1.5rem 1rem;
+                padding: 1rem 0.85rem;
             }
             footer .container,
             footer [style*="max-width"] {

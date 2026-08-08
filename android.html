@@ -23,7 +23,7 @@
                 <div style="display: flex; flex-direction: column; gap: 0.25rem;">
                     <h1 class="logo-text">IsMyPhonePwned ?</h1>
                     <span class="page-version">
-                        <span data-i18n="pageVersion">v0.3.2-beta • Updated 8 August 2026</span>
+                        <span data-i18n="pageVersion">v0.4.0-beta • Updated 9 August 2026</span>
                         <span class="page-version-edition" title="DEF CON edition">
                             <img class="page-version-edition-logo" src="assets/defcon31-logo.png" alt="" width="18" height="18" decoding="async">
                             <span>defcon edition</span>
@@ -96,222 +96,36 @@
         </div>
 
         <!-- Help Guide -->
-        <div class="section" style="background: var(--bg-secondary); border-left: 4px solid var(--accent);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <h2 style="margin: 0;" data-i18n="helpTitle">📖 How to Get Bug Reports</h2>
-                <button class="section-toggle collapsed" onclick="toggleSection('help-guide')" style="margin: 0;">▼</button>
+        <div class="howto-guide howto-guide--android">
+            <div class="howto-guide__head">
+                <div class="howto-guide__title-wrap">
+                    <span class="howto-guide__badge" aria-hidden="true">?</span>
+                    <h2 class="howto-guide__title" data-i18n="helpTitle">How to get a bugreport</h2>
+                </div>
+                <button type="button" class="section-toggle collapsed" onclick="toggleSection('help-guide')" aria-label="Toggle guide">▼</button>
             </div>
-            <div class="section-content collapsed" id="help-guide-content" style="margin-top: 1rem;">
-                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 1.5rem;">
-                    <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Android Bug Report Acquisition Guide</h3>
-                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.875rem;">
-                        This guide details how to capture system logs and bug reports on Android devices. You can use manufacturer-specific "Secret Codes" (no USB debugging required) or connect via USB/ADB with USB debugging enabled.
-                    </p>
-                    
-                    <!-- USB Debugging Option -->
-                    <div style="margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 2px solid var(--border); background: rgba(33, 150, 243, 0.05); padding: 1.5rem; border-radius: 6px;">
-                        <h4 style="color: var(--text-primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <span>🔌 USB Debugging Method (Recommended for Direct Connection)</span>
-                        </h4>
-                        <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.875rem;">
-                            You can connect your phone directly to this browser via USB/ADB. This allows you to generate bug reports, download existing ones, and analyze them directly from your device.
-                        </p>
-                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
-                            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Requires Developer Mode: <strong>YES</strong></div>
-                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Requires USB Connection: <strong>YES</strong></div>
-                        </div>
-                        <ol style="margin-left: 1.5rem; color: var(--text-primary); line-height: 1.8;">
-                            <li>Go to <strong>Settings</strong> > <strong>About Phone</strong>.</li>
-                            <li>Tap <strong>Build Number</strong> 7 times to enable Developer Mode.</li>
-                            <li>Go to <strong>Settings</strong> > <strong>System</strong> > <strong>Developer Options</strong>.</li>
-                            <li>Enable <strong>USB Debugging</strong> (toggle it ON).</li>
-                            <li>Connect your phone to your computer via USB cable.</li>
-                            <li>When prompted on your phone, tap <strong>Allow USB debugging</strong> and check <strong>Always allow from this computer</strong> (optional but recommended).</li>
-                            <li>Choose <strong>Android</strong>, then <strong>Generate New</strong> or <strong>From Device</strong>, to connect and work with your device.</li>
-                        </ol>
-                        <div style="background: rgba(33, 150, 243, 0.1); border-left: 4px solid var(--accent); padding: 1rem; margin-top: 1rem; border-radius: 4px;">
-                            <strong style="color: var(--accent);">💡 Benefits of USB Debugging:</strong>
-                            <ul style="margin-left: 1.5rem; margin-top: 0.5rem; color: var(--text-primary); font-size: 0.875rem;">
-                                <li>Generate bug reports directly from the browser</li>
-                                <li>Download existing bug reports without manual file transfer</li>
-                                <li>Real-time device connection and analysis</li>
-                                <li>No need to manually locate files on your device</li>
-                            </ul>
-                        </div>
-                        <div style="background: rgba(244, 67, 54, 0.1); border-left: 4px solid var(--error); padding: 1rem; margin-top: 1rem; border-radius: 4px;">
-                            <strong style="color: var(--error);">🔒 Security Reminder</strong>
-                            <p style="margin-top: 0.5rem; color: var(--text-primary); font-size: 0.875rem;">
-                                <strong>Important:</strong> After completing your analysis, please <strong>disable USB Debugging</strong> and <strong>disable Developer Mode</strong> for security reasons. USB Debugging can expose your device to potential security risks if left enabled.
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- Google Pixel -->
-                    <div style="margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border);">
-                        <h4 style="color: var(--text-primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <span>1. Google Pixel / Motorola / Sony (Stock Android)</span>
-                        </h4>
-                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
-                            <div style="font-family: monospace; font-size: 1.25rem; font-weight: 600; color: var(--accent); margin-bottom: 0.5rem;">N/A (No Secret Code)</div>
-                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Requires Developer Mode: <strong>YES (Mandatory)</strong></div>
-                        </div>
-                        <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.875rem;">
-                            These devices <em>do not</em> have secret codes to dump logs to storage. You must use the Developer Options menu.
-                        </p>
-                        <ol style="margin-left: 1.5rem; color: var(--text-primary); line-height: 1.8;">
-                            <li>Go to <strong>Settings</strong> > <strong>About Phone</strong>.</li>
-                            <li>Tap <strong>Build Number</strong> 7 times to enable Developer Mode.</li>
-                            <li>Go to <strong>Settings</strong> > <strong>System</strong> > <strong>Developer Options</strong>.</li>
-                            <li>Tap <strong>Take bug report</strong> > <strong>Interactive report</strong>.</li>
-                            <li>Wait for the notification "Bug report captured" (2-5 mins).</li>
-                            <li><strong>File Retrieval:</strong> You <strong>cannot</strong> browse to the file manually due to permissions. You must tap the <strong>Notification</strong> when finished and share it to <strong>Google Drive</strong> or <strong>Email</strong>.</li>
-                        </ol>
-                        <div style="background: rgba(244, 67, 54, 0.1); border-left: 4px solid var(--error); padding: 1rem; margin-top: 1rem; border-radius: 4px;">
-                            <strong style="color: var(--error);">🔒 Security Reminder</strong>
-                            <p style="margin-top: 0.5rem; color: var(--text-primary); font-size: 0.875rem;">
-                                <strong>Important:</strong> After completing the bug report analysis, please <strong>disable Developer Mode</strong> for security reasons. Developer Mode can expose your device to potential security risks if left enabled. Go to <strong>Settings</strong> > <strong>System</strong> > <strong>Developer Options</strong> and toggle it OFF.
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- Samsung -->
-                    <div style="margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border);">
-                        <h4 style="color: var(--text-primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <span>2. Samsung Galaxy Devices (SysDump)</span>
-                            <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-secondary);">S-Series, Z-Flip, Z-Fold, A-Series</span>
-                        </h4>
-                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
-                            <div style="font-family: monospace; font-size: 1.25rem; font-weight: 600; color: var(--accent); margin-bottom: 0.5rem;">*#9900#</div>
-                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Requires Developer Mode: <strong>NO</strong></div>
-                        </div>
-                        <ol style="margin-left: 1.5rem; color: var(--text-primary); line-height: 1.8;">
-                            <li>Open the <strong>Samsung Phone</strong> app (do not use Google Phone or third-party dialers).</li>
-                            <li>Dial <code style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">*#9900#</code>.</li>
-                            <li>A menu titled <strong>SysDump</strong> will appear.</li>
-                            <li>Tap <strong>Run dumpstate/logcat/modem log</strong>.</li>
-                            <li>Wait for the process to finish (usually silent or shows a loading spinner).</li>
-                            <li><strong>Crucial Step:</strong> Scroll down and tap <strong>Copy to sdcard (include CP Ramdump)</strong>.</li>
-                            <li><strong>File Location:</strong> Open <strong>My Files</strong> > <strong>Internal Storage</strong> > <strong>log</strong>. Look for a file named <code>dumpState_&lt;model&gt;_&lt;date&gt;.zip</code>.</li>
-                        </ol>
-                        <div style="background: rgba(255, 152, 0, 0.1); border-left: 4px solid var(--warning); padding: 1rem; margin-top: 1rem; border-radius: 4px;">
-                            <strong style="color: var(--warning);">⚠️ Troubleshooting: Samsung Z Flip 7 (One UI 6/7)</strong>
-                            <p style="margin-top: 0.5rem; color: var(--text-primary); font-size: 0.875rem;">
-                                If dialing <code>*#9900#</code> does nothing on your newer Samsung device:
-                            </p>
-                            <ul style="margin-left: 1.5rem; margin-top: 0.5rem; color: var(--text-primary); font-size: 0.875rem;">
-                                <li><strong>Issue 1: Auto Blocker is On (Most Likely)</strong> - Go to <strong>Settings</strong> > <strong>Security and Privacy</strong> > <strong>Auto Blocker</strong> and turn it OFF temporarily.</li>
-                                <li><strong>Issue 2: Carrier Restrictions</strong> - US Carriers often disable these codes. Workaround: Open <strong>Samsung Members</strong> app > <strong>Support</strong> > <strong>Error Reports</strong>.</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <!-- Xiaomi -->
-                    <div style="margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border);">
-                        <h4 style="color: var(--text-primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <span>3. Xiaomi / Redmi / POCO (MIUI & HyperOS)</span>
-                        </h4>
-                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
-                            <div style="font-family: monospace; font-size: 1.25rem; font-weight: 600; color: var(--accent); margin-bottom: 0.5rem;">*#*#284#*#*</div>
-                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Requires Developer Mode: <strong>NO</strong></div>
-                        </div>
-                        <ol style="margin-left: 1.5rem; color: var(--text-primary); line-height: 1.8;">
-                            <li>Open the <strong>Dialer/Phone</strong> app.</li>
-                            <li>Dial <code style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">*#*#284#*#*</code>.</li>
-                            <li>The phone will vibrate immediately and show a notification: "Generating bug report...".</li>
-                            <li>Wait for the notification to say "Created".</li>
-                            <li><strong>File Location:</strong> <strong>File Manager</strong> > <strong>Internal Storage</strong> > <strong>MIUI</strong> > <strong>debug_log</strong>. The file is a <code>.zip</code> archive.</li>
+            <div class="section-content howto-guide__body collapsed" id="help-guide-content">
+                <p class="howto-guide__intro" data-i18n="helpIntro">Pull one over USB in the browser, or capture on the phone and upload the file.</p>
+                <div class="howto-guide__blocks">
+                    <div class="howto-guide__block howto-guide__block--usb">
+                        <h3 class="howto-guide__label" data-i18n="helpUsbTitle">USB from this page</h3>
+                        <ol class="howto-guide__list">
+                            <li data-i18n="helpUsb1">Enable Developer options (About phone → tap Build number 7 times).</li>
+                            <li data-i18n="helpUsb2">Turn on USB debugging, connect the phone, and allow the prompt.</li>
+                            <li data-i18n="helpUsb3">Use Generate New or From Device below.</li>
+                            <li data-i18n="helpUsb4">When finished, turn USB debugging off.</li>
                         </ol>
                     </div>
-
-                    <!-- OnePlus -->
-                    <div style="margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border);">
-                        <h4 style="color: var(--text-primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <span>4. OnePlus / OPPO / Realme (LogKit)</span>
-                        </h4>
-                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
-                            <div style="font-family: monospace; font-size: 1.25rem; font-weight: 600; color: var(--accent); margin-bottom: 0.5rem;">*#800#</div>
-                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Requires Developer Mode: <strong>NO</strong></div>
-                        </div>
-                        <ol style="margin-left: 1.5rem; color: var(--text-primary); line-height: 1.8;">
-                            <li>Open the <strong>Dialer/Phone</strong> app.</li>
-                            <li>Dial <code style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">*#800#</code>.</li>
-                            <li>This opens the <strong>Feedback</strong> or <strong>LogKit</strong> app.</li>
-                            <li>Select a category (e.g., "System" or "Other").</li>
-                            <li>Tap <strong>Start Logging</strong>.</li>
-                            <li>Reproduce your bug/crash.</li>
-                            <li>Return to the app and tap <strong>Stop Logging</strong>.</li>
-                            <li><strong>File Location:</strong> <strong>File Manager</strong> > <strong>Phone Storage</strong> > <strong>Android</strong> > <strong>data</strong> > <strong>com.oplus.logkit</strong> > <strong>files</strong> > <strong>Log</strong>.</li>
-                            <li style="color: var(--text-secondary); font-size: 0.875rem;"><em>Note: On Android 11+, you may need a third-party file manager like "Solid Explorer" to view the Android/data folder.</em></li>
-                        </ol>
-                    </div>
-
-                    <!-- Huawei -->
-                    <div style="margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border);">
-                        <h4 style="color: var(--text-primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <span>5. Huawei / Honor (Project Menu)</span>
-                        </h4>
-                        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
-                            <div style="font-family: monospace; font-size: 1.25rem; font-weight: 600; color: var(--accent); margin-bottom: 0.5rem;">*#*#2846579#*#*</div>
-                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Requires Developer Mode: <strong>NO</strong></div>
-                        </div>
-                        <ol style="margin-left: 1.5rem; color: var(--text-primary); line-height: 1.8;">
-                            <li>Open the <strong>Dialer/Phone</strong> app.</li>
-                            <li>Dial <code style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">*#*#2846579#*#*</code>.</li>
-                            <li>Go to <strong>Background Settings</strong> > <strong>Log Settings</strong>.</li>
-                            <li>Check the logs you need (AP Log, Charge Log, etc.) and tap <strong>Log switch</strong>.</li>
-                            <li>Reproduce the issue, then turn logging off.</li>
-                            <li><strong>File Location:</strong> <strong>Files</strong> > <strong>Internal Storage</strong> > <strong>log</strong> (or <strong>ProjectMenu</strong> folder).</li>
-                        </ol>
-                    </div>
-
-
-                    <!-- Summary Table -->
-                    <div style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid var(--border);">
-                        <h4 style="color: var(--text-primary); margin-bottom: 1rem;">Summary Cheat Sheet</h4>
-                        <div style="overflow-x: auto;">
-                            <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
-                                <thead>
-                                    <tr style="background: var(--bg-secondary);">
-                                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--text-primary); font-weight: 600;">Brand</th>
-                                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--text-primary); font-weight: 600;">Secret Code</th>
-                                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--text-primary); font-weight: 600;">Action Required</th>
-                                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--text-primary); font-weight: 600;">Location (Internal Storage)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-primary);"><strong>Samsung</strong></td>
-                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);"><code style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">*#9900#</code></td>
-                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-primary);">Select "Copy to sdcard"</td>
-                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);"><code style="color: var(--text-secondary);">/log</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-primary);"><strong>Xiaomi / POCO</strong></td>
-                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);"><code style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">*#*#284#*#*</code></td>
-                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-primary);">Auto-generates</td>
-                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);"><code style="color: var(--text-secondary);">/MIUI/debug_log</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-primary);"><strong>OnePlus / OPPO</strong></td>
-                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);"><code style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">*#800#</code></td>
-                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-primary);">Use LogKit UI</td>
-                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);"><code style="color: var(--text-secondary);">/Android/data/com.oplus.logkit</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-primary);"><strong>Huawei</strong></td>
-                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);"><code style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">*#*#2846579#*#*</code></td>
-                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-primary);">Project Menu UI</td>
-                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);"><code style="color: var(--text-secondary);">/log</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-primary);"><strong>Pixel / Moto</strong></td>
-                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-secondary);">N/A</td>
-                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-primary);">Dev Options Menu</td>
-                                        <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-secondary);">Via Notification Share</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="howto-guide__block howto-guide__block--device">
+                        <h3 class="howto-guide__label" data-i18n="helpOnDeviceTitle">Or capture on the phone, then Upload File</h3>
+                        <ul class="howto-guide__codes">
+                            <li data-i18n="helpBrandSamsung">Samsung — dial *#9900# → dumpstate → Copy to sdcard → /log</li>
+                            <li data-i18n="helpBrandXiaomi">Xiaomi / POCO — dial *#*#284#*#* → /MIUI/debug_log</li>
+                            <li data-i18n="helpBrandOneplus">OnePlus / OPPO / Realme — dial *#800# (LogKit) → /Android/data/com.oplus.logkit</li>
+                            <li data-i18n="helpBrandHuawei">Huawei / Honor — dial *#*#2846579#*#* → /log</li>
+                            <li data-i18n="helpBrandPixel">Pixel / Motorola / Sony — Developer options → Take bug report → share from the notification</li>
+                        </ul>
+                        <p class="howto-guide__note" data-i18n="helpSamsungTip">If Samsung *#9900# does nothing: turn off Auto Blocker, or use Samsung Members → Support → Error Reports.</p>
                     </div>
                 </div>
             </div>
@@ -385,14 +199,21 @@
 
                 <!-- Upload File -->
                 <div id="tab-upload" class="hidden">
-                    <p data-i18n="uploadDesc">Upload a bugreport file from your computer.</p>
-                    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
-                        <div class="upload-icon">📁</div>
-                        <div data-i18n="uploadDrop">Click or drag a bugreport file here</div>
-                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;" data-i18n="uploadFormats">Supports .zip, .txt files</div>
+                    <div class="upload-zone" id="upload-zone" role="button" tabindex="0" aria-label="Upload bugreport file">
+                        <div id="upload-empty" class="upload-zone__empty">
+                            <span class="upload-zone__prompt" data-i18n="uploadDrop">Drop a bugreport here, or browse</span>
+                            <span class="upload-zone__hint" data-i18n="uploadFormats">.zip or .txt</span>
+                        </div>
+                        <div id="upload-selected" class="upload-zone__selected hidden">
+                            <div class="upload-zone__meta">
+                                <span id="upload-file-name" class="upload-zone__name">—</span>
+                                <span id="upload-file-size" class="upload-zone__size">—</span>
+                            </div>
+                            <button type="button" id="upload-clear" class="upload-zone__clear" data-i18n="uploadClear">Clear</button>
+                        </div>
                     </div>
                     <input type="file" id="file-input" accept=".zip,.txt" onchange="handleFileSelect(event)">
-                    <button id="btn-analyze-upload" class="hidden" onclick="analyzeUploadedFile()" data-i18n="analyzeUploaded">Analyze Uploaded File</button>
+                    <button type="button" id="btn-analyze-upload" class="upload-zone__analyze hidden" onclick="analyzeUploadedFile()" data-i18n="analyzeUploaded">Analyze bugreport</button>
                 </div>
         </div>
 
@@ -1045,7 +866,7 @@
     <script>
         window.BUGREPORT_I18N = {
             en: {
-                pageVersion: 'v0.3.2-beta • Updated 8 August 2026',
+                pageVersion: 'v0.4.0-beta • Updated 9 August 2026',
                 wasmLoading: 'Loading…',
                 wasmReady: 'Ready',
                 wasmFailed: 'Failed',
@@ -1073,7 +894,20 @@
                 ingestPhaseConnect: 'Connecting to device…',
                 ingestPhaseDownload: 'Downloading bugreport…',
                 ingestPhaseCollect: 'Collecting bugreport on device…',
-                helpTitle: '📖 How to Get Bug Reports',
+                helpTitle: 'How to get a bugreport',
+                helpIntro: 'Pull one over USB in the browser, or capture on the phone and upload the file.',
+                helpUsbTitle: 'USB from this page',
+                helpUsb1: 'Enable Developer options (About phone → tap Build number 7 times).',
+                helpUsb2: 'Turn on USB debugging, connect the phone, and allow the prompt.',
+                helpUsb3: 'Use Generate New or From Device below.',
+                helpUsb4: 'When finished, turn USB debugging off.',
+                helpOnDeviceTitle: 'Or capture on the phone, then Upload File',
+                helpBrandSamsung: 'Samsung — dial *#9900# → dumpstate → Copy to sdcard → /log',
+                helpBrandXiaomi: 'Xiaomi / POCO — dial *#*#284#*#* → /MIUI/debug_log',
+                helpBrandOneplus: 'OnePlus / OPPO / Realme — dial *#800# (LogKit) → /Android/data/com.oplus.logkit',
+                helpBrandHuawei: 'Huawei / Honor — dial *#*#2846579#*#* → /log',
+                helpBrandPixel: 'Pixel / Motorola / Sony — Developer options → Take bug report → share from the notification',
+                helpSamsungTip: 'If Samsung *#9900# does nothing: turn off Auto Blocker, or use Samsung Members → Support → Error Reports.',
                 navHome: 'Home',
                 navAndroidAdvanced: 'Advanced ADB',
                 navIphonePage: 'iPhone (sysdiagnose)',
@@ -1138,9 +972,10 @@
                 refreshList: 'Refresh',
                 analyzeSelected: 'Analyze bugreport',
                 uploadDesc: 'Upload a bugreport file from your computer.',
-                uploadDrop: 'Click or drag a bugreport file here',
-                uploadFormats: 'Supports .zip, .txt files',
-                analyzeUploaded: 'Analyze Uploaded File',
+                uploadDrop: 'Drop a bugreport here, or browse',
+                uploadFormats: '.zip or .txt',
+                uploadClear: 'Clear',
+                analyzeUploaded: 'Analyze bugreport',
                 pwnedDetection: '🔍 Pwned Results Detection',
                 sigmaRules: 'Rules',
                 sigmaMatches: 'Matches',
@@ -1367,7 +1202,7 @@
                 navGitHub: 'GitHub'
             },
             fr: {
-                pageVersion: 'v0.3.2-beta • Mis à jour le 8 août 2026',
+                pageVersion: 'v0.4.0-beta • Mis à jour le 9 août 2026',
                 wasmLoading: 'Chargement…',
                 wasmReady: 'Prêt',
                 wasmFailed: 'Échec',
@@ -1395,7 +1230,20 @@
                 ingestPhaseConnect: 'Connexion à l’appareil…',
                 ingestPhaseDownload: 'Téléchargement du bugreport…',
                 ingestPhaseCollect: 'Collecte du bugreport sur l’appareil…',
-                helpTitle: '📖 Comment obtenir un bug report',
+                helpTitle: 'Comment obtenir un bugreport',
+                helpIntro: 'Récupérez-en un via USB dans le navigateur, ou capturez-le sur le téléphone puis importez le fichier.',
+                helpUsbTitle: 'USB depuis cette page',
+                helpUsb1: 'Activez les options pour les développeurs (À propos du téléphone → appuyez 7 fois sur Numéro de build).',
+                helpUsb2: 'Activez le débogage USB, branchez le téléphone et autorisez l’invite.',
+                helpUsb3: 'Utilisez Générer ou Depuis l’appareil ci-dessous.',
+                helpUsb4: 'Quand vous avez terminé, désactivez le débogage USB.',
+                helpOnDeviceTitle: 'Ou capturez sur le téléphone, puis Importer un fichier',
+                helpBrandSamsung: 'Samsung — composez *#9900# → dumpstate → Copier sur la carte SD → /log',
+                helpBrandXiaomi: 'Xiaomi / POCO — composez *#*#284#*#* → /MIUI/debug_log',
+                helpBrandOneplus: 'OnePlus / OPPO / Realme — composez *#800# (LogKit) → /Android/data/com.oplus.logkit',
+                helpBrandHuawei: 'Huawei / Honor — composez *#*#2846579#*#* → /log',
+                helpBrandPixel: 'Pixel / Motorola / Sony — Options pour les développeurs → Créer un rapport de bug → partager depuis la notification',
+                helpSamsungTip: 'Si *#9900# ne fait rien sur Samsung : désactivez Auto Blocker, ou utilisez Samsung Members → Assistance → Rapports d’erreurs.',
                 navHome: 'Accueil',
                 navAndroidAdvanced: 'ADB avancé',
                 navIphonePage: 'iPhone (sysdiagnose)',
@@ -1461,9 +1309,10 @@
                 refreshList: 'Actualiser',
                 analyzeSelected: 'Analyser le bug report',
                 uploadDesc: 'Envoyez un fichier bug report depuis votre ordinateur.',
-                uploadDrop: 'Cliquez ou glissez un fichier bug report ici',
-                uploadFormats: 'Formats .zip, .txt',
-                analyzeUploaded: 'Analyser le fichier envoyé',
+                uploadDrop: 'Déposez un bugreport ici, ou parcourir',
+                uploadFormats: '.zip ou .txt',
+                uploadClear: 'Effacer',
+                analyzeUploaded: 'Analyser le bugreport',
                 pwnedDetection: '🔍 Détection des résultats',
                 sigmaRules: 'Règles',
                 sigmaMatches: 'Correspondances',
@@ -1690,7 +1539,7 @@
                 navGitHub: 'GitHub'
             },
             zh: {
-                pageVersion: 'v0.3.2-beta • 更新于 2026年8月8日',
+                pageVersion: 'v0.4.0-beta • 更新于 2026年8月9日',
                 wasmLoading: '加载中…',
                 wasmReady: '就绪',
                 wasmFailed: '失败',
@@ -1718,7 +1567,20 @@
                 ingestPhaseConnect: '正在连接设备…',
                 ingestPhaseDownload: '正在下载 bugreport…',
                 ingestPhaseCollect: '正在设备上收集 bugreport…',
-                helpTitle: '📖 如何获取 Bug Report',
+                helpTitle: '如何获取 bugreport',
+                helpIntro: '可通过 USB 在浏览器中拉取，或在手机上采集后上传文件。',
+                helpUsbTitle: '通过本页 USB',
+                helpUsb1: '开启开发者选项（关于手机 → 连续点击版本号 7 次）。',
+                helpUsb2: '开启 USB 调试，连接手机并允许提示。',
+                helpUsb3: '使用下方的“生成新报告”或“从设备”。',
+                helpUsb4: '完成后请关闭 USB 调试。',
+                helpOnDeviceTitle: '或在手机上采集，再使用“上传文件”',
+                helpBrandSamsung: '三星 — 拨号 *#9900# → dumpstate → 复制到 sdcard → /log',
+                helpBrandXiaomi: '小米 / POCO — 拨号 *#*#284#*#* → /MIUI/debug_log',
+                helpBrandOneplus: '一加 / OPPO / realme — 拨号 *#800#（LogKit）→ /Android/data/com.oplus.logkit',
+                helpBrandHuawei: '华为 / 荣耀 — 拨号 *#*#2846579#*#* → /log',
+                helpBrandPixel: 'Pixel / Motorola / Sony — 开发者选项 → 获取 bug 报告 → 从通知分享',
+                helpSamsungTip: '若三星 *#9900# 无效：关闭自动拦截器，或使用 Samsung Members → 支持 → 错误报告。',
                 navHome: '首页',
                 navAndroidAdvanced: '高级 ADB',
                 navIphonePage: 'iPhone（sysdiagnose）',
@@ -1784,9 +1646,10 @@
                 refreshList: '刷新',
                 analyzeSelected: '分析 bugreport',
                 uploadDesc: '从电脑上传 bugreport 文件。',
-                uploadDrop: '点击或拖拽 bugreport 文件到此处',
-                uploadFormats: '支持 .zip、.txt 文件',
-                analyzeUploaded: '分析已上传文件',
+                uploadDrop: '拖拽 bugreport 到此处，或浏览文件',
+                uploadFormats: '.zip 或 .txt',
+                uploadClear: '清除',
+                analyzeUploaded: '分析 bugreport',
                 pwnedDetection: '🔍 检测结果',
                 sigmaRules: '规则',
                 sigmaMatches: '匹配',
@@ -8898,51 +8761,93 @@
             }
         }
 
-        // File upload handling
-        window.handleFileSelect = function(event) {
-            const file = event.target.files[0];
+        function updateAndroidUploadPanel(file) {
+            const zone = document.getElementById('upload-zone');
+            const empty = document.getElementById('upload-empty');
+            const selected = document.getElementById('upload-selected');
+            const nameEl = document.getElementById('upload-file-name');
+            const sizeEl = document.getElementById('upload-file-size');
+            const analyzeBtn = document.getElementById('btn-analyze-upload');
+            if (!zone || !empty || !selected) return;
             if (file) {
-                uploadedFile = file;
-                const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-                document.getElementById('btn-analyze-upload').classList.remove('hidden');
-                
-                if (file.size > 50 * 1024 * 1024) {
-                    showStatus(`⚠️ Large file loaded: ${file.name} (${sizeMB} MB) - Analysis may take 30-60 seconds`, 'info');
-                } else {
-                    showStatus(`✓ File loaded: ${file.name} (${sizeMB} MB)`, 'success');
+                zone.classList.add('upload-zone--has-file');
+                empty.classList.add('hidden');
+                selected.classList.remove('hidden');
+                if (nameEl) {
+                    nameEl.textContent = file.name;
+                    nameEl.title = file.name;
                 }
+                if (sizeEl) sizeEl.textContent = formatBytes(file.size);
+                if (analyzeBtn) analyzeBtn.classList.remove('hidden');
+            } else {
+                zone.classList.remove('upload-zone--has-file');
+                empty.classList.remove('hidden');
+                selected.classList.add('hidden');
+                if (nameEl) {
+                    nameEl.textContent = '—';
+                    nameEl.removeAttribute('title');
+                }
+                if (sizeEl) sizeEl.textContent = '—';
+                if (analyzeBtn) analyzeBtn.classList.add('hidden');
             }
         }
 
+        function setAndroidUploadedFile(file) {
+            uploadedFile = file || null;
+            updateAndroidUploadPanel(uploadedFile);
+            if (!uploadedFile) return;
+            const sizeMB = (uploadedFile.size / 1024 / 1024).toFixed(2);
+            if (uploadedFile.size > 50 * 1024 * 1024) {
+                showStatus(`⚠️ Large file loaded: ${uploadedFile.name} (${sizeMB} MB) - Analysis may take 30-60 seconds`, 'info');
+            } else {
+                showStatus(`✓ File loaded: ${uploadedFile.name} (${sizeMB} MB)`, 'success');
+            }
+        }
+
+        // File upload handling
+        window.handleFileSelect = function(event) {
+            const file = event.target.files[0];
+            if (file) setAndroidUploadedFile(file);
+        };
+
         // Drag and drop
         const uploadZone = document.getElementById('upload-zone');
-        
-        uploadZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadZone.classList.add('dragover');
-        });
+        const uploadInput = document.getElementById('file-input');
 
-        uploadZone.addEventListener('dragleave', () => {
-            uploadZone.classList.remove('dragover');
-        });
-
-        uploadZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadZone.classList.remove('dragover');
-            
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                uploadedFile = file;
-                const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-                document.getElementById('btn-analyze-upload').classList.remove('hidden');
-                
-                if (file.size > 50 * 1024 * 1024) {
-                    showStatus(`⚠️ Large file loaded: ${file.name} (${sizeMB} MB) - Analysis may take 30-60 seconds`, 'info');
-                } else {
-                    showStatus(`✓ File loaded: ${file.name} (${sizeMB} MB)`, 'success');
+        if (uploadZone) {
+            uploadZone.addEventListener('click', (e) => {
+                if (e.target.closest('#upload-clear')) return;
+                if (!uploadedFile && uploadInput) uploadInput.click();
+            });
+            uploadZone.addEventListener('keydown', (e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && !uploadedFile) {
+                    e.preventDefault();
+                    if (uploadInput) uploadInput.click();
                 }
-            }
-        });
+            });
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('dragover');
+            });
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('dragover');
+            });
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file) setAndroidUploadedFile(file);
+            });
+        }
+
+        const uploadClear = document.getElementById('upload-clear');
+        if (uploadClear) {
+            uploadClear.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (uploadInput) uploadInput.value = '';
+                setAndroidUploadedFile(null);
+            });
+        }
 
         // Analyze uploaded file
         window.analyzeUploadedFile = async function() {

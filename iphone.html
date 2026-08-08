@@ -26,7 +26,7 @@
                     <h1 class="logo-text">IsMyPhonePwned ?</h1>
                     <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400;" data-i18n="pageSubtitle">iPhone · sysdiagnose</span>
                     <span class="page-version">
-                        <span data-i18n="pageVersion">v0.3.2-beta • Updated 8 August 2026</span>
+                        <span data-i18n="pageVersion">v0.4.0-beta • Updated 9 August 2026</span>
                         <span class="page-version-edition" title="DEF CON edition">
                             <img class="page-version-edition-logo" src="assets/defcon31-logo.png" alt="" width="18" height="18" decoding="async">
                             <span>defcon edition</span>
@@ -99,6 +99,41 @@
         </div>
 
 
+        <div class="howto-guide howto-guide--ios">
+            <div class="howto-guide__head">
+                <div class="howto-guide__title-wrap">
+                    <span class="howto-guide__badge" aria-hidden="true">?</span>
+                    <h2 class="howto-guide__title" data-i18n="helpTitle">How to get a sysdiagnose</h2>
+                </div>
+                <button type="button" class="section-toggle collapsed" onclick="toggleSection('help-guide')" aria-label="Toggle guide">▼</button>
+            </div>
+            <div class="section-content howto-guide__body collapsed" id="help-guide-content">
+                <p class="howto-guide__intro" data-i18n="helpIntro">Trigger a sysdiagnose on the iPhone, then pull it over USB here or upload a .tar.gz you already have.</p>
+                <div class="howto-guide__blocks">
+                    <div class="howto-guide__block howto-guide__block--trigger">
+                        <h3 class="howto-guide__label" data-i18n="helpTriggerTitle">Trigger on the iPhone</h3>
+                        <ol class="howto-guide__list">
+                            <li data-i18n="helpTrigger1">Press and release Volume Up, Volume Down, and the Side button together (~0.7s). Holding too long locks the device.</li>
+                            <li data-i18n="helpTrigger2">Wait about 5 minutes for collection to finish (many models vibrate when done).</li>
+                        </ol>
+                    </div>
+                    <div class="howto-guide__block howto-guide__block--usb">
+                        <h3 class="howto-guide__label" data-i18n="helpUsbTitle">Pull via USB (this page)</h3>
+                        <ol class="howto-guide__list">
+                            <li data-i18n="helpUsb1">Use Chrome or Edge on desktop (not Safari/Firefox). Unlock the iPhone.</li>
+                            <li data-i18n="helpUsb2">Connect USB, Request iPhone, then pair (accept Trust) or load a pair-record plist.</li>
+                            <li data-i18n="helpUsb3">Refresh archives, select a .tar.gz, and analyze in the browser.</li>
+                        </ol>
+                        <p class="howto-guide__note howto-guide__note--muted" data-i18n="helpUsbNote">On Linux, stop usbmuxd if it already claimed the USB device. Pairing stays in this tab only.</p>
+                    </div>
+                    <div class="howto-guide__block howto-guide__block--upload">
+                        <h3 class="howto-guide__label" data-i18n="helpUploadTitle">Or upload a file</h3>
+                        <p class="howto-guide__note howto-guide__note--muted" style="margin:0;" data-i18n="helpUploadTip">Use Upload File with an existing sysdiagnose_*.tar.gz.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="section">
             <h2 data-i18n="iphoneTitle">Sysdiagnose archive</h2>
             <p data-i18n="sysdiagnoseDesc">Connect your iPhone over USB (Chromium + WebUSB) to pull an existing sysdiagnose archive, or upload a .tar.gz from your computer. Parsing runs in your browser.</p>
@@ -114,16 +149,6 @@
 
             <div id="tab-iphone-device">
             <div class="idevice-workspace" id="iphone-idevice-connect">
-                <details class="toggle-block" style="margin-bottom: 0.85rem;">
-                    <summary data-i18n="sysdiagnoseTriggerTitle">How to trigger sysdiagnose on the iPhone</summary>
-                    <ol style="margin: 0.75rem 0 0.15rem 1.25rem; font-size: 0.875rem; color: var(--text-secondary); line-height: 1.55;">
-                        <li data-i18n="iosStepTrigger">Trigger sysdiagnose on the phone (Volume Up, Volume Down, Side — ~0.7s), wait ~5 minutes.</li>
-                        <li data-i18n="iosStepConnect">Connect USB and request the Apple device in the browser.</li>
-                        <li data-i18n="iosStepPair">Generate or load a pair record (Trust This Computer).</li>
-                        <li data-i18n="iosStepPull">Refresh the archive list, select one, and analyze in the browser.</li>
-                    </ol>
-                </details>
-
                 <div class="status-bar" aria-label="Connection status">
                     <div class="status-item" id="st-device" data-state="off">
                         <span class="pill"></span>
@@ -211,13 +236,10 @@
             <div id="tab-iphone-upload" class="hidden">
                 <div class="sysdiagnose-file-drop" id="sysdiagnose-upload-zone" role="button" tabindex="0" aria-label="Upload sysdiagnose archive">
                     <div id="sysdiagnose-upload-empty" class="sysdiagnose-file-drop__empty">
-                        <span class="sysdiagnose-file-drop__icon-wrap" aria-hidden="true">🍎</span>
-                        <span class="sysdiagnose-file-drop__prompt" data-i18n="sysdiagnoseDrop">Click or drag sysdiagnose .tar.gz here</span>
-                        <span class="sysdiagnose-file-drop__formats" data-i18n="sysdiagnoseFormats">Typically named sysdiagnose_*.tar.gz</span>
-                        <span class="sysdiagnose-file-drop__browse" data-i18n="sysdiagnoseBrowse">Browse file…</span>
+                        <span class="sysdiagnose-file-drop__prompt" data-i18n="sysdiagnoseDrop">Drop a sysdiagnose archive here, or browse</span>
+                        <span class="sysdiagnose-file-drop__formats" data-i18n="sysdiagnoseFormats">.tar.gz · usually sysdiagnose_*.tar.gz</span>
                     </div>
                     <div id="sysdiagnose-upload-selected" class="sysdiagnose-file-drop__selected hidden">
-                        <span class="sysdiagnose-file-drop__file-icon" aria-hidden="true">📦</span>
                         <div class="sysdiagnose-file-drop__meta">
                             <span id="sysdiagnose-upload-name" class="sysdiagnose-file-drop__name">—</span>
                             <span id="sysdiagnose-upload-size" class="sysdiagnose-file-drop__size">—</span>
@@ -226,17 +248,8 @@
                     </div>
                 </div>
                 <input type="file" id="sysdiagnose-file-input" class="hidden" accept=".tar.gz,.tgz,application/gzip" onchange="window.handleSysdiagnoseFileSelect(event)">
-                <div id="sysdiagnose-upload-ready" class="sysdiagnose-upload-ready">
-                    <span class="sysdiagnose-upload-ready__title" data-i18n="uploadReadyTitle">Ready to analyze</span>
-                    <ul class="sysdiagnose-upload-ready__list">
-                        <li id="sysdiagnose-ready-file" class="sysdiagnose-upload-ready__item">
-                            <span class="sysdiagnose-upload-ready__dot" aria-hidden="true"></span>
-                            <span data-i18n="uploadReadyFile">Archive file selected</span>
-                        </li>
-                    </ul>
-                </div>
                 <div class="sysdiagnose-upload-actions">
-                    <button id="btn-analyze-sysdiagnose" class="hidden sysdiagnose-picker-analyze" onclick="window.analyzeSysdiagnoseFile()" data-i18n="analyzeSysdiagnoseBtn">Analyze sysdiagnose</button>
+                    <button type="button" id="btn-analyze-sysdiagnose" class="hidden sysdiagnose-picker-analyze" onclick="window.analyzeSysdiagnoseFile()" data-i18n="analyzeSysdiagnoseBtn">Analyze sysdiagnose</button>
                 </div>
             </div>
         </div>
@@ -627,7 +640,7 @@
         window.IPHONE_I18N = {
             en: {
                 pageSubtitle: 'iPhone · sysdiagnose',
-                pageVersion: 'v0.3.2-beta • Updated 8 August 2026',
+                pageVersion: 'v0.4.0-beta • Updated 9 August 2026',
                 wasmLoading: '⏳ Loading…',
                 wasmReady: '✓ Ready',
                 wasmFailed: '❌ Failed to load',
@@ -687,21 +700,18 @@
                 pairingInProgress: 'Pairing… accept Trust on the iPhone',
                 pairingOk: 'Paired — you can refresh archives.',
                 pairingFail: 'Pairing failed',
-                iphoneAcquireTitle: '📖 iOS acquisition (WebUSB)',
-                iphoneAcquireWebUsbTitle: 'WebUSB requirements',
-                iphoneAcquireWebUsb1: 'Chromium browser (Chrome, Edge, Brave) on desktop — not Safari/Firefox.',
-                iphoneAcquireWebUsb2: 'Secure context: https:// or http://127.0.0.1/ (use scripts/test-local.sh for local dev).',
-                iphoneAcquireWebUsb3: 'USB cable · unlock iPhone · on Linux stop usbmuxd if it claims the device.',
-                iphoneAcquirePairTitle: 'Pairing (like idevice-rs)',
-                iphoneAcquirePair1: 'Pick iPhone — browser USB picker (user gesture required).',
-                iphoneAcquirePair2: 'Pair record — Generate (random or legacy) or load XML plist. Accept Trust on device (~10–30 s).',
-                iphoneAcquirePair3: 'Pair record cached in this browser — reuse or export via Download .plist.',
-                iphoneAcquireSysTitle: 'Sysdiagnose archive',
-                iphoneAcquireSys1: 'On device: Vol Up + Vol Down + Side ~0.7 s.',
-                iphoneAcquireSys2: 'Wait ~5–10 minutes for collection.',
-                iphoneAcquireSys3: 'Connect, pair, refresh list, download .tar.gz, analyze here.',
-                iphoneAcquireAdvTitle: 'Advanced captures',
-                iphoneAcquireAdvBlurb: 'For syslog, network pcap, crash reports, diagnostics, screenshot: use iPhone Advanced (same pairing, idevice-rs WASM).',
+                helpTitle: 'How to get a sysdiagnose',
+                helpIntro: 'Trigger a sysdiagnose on the iPhone, then pull it over USB here or upload a .tar.gz you already have.',
+                helpTriggerTitle: 'Trigger on the iPhone',
+                helpTrigger1: 'Press and release Volume Up, Volume Down, and the Side button together (~0.7s). Holding too long locks the device.',
+                helpTrigger2: 'Wait about 5 minutes for collection to finish (many models vibrate when done).',
+                helpUsbTitle: 'Pull via USB (this page)',
+                helpUsb1: 'Use Chrome or Edge on desktop (not Safari/Firefox). Unlock the iPhone.',
+                helpUsb2: 'Connect USB, Request iPhone, then pair (accept Trust) or load a pair-record plist.',
+                helpUsb3: 'Refresh archives, select a .tar.gz, and analyze in the browser.',
+                helpUsbNote: 'On Linux, stop usbmuxd if it already claimed the USB device. Pairing stays in this tab only.',
+                helpUploadTitle: 'Or upload a file',
+                helpUploadTip: 'Use Upload File with an existing sysdiagnose_*.tar.gz.',
                 iphoneStepDevice: '1 · Device',
                 iphoneStepPair: '2 · Pair record',
                 iphoneStepArchives: '3 · Sysdiagnose archives',
@@ -744,9 +754,8 @@
                 iphoneTitle: 'Sysdiagnose archive',
                 sysdiagnoseDesc:
                     'Connect your iPhone over USB (Chromium + WebUSB) to pull an existing sysdiagnose archive, or upload a .tar.gz from your computer. Parsing runs in your browser.',
-                sysdiagnoseDrop: 'Click or drag sysdiagnose .tar.gz here',
-                sysdiagnoseFormats: 'Typically named sysdiagnose_*.tar.gz',
-                sysdiagnoseBrowse: 'Browse file…',
+                sysdiagnoseDrop: 'Drop a sysdiagnose archive here, or browse',
+                sysdiagnoseFormats: '.tar.gz · usually sysdiagnose_*.tar.gz',
                 sysdiagnoseClearFile: 'Clear',
                 sysdiagnoseFileBadge: 'iOS sysdiagnose',
                 sysdiagnoseBadgeOk: 'All parsers OK',
@@ -755,8 +764,6 @@
                 sysdiagnoseFileMetaCount: '{n} files in archive',
                 analyzeSysdiagnoseBtn: 'Analyze sysdiagnose',
                 chooseSysdiagnoseFile: 'Choose a .tar.gz file first',
-                uploadReadyTitle: 'Ready to analyze',
-                uploadReadyFile: 'Archive file selected',
                 ingestProgressTitle: 'Analyzing archive',
                 ingestProgressDone: 'Analysis complete',
                 ingestProgressError: 'Analysis failed',
@@ -1233,7 +1240,7 @@
             },
             fr: {
                 pageSubtitle: 'iPhone · sysdiagnose',
-                pageVersion: 'v0.3.2-beta • Mis à jour le 8 août 2026',
+                pageVersion: 'v0.4.0-beta • Mis à jour le 9 août 2026',
                 wasmLoading: '⏳ Chargement...',
                 wasmReady: '✓ Prêt',
                 wasmFailed: '❌ Échec du chargement',
@@ -1290,6 +1297,18 @@
                 pairingInProgress: 'Association… acceptez Trust sur l’iPhone',
                 pairingOk: 'Associé — vous pouvez actualiser les archives.',
                 pairingFail: 'Échec de l’association',
+                helpTitle: 'Comment obtenir un sysdiagnose',
+                helpIntro: 'Déclenchez un sysdiagnose sur l’iPhone, puis récupérez-le via USB ici ou importez un .tar.gz déjà disponible.',
+                helpTriggerTitle: 'Déclencher sur l’iPhone',
+                helpTrigger1: 'Appuyez et relâchez Volume +, Volume − et le bouton latéral ensemble (~0,7 s). Trop long verrouille l’appareil.',
+                helpTrigger2: 'Attendez environ 5 minutes (vibration à la fin sur de nombreux modèles).',
+                helpUsbTitle: 'Récupérer via USB (cette page)',
+                helpUsb1: 'Utilisez Chrome ou Edge sur ordinateur (pas Safari/Firefox). Déverrouillez l’iPhone.',
+                helpUsb2: 'Branchez en USB, demandez l’iPhone, puis associez (Faire confiance) ou chargez un plist d’appairage.',
+                helpUsb3: 'Actualisez les archives, choisissez un .tar.gz, puis analysez dans le navigateur.',
+                helpUsbNote: 'Sous Linux, arrêtez usbmuxd s’il a déjà pris l’USB. L’appairage reste dans cet onglet uniquement.',
+                helpUploadTitle: 'Ou importer un fichier',
+                helpUploadTip: 'Utilisez Importer un fichier avec un sysdiagnose_*.tar.gz existant.',
                 sysdiagnoseTriggerTitle: 'Déclencher sysdiagnose sur l’iPhone',
                 sysdiagnoseTrigger1: 'Appuyez et relâchez Volume +, Volume − et le bouton latéral ensemble (~0,7 s). Trop long verrouille l’appareil.',
                 sysdiagnoseTrigger2: 'Attendez environ 5 minutes (vibration à la fin sur de nombreux modèles).',
@@ -1318,9 +1337,8 @@
                 iphoneTitle: 'Archive sysdiagnose',
                 sysdiagnoseDesc:
                     'Connectez l’iPhone en USB (Chromium + WebUSB) pour récupérer une archive sysdiagnose, ou importez un .tar.gz depuis votre ordinateur. L’analyse tourne dans le navigateur.',
-                sysdiagnoseDrop: 'Cliquez ou déposez le .tar.gz ici',
-                sysdiagnoseFormats: 'Souvent nommé sysdiagnose_*.tar.gz',
-                sysdiagnoseBrowse: 'Parcourir…',
+                sysdiagnoseDrop: 'Déposez une archive sysdiagnose ici, ou parcourir',
+                sysdiagnoseFormats: '.tar.gz · souvent sysdiagnose_*.tar.gz',
                 sysdiagnoseClearFile: 'Effacer',
                 sysdiagnoseFileBadge: 'Sysdiagnose iOS',
                 sysdiagnoseBadgeOk: 'Tous les parseurs OK',
@@ -1329,8 +1347,6 @@
                 sysdiagnoseFileMetaCount: '{n} fichiers dans l’archive',
                 analyzeSysdiagnoseBtn: 'Analyser sysdiagnose',
                 chooseSysdiagnoseFile: 'Choisissez d’abord un fichier .tar.gz',
-                uploadReadyTitle: 'Prêt à analyser',
-                uploadReadyFile: 'Archive sélectionnée',
                 ingestProgressTitle: 'Analyse de l’archive',
                 ingestProgressDone: 'Analyse terminée',
                 ingestProgressError: 'Échec de l’analyse',
@@ -1807,7 +1823,7 @@
             },
             zh: {
                 pageSubtitle: 'iPhone · sysdiagnose',
-                pageVersion: 'v0.3.2-beta • 更新于 2026年8月8日',
+                pageVersion: 'v0.4.0-beta • 更新于 2026年8月9日',
                 wasmLoading: '⏳ 加载中...',
                 wasmReady: '✓ 就绪',
                 wasmFailed: '❌ 加载失败',
@@ -1863,6 +1879,18 @@
                 pairingInProgress: '正在配对… 请在 iPhone 上接受信任',
                 pairingOk: '已配对 — 可以刷新归档。',
                 pairingFail: '配对失败',
+                helpTitle: '如何获取 sysdiagnose',
+                helpIntro: '在 iPhone 上触发 sysdiagnose，然后通过 USB 在此拉取，或上传已有的 .tar.gz。',
+                helpTriggerTitle: '在 iPhone 上触发',
+                helpTrigger1: '同时按下并松开音量+、音量−和侧边键（约 0.7 秒）。按太久会锁屏。',
+                helpTrigger2: '等待约 5 分钟完成采集（许多机型结束时振动）。',
+                helpUsbTitle: '通过 USB 拉取（本页）',
+                helpUsb1: '使用桌面版 Chrome 或 Edge（非 Safari/Firefox）。先解锁 iPhone。',
+                helpUsb2: '连接 USB，请求 iPhone，然后配对（信任此电脑）或加载配对 plist。',
+                helpUsb3: '刷新归档列表，选择 .tar.gz，并在浏览器中分析。',
+                helpUsbNote: '在 Linux 上若 usbmuxd 已占用 USB，请先停止它。配对仅保存在本标签页。',
+                helpUploadTitle: '或上传文件',
+                helpUploadTip: '使用“上传文件”导入已有的 sysdiagnose_*.tar.gz。',
                 sysdiagnoseTriggerTitle: '如何在 iPhone 上触发 sysdiagnose',
                 sysdiagnoseTrigger1: '同时按下并松开音量+、音量−和侧边键（约 0.7 秒）。按太久会锁屏。',
                 sysdiagnoseTrigger2: '等待约 5 分钟完成采集（许多机型结束时振动）。',
@@ -1888,9 +1916,8 @@
                 downloadComplete: '已下载 {name}（{size}）— 开始分析…',
                 iphoneTitle: 'Sysdiagnose 归档',
                 sysdiagnoseDesc: '通过 USB（Chromium + WebUSB）从设备拉取 sysdiagnose，或上传本地 .tar.gz。解析在浏览器中完成。',
-                sysdiagnoseDrop: '点击或拖拽 .tar.gz 到此处',
-                sysdiagnoseFormats: '通常为 sysdiagnose_*.tar.gz',
-                sysdiagnoseBrowse: '浏览文件…',
+                sysdiagnoseDrop: '拖拽 sysdiagnose 归档到此处，或浏览文件',
+                sysdiagnoseFormats: '.tar.gz · 通常为 sysdiagnose_*.tar.gz',
                 sysdiagnoseClearFile: '清除',
                 sysdiagnoseFileBadge: 'iOS sysdiagnose',
                 sysdiagnoseBadgeOk: '全部解析成功',
@@ -1899,8 +1926,6 @@
                 sysdiagnoseFileMetaCount: '归档内 {n} 个文件',
                 analyzeSysdiagnoseBtn: '分析 sysdiagnose',
                 chooseSysdiagnoseFile: '请先选择 .tar.gz 文件',
-                uploadReadyTitle: '可以开始分析',
-                uploadReadyFile: '已选择归档文件',
                 ingestProgressTitle: '正在分析归档',
                 ingestProgressDone: '分析完成',
                 ingestProgressError: '分析失败',
@@ -3119,11 +3144,6 @@
             }
         }
 
-        function updateSysdiagnoseUploadReady(hasFile) {
-            var item = document.getElementById('sysdiagnose-ready-file');
-            if (item) item.classList.toggle('sysdiagnose-upload-ready__item--ok', !!hasFile);
-        }
-
         function updateSysdiagnoseUploadPanel(file) {
             var zone = document.getElementById('sysdiagnose-upload-zone');
             var empty = document.getElementById('sysdiagnose-upload-empty');
@@ -3140,13 +3160,15 @@
                     nameEl.title = file.name;
                 }
                 if (sizeEl) sizeEl.textContent = formatBytes(file.size);
-                updateSysdiagnoseUploadReady(true);
             } else {
                 zone.classList.remove('sysdiagnose-file-drop--has-file');
                 empty.classList.remove('hidden');
                 selected.classList.add('hidden');
-                if (nameEl) nameEl.removeAttribute('title');
-                updateSysdiagnoseUploadReady(false);
+                if (nameEl) {
+                    nameEl.textContent = '—';
+                    nameEl.removeAttribute('title');
+                }
+                if (sizeEl) sizeEl.textContent = '—';
             }
         }
 

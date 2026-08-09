@@ -7,299 +7,11 @@
     <link rel="icon" href="favicon.ico" sizes="any">
     <link rel="apple-touch-icon" href="logo.png">
     <link rel="stylesheet" href="assets/site.css">
+    <link rel="stylesheet" href="assets/android-dashboard.css">
     <script src="assets/sigma-rules-urls.js"></script>
+    <script src="assets/sigma-match-ui.js"></script>
     <script src="assets/timeline-view.js" defer></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --bg-primary: #ffffff;
-            --bg-secondary: #f5f5f5;
-            --bg-card: #ffffff;
-            --text-primary: #1a1a1a;
-            --text-secondary: #666666;
-            --border: #e0e0e0;
-            --accent: #2196F3;
-            --accent-hover: #1976D2;
-            --success: #4CAF50;
-            --warning: #FF9800;
-            --error: #f44336;
-            --sigma-medium: #F59E0B;
-            --sigma-low: #3B82F6;
-            --shadow: rgba(0, 0, 0, 0.1);
-        }
-
-        [data-theme="dark"] {
-            --bg-primary: #1a1a1a;
-            --bg-secondary: #2d2d2d;
-            --bg-card: #252525;
-            --text-primary: #e0e0e0;
-            --text-secondary: #a0a0a0;
-            --border: #404040;
-            --accent: #42A5F5;
-            --accent-hover: #64B5F6;
-            --success: #66BB6A;
-            --warning: #FFA726;
-            --error: #EF5350;
-            --sigma-medium: #FBBF24;
-            --sigma-low: #60A5FA;
-            --shadow: rgba(0, 0, 0, 0.3);
-        }
-
-        html {
-            -webkit-text-size-adjust: 100%;
-            overflow-x: hidden;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            line-height: 1.6;
-            transition: background-color 0.3s, color 0.3s;
-            overflow-x: hidden;
-            min-width: 0;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem 1rem;
-            width: 100%;
-        }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 3rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .logo-text {
-            font-size: 1.75rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin: 0;
-        }
-
-        .theme-toggle {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.875rem;
-            color: var(--text-primary);
-            transition: all 0.2s;
-        }
-
-        .theme-toggle:hover {
-            background: var(--accent);
-            color: white;
-            border-color: var(--accent);
-        }
-
-        .section {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 2px 4px var(--shadow);
-        }
-
-        .section h2 {
-            font-size: 1.125rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            color: var(--text-primary);
-        }
-
-        .result-card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .result-card h3 {
-            font-size: 1rem;
-            font-weight: 600;
-            margin-bottom: 0.75rem;
-            color: var(--text-primary);
-        }
-
-        .result-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-        }
-
-        .result-item {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 1rem;
-        }
-
-        .result-item-label {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 0.25rem;
-        }
-
-        .result-item-value {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .section-toggle {
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
-            font-size: 1rem;
-            padding: 0.25rem;
-            transition: transform 0.2s;
-        }
-
-        .section-toggle:hover {
-            color: var(--text-primary);
-        }
-
-        .section-toggle.collapsed {
-            transform: rotate(-90deg);
-        }
-
-        .section-content {
-            transition: max-height 0.3s ease, opacity 0.3s ease;
-            overflow: hidden;
-        }
-
-        .section-content.collapsed {
-            max-height: 0;
-            opacity: 0;
-        }
-
-        .count-badge {
-            background: var(--accent);
-            color: white;
-            border-radius: 12px;
-            padding: 0.25rem 0.5rem;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .section-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 0.5rem;
-        }
-
-        .data-table-container {
-            overflow-x: auto;
-            margin-top: 1rem;
-        }
-
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.875rem;
-        }
-
-        .data-table th,
-        .data-table td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .data-table th {
-            background: var(--bg-secondary);
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .data-table tr:hover {
-            background: var(--bg-secondary);
-        }
-
-        .toggle-icon {
-            color: var(--text-secondary);
-            font-size: 0.75rem;
-            transition: transform 0.2s ease;
-        }
-
-        .search-box {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-            padding: 0.5rem;
-            background: var(--bg-secondary);
-            border-radius: 6px;
-        }
-
-        .search-box input {
-            flex: 1;
-            padding: 0.5rem;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            background: var(--bg-card);
-            color: var(--text-primary);
-            font-size: 0.875rem;
-        }
-
-        .package-item {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 1rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .sigma-matched-log {
-            margin-top: 0.5rem;
-            padding-top: 0.5rem;
-            border-top: 1px solid var(--border);
-        }
-
-        .sigma-matched-log summary {
-            cursor: pointer;
-            font-weight: 500;
-            color: var(--text-secondary);
-            user-select: none;
-            list-style: none;
-        }
-
-        .sigma-matched-log summary::-webkit-details-marker { display: none; }
-        .sigma-matched-log summary::before {
-            content: '▶ ';
-            font-size: 0.7em;
-        }
-        .sigma-matched-log[open] summary::before {
-            content: '▼ ';
-        }
-        .sigma-matched-log-body {
-            margin-top: 0.35rem;
-            font-family: monospace;
-            font-size: 0.8rem;
-        }
-
         .info-banner {
             background: rgba(33, 150, 243, 0.1);
             border: 1px solid var(--accent);
@@ -308,71 +20,11 @@
             margin-bottom: 2rem;
             color: var(--accent);
         }
-
-        code {
-            background: var(--bg-secondary);
-            padding: 0.125rem 0.25rem;
-            border-radius: 3px;
-            font-family: monospace;
-            font-size: 0.9em;
-        }
-
-        pre {
-            margin: 0;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-
         @media (max-width: 768px) {
-            .container {
-                padding: 1rem 0.75rem;
-            }
-            header {
-                flex-wrap: wrap;
-                gap: 0.75rem;
-                margin-bottom: 1.5rem;
-            }
-            .logo-text {
-                font-size: 1.25rem;
-            }
-            .section, .result-card {
-                padding: 1rem;
-            }
-            .result-grid {
-                grid-template-columns: 1fr;
-            }
-            .result-item-value {
-                font-size: 1rem;
-            }
-            .data-table-container {
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-            }
-            .data-table {
-                min-width: 320px;
-            }
             .info-banner {
                 padding: 0.75rem 1rem;
                 margin-bottom: 1rem;
                 font-size: 0.875rem;
-            }
-            .theme-toggle {
-                min-height: 44px;
-                min-width: 44px;
-            }
-            button.secondary,
-            .section-toggle {
-                min-height: 44px;
-                min-width: 44px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .container {
-                padding: 0.75rem max(0.5rem, env(safe-area-inset-left)) 0.75rem max(0.5rem, env(safe-area-inset-right));
-            }
-            .logo-text {
-                font-size: 1.1rem;
             }
         }
     </style>
@@ -380,9 +32,18 @@
 <body>
     <div class="container">
         <header>
-            <div>
-                <h1 class="logo-text">IsMyPhonePwned ?</h1>
-                <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.875rem;">Example Results Page • v0.4.0-beta • Updated 9 August 2026</p>
+            <div class="logo-container">
+                <img src="logo.png" alt="IsMyPhonePwned Logo" class="logo" onerror="this.style.display='none';">
+                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <h1 class="logo-text">IsMyPhonePwned ?</h1>
+                    <span class="page-version">
+                        <span>v0.4.0-beta • Updated 9 August 2026 · Example</span>
+                        <span class="page-version-edition" title="DEF CON edition">
+                            <img class="page-version-edition-logo" src="assets/defcon31-logo.png" alt="" width="18" height="18" decoding="async">
+                            <span>defcon edition</span>
+                        </span>
+                    </span>
+                </div>
             </div>
             <div class="header-actions">
                 <div class="header-toolbar" role="toolbar" aria-label="Theme">
@@ -398,7 +59,7 @@
             <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
             <a href="android.html">Android (live analyzer)</a>
             <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
-            <a href="bugreport-status.html">Rules &amp; parsers reference</a>
+            <a href="bugreport-status.html">Rules &amp; parsers status</a>
             <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
             <a href="intrusion-logs.html">Intrusion logs</a>
         </nav>
@@ -410,257 +71,267 @@
 
         <!-- Results -->
         <div id="results" class="results show">
-            <!-- Pwned Results Detection -->
-            <div class="section" id="detection-section">
-                <h2>🔍 Pwned Results Detection</h2>
-                <div class="subsection" style="margin-top: 0.75rem;">
-                    <h4 style="font-size: 0.95rem; font-weight: 600; margin: 0 0 0.5rem 0; color: var(--text-secondary);">Sigma</h4>
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.5rem; gap: 0.5rem;">
-                        <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-primary);">Rules</span>
-                        <button class="section-toggle collapsed" onclick="toggleSection('sigma-rules')">▼</button>
+            <div id="results-hero" class="results-hero results-hero--clean" hidden>
+                <div class="results-hero-main">
+                    <div class="results-hero-icon" id="results-hero-icon" aria-hidden="true">✓</div>
+                    <div>
+                        <div class="results-hero-title" id="results-hero-title" data-i18n="resultsHeroTitleClean">Analysis complete</div>
+                        <div class="results-hero-sub" id="results-hero-sub">—</div>
                     </div>
-                    <div class="section-content collapsed" id="sigma-rules-content" style="margin-top: 0.5rem;">
-                        <div id="sigma-rules-container" style="font-size: 0.875rem; color: var(--text-primary);"></div>
+                </div>
+                <div class="results-hero-metrics" id="results-hero-metrics" aria-label="Summary metrics"></div>
+            </div>
+
+            <!-- Pwned Results Detection (before Analysis Results) -->
+            <div class="section detection-panel" id="detection-section">
+                <h2 data-i18n="pwnedDetection">🔍 Pwned Results Detection</h2>
+                <div class="sigma-summary-bar" id="sigma-summary-bar" aria-live="polite"></div>
+                <div class="detection-subsection">
+                    <div class="detection-subsection-head">
+                        <span class="detection-subsection-title" data-i18n="sigmaRules">Rules</span>
+                        <button type="button" class="section-toggle collapsed" onclick="toggleSection('sigma-rules')" aria-label="Toggle rules">▼</button>
                     </div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.75rem; gap: 0.5rem;">
-                        <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-primary);">Matches</span>
-                        <button class="section-toggle" onclick="toggleSection('sigma-matches')">▼</button>
+                    <div class="section-content collapsed" id="sigma-rules-content">
+                        <div id="sigma-rules-container"></div>
                     </div>
-                    <div class="section-content" id="sigma-matches-content" style="margin-top: 0.5rem;">
-                        <div id="sigma-matches-container" style="font-size: 0.875rem; color: var(--text-primary);"></div>
+                </div>
+                <div class="detection-subsection">
+                    <div class="detection-subsection-head">
+                        <span class="detection-subsection-title" data-i18n="sigmaMatches">Matches</span>
+                        <button type="button" class="section-toggle" onclick="toggleSection('sigma-matches')" aria-label="Toggle matches">▼</button>
+                    </div>
+                    <div class="section-content" id="sigma-matches-content">
+                        <div id="sigma-matches-container"></div>
                     </div>
                 </div>
             </div>
 
             <div class="section">
-                <h2>📊 Analysis Results</h2>
-                <div id="analysis-timestamp" style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; display: block;">
-                    <span style="opacity: 0.7;">Analyzed on</span> <span id="timestamp-value"></span>
+                <h2 data-i18n="analysisResults">📊 Analysis Results</h2>
+                <div id="analysis-timestamp" class="analysis-meta" style="display: none;">
+                    <span data-i18n="analyzedOn">Analyzed on</span> <span id="timestamp-value"></span>
                 </div>
-                
-                <!-- Device Information -->
-                <div class="result-card">
-                    <h3>📱 Device Information</h3>
-                    <div class="result-grid">
-                        <div class="result-item">
-                            <div class="result-item-label">Manufacturer</div>
-                            <div class="result-item-value" id="device-manufacturer">-</div>
+
+                <div id="android-dash" class="android-dash">
+                    <nav id="android-dash-tabs" class="android-dash-tabs" role="tablist" aria-label="Investigation panels">
+                        <button type="button" class="android-dash-tab is-active" role="tab" aria-selected="true" data-dash="overview" data-i18n="dashTabOverview">Overview</button>
+                        <button type="button" class="android-dash-tab" role="tab" aria-selected="false" data-dash="apps" data-i18n="dashTabApps">Apps</button>
+                        <button type="button" class="android-dash-tab" role="tab" aria-selected="false" data-dash="network" data-i18n="dashTabNetwork">Network</button>
+                        <button type="button" class="android-dash-tab" role="tab" aria-selected="false" data-dash="auth" data-i18n="dashTabAuth">Authentication</button>
+                        <button type="button" class="android-dash-tab" role="tab" aria-selected="false" data-dash="processes" data-i18n="dashTabProcesses">Processes</button>
+                        <button type="button" class="android-dash-tab" role="tab" aria-selected="false" data-dash="crashes" data-i18n="dashTabCrashes">Crashes</button>
+                        <button type="button" class="android-dash-tab" role="tab" aria-selected="false" data-dash="system" data-i18n="dashTabSystem">System</button>
+                    </nav>
+
+                    <div id="android-dash-overview" class="android-dash-panel is-active" role="tabpanel" data-dash-panel="overview">
+                <div class="results-dashboard">
+                    <!-- Device Information -->
+                    <div class="result-card">
+                        <h3 data-i18n="deviceInfo">📱 Device Information</h3>
+                        <div class="result-grid">
+                            <div class="result-item">
+                                <div class="result-item-label" data-i18n="manufacturer">Manufacturer</div>
+                                <div class="result-item-value device-identity-value" id="device-manufacturer">-</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-item-label" data-i18n="model">Model</div>
+                                <div class="result-item-value device-identity-value" id="device-model">-</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-item-label" data-i18n="androidVersion">Android Version</div>
+                                <div class="result-item-value device-identity-value" id="device-android">-</div>
+                            </div>
+                            <div class="result-item" style="grid-column: 1 / -1;">
+                                <div class="result-item-label" data-i18n="buildId">Build ID</div>
+                                <div class="result-item-value device-identity-value mono" id="device-build">-</div>
+                            </div>
+                            <div class="result-item" style="grid-column: 1 / -1;">
+                                <div class="result-item-label" data-i18n="kernelVersion">Kernel Version</div>
+                                <div class="result-item-value device-identity-value mono" id="device-kernel">-</div>
+                            </div>
                         </div>
-                        <div class="result-item">
-                            <div class="result-item-label">Model</div>
-                            <div class="result-item-value" id="device-model">-</div>
+                    </div>
+
+                    <!-- Battery Status -->
+                    <div class="result-card" id="battery-status-card">
+                        <h3 data-i18n="batteryStatus">🔋 Battery Status</h3>
+                        <div id="battery-badges" class="battery-badges"></div>
+                        <div class="result-item-label" data-i18n="level">Level</div>
+                        <div class="result-item-value" id="battery-level" style="font-size: 1.5rem; margin-bottom: 0.25rem;">-</div>
+                        <div class="battery-gauge-wrap" aria-hidden="true">
+                            <div class="battery-gauge-track">
+                                <div class="battery-gauge-fill" id="battery-gauge-fill" style="width: 0%;"></div>
+                            </div>
                         </div>
-                        <div class="result-item">
-                            <div class="result-item-label">Android Version</div>
-                            <div class="result-item-value" id="device-android">-</div>
+                        <div class="battery-metrics">
+                            <div class="battery-metric">
+                                <div class="battery-metric-label" data-i18n="health">Health</div>
+                                <div class="battery-metric-value" id="battery-health">-</div>
+                            </div>
+                            <div class="battery-metric">
+                                <div class="battery-metric-label" data-i18n="temperature">Temperature</div>
+                                <div class="battery-metric-value" id="battery-temp">-</div>
+                            </div>
+                            <div class="battery-metric">
+                                <div class="battery-metric-label" data-i18n="voltage">Voltage</div>
+                                <div class="battery-metric-value" id="battery-voltage">-</div>
+                            </div>
+                            <div class="battery-metric">
+                                <div class="battery-metric-label" data-i18n="batteryCurrent">Current</div>
+                                <div class="battery-metric-value" id="battery-current">-</div>
+                            </div>
                         </div>
-                        <div class="result-item">
-                            <div class="result-item-label">Build ID</div>
-                            <div class="result-item-value" id="device-build" style="font-size: 0.9rem;">-</div>
+                        <p id="battery-sample-meta" class="battery-sample-meta" hidden></p>
+                        <div id="battery-soc-chart-wrap" class="battery-soc-chart-wrap hidden">
+                            <div class="battery-detail-title" data-i18n="batterySocChart">Battery level over time</div>
+                            <div id="battery-soc-chart" class="battery-soc-chart" role="img" aria-label="Battery level chart"></div>
+                            <p id="battery-soc-chart-caption" class="battery-sample-meta"></p>
                         </div>
-                        <div class="result-item">
-                            <div class="result-item-label">Kernel Version</div>
-                            <div class="result-item-value" id="device-kernel" style="font-size: 0.9rem;">-</div>
+                        <div id="battery-history-wrap" class="battery-detail-block hidden">
+                            <div class="battery-detail-title" data-i18n="batteryHistorySamples">Recent history samples</div>
+                            <div id="battery-history-list" class="battery-sample-list"></div>
+                        </div>
+                        <div id="battery-hardware-wrap" class="battery-detail-block hidden">
+                            <div class="battery-detail-title" data-i18n="batteryHardwareSamples">Kernel hardware samples</div>
+                            <div id="battery-hardware-list" class="battery-sample-list"></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- File Information -->
-                <div class="result-card" id="file-info-card" style="display: none;">
-                    <h3>📄 File Information</h3>
-                    <div class="result-grid">
-                        <div class="result-item" style="grid-column: 1 / -1;">
-                            <div class="result-item-label">File Path</div>
-                            <div class="result-item-value" id="file-path" style="font-size: 0.85rem; word-break: break-all;">-</div>
+                <!-- File Information (compact) -->
+                <div class="result-card file-info-card" id="file-info-card" style="display: none;">
+                    <div class="file-info-bar">
+                        <div class="file-info-bar__main">
+                            <span class="file-info-bar__icon" aria-hidden="true">📄</span>
+                            <div class="file-info-bar__text">
+                                <div class="file-info-bar__title-row">
+                                    <span class="file-info-bar__label" data-i18n="fileInfo">File</span>
+                                    <span class="file-info-bar__name" id="file-path-name">—</span>
+                                    <span class="file-info-bar__size" id="file-size" title="">—</span>
+                                </div>
+                                <div class="file-info-bar__path" id="file-path" hidden></div>
+                                <div class="file-info-bar__hash-row">
+                                    <span class="file-info-bar__hash-label" data-i18n="sha256">SHA-256</span>
+                                    <code class="file-info-bar__hash" id="file-sha256" title="">—</code>
+                                    <button type="button" class="file-info-bar__copy" id="file-sha256-copy" hidden data-i18n="fileHashCopy">Copy</button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="result-item">
-                            <div class="result-item-label">File Size</div>
-                            <div class="result-item-value" id="file-size" style="font-size: 0.85rem;">-</div>
-                        </div>
-                        <div class="result-item" style="grid-column: 1 / -1;">
-                            <div class="result-item-label">SHA-256</div>
-                            <div class="result-item-value" id="file-sha256" style="font-family: monospace; font-size: 0.85rem; word-break: break-all;">-</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ANR / Crash -->
-                <div class="result-card" id="crash-info-card" style="display: none;">
-                    <h3>💥 ANR / Crash</h3>
-                    <div id="crash-info-container" style="font-size: 0.875rem; color: var(--text-primary);"></div>
-                </div>
-
-                <div id="timeline-sketch-card" class="result-card" style="display: none;">
-                    <h3>🗓️ Timeline</h3>
-                    <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
-                        Parser-based timeline rows plus Sigma matches. Colors by parser or category; click an event for JSON.
-                    </p>
-                    <div id="timeline-sketch-meta" style="font-size: 0.8125rem; margin: 0 0 0.5rem;"></div>
-                    <div id="timeline-sketch-dl-row" style="margin-bottom: 0.5rem;"></div>
-                    <div id="timeline-sketch-host"></div>
-                </div>
-
-                <!-- Battery Status -->
-                <div class="result-card">
-                    <h3>🔋 Battery Status</h3>
-                    <div class="result-grid">
-                        <div class="result-item">
-                            <div class="result-item-label">Level</div>
-                            <div class="result-item-value" id="battery-level">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label">Health</div>
-                            <div class="result-item-value" id="battery-health">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label">Temperature</div>
-                            <div class="result-item-value" id="battery-temp">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label">Voltage</div>
-                            <div class="result-item-value" id="battery-voltage">-</div>
-                        </div>
+                        <button type="button" class="file-info-bar__dl" id="file-download-bugreport-btn" style="display: none;" data-i18n="downloadBugreportFile">Download</button>
                     </div>
                 </div>
 
                 <!-- System Statistics -->
                 <div class="result-card">
-                    <h3>📈 System Statistics</h3>
-                    <div class="result-grid">
-                        <div class="result-item">
-                            <div class="result-item-label">Processes</div>
-                            <div class="result-item-value" id="stats-processes">-</div>
+                    <h3 data-i18n="systemStats">📈 System Statistics</h3>
+                    <div class="stat-groups">
+                        <div class="stat-group">
+                            <h4 class="stat-group-title" data-i18n="statGroupApps">Apps &amp; packages</h4>
+                            <div class="result-grid">
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="processes">Processes</div>
+                                    <div class="result-item-value" id="stats-processes">-</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="uniquePackages">Unique Packages</div>
+                                    <div class="result-item-value" id="stats-packages">-</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="statBatteryApps">Apps in battery stats</div>
+                                    <div class="result-item-value" id="stats-battery-apps">-</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="statPackageDetails">Package detail records</div>
+                                    <div class="result-item-value" id="stats-package-details">-</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="statInstallHistory">Install history entries</div>
+                                    <div class="result-item-value" id="stats-install-history">-</div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="result-item">
-                            <div class="result-item-label">Unique Packages</div>
-                            <div class="result-item-value" id="stats-packages">-</div>
+                        <div class="stat-group">
+                            <h4 class="stat-group-title" data-i18n="statGroupNetwork">Network &amp; connectivity</h4>
+                            <div class="result-grid">
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="statNetworkIfaces">Network interfaces</div>
+                                    <div class="result-item-value" id="stats-network-ifaces">-</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="statNetworkStatsRows">Network statistics rows</div>
+                                    <div class="result-item-value" id="stats-network-stats-rows">-</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="statSockets">Socket entries</div>
+                                    <div class="result-item-value" id="stats-sockets">-</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="statBluetoothDevices">Bluetooth devices</div>
+                                    <div class="result-item-value" id="stats-bluetooth-devices">-</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="statUsbDevices">USB devices (log)</div>
+                                    <div class="result-item-value" id="stats-usb-devices">-</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="result-item-label" data-i18n="statPowerEvents">Power history events</div>
+                                    <div class="result-item-value" id="stats-power-events">-</div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="result-item">
-                            <div class="result-item-label">Apps in battery stats</div>
-                            <div class="result-item-value" id="stats-battery-apps">-</div>
+                        <div class="stat-group">
+                            <h4 class="stat-group-title" data-i18n="statGroupSecurity">Security &amp; detection</h4>
+                            <div class="result-grid">
+                                <div class="result-item" id="stats-sigma-rules-item">
+                                    <div class="result-item-label" data-i18n="statSigmaRules">Sigma rules loaded</div>
+                                    <div class="result-item-value" id="stats-sigma-rules">-</div>
+                                </div>
+                                <div class="result-item" id="stats-sigma-matches-item">
+                                    <div class="result-item-label" data-i18n="statSigmaMatches">Sigma matches</div>
+                                    <div class="result-item-value" id="stats-sigma-matches">-</div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="result-item">
-                            <div class="result-item-label">Package detail records</div>
-                            <div class="result-item-value" id="stats-package-details">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label">Install history entries</div>
-                            <div class="result-item-value" id="stats-install-history">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label">Power history events</div>
-                            <div class="result-item-value" id="stats-power-events">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label">Network interfaces</div>
-                            <div class="result-item-value" id="stats-network-ifaces">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label">Network statistics rows</div>
-                            <div class="result-item-value" id="stats-network-stats-rows">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label">Socket entries</div>
-                            <div class="result-item-value" id="stats-sockets">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label">Bluetooth devices</div>
-                            <div class="result-item-value" id="stats-bluetooth-devices">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label">USB devices (log)</div>
-                            <div class="result-item-value" id="stats-usb-devices">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label">Sigma rules loaded</div>
-                            <div class="result-item-value" id="stats-sigma-rules">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label">Sigma matches</div>
-                            <div class="result-item-value" id="stats-sigma-matches">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label">ANR files</div>
-                            <div class="result-item-value" id="stats-anr-files">-</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-item-label">Crash tombstones</div>
-                            <div class="result-item-value" id="stats-tombstones">-</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Detailed Process List -->
-                <div class="result-card" id="process-details-card" style="display: none;">
-                    <div class="section-header">
-                        <h3>⚙️ Running Processes</h3>
-                        <span class="count-badge" id="process-count-badge">0</span>
-                    </div>
-                    <button class="section-toggle" onclick="toggleSection('process-details')">▼</button>
-                    <div class="section-content" id="process-details-content">
-                        <div class="search-box">
-                            <span>🔍</span>
-                            <input type="text" id="process-search" placeholder="Search processes by name or PID...">
-                        </div>
-                        <div class="data-table-container">
-                            <table class="data-table" id="process-table">
-                                <thead>
-                                    <tr>
-                                        <th>PID</th>
-                                        <th>Name</th>
-                                        <th>User</th>
-                                        <th>CPU%</th>
-                                        <th>Memory</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="process-table-body">
-                                </tbody>
-                            </table>
+                        <div class="stat-group">
+                            <h4 class="stat-group-title" data-i18n="statGroupCrashes">Crashes &amp; stability</h4>
+                            <div class="result-grid">
+                                <div class="result-item" id="stats-anr-files-item">
+                                    <div class="result-item-label" data-i18n="statAnrFiles">ANR files</div>
+                                    <div class="result-item-value" id="stats-anr-files">-</div>
+                                </div>
+                                <div class="result-item" id="stats-tombstones-item">
+                                    <div class="result-item-label" data-i18n="statTombstones">Crash tombstones</div>
+                                    <div class="result-item-value" id="stats-tombstones">-</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Detailed Battery Stats -->
-                <div class="result-card" id="battery-details-card" style="display: none;">
-                    <div class="section-header">
-                        <h3>🔋 App Battery Usage</h3>
-                        <span class="count-badge" id="battery-apps-count-badge">0</span>
-                    </div>
-                    <button class="section-toggle" onclick="toggleSection('battery-details')">▼</button>
-                    <div class="section-content" id="battery-details-content">
-                        <div class="search-box">
-                            <span>🔍</span>
-                            <input type="text" id="battery-search" placeholder="Search apps by package name...">
-                        </div>
-                        <div class="data-table-container">
-                            <table class="data-table" id="battery-table">
-                                <thead>
-                                    <tr>
-                                        <th>Package Name</th>
-                                        <th>UID</th>
-                                        <th>CPU Time</th>
-                                        <th>Network (RX/TX)</th>
-                                        <th>Wakelock Time</th>
-                                        <th>Job Time</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="battery-table-body">
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                <div id="timeline-sketch-card" class="result-card" style="display: none;">
+                    <h3 data-i18n="timelineCardTitle">🗓️ Timeline</h3>
+                    <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.75rem;" data-i18n="timelineCardBlurb">
+                        Parser-based Plaso/Timesketch-style rows when available, plus Sigma matches. Colors by parser or category; click an event for JSON.
+                    </p>
+                    <div id="timeline-sketch-meta" style="font-size: 0.8125rem; margin: 0 0 0.5rem;"></div>
+                    <div id="timeline-sketch-epoch-skip-wrap" style="display: none; margin: 0 0 0.5rem;"></div>
+                    <div id="timeline-sketch-dl-row" style="margin-bottom: 0.5rem;"></div>
+                    <div id="timeline-sketch-host"></div>
                 </div>
 
-                <!-- Packages installed by user -->
+                    </div>
+
+                    <div id="android-dash-apps" class="android-dash-panel" role="tabpanel" data-dash-panel="apps" hidden>
+                <!-- Packages installed by user (excludes system / image / apex) -->
                 <div class="result-card" id="package-details-user-card" style="display: none;">
                     <div class="section-header">
-                        <h3>📲 Packages installed by user</h3>
+                        <h3 data-i18n="packageDetailsUser">📲 Packages installed by user</h3>
                         <span class="count-badge" id="package-details-user-count-badge">0</span>
                     </div>
                     <button type="button" class="section-toggle collapsed" onclick="toggleSection('package-details-user')">▼</button>
                     <div class="section-content collapsed" id="package-details-user-content">
-                        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.75rem;">
-                            Same non-system rules as below (flags/paths), plus installation metadata. Sorted by latest install/update (newest first).
+                        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.75rem;" data-i18n="packageDetailsUserHint">
+                            Same non-system rules as below (flags/paths), plus installation metadata: installer, install times, install logs, or per-user install fields. Packages with none of these are omitted here.
                         </p>
                         <div class="search-box">
                             <span class="search-icon">🔍</span>
@@ -686,6 +357,25 @@
                     </div>
                 </div>
 
+                <!-- APK downgrades from batterystats daily (MVT / Cellebrite-style hunt) -->
+                <div class="result-card" id="apk-downgrade-card" style="display: none;">
+                    <div class="section-header">
+                        <h3 data-i18n="apkDowngradeTitle">APK downgrades (battery daily)</h3>
+                        <span class="count-badge" id="apk-downgrade-count-badge">0</span>
+                    </div>
+                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('apk-downgrade')">▼</button>
+                    <div class="section-content collapsed" id="apk-downgrade-content">
+                        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.75rem;" data-i18n="apkDowngradeHint">
+                            Version decreases and vers=0 uninstalls from dumpsys batterystats daily Update lines. Forensic tools sometimes leave these trails.
+                        </p>
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="apk-downgrade-search" data-i18n-placeholder="apkDowngradeSearch" placeholder="Filter package, version, or date…">
+                        </div>
+                        <div id="apk-downgrade-list"></div>
+                    </div>
+                </div>
+
                 <!-- Package Installation History -->
                 <div class="result-card" id="package-history-card" style="display: none;">
                     <div class="section-header">
@@ -698,57 +388,48 @@
                             Packages that were installed or uninstalled. Packages not found in the "Package Details" section have been deleted.
                         </p>
                         <div class="search-box">
-                            <span>🔍</span>
+                            <span class="search-icon">🔍</span>
                             <input type="text" id="package-search-input" placeholder="Search packages by name or installer...">
                         </div>
                         <div id="package-list"></div>
                     </div>
                 </div>
 
-                <!-- Power History -->
-                <div class="result-card" id="power-history-card" style="display: none;">
+                <!-- Detailed Battery Stats (after deleted packages) -->
+                <div class="result-card" id="battery-details-card" style="display: none;">
                     <div class="section-header">
-                        <h3>⚡ Power History</h3>
-                        <span class="count-badge" id="power-history-count-badge">0</span>
+                        <h3>🔋 App Battery Usage</h3>
+                        <span class="count-badge" id="battery-apps-count-badge">0</span>
                     </div>
-                    <button class="section-toggle collapsed" onclick="toggleSection('power-history')">▼</button>
-                    <div class="section-content collapsed" id="power-history-content">
-                        <div id="power-history-list"></div>
-                    </div>
-                </div>
-
-                <!-- Network Information -->
-                <div class="result-card" id="network-info-card" style="display: none;">
-                    <div class="section-header">
-                        <h3>🌐 Network Interfaces</h3>
-                        <span class="count-badge" id="network-info-count-badge">0</span>
-                    </div>
-                    <button class="section-toggle collapsed" onclick="toggleSection('network-info')">▼</button>
-                    <div class="section-content collapsed" id="network-info-content">
+                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('battery-details')">▼</button>
+                    <div class="section-content collapsed" id="battery-details-content">
                         <div class="search-box">
-                            <span>🔍</span>
-                            <input type="text" id="network-search-input" placeholder="Search interfaces by name or IP...">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="battery-search" placeholder="Search apps by package name...">
                         </div>
-                        <div id="network-info-list"></div>
+                        <div class="data-table-container">
+                            <table class="data-table" id="battery-table">
+                                <thead>
+                                    <tr>
+                                        <th>Package Name</th>
+                                        <th>UID</th>
+                                        <th>CPU Time</th>
+                                        <th>Network (RX/TX)</th>
+                                        <th>Wakelock Time</th>
+                                        <th>Job Time</th>
+                                        <th>FG service</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="battery-table-body">
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Network Statistics -->
-                <div class="result-card" id="network-stats-card" style="display: none;">
-                    <div class="section-header">
-                        <h3>📊 Network Statistics</h3>
-                        <span class="count-badge" id="network-stats-count-badge">0</span>
                     </div>
-                    <button class="section-toggle collapsed" onclick="toggleSection('network-stats')">▼</button>
-                    <div class="section-content collapsed" id="network-stats-content">
-                        <div class="search-box">
-                            <span>🔍</span>
-                            <input type="text" id="network-stats-search-input" placeholder="Search by network name or type...">
-                        </div>
-                        <div id="network-stats-list"></div>
-                    </div>
-                </div>
 
+                    <div id="android-dash-network" class="android-dash-panel" role="tabpanel" data-dash-panel="network" hidden>
                 <!-- Network Sockets -->
                 <div class="result-card" id="network-sockets-card" style="display: none;">
                     <div class="section-header">
@@ -758,7 +439,7 @@
                     <button class="section-toggle collapsed" onclick="toggleSection('network-sockets')">▼</button>
                     <div class="section-content collapsed" id="network-sockets-content">
                         <div class="search-box">
-                            <span>🔍</span>
+                            <span class="search-icon">🔍</span>
                             <input type="text" id="network-sockets-search-input" placeholder="Search by protocol, address, port, or state...">
                         </div>
                         <div class="data-table-container">
@@ -781,6 +462,38 @@
                     </div>
                 </div>
 
+                <!-- Network Information -->
+                <div class="result-card" id="network-info-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>🌐 Network Interfaces</h3>
+                        <span class="count-badge" id="network-info-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle collapsed" onclick="toggleSection('network-info')">▼</button>
+                    <div class="section-content collapsed" id="network-info-content">
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="network-search-input" placeholder="Search interfaces by name or IP...">
+                        </div>
+                        <div id="network-info-list"></div>
+                    </div>
+                </div>
+
+                <!-- Network Statistics -->
+                <div class="result-card" id="network-stats-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>📊 Network Statistics</h3>
+                        <span class="count-badge" id="network-stats-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle collapsed" onclick="toggleSection('network-stats')">▼</button>
+                    <div class="section-content collapsed" id="network-stats-content">
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="network-stats-search-input" placeholder="Search by network name or type...">
+                        </div>
+                        <div id="network-stats-list"></div>
+                    </div>
+                </div>
+
                 <!-- Bluetooth Information -->
                 <div class="result-card" id="bluetooth-card" style="display: none;">
                     <div class="section-header">
@@ -791,7 +504,7 @@
                     <div class="section-content collapsed" id="bluetooth-content">
                         <div id="bluetooth-adapter-info"></div>
                         <div class="search-box" style="margin-top: 1rem;">
-                            <span>🔍</span>
+                            <span class="search-icon">🔍</span>
                             <input type="text" id="bluetooth-search-input" placeholder="Search devices by name, MAC address, or services...">
                         </div>
                         <div id="bluetooth-devices-list"></div>
@@ -808,68 +521,165 @@
                     <div class="section-content collapsed" id="usb-content">
                         <div id="usb-ports-info"></div>
                         <div class="search-box" style="margin-top: 1rem;">
-                            <span>🔍</span>
-                            <input type="text" id="usb-search-input" placeholder="Search devices by VID, PID, driver, or interface...">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="usb-search-input" placeholder="Search by VID, PID, driver, product, manufacturer, path…">
                         </div>
                         <div id="usb-devices-list"></div>
                     </div>
                 </div>
 
-                <!-- Memory parser -->
-                <div class="result-card" id="parser-memory-card" style="display: none;">
-                    <div class="section-header">
-                        <h3>🧠 Memory parser</h3>
-                    </div>
-                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('parser-memory')">▼</button>
-                    <div class="section-content collapsed" id="parser-memory-content">
-                        <div id="parser-memory-body" class="parser-structured-body"></div>
-                    </div>
-                </div>
-                <div class="result-card" id="parser-device-policy-card" style="display: none;">
-                    <div class="section-header">
-                        <h3>📜 Device policy parser</h3>
-                    </div>
-                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('parser-device-policy')">▼</button>
-                    <div class="section-content collapsed" id="parser-device-policy-content">
-                        <div id="parser-device-policy-body" class="parser-structured-body"></div>
-                    </div>
-                </div>
-                <div class="result-card" id="parser-adb-card" style="display: none;">
-                    <div class="section-header">
-                        <h3>🔧 ADB parser</h3>
-                    </div>
-                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('parser-adb')">▼</button>
-                    <div class="section-content collapsed" id="parser-adb-content">
-                        <div id="parser-adb-body" class="parser-structured-body"></div>
-                    </div>
-                </div>
-                <div class="result-card" id="parser-authentication-card" style="display: none;">
-                    <div class="section-header">
-                        <h3>🔑 Authentication parser</h3>
-                    </div>
-                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('parser-authentication')">▼</button>
-                    <div class="section-content collapsed" id="parser-authentication-content">
-                        <div id="parser-authentication-body" class="parser-structured-body"></div>
-                    </div>
-                </div>
+                <!-- VPN parser -->
                 <div class="result-card" id="parser-vpn-card" style="display: none;">
                     <div class="section-header">
-                        <h3>🔒 VPN parser</h3>
+                        <h3 data-i18n="parserVpnTitle">🔒 VPN parser</h3>
                     </div>
                     <button type="button" class="section-toggle collapsed" onclick="toggleSection('parser-vpn')">▼</button>
                     <div class="section-content collapsed" id="parser-vpn-content">
                         <div id="parser-vpn-body" class="parser-structured-body"></div>
                     </div>
                 </div>
+
+                    </div>
+
+                    <div id="android-dash-auth" class="android-dash-panel" role="tabpanel" data-dash-panel="auth" hidden>
+                <!-- Authentication parser -->
+                <div class="result-card" id="parser-authentication-card" style="display: none;">
+                    <div class="section-header">
+                        <h3 data-i18n="parserAuthenticationTitle">🔑 Authentication parser</h3>
+                        <span class="count-badge" id="parser-authentication-count-badge">0</span>
+                    </div>
+                    <button type="button" class="section-toggle" onclick="toggleSection('parser-authentication')">▼</button>
+                    <div class="section-content" id="parser-authentication-content">
+                        <p class="android-auth-lead" data-i18n="dashAuthBlurb" style="color: var(--text-secondary); font-size: 0.875rem; margin: 0 0 0.75rem;">
+                            Keystore unlock and PowerManager wakeUp events from SYSTEM LOG.
+                        </p>
+                        <div id="parser-authentication-body" class="parser-structured-body"></div>
+                    </div>
+                </div>
+                    </div>
+
+                    <div id="android-dash-processes" class="android-dash-panel" role="tabpanel" data-dash-panel="processes" hidden>
+                <!-- Detailed Process List -->
+                <div class="result-card" id="process-details-card" style="display: none;">
+                    <div class="section-header">
+                        <h3 data-i18n="runningProcesses">⚙️ Running Processes</h3>
+                        <span class="count-badge" id="process-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle" onclick="toggleSection('process-details')">▼</button>
+                    <div class="section-content" id="process-details-content">
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="process-search" placeholder="Search processes by name or PID...">
+                        </div>
+                        <div class="data-table-container">
+                            <table class="data-table" id="process-table">
+                                <thead>
+                                    <tr>
+                                        <th>PID</th>
+                                        <th>Name</th>
+                                        <th>User</th>
+                                        <th>CPU%</th>
+                                        <th>Memory</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="process-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                    </div>
+
+                    <div id="android-dash-crashes" class="android-dash-panel" role="tabpanel" data-dash-panel="crashes" hidden>
+                <div class="result-card android-crash-panel" id="crash-info-card" style="display: none;">
+                    <h3 data-i18n="anrCrash">ANR / Crash</h3>
+                    <p class="android-crash-lead" data-i18n="dashCrashesBlurb">ANR traces and native tombstones from the bugreport — expandable incidents with process, signal, and stacks.</p>
+                    <div id="crash-summary" class="android-crash-summary" hidden></div>
+                    <div class="search-box android-crash-search" id="crash-search-wrap" hidden>
+                        <span class="search-icon">🔍</span>
+                        <input type="search" id="crash-search-input" data-i18n-placeholder="dashCrashSearch" placeholder="Filter process, signal, subject, or stack…">
+                    </div>
+                    <p id="crash-filter-empty" class="android-crash-empty" hidden data-i18n="dashEmptyCrashesFilter">No crash content matches the filter.</p>
+                    <div id="crash-info-container" class="android-crash-host"></div>
+                </div>
+
+                    </div>
+                    <div id="android-dash-system" class="android-dash-panel" role="tabpanel" data-dash-panel="system" hidden>
+                <!-- Power History -->
+                <div class="result-card" id="power-history-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>⚡ Power History</h3>
+                        <span class="count-badge" id="power-history-count-badge">0</span>
+                    </div>
+                    <button class="section-toggle collapsed" onclick="toggleSection('power-history')">▼</button>
+                    <div class="section-content collapsed" id="power-history-content">
+                        <div id="power-history-list"></div>
+                    </div>
+                </div>
+
+                <!-- Memory parser -->
+                <div class="result-card" id="parser-memory-card" style="display: none;">
+                    <div class="section-header">
+                        <h3 data-i18n="parserMemoryTitle">🧠 Memory parser</h3>
+                    </div>
+                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('parser-memory')">▼</button>
+                    <div class="section-content collapsed" id="parser-memory-content">
+                        <div id="parser-memory-body" class="parser-structured-body"></div>
+                    </div>
+                </div>
+
+                <!-- Device policy parser -->
+                <div class="result-card" id="parser-device-policy-card" style="display: none;">
+                    <div class="section-header">
+                        <h3 data-i18n="parserDevicePolicyTitle">📜 Device policy parser</h3>
+                    </div>
+                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('parser-device-policy')">▼</button>
+                    <div class="section-content collapsed" id="parser-device-policy-content">
+                        <div id="parser-device-policy-body" class="parser-structured-body"></div>
+                    </div>
+                </div>
+
+                <!-- ADB parser -->
+                <div class="result-card" id="parser-adb-card" style="display: none;">
+                    <div class="section-header">
+                        <h3 data-i18n="parserAdbTitle">🔧 ADB parser</h3>
+                    </div>
+                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('parser-adb')">▼</button>
+                    <div class="section-content collapsed" id="parser-adb-content">
+                        <div id="parser-adb-body" class="parser-structured-body"></div>
+                    </div>
+                </div>
+
+                <!-- Privacy parser -->
                 <div class="result-card" id="parser-privacy-card" style="display: none;">
                     <div class="section-header">
-                        <h3>🛡️ Privacy parser</h3>
+                        <h3 data-i18n="parserPrivacyTitle">🛡️ Privacy parser</h3>
                     </div>
                     <button type="button" class="section-toggle collapsed" onclick="toggleSection('parser-privacy')">▼</button>
                     <div class="section-content collapsed" id="parser-privacy-content">
                         <div id="parser-privacy-body" class="parser-structured-body"></div>
                     </div>
                 </div>
+
+                <!-- Per-parser raw payloads (all parsers that ran in WASM) -->
+                <div class="result-card" id="parser-outputs-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>📦 Parser outputs (complete)</h3>
+                    </div>
+                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('parser-outputs')">▼</button>
+                    <div class="section-content collapsed" id="parser-outputs-content">
+                        <p style="font-size: 0.8125rem; color: var(--text-secondary); margin: 0 0 0.75rem;">
+                            One block per parser: status, duration, and full JSON (same data the timeline and cards are built from).
+                        </p>
+                        <div id="parser-outputs-container"></div>
+                    </div>
+                </div>
+
+                    </div>
+
+                </div>
+
 
                 <!-- Full Data (JSON) -->
                 <div class="result-card">
@@ -881,7 +691,9 @@
                         <div style="font-family: monospace; font-size: 0.75rem; background: var(--bg-secondary); padding: 1rem; border-radius: 4px; overflow-x: auto;" id="json-output">Analyzing...</div>
                     </div>
                 </div>
+
             </div>
+
         </div>
     </div>
 
@@ -1140,6 +952,8 @@
         function renderAuthenticationParser(el, data) {
             const events = Array.isArray(data.events) ? data.events.slice() : (Array.isArray(data) ? data.slice() : []);
             const total = data.total_events != null ? data.total_events : events.length;
+            const badge = document.getElementById('parser-authentication-count-badge');
+            if (badge) badge.textContent = String(total || events.length || 0);
             if (!events.length) {
                 el.innerHTML = '<p style="color:var(--text-secondary)">No keystore unlock or PowerManager <code>wakeUp</code> events found in SYSTEM LOG.</p>';
                 return;
@@ -1637,10 +1451,416 @@
             }
         }
 
+
+        const EXAMPLE_I18N = {
+            resultsHeroTitleClean: 'Analysis complete',
+            resultsHeroTitleFindings: 'Sigma matches found',
+            resultsHeroSub: '{device} · Android {version}',
+            resultsHeroMetricRules: 'Rules',
+            resultsHeroMetricMatches: 'Matches',
+            resultsHeroMetricProcesses: 'Processes',
+            resultsHeroMetricPackages: 'Packages',
+            resultsHeroMetricCrashes: 'Crashes',
+            sigmaChipRules: '{n} rules loaded',
+            sigmaChipMatches: '{n} matches',
+            sigmaChipMatchDetail: '{hits} hits · {rules} rules',
+            sigmaChipClean: 'No matches',
+            sigmaChipLevel: '{level}: {n}',
+            sigmaNoRules: 'No rules loaded.',
+            sigmaNoMatches: 'No matches.',
+            sigmaMatchCount: '{n} occurrences',
+            sigmaMatchCountOne: '1 occurrence',
+            sigmaMatchShowLogs: 'Show {n} matched logs',
+            sigmaMatchHideLogs: 'Hide matched logs',
+            sigmaMatchOccurrence: 'Occurrence {n}',
+            sigmaMatchedLog: 'Matched log',
+            sigmaMatchFilterPlaceholder: 'Filter matches…',
+            sigmaMatchFilterAll: 'All levels',
+            sigmaMatchFilterEmpty: 'No matches for this filter.',
+            sigmaMatchMoreFields: 'More fields ({n})',
+            sigmaMatchExpandAll: 'Expand all',
+            sigmaMatchCollapseAll: 'Collapse all',
+            sigmaMatchExpandRules: 'Expand all rules',
+            sigmaMatchCollapseRules: 'Collapse all rules',
+            sigmaMatchCopyLog: 'Copy JSON',
+            sigmaMatchCopied: 'Copied',
+            sigmaMatchWhen: 'When',
+            sigmaMatchWhere: 'Where',
+            sigmaMatchWhenUnknown: 'No timestamp',
+            sigmaMatchRawJson: 'Full matched log (JSON)',
+            fileHashCopy: 'Copy',
+            fileHashCopied: 'Copied',
+            sigmaShowContent: 'Show rule content',
+            sigmaHideContent: 'Hide rule content'
+        };
+
+        function i18nPack() {
+            return EXAMPLE_I18N;
+        }
+
+        function i18nFmt(key, vars) {
+            let s = i18nPack()[key] || key;
+            if (vars) {
+                Object.keys(vars).forEach(function (k) {
+                    s = s.replace('{' + k + '}', String(vars[k]));
+                });
+            }
+            return s;
+        }
+
+        function groupSigmaMatches(rawMatches) {
+            if (!window.SigmaMatchUI || !window.SigmaMatchUI.groupMatches) return [];
+            return window.SigmaMatchUI.groupMatches(rawMatches);
+        }
+
+        function renderSigmaMatchesGroupedHtml(rawMatches) {
+            if (!window.SigmaMatchUI || !window.SigmaMatchUI.renderGroupedHtml) {
+                return '<p class="detection-empty">Sigma match UI not loaded.</p>';
+            }
+            return window.SigmaMatchUI.renderGroupedHtml(rawMatches, {
+                escapeHtml: escapeHtml,
+                i18nFmt: i18nFmt,
+                i18nPack: i18nPack()
+            });
+        }
+
+        function wireSigmaMatchesContainer(root) {
+            if (!root || !window.SigmaMatchUI || !window.SigmaMatchUI.wireMatchesContainer) return;
+            window.SigmaMatchUI.wireMatchesContainer(root, { i18nPack: i18nPack() });
+        }
+
+        let androidDashWired = false;
+
+        function wireAndroidDashTabs() {
+            if (androidDashWired) return;
+            androidDashWired = true;
+            const tabs = document.getElementById('android-dash-tabs');
+            if (tabs) {
+                tabs.addEventListener('click', function (e) {
+                    const btn = e.target.closest('[data-dash]');
+                    if (!btn) return;
+                    switchAndroidDashTab(btn.getAttribute('data-dash'), { scroll: true });
+                });
+            }
+            const metrics = document.getElementById('results-hero-metrics');
+            if (metrics) {
+                metrics.addEventListener('click', function (e) {
+                    const jump = e.target.closest('[data-dash-jump]');
+                    if (!jump) return;
+                    switchAndroidDashTab(jump.getAttribute('data-dash-jump'), { scroll: true });
+                });
+            }
+        }
+
+        function switchAndroidDashTab(name, opts) {
+            if (!name) return;
+            opts = opts || {};
+            const tabs = document.querySelectorAll('#android-dash-tabs [data-dash]');
+            for (let i = 0; i < tabs.length; i++) {
+                const on = tabs[i].getAttribute('data-dash') === name;
+                tabs[i].classList.toggle('is-active', on);
+                tabs[i].setAttribute('aria-selected', on ? 'true' : 'false');
+            }
+            const panels = document.querySelectorAll('#android-dash [data-dash-panel]');
+            for (let p = 0; p < panels.length; p++) {
+                const active = panels[p].getAttribute('data-dash-panel') === name;
+                panels[p].classList.toggle('is-active', active);
+                if (active) panels[p].removeAttribute('hidden');
+                else panels[p].setAttribute('hidden', '');
+            }
+            if (opts.scroll) {
+                const dash = document.getElementById('android-dash');
+                if (dash) {
+                    try { dash.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (err) { /* ignore */ }
+                }
+            }
+        }
+
+        function updateAndroidTabCounts(counts) {
+            const map = {
+                apps: counts.apps,
+                network: counts.network,
+                auth: counts.auth,
+                processes: counts.processes,
+                crashes: counts.crashes,
+                system: counts.system
+            };
+            Object.keys(map).forEach(function (key) {
+                const btn = document.querySelector('#android-dash-tabs [data-dash="' + key + '"]');
+                if (!btn) return;
+                const existing = btn.querySelector('.android-dash-tab__count');
+                if (existing) existing.remove();
+                const n = map[key];
+                if (n == null) return;
+                const span = document.createElement('span');
+                span.className = 'android-dash-tab__count' + (key === 'crashes' && n > 0 ? ' is-alert' : '');
+                span.textContent = String(n);
+                btn.appendChild(span);
+            });
+        }
+
+        function crashCountsFromData(data) {
+            let anrFiles = 0;
+            let tombstones = 0;
+            if (data && data.crash_info && typeof data.crash_info === 'object') {
+                const ci = data.crash_info;
+                const af = ci.anr_files;
+                if (af && Array.isArray(af.files)) anrFiles = af.files.length;
+                tombstones = Array.isArray(ci.tombstones) ? ci.tombstones.length : 0;
+            }
+            return { anrFiles: anrFiles, tombstones: tombstones, total: anrFiles + tombstones };
+        }
+
+        function truncateSha256Display(hex) {
+            const s = String(hex || '').trim();
+            if (!s || s === '-') return '—';
+            if (s.length <= 20) return s;
+            return s.slice(0, 10) + '…' + s.slice(-8);
+        }
+
+        function fillFileInfoCard(fileInfo) {
+            const card = document.getElementById('file-info-card');
+            const nameEl = document.getElementById('file-path-name');
+            const pathEl = document.getElementById('file-path');
+            const sizeEl = document.getElementById('file-size');
+            const hashEl = document.getElementById('file-sha256');
+            const copyBtn = document.getElementById('file-sha256-copy');
+            if (!card) return;
+
+            if (!fileInfo || typeof fileInfo !== 'object') {
+                card.style.display = 'none';
+                if (copyBtn) copyBtn.hidden = true;
+                return;
+            }
+
+            const path = String(fileInfo.path || '').trim() || '-';
+            const base =
+                path === 'Generated on device' || path === '-'
+                    ? path
+                    : path.split(/[/\\]/).pop() || path;
+            if (nameEl) nameEl.textContent = base;
+
+            if (pathEl) {
+                const showFullPath = path !== base && path !== '-' && path !== 'Generated on device';
+                pathEl.hidden = !showFullPath;
+                pathEl.textContent = showFullPath ? path : '';
+                pathEl.title = path;
+            }
+
+            if (sizeEl) {
+                const mb = fileInfo.size_mb;
+                const bytes = fileInfo.size_bytes;
+                if (mb != null && mb !== '') {
+                    sizeEl.textContent = String(mb) + ' MB';
+                    sizeEl.title =
+                        bytes != null
+                            ? String(bytes).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' bytes'
+                            : String(mb) + ' MB';
+                } else if (bytes != null) {
+                    sizeEl.textContent = String(bytes).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' B';
+                    sizeEl.title = sizeEl.textContent;
+                } else {
+                    sizeEl.textContent = '—';
+                    sizeEl.title = '';
+                }
+            }
+
+            const hash = String(fileInfo.sha256 || '').trim();
+            if (hashEl) {
+                hashEl.textContent = truncateSha256Display(hash);
+                hashEl.title = hash || '';
+                hashEl.setAttribute('data-full-hash', hash);
+            }
+            if (copyBtn) {
+                copyBtn.hidden = !hash;
+                copyBtn.classList.remove('is-copied');
+                copyBtn.textContent = i18nPack().fileHashCopy || 'Copy';
+            }
+
+            card.style.display = 'block';
+            const dlBtn = document.getElementById('file-download-bugreport-btn');
+            if (dlBtn) dlBtn.style.display = 'none';
+        }
+
+        function updateBatteryGauge(level) {
+            const fill = document.getElementById('battery-gauge-fill');
+            if (!fill) return;
+            const pct = Number.isFinite(level) ? Math.max(0, Math.min(100, level)) : 0;
+            fill.style.width = Number.isFinite(level) ? pct + '%' : '0%';
+            fill.classList.remove('low', 'mid');
+            if (Number.isFinite(level)) {
+                if (pct <= 20) fill.classList.add('low');
+                else if (pct <= 50) fill.classList.add('mid');
+            }
+        }
+
+        function formatBatteryCurrent(ma) {
+            if (ma == null || ma === '' || !Number.isFinite(Number(ma))) return '-';
+            const n = Number(ma);
+            const abs = Math.abs(n);
+            if (abs >= 1000) return (n / 1000).toFixed(2) + ' A';
+            return Math.round(n) + ' mA';
+        }
+
+        function updateSigmaSummaryBar(data) {
+            const bar = document.getElementById('sigma-summary-bar');
+            if (!bar) return;
+            const pack = i18nPack();
+            const rules = asWasmArray(data.sigma_rules_info);
+            const matches = asWasmArray(data.sigma_matches);
+            const chips = [];
+            if (rules.length > 0) {
+                chips.push(
+                    '<span class="sigma-summary-chip sigma-summary-chip--rules">' +
+                    escapeHtml(i18nFmt('sigmaChipRules', { n: rules.length })) +
+                    '</span>'
+                );
+            }
+            if (matches.length > 0) {
+                const groups = groupSigmaMatches(matches);
+                chips.push(
+                    '<span class="sigma-summary-chip sigma-summary-chip--matches">' +
+                    escapeHtml(
+                        groups.length < matches.length
+                            ? i18nFmt('sigmaChipMatchDetail', { hits: matches.length, rules: groups.length })
+                            : i18nFmt('sigmaChipMatches', { n: matches.length })
+                    ) +
+                    '</span>'
+                );
+                if (window.SigmaMatchUI && window.SigmaMatchUI.levelBreakdownChipsHtml) {
+                    chips.push(window.SigmaMatchUI.levelBreakdownChipsHtml(matches, escapeHtml, i18nFmt));
+                }
+            } else {
+                chips.push(
+                    '<span class="sigma-summary-chip sigma-summary-chip--clean">' +
+                    escapeHtml(pack.sigmaChipClean || 'No matches') +
+                    '</span>'
+                );
+            }
+            bar.innerHTML = chips.join('');
+        }
+
+        function updateResultsHero(data) {
+            const hero = document.getElementById('results-hero');
+            if (!hero) return;
+            const pack = i18nPack();
+            const matches = asWasmArray(data.sigma_matches);
+            const rules = asWasmArray(data.sigma_rules_info);
+            const matchCount = matches.length;
+            const hasHigh = matches.some(function (rawM) {
+                const m = mapPlainTop(rawM) || rawM;
+                const l = (m.level || '').toLowerCase();
+                return l === 'critical' || l === 'high';
+            });
+
+            hero.hidden = false;
+            hero.classList.remove('results-hero--clean', 'results-hero--warn', 'results-hero--alert');
+            const icon = document.getElementById('results-hero-icon');
+            const title = document.getElementById('results-hero-title');
+            const sub = document.getElementById('results-hero-sub');
+            const metrics = document.getElementById('results-hero-metrics');
+
+            if (matchCount === 0) {
+                hero.classList.add('results-hero--clean');
+                if (icon) icon.textContent = '✓';
+                if (title) title.textContent = pack.resultsHeroTitleClean || 'Analysis complete';
+            } else if (hasHigh) {
+                hero.classList.add('results-hero--alert');
+                if (icon) icon.textContent = '!';
+                if (title) title.textContent = pack.resultsHeroTitleFindings || 'Sigma matches found';
+            } else {
+                hero.classList.add('results-hero--warn');
+                if (icon) icon.textContent = '⚠';
+                if (title) title.textContent = pack.resultsHeroTitleFindings || 'Sigma matches found';
+            }
+
+            const di = data.device_info || {};
+            const deviceLabel = [di.manufacturer, di.model].filter(Boolean).join(' ') || 'Unknown device';
+            const version = di.android_version || '?';
+            if (sub) sub.textContent = i18nFmt('resultsHeroSub', { device: deviceLabel, version: version });
+
+            if (metrics) {
+                const procCount = data.process_count != null ? String(data.process_count) : '0';
+                const pkgCount = data.package_count != null ? String(data.package_count) : '0';
+                const crashTotal = crashCountsFromData(data).total;
+                const matchClass = matchCount > 0 ? (hasHigh ? 'alert' : 'warn') : '';
+                metrics.innerHTML = [
+                    { v: String(rules.length), l: pack.resultsHeroMetricRules || 'Rules', cls: '', jump: '' },
+                    { v: String(matchCount), l: pack.resultsHeroMetricMatches || 'Matches', cls: matchClass, jump: '' },
+                    { v: pkgCount, l: pack.resultsHeroMetricPackages || 'Packages', cls: '', jump: 'apps' },
+                    { v: procCount, l: pack.resultsHeroMetricProcesses || 'Processes', cls: '', jump: 'processes' },
+                    {
+                        v: String(crashTotal),
+                        l: pack.resultsHeroMetricCrashes || 'Crashes',
+                        cls: crashTotal > 0 ? 'alert' : '',
+                        jump: 'crashes'
+                    }
+                ]
+                    .map(function (m) {
+                        return (
+                            '<div class="hero-metric"' +
+                            (m.jump ? ' data-dash-jump="' + m.jump + '" title="Open ' + m.jump + ' tab"' : '') +
+                            '><div class="hero-metric-value' +
+                            (m.cls ? ' ' + m.cls : '') +
+                            '">' +
+                            escapeHtml(m.v) +
+                            '</div><div class="hero-metric-label">' +
+                            escapeHtml(m.l) +
+                            '</div></div>'
+                        );
+                    })
+                    .join('');
+            }
+
+            updateSigmaSummaryBar(data);
+        }
+
+        function updateExampleTabCounts(data) {
+            const apps =
+                (Array.isArray(data.package_details) ? data.package_details.length : 0) +
+                (Array.isArray(data.packages) ? data.packages.length : 0) +
+                (Array.isArray(data.battery_apps) ? data.battery_apps.length : 0);
+            const network =
+                (Array.isArray(data.sockets) ? data.sockets.length : 0) +
+                (data.network_info && Array.isArray(data.network_info.interfaces) ? data.network_info.interfaces.length : 0) +
+                (Array.isArray(data.network_stats) ? data.network_stats.length : 0);
+            let authCount = null;
+            const ap = data.additional_parsers || {};
+            const auth = ap.authentication;
+            if (auth) {
+                if (Array.isArray(auth)) authCount = auth.length;
+                else if (auth.total_events != null) authCount = Number(auth.total_events) || 0;
+                else if (Array.isArray(auth.events)) authCount = auth.events.length;
+            }
+            const processes = Array.isArray(data.processes) ? data.processes.length : (data.process_count || 0);
+            const crashes = crashCountsFromData(data).total;
+            let system = 0;
+            if (Array.isArray(data.power_history)) system += data.power_history.length;
+            ['memory', 'device_policy', 'adb', 'privacy'].forEach(function (k) {
+                if (ap[k] != null) system += 1;
+            });
+            updateAndroidTabCounts({
+                apps: apps || null,
+                network: network || null,
+                auth: authCount,
+                processes: processes || null,
+                crashes: crashes || null,
+                system: system || null
+            });
+        }
+
         // Display results
         function displayResults(data) {
             currentResults = data;
-            
+            if (data == null || typeof data !== 'object') {
+                console.error('displayResults: invalid data');
+                return;
+            }
+
+            wireAndroidDashTabs();
+            switchAndroidDashTab('overview');
+            updateResultsHero(data);
+
             // Device info
             if (data.device_info) {
                 document.getElementById('device-manufacturer').textContent = data.device_info.manufacturer || 'Unknown';
@@ -1650,25 +1870,33 @@
                 document.getElementById('device-kernel').textContent = data.device_info.kernel_version || 'Unknown';
             }
 
-            // Battery info
+            // Battery status (gauge + metrics)
             if (data.battery_info) {
-                document.getElementById('battery-level').textContent = data.battery_info.level ? data.battery_info.level.toFixed(1) + '%' : '-';
-                document.getElementById('battery-health').textContent = data.battery_info.health || '-';
-                document.getElementById('battery-temp').textContent = data.battery_info.temperature ? data.battery_info.temperature.toFixed(1) + '°C' : '-';
-                document.getElementById('battery-voltage').textContent = data.battery_info.voltage ? data.battery_info.voltage.toFixed(2) + 'V' : '-';
+                const bi = data.battery_info;
+                const level = bi.level != null ? Number(bi.level) : NaN;
+                document.getElementById('battery-level').textContent = Number.isFinite(level) ? level.toFixed(1) + '%' : '-';
+                updateBatteryGauge(level);
+                document.getElementById('battery-health').textContent = bi.health || '-';
+                document.getElementById('battery-temp').textContent = bi.temperature != null ? Number(bi.temperature).toFixed(1) + '°C' : '-';
+                document.getElementById('battery-voltage').textContent = bi.voltage != null ? Number(bi.voltage).toFixed(2) + 'V' : '-';
+                const currentEl = document.getElementById('battery-current');
+                if (currentEl) currentEl.textContent = formatBatteryCurrent(bi.current);
+            } else {
+                updateBatteryGauge(NaN);
             }
 
             fillSystemStatistics(data);
 
-            // Sigma rules (same card layout as android.html)
+            // Sigma rules
             const sigmaEl = document.getElementById('sigma-rules-container');
+            const pack = i18nPack();
             const info = asWasmArray(data.sigma_rules_info);
             if (info.length > 0) {
                 sigmaEl.innerHTML = info.map(function (rawR) {
                     const r = mapPlainTop(rawR) || rawR;
                     const fetchBadge = r.success
-                        ? '<span style="color: var(--success);">✓ Fetched</span>'
-                        : '<span style="color: var(--error);">✗ ' + escapeHtml(r.fetchError || 'Failed') + '</span>';
+                        ? '<span class="sigma-fetch-ok">✓ Fetched</span>'
+                        : '<span class="sigma-fetch-err">✗ ' + escapeHtml(r.fetchError || 'Failed') + '</span>';
                     const rows = [
                         ['URL', escapeHtml(r.url)],
                         ['Server', fetchBadge],
@@ -1679,42 +1907,20 @@
                         ['Level', r.level ? escapeHtml(r.level) : '-']
                     ];
                     const body = rows.map(function (pair) {
-                        return '<div style="margin-bottom: 0.35rem;"><span style="color: var(--text-secondary); font-weight: 500;">' + escapeHtml(pair[0]) + ':</span> ' + pair[1] + '</div>';
+                        return '<div class="sigma-rule-row"><span class="sigma-rule-label">' + escapeHtml(pair[0]) +
+                            '</span><span class="sigma-rule-value">' + pair[1] + '</span></div>';
                     }).join('');
-                    return '<div class="result-card" style="margin-bottom: 0.75rem; padding: 1rem;"><div style="font-size: 0.875rem;">' + body + '</div></div>';
+                    return '<div class="sigma-rule-card">' + body + '</div>';
                 }).join('');
             } else {
-                sigmaEl.textContent = 'No rules loaded.';
+                sigmaEl.innerHTML = '<p class="detection-empty">' + escapeHtml(pack.sigmaNoRules || 'No rules loaded.') + '</p>';
             }
 
-            // Sigma matches
+            // Sigma matches (grouped UI)
             const matchesEl = document.getElementById('sigma-matches-container');
             const matches = asWasmArray(data.sigma_matches);
-            if (matches.length > 0) {
-                matchesEl.innerHTML = matches.map(function (rawM) {
-                    const m = mapPlainTop(rawM) || rawM;
-                    const id = (m.rule_id && m.rule_id.trim()) ? escapeHtml(m.rule_id) : '-';
-                    const title = (m.rule_title && m.rule_title.trim()) ? escapeHtml(m.rule_title) : '-';
-                    const level = (m.level && m.level.trim()) ? escapeHtml(m.level) : '-';
-                    const l = (m.level || '').toLowerCase();
-                    const levelColor = l === 'critical' ? 'var(--error)' : l === 'high' ? 'var(--warning)' : l === 'medium' ? 'var(--sigma-medium)' : l === 'low' ? 'var(--sigma-low)' : 'var(--text-secondary)';
-                    let matchedLogHtml = '';
-                    let ml = m.log_entry ?? m.matched_log;
-                    if (ml && typeof ml === 'object' && ml instanceof Map) ml = Object.fromEntries(ml);
-                    if (ml && typeof ml === 'object' && !Array.isArray(ml) && Object.keys(ml).length > 0) {
-                        const fmt = function (v) {
-                            return typeof v === 'object' && v !== null ? escapeHtml(JSON.stringify(v)) : escapeHtml(String(v ?? ''));
-                        };
-                        const entriesHtml = Object.entries(ml).map(function (pair) {
-                            return '<div style="margin-bottom: 0.2rem;"><span style="color: var(--text-secondary);">' + escapeHtml(pair[0]) + ':</span> ' + fmt(pair[1]) + '</div>';
-                        }).join('');
-                        matchedLogHtml = '<details class="sigma-matched-log"><summary>Matched log</summary><div class="sigma-matched-log-body">' + entriesHtml + '</div></details>';
-                    }
-                    return '<div class="result-card" style="margin-bottom: 0.5rem; padding: 0.75rem 1rem; border-left: 4px solid ' + levelColor + ';"><div style="font-size: 0.875rem;"><div style="margin-bottom: 0.25rem;"><span style="color: var(--text-secondary); font-weight: 500;">Rule:</span> ' + title + '</div><div style="display: flex; gap: 1rem; flex-wrap: wrap;"><span><span style="color: var(--text-secondary);">ID:</span> ' + id + '</span><span style="color: ' + levelColor + '; font-weight: 500;">' + level + '</span></div>' + matchedLogHtml + '</div></div>';
-                }).join('');
-            } else {
-                matchesEl.textContent = 'No matches.';
-            }
+            matchesEl.innerHTML = renderSigmaMatchesGroupedHtml(matches);
+            wireSigmaMatchesContainer(matchesEl);
 
             try {
                 displayTimelineSketch(data);
@@ -1722,16 +1928,7 @@
                 console.error('displayTimelineSketch failed', e);
             }
 
-            // File info
-            const fileInfoCard = document.getElementById('file-info-card');
-            if (data.file_info) {
-                document.getElementById('file-path').textContent = data.file_info.path || '-';
-                document.getElementById('file-size').textContent = data.file_info.size_mb ? `${data.file_info.size_mb} MB (${data.file_info.size_bytes.toLocaleString()} bytes)` : '-';
-                document.getElementById('file-sha256').textContent = data.file_info.sha256 || '-';
-                fileInfoCard.style.display = 'block';
-            } else {
-                fileInfoCard.style.display = 'none';
-            }
+            fillFileInfoCard(data.file_info);
 
             // ANR / Crash
             const crashCard = document.getElementById('crash-info-card');
@@ -1899,6 +2096,7 @@
             displayBluetoothInfo(data);
             displayUsbInfo(data);
             displayAdditionalParsers(data);
+            updateExampleTabCounts(data);
 
             // Display JSON
             document.getElementById('json-output').textContent = JSON.stringify(data, null, 2);
@@ -1967,6 +2165,8 @@
                 row.setAttribute('data-package', app.package_name.toLowerCase());
                 const networkRx = (app.network_rx_mobile || 0) + (app.network_rx_wifi || 0);
                 const networkTx = (app.network_tx_mobile || 0) + (app.network_tx_wifi || 0);
+                const fgMs = app.foreground_service_time_ms || 0;
+                const fgStr = fgMs > 0 ? formatTime(fgMs) : '-';
                 row.innerHTML = `
                     <td>${escapeHtml(app.package_name)}</td>
                     <td>${app.uid}</td>
@@ -1974,6 +2174,7 @@
                     <td>${formatBytes(networkRx)} / ${formatBytes(networkTx)}</td>
                     <td>${formatTime(app.total_wakelock_time_ms || 0)}</td>
                     <td>${formatTime(app.total_job_time_ms || 0)}</td>
+                    <td>${fgStr}</td>
                 `;
                 batteryTableBody.appendChild(row);
             });
@@ -3001,7 +3202,8 @@
                 level: 87.5,
                 health: "Good",
                 temperature: 28.5,
-                voltage: 4.2
+                voltage: 4.2,
+                current: -312
             },
             process_count: 245,
             package_count: 312,
@@ -3287,7 +3489,7 @@
                 { pid: 9012, name: "com.sec.android.gallery3d", user: "u0_a456", cpu_percent: 2.1, memory: "67 MB", virtual_memory: "234 MB", policy: "background" }
             ],
             battery_apps: [
-                { package_name: "com.android.chrome", uid: 10123, total_cpu_time_ms: 3600000, network_rx_mobile: 52428800, network_rx_wifi: 104857600, network_tx_mobile: 26214400, network_tx_wifi: 52428800, total_wakelock_time_ms: 180000, total_job_time_ms: 45000, foreground_service_time_ms: 0, total_job_count: 5 },
+                { package_name: "com.android.chrome", uid: 10123, total_cpu_time_ms: 3600000, network_rx_mobile: 52428800, network_rx_wifi: 104857600, network_tx_mobile: 26214400, network_tx_wifi: 52428800, total_wakelock_time_ms: 180000, total_job_time_ms: 45000, foreground_service_time_ms: 900000, total_job_count: 5 },
                 { package_name: "com.sec.android.gallery3d", uid: 10456, total_cpu_time_ms: 1200000, network_rx_mobile: 0, network_rx_wifi: 1048576, network_tx_mobile: 0, network_tx_wifi: 524288, total_wakelock_time_ms: 30000, total_job_time_ms: 15000, foreground_service_time_ms: 0, total_job_count: 2 }
             ],
             packages: [
@@ -3674,6 +3876,25 @@
         };
 
         // Auto-load sample data on page load
+        (function wireFileShaCopy() {
+            const copyBtn = document.getElementById('file-sha256-copy');
+            const hashEl = document.getElementById('file-sha256');
+            if (!copyBtn || !hashEl) return;
+            copyBtn.addEventListener('click', function () {
+                const full = hashEl.getAttribute('data-full-hash') || hashEl.title || '';
+                if (!full || !navigator.clipboard || !navigator.clipboard.writeText) return;
+                navigator.clipboard.writeText(full).then(function () {
+                    const prev = i18nPack().fileHashCopy || 'Copy';
+                    copyBtn.textContent = i18nPack().fileHashCopied || 'Copied';
+                    copyBtn.classList.add('is-copied');
+                    setTimeout(function () {
+                        copyBtn.textContent = prev;
+                        copyBtn.classList.remove('is-copied');
+                    }, 1400);
+                }, function () {});
+            });
+        })();
+
         window.addEventListener('DOMContentLoaded', () => {
             sampleData.sigma_rules_info = buildExampleSigmaRulesInfo();
             displayResults(sampleData);

@@ -6,159 +6,10 @@
     <title>Bugreport Analysis — Status & Capabilities</title>
     <link rel="icon" href="favicon.ico" sizes="any">
     <link rel="apple-touch-icon" href="logo.png">
+    <link rel="stylesheet" href="assets/site.css">
     <script src="assets/sigma-rules-urls.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --bg-primary: #ffffff;
-            --bg-secondary: #f5f5f5;
-            --bg-card: #ffffff;
-            --text-primary: #1a1a1a;
-            --text-secondary: #666666;
-            --border: #e0e0e0;
-            --accent: #2196F3;
-            --accent-hover: #1976D2;
-            --success: #4CAF50;
-            --warning: #FF9800;
-            --error: #f44336;
-            --sigma-medium: #F59E0B;
-            --sigma-low: #3B82F6;
-            --shadow: rgba(0, 0, 0, 0.1);
-        }
-
-        [data-theme="dark"] {
-            --bg-primary: #1a1a1a;
-            --bg-secondary: #2d2d2d;
-            --bg-card: #252525;
-            --text-primary: #e0e0e0;
-            --text-secondary: #a0a0a0;
-            --border: #404040;
-            --accent: #42A5F5;
-            --accent-hover: #64B5F6;
-            --success: #66BB6A;
-            --warning: #FFA726;
-            --error: #EF5350;
-            --sigma-medium: #FBBF24;
-            --sigma-low: #60A5FA;
-            --shadow: rgba(0, 0, 0, 0.3);
-        }
-
-        html {
-            -webkit-text-size-adjust: 100%;
-            overflow-x: hidden;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            line-height: 1.6;
-            transition: background-color 0.3s, color 0.3s;
-            overflow-x: hidden;
-            min-width: 0;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 2rem 1rem;
-            width: 100%;
-        }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .logo-text {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin: 0;
-        }
-
-        .theme-toggle {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.875rem;
-            color: var(--text-primary);
-            transition: all 0.2s;
-        }
-
-        .theme-toggle:hover {
-            background: var(--accent);
-            color: white;
-            border-color: var(--accent);
-        }
-
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .lang-switcher {
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 0.25rem;
-        }
-
-        .lang-switcher button {
-            padding: 0.35rem 0.6rem;
-            border: none;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            background: transparent;
-            color: var(--text-secondary);
-            transition: background 0.2s, color 0.2s;
-        }
-
-        .lang-switcher button:hover {
-            background: var(--border);
-            color: var(--text-primary);
-        }
-
-        .lang-switcher button.active {
-            background: var(--accent);
-            color: white;
-        }
-
-        .last-updated {
-            text-align: center;
-            padding: 0.75rem 1rem;
-            margin-bottom: 2rem;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-
-        .last-updated strong {
-            color: var(--text-primary);
-        }
-
-        .section {
+        .status-page .section {
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 8px;
@@ -167,7 +18,7 @@
             box-shadow: 0 2px 4px var(--shadow);
         }
 
-        .section h2 {
+        .status-page .section h2 {
             font-size: 1.125rem;
             font-weight: 600;
             margin-bottom: 1rem;
@@ -177,14 +28,14 @@
             gap: 0.5rem;
         }
 
-        .section h3 {
+        .status-page .section h3 {
             font-size: 1rem;
             font-weight: 600;
             margin: 1.25rem 0 0.5rem 0;
             color: var(--text-primary);
         }
 
-        .section h3:first-of-type {
+        .status-page .section h3:first-of-type {
             margin-top: 0;
         }
 
@@ -245,26 +96,6 @@
         .badge-low { background: rgba(59, 130, 246, 0.15); color: var(--sigma-low); }
         .badge-info { background: rgba(33, 150, 243, 0.15); color: var(--accent); }
 
-        .nav-links {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            margin-top: 2rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid var(--border);
-            font-size: 0.875rem;
-        }
-
-        .nav-links a {
-            color: var(--accent);
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .nav-links a:hover {
-            text-decoration: underline;
-        }
-
         button.secondary {
             padding: 0.4rem 0.75rem;
             border-radius: 6px;
@@ -273,6 +104,7 @@
             border: 1px solid var(--border);
             background: var(--bg-secondary);
             color: var(--text-primary);
+            width: auto;
         }
 
         button.secondary:hover {
@@ -303,11 +135,11 @@
         }
 
         .rules-list-body pre {
-            font-family: monospace;
-            font-size: 0.8rem;
-            white-space: pre-wrap;
-            word-break: break-all;
             margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 0.75rem;
+            font-family: ui-monospace, monospace;
         }
 
         .rule-item {
@@ -382,15 +214,10 @@
             color: var(--text-secondary);
         }
 
-        .fetch-status.error {
-            color: var(--error);
-        }
+        .fetch-status.error { color: var(--error); }
+        .fetch-status.success { color: var(--success); }
 
-        .fetch-status.success {
-            color: var(--success);
-        }
-
-        code {
+        .status-page code {
             background: var(--bg-secondary);
             padding: 0.125rem 0.35rem;
             border-radius: 3px;
@@ -400,83 +227,33 @@
         }
 
         @media (max-width: 768px) {
-            .container {
-                padding: 1rem 0.75rem;
-            }
-            header {
-                flex-wrap: wrap;
-                gap: 0.75rem;
-                margin-bottom: 1.25rem;
-            }
-            .header-actions {
-                flex-wrap: wrap;
-            }
-            .logo-text {
-                font-size: 1.2rem;
-            }
-            .section {
-                padding: 1rem;
-            }
-            .section h2 {
-                font-size: 1rem;
-            }
-            .section h3 {
-                font-size: 0.95rem;
-            }
-            .rule-item {
-                padding: 0.75rem;
-            }
-            .rule-item > div:first-child {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            .rule-content-toggle {
-                align-self: flex-start;
-                min-height: 44px;
-                min-width: 44px;
-            }
+            .status-page .section { padding: 1rem; }
+            .status-page .section h2 { font-size: 1rem; }
             .rule-format {
                 font-size: 0.7rem;
                 padding: 0.75rem;
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
             }
-            .rules-list-body {
-                max-height: 60vh;
-                padding: 0.75rem;
-            }
-            .last-updated {
-                padding: 0.5rem 0.75rem;
-                font-size: 0.8rem;
+            .rules-list-body { max-height: 60vh; }
+            .info-banner {
+                padding: 0.75rem 1rem;
                 margin-bottom: 1rem;
-            }
-            .nav-links {
-                flex-direction: column;
-                gap: 0.5rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .container {
-                padding: 0.75rem;
-                padding-left: max(0.5rem, env(safe-area-inset-left));
-                padding-right: max(0.5rem, env(safe-area-inset-right));
-            }
-            .logo-text {
-                font-size: 1.1rem;
+                font-size: 0.875rem;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container status-page">
         <header>
-            <div style="display: flex; align-items: center; gap: 1rem; min-width: 0;">
-                <img src="logo.png" alt="" width="48" height="48" style="flex-shrink: 0; object-fit: contain;" onerror="this.style.display='none'">
-                <div style="min-width: 0;">
-                <h1 class="logo-text" data-i18n="pageTitle">Bugreport Analysis — Status & Capabilities</h1>
+            <div>
+                <h1 class="logo-text">IsMyPhonePwned ?</h1>
                 <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.875rem;" data-i18n="pageSubtitle">Rules, parsers, and detection reference • v0.4.0-beta • Updated 9 August 2026</p>
-                </div>
+                <span class="page-version" style="margin-top: 0.35rem;">
+                    <span class="page-version-edition" title="DEF CON edition">
+                        <img class="page-version-edition-logo" src="assets/defcon31-logo.png" alt="" width="18" height="18" decoding="async">
+                        <span>defcon edition</span>
+                    </span>
+                </span>
             </div>
             <div class="header-actions">
                 <div class="header-toolbar" role="toolbar" aria-label="Language and theme">
@@ -493,8 +270,22 @@
             </div>
         </header>
 
-        <div class="last-updated">
-            <strong data-i18n="lastUpdated">Last updated:</strong> <span id="status-timestamp"></span>
+        <nav class="page-nav" aria-label="Pages">
+            <a href="index.html" data-i18n="navHome">Home</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="android.html" data-i18n="navBugreport">Android (live analyzer)</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="bugreport-example.html" data-i18n="navExample">Example results</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="intrusion-logs.html" data-i18n="navIntrusion">Intrusion logs</a>
+        </nav>
+
+        <div class="info-banner">
+            <strong data-i18n="pageTitle">Bugreport Analysis — Status &amp; Capabilities</strong><br>
+            <span data-i18n="statusBanner">Catalog of Sigma rules under /rules/, parser outputs, and how detection is wired for the Android analyzer. Use the live analyzer or the example page to see the UI.</span>
+            <div style="margin-top: 0.45rem; opacity: 0.95;">
+                <strong data-i18n="lastUpdated">Last updated:</strong> <span id="status-timestamp"></span>
+            </div>
         </div>
 
         <!-- Rules supported -->
@@ -719,15 +510,18 @@ detection:<br>
             </p>
         </section>
 
-        <div class="nav-links">
-            <a href="bugreport.html" data-i18n="navBugreport">Bugreport analysis</a>
+        <nav class="page-nav" aria-label="Pages" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+            <a href="index.html" data-i18n="navHome">Home</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="android.html" data-i18n="navBugreport">Android (live analyzer)</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
             <a href="bugreport-example.html" data-i18n="navExample">Example results</a>
-        </div>
+        </nav>
     </div>
 
     <script>
         // Timestamp: update this when the status page content or capabilities change
-        const STATUS_LAST_UPDATED = '2026-08-08T12:00:00Z';
+        const STATUS_LAST_UPDATED = '2026-08-09T12:00:00Z';
 
         const TRANSLATIONS = {
             en: {
@@ -762,8 +556,11 @@ detection:<br>
                 detectionEval3: 'Rules are supplied at analysis time as YAML (single or multiple documents separated by ---)',
                 matchOutput: 'Match output',
                 matchOutputDesc: 'Each match includes the rule identifier, title, severity level, and the actual log payload (matched_log) so analysts can see exactly which data triggered the rule.',
-                navBugreport: 'Bugreport analysis',
+                navHome: 'Home',
+                navBugreport: 'Android (live analyzer)',
                 navExample: 'Example results',
+                navIntrusion: 'Intrusion logs',
+                statusBanner: 'Catalog of Sigma rules under /rules/, parser outputs, and how detection is wired for the Android analyzer. Use the live analyzer or the example page to see the UI.',
                 loadingRules: 'Loading rules…',
                 loadedRules: 'Loaded {count} rule(s) from {sources}.',
                 loadedRulesPartial: 'Loaded {count} rule(s). Failed: {failed}.'
@@ -800,8 +597,11 @@ detection:<br>
                 detectionEval3: 'Les règles sont fournies au moment de l\'analyse en YAML (un ou plusieurs documents séparés par ---)',
                 matchOutput: 'Sortie des correspondances',
                 matchOutputDesc: 'Chaque correspondance inclut l\'identifiant de règle, le titre, le niveau de sévérité et le payload (matched_log) pour voir quelles données ont déclenché la règle.',
-                navBugreport: 'Analyse bugreport',
+                navHome: 'Accueil',
+                navBugreport: 'Android (analyseur live)',
                 navExample: 'Résultats exemple',
+                navIntrusion: 'Journaux intrusion',
+                statusBanner: 'Catalogue des règles Sigma sous /rules/, sorties des parseurs, et branchement de la détection pour l’analyseur Android. Utilisez l’analyseur live ou la page exemple pour voir l’interface.',
                 loadingRules: 'Chargement des règles…',
                 loadedRules: '{count} règle(s) chargée(s) depuis {sources}.',
                 loadedRulesPartial: '{count} règle(s) chargée(s). Échecs : {failed}.'
@@ -838,8 +638,11 @@ detection:<br>
                 detectionEval3: '规则在分析时以 YAML 提供（单个或多个文档，用 --- 分隔）',
                 matchOutput: '匹配输出',
                 matchOutputDesc: '每条匹配包含规则标识、标题、严重级别和实际日志 payload（matched_log），便于分析人员查看触发规则的数据。',
-                navBugreport: 'Bugreport 分析',
+                navHome: '首页',
+                navBugreport: 'Android（实时分析）',
                 navExample: '示例结果',
+                navIntrusion: '入侵日志',
+                statusBanner: 'Android 分析器的 /rules/ Sigma 规则目录、解析器输出与检测接线说明。请用实时分析页或示例页查看界面。',
                 loadingRules: '正在加载规则…',
                 loadedRules: '已加载 {count} 条规则，来源：{sources}。',
                 loadedRulesPartial: '已加载 {count} 条规则。失败：{failed}。'

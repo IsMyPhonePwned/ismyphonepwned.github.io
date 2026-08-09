@@ -1738,6 +1738,67 @@
     text-decoration: underline;
 }
 
+.info-banner {
+    background: rgba(33, 150, 243, 0.1);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 2rem;
+    color: var(--accent);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.info-banner a {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.info-banner code {
+    background: color-mix(in srgb, var(--bg-secondary) 80%, transparent);
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    font-family: ui-monospace, monospace;
+    font-size: 0.9em;
+}
+
+.hub-disclaimer {
+    max-width: 700px;
+    margin: 1rem auto 0;
+    padding: 0.55rem 0.75rem;
+    background: color-mix(in srgb, var(--error) 6%, var(--bg-card));
+    border: 1px solid color-mix(in srgb, var(--error) 22%, var(--border));
+    border-radius: 8px;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    text-align: left;
+}
+
+.hub-disclaimer summary {
+    color: var(--error);
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+.hub-disclaimer summary::-webkit-details-marker {
+    display: none;
+}
+
+.hub-disclaimer p {
+    color: var(--text-primary);
+    margin: 0.5rem 0 0;
+}
+
+.hub-disclaimer__warn {
+    color: var(--warning);
+}
+
+.hub-disclaimer__ok {
+    color: var(--success);
+}
+
 /* Package details — summary & chips */
 .package-detail-meta {
     display: flex;

@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="default">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>droid2web — APK, DEX, AXML, ARSC Inspector</title>
+  <link rel="icon" href="logo.png" type="image/png">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/styles/vis-network.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+</head>
+<body>
+  <!-- Nyan cat run overlay (shown when theme is Nyan Cat) -->
+  <div id="nyan-cat-container" class="nyan-cat-container" aria-hidden="true">
+    <div class="nyan-cat-run">
+      <img src="nyan-cat.gif" alt="" class="nyan-cat-gif" width="256" height="128">
+    </div>
+  </div>
+  <header>
+    <div class="header-content">
+      <img src="logo.png" alt="" class="app-logo" width="28" height="28">
+      <div class="header-title-block">
+        <h1>droid2web</h1>
+        <p class="subtitle">APK, DEX, AXML, ARSC inspection in the browser</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="theme-switcher">
+        <button type="button" class="theme-switcher-btn" id="theme-btn" aria-label="Choose theme" aria-haspopup="listbox" aria-expanded="false">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.648 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.648-1.648H16c6.5 0 11-4.5 11-11 0-1.16-.174-2.276-.5-3.32-.307-.98-.725-1.888-1.243-2.652A10.5 10.5 0 0 0 12 2z"/></svg>
+          <span id="theme-label">Theme</span>
+        </button>
+        <div class="theme-dropdown" id="theme-dropdown" role="listbox" aria-hidden="true">
+          <button type="button" class="theme-option active" data-theme="default" role="option">Default</button>
+          <button type="button" class="theme-option" data-theme="dark" role="option">Dark</button>
+          <button type="button" class="theme-option" data-theme="light" role="option">Light</button>
+          <button type="button" class="theme-option" data-theme="unicorn" role="option">🦄 Unicorn</button>
+          <button type="button" class="theme-option" data-theme="rainbow" role="option">🌈 Rainbow</button>
+          <button type="button" class="theme-option" data-theme="nyan" role="option">🐱 Nyan Cat</button>
+        </div>
+      </div>
+      <button type="button" class="theme-switcher-btn" id="settings-btn" aria-label="Open settings" title="Settings">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span>Settings</span>
+      </button>
+      <div class="header-storage-actions" title="Save or reload renames, notes, CFG, security, and UI prefs">
+        <button type="button" class="btn btn-small" id="header-export-storage" title="Download analysis data (renames, notes, CFG, security, theme…) as JSON">Save</button>
+        <button type="button" class="btn btn-small" id="header-import-storage" title="Load a previously saved JSON into this browser">Reload</button>
+        <input type="file" id="header-import-storage-file" accept=".json,application/json,text/json" hidden>
+        <span class="header-storage-status muted" id="header-storage-status" aria-live="polite"></span>
+      </div>
+      <div class="upload-area">
+        <input type="file" id="file-input" accept="*/*" multiple hidden>
+        <button class="btn btn-primary" id="btn-upload">Upload file(s)</button>
+        <span class="file-name" id="file-name">No file loaded</span>
+        <span class="drop-hint muted">or drag & drop (multi-DEX OK)</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="loading-overlay" id="loading-overlay" aria-hidden="true">
+      <div class="loading-spinner" aria-label="Processing"></div>
+      <span class="loading-text">Processing…</span>
+    </div>
+    <div class="drop-zone" id="drop-zone">
+      <span class="drop-zone-text">Drop any file here to analyze</span>
+      <span class="drop-zone-hint muted">APK, DEX (one or many), AXML, ARSC — type detected automatically</span>
+    </div>
+    <div class="inspector-layout" id="inspector-layout">
+      <!-- Left: Tree / File list -->
+      <section class="panel left-panel" id="left-panel">
+        <div class="panel-header">
+          <h2 id="left-panel-title">Contents</h2>
+          <div class="left-panel-modes" id="left-panel-modes" hidden>
+            <button type="button" class="btn btn-small left-mode-btn" id="apk-mode-classes" data-apk-mode="classes">Classes</button>
+            <button type="button" class="btn btn-small left-mode-btn" id="apk-mode-files" data-apk-mode="files">Files</button>
+          </div>
+        </div>
+        <div class="dex-file-wrap" id="dex-file-wrap" style="display:none">
+          <label class="dex-package-label" for="dex-file-select">DEX</label>
+          <select id="dex-file-select" class="dex-package-select" aria-label="Select DEX file">
+            <option value="0">classes.dex</option>
+          </select>
+        </div>
+        <div class="dex-package-wrap" id="dex-package-wrap" style="display:none">
+          <label class="dex-package-label" for="dex-package-select">Package</label>
+          <select id="dex-package-select" class="dex-package-select" aria-label="Select package">
+            <option value="">Select package…</option>
+          </select>
+        </div>
+        <div class="list-search-wrap" id="list-search-wrap">
+          <div class="list-search-row">
+            <input type="search" id="search-input" class="search-input list-search-input" placeholder="Search… method:onCreate · tag:crypto · bookmark: / ★" title="Search files, classes, methods. method:name or m:name = method names only. tag:name or #name = tagged methods. bookmark: / bm: / ★ = bookmarked only." aria-label="Search in list">
+            <button type="button" class="btn btn-small list-bookmarks-btn" id="list-bookmarks-btn" title="Show bookmarked classes and methods" aria-pressed="false" aria-label="Show bookmarks">★</button>
+          </div>
+          <label class="list-filter-opt pane-toggle" title="Show android.* and androidx.* framework classes in trees and selectors">
+            <input type="checkbox" id="show-android-classes">
+            <span>Show android / androidx</span>
+          </label>
+        </div>
+        <div class="tree-container" id="tree-container">
+          <div class="muted center-text" id="tree-placeholder">Upload or drop any file — type is auto-detected</div>
+          <div id="tree-content" class="tree-content" style="display:none"></div>
+        </div>
+      </section>
+      <div class="layout-resizer" id="resizer-left" title="Drag to resize"></div>
+
+      <!-- Center: Source-first workspace -->
+      <section class="panel center-panel" id="center-panel">
+        <div class="center-tabs" id="center-tabs">
+          <div class="center-tabs-group center-tabs-permanent" role="tablist" aria-label="Permanent workspace tabs">
+            <span class="center-tabs-group-label" title="Always available">Workspace</span>
+            <button type="button" class="tab-btn tab-btn-permanent active" data-tab="bytecode-tab" title="Permanent tab">Code</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="manifest-tab" title="Permanent tab">Manifest</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="raw-tab" title="Permanent tab">Raw</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="info-tab" title="Permanent tab">Info</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="strings-tab" title="Permanent tab">Strings</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="security-tab" title="Permanent tab">Security</button>
+          </div>
+          <div class="center-tabs-sep" id="center-tabs-sep" hidden aria-hidden="true"></div>
+          <div class="center-tabs-group center-tabs-files" id="center-tabs-files-group" hidden>
+            <span class="center-tabs-group-label" title="Temporary tabs opened from files">Opened</span>
+            <div class="center-tabs-dynamic" id="center-tabs-dynamic" role="tablist" aria-label="Opened file tabs"></div>
+          </div>
+          <div class="center-tabs-actions">
+            <button type="button" class="btn btn-small center-tabs-close-all" id="center-tabs-close-all" hidden title="Close all opened file tabs">Close all</button>
+            <div class="center-tabs-menu-wrap">
+              <button type="button" class="btn btn-small center-tabs-menu-btn" id="center-tabs-menu-btn" aria-haspopup="true" aria-expanded="false" title="List permanent and opened tabs">Tabs</button>
+              <div class="center-tabs-menu" id="center-tabs-menu" hidden role="menu"></div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-content active" id="bytecode-tab">
+          <div class="code-view-toolbar" id="code-view-toolbar">
+            <div class="code-nav">
+              <div class="package-selector-wrap" id="code-package-wrap" style="display:none">
+                <label class="method-selector-label" for="code-package-select">Package</label>
+                <select id="code-package-select" class="method-select" aria-label="Select package">
+                  <option value="">Select package…</option>
+                </select>
+              </div>
+              <span class="code-nav-sep" id="code-nav-sep-pkg" hidden>›</span>
+              <div class="class-selector-wrap" id="class-selector-wrap" style="display:none">
+                <label class="method-selector-label" for="apk-dex-class-toolbar">Class</label>
+                <input type="search" id="class-search-input" class="class-search-input" placeholder="Filter…" aria-label="Filter classes" autocomplete="off">
+                <select id="apk-dex-class-toolbar" class="method-select" aria-label="Select class"></select>
+              </div>
+              <span class="code-nav-sep" id="code-nav-sep-class" hidden>›</span>
+              <div class="method-selector-wrap">
+                <label class="method-selector-label" for="method-select">Method</label>
+                <input type="search" id="method-search-input" class="class-search-input method-search-input" placeholder="Filter…" aria-label="Filter methods" autocomplete="off" title="Filter methods by name or descriptor">
+                <select id="method-select" class="method-select" aria-label="Select method">
+                  <option value="all">All methods</option>
+                </select>
+                <button type="button" class="btn btn-small code-back-to-class" id="code-back-to-class" title="Back to class (all methods)" hidden>← Class</button>
+              </div>
+            </div>
+            <div class="code-toolbar-actions">
+              <div class="decompiler-options" id="decompiler-options" title="dex-decompiler options">
+                <label class="decomp-opt">
+                  <span class="decomp-opt-label">Mode</span>
+                  <select id="decompile-mode" class="decomp-mode-select" aria-label="Decompilation mode">
+                    <option value="restructure">Restructure</option>
+                    <option value="simple">Simple (SSA)</option>
+                    <option value="fallback">Fallback</option>
+                  </select>
+                </label>
+                <label class="decomp-opt pane-toggle" title="Emit raw DEX instructions as comments in source">
+                  <input type="checkbox" id="decompile-show-bytecode">
+                  <span>Bytecode comments</span>
+                </label>
+                <label class="decomp-opt pane-toggle" title="Use DEX debug_info for local/parameter names">
+                  <input type="checkbox" id="decompile-debug-names" checked>
+                  <span>Debug names</span>
+                </label>
+                <label class="decomp-opt pane-toggle" title="Auto-rename short / invalid identifiers">
+                  <input type="checkbox" id="decompile-deobf">
+                  <span>Deobf</span>
+                </label>
+              </div>
+              <span class="pane-meta muted" id="source-meta"></span>
+              <div class="source-find">
+                <button type="button" class="btn btn-small" id="source-nav-back" title="Back to previous method (Alt+←)" aria-label="Back" disabled>←</button>
+                <input type="search" id="source-search-input" class="pane-search-input" placeholder="Find in source…" aria-label="Search in source" autocomplete="off">
+                <button type="button" class="btn btn-small" id="source-search-prev" title="Previous match" aria-label="Previous">↑</button>
+                <button type="button" class="btn btn-small" id="source-search-next" title="Next match" aria-label="Next">↓</button>
+                <span class="pane-search-count muted" id="source-search-count"></span>
+                <button type="button" class="btn btn-small" id="source-fold-all" title="Collapse all blocks" aria-label="Collapse all">⊟</button>
+                <button type="button" class="btn btn-small" id="source-unfold-all" title="Expand all blocks" aria-label="Expand all">⊞</button>
+                <button type="button" class="btn btn-small source-export-btn" id="source-export-btn" title="Download decompiled Java (class / package / DEX)" aria-label="Export source" aria-haspopup="menu">⬇</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="annotation-panel" id="annotation-panel" hidden>
+            <div class="anno-header">
+              <span class="anno-scope">Class</span>
+              <span class="anno-label muted"></span>
+              <button type="button" class="btn btn-small anno-star-btn" id="anno-bookmark-star" title="Bookmark this class/method" aria-pressed="false" aria-label="Bookmark">☆</button>
+              <span class="anno-status muted" id="anno-status" aria-live="polite"></span>
+              <button type="button" class="btn btn-small" id="anno-sections-toggle" title="Show tags, notes &amp; bookmarks" aria-expanded="false" aria-label="Show tags, notes and bookmarks">Notes</button>
+              <button type="button" class="btn btn-small" id="anno-save-btn" title="Save note and tags" hidden>Save</button>
+              <button type="button" class="btn btn-small" id="anno-clear-btn" title="Clear note and tags" hidden>Clear</button>
+            </div>
+            <div class="anno-header-meta" id="anno-header-meta" hidden>
+              <div class="anno-header-tags" id="anno-header-tags" aria-label="Tags"></div>
+              <div class="anno-header-note muted" id="anno-header-note" hidden></div>
+            </div>
+            <div class="anno-body" id="anno-body" hidden>
+              <section class="anno-section anno-tags-section" data-collapsed="true" aria-label="Tags">
+                <button type="button" class="anno-section-head anno-section-toggle" data-anno-section="tags" aria-expanded="false" title="Show / hide tags">
+                  <span class="anno-section-chevron" aria-hidden="true"></span>
+                  <span class="anno-section-title">Tags</span>
+                  <span class="anno-section-count muted" id="anno-tags-count"></span>
+                  <span class="anno-section-preview muted" id="anno-tags-preview"></span>
+                </button>
+                <div class="anno-section-body">
+                  <div class="anno-section-toolbar">
+                    <button type="button" class="btn btn-small anno-suggest-toggle" id="anno-suggest-toggle" title="Show tags used elsewhere in this file" hidden>All tags</button>
+                  </div>
+                  <div class="anno-tags" aria-label="Assigned tags"></div>
+                  <div class="anno-tag-empty muted" id="anno-tag-empty" hidden>No tags yet — type below and press Enter</div>
+                  <div class="anno-tag-suggestions" id="anno-tag-suggestions" hidden></div>
+                </div>
+              </section>
+              <section class="anno-section anno-note-section" data-collapsed="true" aria-label="Notes">
+                <button type="button" class="anno-section-head anno-section-toggle" data-anno-section="notes" aria-expanded="false" title="Show / hide notes">
+                  <span class="anno-section-chevron" aria-hidden="true"></span>
+                  <span class="anno-section-title">Notes</span>
+                  <span class="anno-note-chars muted" id="anno-note-chars"></span>
+                  <span class="anno-section-preview muted" id="anno-note-preview"></span>
+                </button>
+                <div class="anno-section-body">
+                  <div class="anno-section-toolbar">
+                    <button type="button" class="btn btn-small" id="anno-note-expand" title="Expand note editor" aria-expanded="false">Expand</button>
+                  </div>
+                  <textarea class="anno-note" rows="4" placeholder="Method / class notes…&#10;&#10;Tips: one idea per line · use Tags for searchable labels · auto-saves as you type" aria-label="Note"></textarea>
+                </div>
+              </section>
+              <section class="anno-section anno-bookmarks-section" data-collapsed="true" aria-label="Bookmarks">
+                <button type="button" class="anno-section-head anno-section-toggle" data-anno-section="bookmarks" aria-expanded="false" title="Show / hide bookmarks">
+                  <span class="anno-section-chevron" aria-hidden="true"></span>
+                  <span class="anno-section-title">Bookmarks</span>
+                  <span class="anno-section-count muted" id="anno-bookmarks-count"></span>
+                </button>
+                <div class="anno-section-body">
+                  <div id="anno-bookmarks-list" class="anno-bookmarks-list"></div>
+                </div>
+              </section>
+            </div>
+          </div>
+
+          <div class="code-workspace" id="code-workspace">
+            <div class="code-main-row" id="code-main-row">
+              <!-- Primary: bytecode listing (left) + CFG (right) -->
+              <section class="dock-panel bytecode-dock bytecode-main" id="bytecode-pane" data-collapsed="false">
+                <header class="dock-header" id="bytecode-dock-header">
+                  <button type="button" class="dock-toggle" id="bytecode-collapse-btn" aria-expanded="true" title="Show / hide bytecode">
+                    <span class="dock-chevron" aria-hidden="true"></span>
+                    <span class="dock-title">Bytecode</span>
+                    <span class="pane-meta muted" id="bytecode-meta"></span>
+                  </button>
+                  <div class="dock-header-actions" id="bytecode-dock-actions">
+                    <button type="button" class="btn btn-small" id="bytecode-nav-back" title="Back to previous offset (Alt+←)" aria-label="Back" disabled>←</button>
+                    <input type="search" id="bytecode-search-input" class="pane-search-input" placeholder="Find…" aria-label="Search bytecode" autocomplete="off">
+                    <button type="button" class="btn btn-small" id="bytecode-search-prev" title="Previous match" aria-label="Previous">↑</button>
+                    <button type="button" class="btn btn-small" id="bytecode-search-next" title="Next match" aria-label="Next">↓</button>
+                    <span class="pane-search-count muted" id="bytecode-search-count"></span>
+                    <label class="pane-toggle" title="Show instruction bytes">
+                      <input type="checkbox" id="bytecode-hex-toggle" checked>
+                      <span>Hex</span>
+                    </label>
+                    <button type="button" class="btn btn-small btn-icon dock-maximize-btn" id="bytecode-maximize-btn" title="Maximize bytecode (Esc to restore)" aria-label="Maximize bytecode" aria-pressed="false">
+                      <svg class="dock-max-icon dock-max-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+                      <svg class="dock-max-icon dock-max-restore" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
+                    </button>
+                  </div>
+                </header>
+                <div class="dock-body" id="bytecode-dock-body">
+                  <div class="bytecode-listing-wrap" id="bytecode-listing-wrap">
+                    <div class="bytecode-col-header" id="bytecode-col-header" aria-hidden="true">
+                      <span class="bc-offset">Offset</span>
+                      <span class="bc-hex">Hex</span>
+                      <span class="bc-mnemonic">Opcode</span>
+                      <span class="bc-operands">Operands</span>
+                      <span class="bc-jumps">Jump</span>
+                    </div>
+                    <div class="bytecode-listing" id="bytecode-listing">
+                      <div class="code-empty">
+                        <div class="code-empty-title">No bytecode</div>
+                        <div class="code-empty-hint muted">Select a method to view instructions</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <div class="workspace-resizer workspace-resizer-col" id="resizer-source-cfg" title="Drag to resize CFG" hidden></div>
+
+              <!-- Control-flow graph on the right (Default-style) -->
+              <section class="dock-panel cfg-dock" id="cfg-pane" data-collapsed="false">
+                <header class="dock-header" id="cfg-dock-header">
+                  <button type="button" class="dock-toggle" id="cfg-collapse-btn" aria-expanded="true" title="Show / hide control-flow graph">
+                    <span class="dock-chevron" aria-hidden="true"></span>
+                    <span class="dock-title">CFG</span>
+                    <span class="pane-meta muted" id="cfg-meta"></span>
+                  </button>
+                  <div class="dock-header-actions cfg-dock-actions" id="cfg-dock-actions">
+                    <button type="button" class="btn btn-small" id="cfg-fit-btn" title="Fit graph to view">Fit</button>
+                    <button type="button" class="btn btn-small" id="cfg-zoom-in-btn" title="Zoom in">+</button>
+                    <button type="button" class="btn btn-small" id="cfg-zoom-out-btn" title="Zoom out">−</button>
+                    <button type="button" class="btn btn-small btn-icon dock-maximize-btn" id="cfg-maximize-btn" title="Fullscreen CFG (Esc to exit)" aria-label="Fullscreen CFG" aria-pressed="false">
+                      <svg class="dock-max-icon dock-max-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+                      <svg class="dock-max-icon dock-max-restore" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
+                    </button>
+                    <button type="button" class="btn btn-small" id="cfg-fullscreen-btn" title="Fullscreen CFG (Esc to exit)" aria-pressed="false">Fullscreen</button>
+                    <button type="button" class="btn btn-small btn-icon dock-maximize-btn" id="cfg-reset-layout-btn" title="Reset block positions for this method (keeps read marks and notes)" aria-label="Reset layout">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    </button>
+                    <label class="pane-toggle" title="Compact: last instruction + block colors only">
+                      <input type="checkbox" id="cfg-compact-toggle">
+                      <span>Compact</span>
+                    </label>
+                    <label class="pane-toggle" title="Show instruction addresses in CFG blocks">
+                      <input type="checkbox" id="cfg-addr-toggle" checked>
+                      <span>Addr</span>
+                    </label>
+                    <button type="button" class="btn btn-small" id="cfg-show-bytecode-btn" title="Expand linear bytecode listing">Bytecode</button>
+                  </div>
+                </header>
+                <div class="dock-body cfg-dock-body" id="cfg-dock-body">
+                  <div class="cfg-legend" id="cfg-legend" hidden aria-hidden="true"></div>
+                  <div class="cfg-graph-wrap" id="cfg-graph-wrap">
+                    <div class="cfg-graph-container" id="cfg-graph-container" aria-label="Method control-flow graph"></div>
+                    <div class="cfg-html-layer" id="cfg-html-layer" hidden aria-hidden="true"></div>
+                    <div class="cfg-graph-empty" id="cfg-graph-empty">
+                      <div class="code-empty">
+                        <div class="code-empty-title">No CFG</div>
+                        <div class="code-empty-hint muted">Select a single method to view its control-flow graph</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <div class="workspace-resizer" id="resizer-cfg-bytecode" title="Drag to resize source" hidden></div>
+
+            <!-- Secondary: decompiled source (below bytecode + CFG) -->
+            <section class="dock-panel source-dock" id="source-pane" data-collapsed="false">
+              <header class="dock-header" id="source-dock-header">
+                <button type="button" class="dock-toggle" id="source-collapse-btn" aria-expanded="true" title="Show / hide decompiled source">
+                  <span class="dock-chevron" aria-hidden="true"></span>
+                  <span class="dock-title">Source</span>
+                  <span class="pane-meta muted" id="source-meta"></span>
+                </button>
+                <div class="dock-header-actions" id="source-dock-actions">
+                  <button type="button" class="btn btn-small btn-icon dock-maximize-btn" id="source-maximize-btn" title="Maximize source (Esc to restore)" aria-label="Maximize source" aria-pressed="false">
+                    <svg class="dock-max-icon dock-max-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+                    <svg class="dock-max-icon dock-max-restore" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
+                  </button>
+                </div>
+              </header>
+              <div class="dock-body source-dock-body" id="source-dock-body">
+                <div class="source-code-wrap" id="source-code-wrap">
+                  <pre class="source-code" id="source-code"><div class="code-empty"><div class="code-empty-title">No source yet</div><div class="code-empty-hint muted">Select a method — or open All methods and click a method header / Open CFG</div></div></pre>
+                </div>
+              </div>
+            </section>
+
+            <div class="workspace-resizer" id="resizer-emulator" title="Drag to resize emulator" hidden></div>
+
+            <!-- Bottom: emulator dock -->
+            <section class="dock-panel emulator-dock" id="bytecode-emulator-area" data-collapsed="true" data-active="false">
+              <header class="dock-header" id="emulator-dock-header">
+                <button type="button" class="dock-toggle" id="emulator-collapse-btn" aria-expanded="false" title="Show / hide emulator">
+                  <span class="dock-chevron" aria-hidden="true"></span>
+                  <span class="dock-title">Emulator</span>
+                </button>
+                <div class="emulator-controls" id="bytecode-toolbar">
+                  <label class="bytecode-params-label" for="bytecode-params">Params</label>
+                  <input type="text" id="bytecode-params" class="bytecode-params-input" placeholder="[] or [5,3]" value="[]" aria-label="Parameters" title="JSON array, or byte arrays: [B]1,2,3;[B]0,0">
+                  <label class="bytecode-params-label" for="bytecode-max-steps">Max</label>
+                  <input type="number" id="bytecode-max-steps" class="bytecode-max-steps-input" min="0" max="100000" value="5000" placeholder="5000" aria-label="Max steps" title="Max steps (0 = no limit)">
+                  <button type="button" class="btn" id="bytecode-step" aria-label="Execute one step" title="Step (S)">Step</button>
+                  <button type="button" class="btn btn-primary" id="bytecode-run" aria-label="Run to end" title="Run (R)">Run</button>
+                  <button type="button" class="btn" id="bytecode-reset" aria-label="Reset VM" title="Reset (Esc)">Reset</button>
+                  <button type="button" class="btn btn-icon" id="bytecode-shortcuts-help" aria-label="Keyboard shortcuts" title="Shortcuts">?</button>
+                  <div class="shortcuts-popup" id="shortcuts-popup" role="dialog" aria-label="Emulator keyboard shortcuts" aria-hidden="true">
+                    <div class="shortcuts-popup-title">Emulator shortcuts</div>
+                    <table class="shortcuts-popup-table">
+                      <tr><td><kbd>S</kbd></td><td>Step</td></tr>
+                      <tr><td><kbd>R</kbd> / <kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>Run</td></tr>
+                      <tr><td><kbd>Esc</kbd></td><td>Reset</td></tr>
+                      <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Prev / next step</td></tr>
+                      <tr><td><kbd>Home</kbd> <kbd>End</kbd></td><td>First / last</td></tr>
+                    </table>
+                  </div>
+                </div>
+              </header>
+              <div class="dock-body emulator-dock-body" id="emulator-dock-body">
+                <div class="bytecode-step-bar" id="bytecode-step-bar"></div>
+                <div class="bytecode-state-panel" id="bytecode-state-panel">
+                  <div class="code-empty">
+                    <div class="code-empty-title">Ready to emulate</div>
+                    <div class="code-empty-hint muted">Select a method, then Step or Run</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+        <div class="tab-content" id="manifest-tab">
+          <div class="res-viewer" id="manifest-viewer">
+            <div class="res-viewer-toolbar" id="manifest-toolbar" hidden></div>
+            <div class="res-viewer-scroll">
+              <pre class="manifest-xml res-xml" id="manifest-xml"><span class="muted">Manifest (APK) or XML (AXML)</span></pre>
+            </div>
+          </div>
+        </div>
+        <div class="tab-content" id="raw-tab">
+          <div class="hex-editor-host" id="hex-editor-host"></div>
+        </div>
+        <div class="tab-content" id="info-tab">
+          <div class="info-content" id="info-content">
+            <div class="muted">File info</div>
+          </div>
+        </div>
+        <div class="tab-content" id="strings-tab">
+          <div class="strings-toolbar">
+            <div class="strings-toolbar-row">
+              <input type="search" id="strings-search" class="strings-search-input" placeholder="Filter strings…" aria-label="Filter strings" autocomplete="off">
+              <label class="strings-opt" title="Treat filter as a regular expression">
+                <input type="checkbox" id="strings-regex">
+                <span>Regex</span>
+              </label>
+              <label class="strings-opt" title="Case-sensitive match">
+                <input type="checkbox" id="strings-case">
+                <span>Aa</span>
+              </label>
+              <label class="strings-opt strings-minlen-wrap" title="Minimum string length">
+                <span>Min</span>
+                <input type="number" id="strings-min-len" class="strings-min-len" min="0" value="0" aria-label="Minimum length">
+              </label>
+              <label class="strings-opt">
+                <span>Sort</span>
+                <select id="strings-sort" class="strings-sort-select" aria-label="Sort strings">
+                  <option value="index">Index</option>
+                  <option value="length-desc">Length ↓</option>
+                  <option value="length-asc">Length ↑</option>
+                  <option value="alpha">A–Z</option>
+                </select>
+              </label>
+              <span class="strings-count muted" id="strings-count"></span>
+              <div class="strings-actions">
+                <button type="button" class="btn btn-small" id="strings-copy" title="Copy selected string (or all filtered)" disabled>Copy</button>
+                <button type="button" class="btn btn-small" id="strings-export" title="Export filtered strings as text">Export</button>
+                <button type="button" class="btn btn-small" id="strings-jump-raw" title="Find selected string in Raw hex" disabled>Raw</button>
+              </div>
+            </div>
+            <div class="strings-filters" id="strings-filters" role="toolbar" aria-label="String type filters">
+              <button type="button" class="strings-chip active" data-filter="all">All</button>
+              <button type="button" class="strings-chip" data-filter="url">URL</button>
+              <button type="button" class="strings-chip" data-filter="path">Path</button>
+              <button type="button" class="strings-chip" data-filter="class">Class</button>
+              <button type="button" class="strings-chip" data-filter="ip">IP</button>
+              <button type="button" class="strings-chip" data-filter="base64">Base64</button>
+              <button type="button" class="strings-chip" data-filter="json">JSON</button>
+              <button type="button" class="strings-chip" data-filter="long">Long</button>
+            </div>
+          </div>
+          <div class="strings-body">
+            <div class="strings-list-wrap">
+              <div class="strings-list-header" aria-hidden="true">
+                <span class="string-item-idx">#</span>
+                <span class="string-item-text">String</span>
+                <span class="string-item-len">Len</span>
+              </div>
+              <div class="strings-list" id="strings-list" tabindex="0" role="listbox" aria-label="DEX strings">
+                <div class="muted">Strings (DEX)</div>
+              </div>
+            </div>
+            <aside class="strings-detail" id="strings-detail" hidden>
+              <div class="strings-detail-header">
+                <span class="strings-detail-meta muted" id="strings-detail-meta"></span>
+                <button type="button" class="btn btn-small" id="strings-detail-copy" title="Copy full string">Copy</button>
+              </div>
+              <pre class="strings-detail-text" id="strings-detail-text"></pre>
+              <div class="strings-detail-usages" id="strings-detail-usages" hidden>
+                <div class="strings-detail-usages-title">Usages</div>
+                <div class="strings-detail-usages-body muted" id="strings-detail-usages-body">Select a string</div>
+              </div>
+            </aside>
+          </div>
+        </div>
+        <div class="tab-content" id="security-tab">
+          <div class="security-panel" id="security-panel">
+            <div class="security-toolbar">
+              <div class="security-actions">
+                <button type="button" class="btn btn-primary" id="security-scan" title="Run all security scanners: vulnerability detectors, Semgrep rules, and MT taint analysis">Scan</button>
+                <button type="button" class="btn btn-small" id="security-rules-toggle" title="View, edit, or create Semgrep rules">Rules</button>
+                <button type="button" class="btn btn-small" id="security-clear-cache" title="Clear cached results for this file">Clear cache</button>
+                <button type="button" class="btn btn-small" id="security-export-storage" title="Download analysis localStorage (scans, TP/FP, rules, renames, notes)">Export</button>
+                <button type="button" class="btn btn-small" id="security-import-storage" title="Import analysis localStorage from a previous export">Import…</button>
+                <input type="file" id="security-import-storage-file" accept=".json,application/json,text/json" hidden>
+              </div>
+              <input type="search" id="security-filter" class="pane-search-input" placeholder="Filter findings…" aria-label="Filter security findings" autocomplete="off">
+              <span class="security-status muted" id="security-status">Load a DEX or APK, then click Scan</span>
+            </div>
+            <div class="security-progress" id="security-progress" hidden>
+              <div class="security-progress-meta">
+                <span class="security-progress-label" id="security-progress-label">Scanning…</span>
+                <div class="security-progress-meta-right">
+                  <span class="security-progress-elapsed muted" id="security-progress-elapsed" title="Elapsed time">0.0s</span>
+                  <span class="security-progress-pct" id="security-progress-pct">0%</span>
+                  <button type="button" class="btn btn-small security-progress-stop" id="security-progress-stop" hidden title="Stop the current security scan">Stop</button>
+                </div>
+              </div>
+              <div class="security-progress-phases" id="security-progress-phases" hidden aria-label="Scan phases">
+                <span class="security-phase" data-phase="vuln">Vuln</span>
+                <span class="security-phase-sep" aria-hidden="true">→</span>
+                <span class="security-phase" data-phase="semgrep">Semgrep</span>
+                <span class="security-phase-sep" aria-hidden="true">→</span>
+                <span class="security-phase" data-phase="mt">MT</span>
+              </div>
+              <div class="security-progress-detail muted" id="security-progress-detail" hidden></div>
+              <div class="security-progress-extra muted" id="security-progress-extra" hidden></div>
+              <div class="security-progress-stats" id="security-progress-stats" hidden></div>
+              <div class="security-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="security-progress-track">
+                <div class="security-progress-bar" id="security-progress-bar"></div>
+              </div>
+            </div>
+            <div class="security-rules-panel" id="security-rules-panel" hidden>
+              <header class="security-rules-header">
+                <h3>Semgrep rules</h3>
+                <div class="security-rules-actions">
+                  <button type="button" class="btn btn-small btn-primary" id="security-rules-all" title="Load all built-in rules (MobHunt + OWASP MASTG)">All</button>
+                  <button type="button" class="btn btn-small" id="security-rules-builtin" title="Load MobHunt starter rules only">MobHunt</button>
+                  <button type="button" class="btn btn-small" id="security-rules-mastg" title="Load bundled OWASP MASTG rules">MASTG</button>
+                  <button type="button" class="btn btn-small" id="security-rules-import" title="Import a .yml file">Import…</button>
+                  <input type="file" id="security-rules-file" accept=".yml,.yaml,text/yaml,text/plain" hidden>
+                  <button type="button" class="btn btn-small" id="security-rules-validate" title="Parse YAML and refresh rule list">Validate</button>
+                  <button type="button" class="btn btn-small btn-primary" id="security-rules-apply" title="Save rules for Semgrep scans">Apply</button>
+                  <button type="button" class="btn btn-small" id="security-rules-new" title="Insert a new empty rule template">New rule</button>
+                </div>
+              </header>
+              <p class="security-rules-hint muted">Edit Semgrep-style YAML below (Java/XML patterns + optional <code>native:</code> SSA hints). Default builtin is <strong>All</strong> (MobHunt + MASTG). Applied rules are included in Scan and stored in localStorage.</p>
+              <div class="security-rules-split">
+                <div class="security-rules-list-wrap">
+                  <div class="security-rules-list-header muted" id="security-rules-count">0 rules</div>
+                  <div class="security-rules-list" id="security-rules-list"></div>
+                </div>
+                <div class="security-rules-editor-wrap">
+                  <pre class="security-rules-highlight" id="security-rules-highlight" aria-hidden="true"></pre>
+                  <textarea id="security-rules-editor" class="security-rules-editor" spellcheck="false" aria-label="Semgrep rules YAML" placeholder="rules:&#10;  - id: my.rule&#10;    message: …&#10;    severity: WARNING&#10;    languages: [java]&#10;    pattern: $X.dangerous();"></textarea>
+                </div>
+              </div>
+              <div class="security-rules-status muted" id="security-rules-status"></div>
+            </div>
+            <div class="security-overview" id="security-overview" hidden>
+              <div class="security-overview-grid" id="security-overview-grid"></div>
+              <div class="security-overview-bar-wrap" id="security-overview-bar-wrap" hidden>
+                <div class="security-overview-bar" id="security-overview-bar" role="img" aria-label="Findings by severity"></div>
+                <div class="security-overview-bar-legend" id="security-overview-bar-legend"></div>
+              </div>
+              <div class="security-overview-scans" id="security-overview-scans"></div>
+            </div>
+            <div class="security-filters" id="security-filters" hidden>
+              <div class="security-source-tabs" id="security-source-tabs"></div>
+              <div class="security-sev-tabs" id="security-sev-tabs" role="toolbar" aria-label="Filter by severity"></div>
+              <div class="security-verdict-tabs" id="security-verdict-tabs" role="toolbar" aria-label="Filter by triage"></div>
+              <div class="security-chips" id="security-chips" hidden></div>
+            </div>
+            <div class="security-findings-wrap" id="security-findings-wrap">
+              <header class="security-findings-header">
+                <h3>Findings</h3>
+                <span class="muted" id="security-findings-count"></span>
+              </header>
+              <div class="security-findings" id="security-findings-list">
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div class="settings-modal" id="settings-modal" hidden aria-hidden="true" inert>
+    <div class="settings-modal-backdrop" id="settings-modal-backdrop"></div>
+    <div class="settings-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+      <div class="settings-modal-header">
+        <h3 id="settings-modal-title">Settings</h3>
+        <button type="button" class="btn btn-small" id="settings-close" aria-label="Close settings">Close</button>
+      </div>
+      <div class="settings-modal-body" id="settings-modal-body">
+        <section class="settings-section">
+          <h4 class="settings-section-title">Theme</h4>
+          <p class="settings-hint muted">Preset look for chrome, syntax, and CFG. Custom colors below override the preset.</p>
+          <div class="settings-theme-grid" id="settings-theme-grid" role="listbox" aria-label="Theme">
+            <button type="button" class="settings-theme-option" data-theme="default" role="option">Default</button>
+            <button type="button" class="settings-theme-option" data-theme="dark" role="option">Dark</button>
+            <button type="button" class="settings-theme-option" data-theme="light" role="option">Light</button>
+            <button type="button" class="settings-theme-option" data-theme="unicorn" role="option">🦄 Unicorn</button>
+            <button type="button" class="settings-theme-option" data-theme="rainbow" role="option">🌈 Rainbow</button>
+            <button type="button" class="settings-theme-option" data-theme="nyan" role="option">🐱 Nyan Cat</button>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h4 class="settings-section-title">Typography &amp; layout</h4>
+          <div class="settings-rows" id="settings-layout-rows"></div>
+        </section>
+
+        <section class="settings-section">
+          <h4 class="settings-section-title">UI colors</h4>
+          <div class="settings-color-grid" id="settings-ui-colors"></div>
+        </section>
+
+        <section class="settings-section">
+          <h4 class="settings-section-title">Syntax colors</h4>
+          <div class="settings-color-grid" id="settings-syn-colors"></div>
+        </section>
+
+        <section class="settings-section">
+          <h4 class="settings-section-title">CFG edge colors</h4>
+          <div class="settings-color-grid" id="settings-cfg-colors"></div>
+        </section>
+      </div>
+      <div class="settings-modal-footer">
+        <button type="button" class="btn" id="settings-reset">Reset custom tokens</button>
+        <button type="button" class="btn btn-primary" id="settings-done">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="security-cache-modal" id="security-cache-modal" hidden aria-hidden="true" inert>
+    <div class="security-cache-modal-backdrop" data-cache-choice="keep"></div>
+    <div class="security-cache-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="security-cache-modal-title">
+      <h3 id="security-cache-modal-title">Cached security results</h3>
+      <p class="security-cache-modal-body" id="security-cache-modal-body">
+        This APK/DEX already has scan results in localStorage. Keep them, or clear and start fresh?
+      </p>
+      <div class="security-cache-modal-actions">
+        <button type="button" class="btn btn-primary" id="security-cache-keep">Keep cache</button>
+        <button type="button" class="btn" id="security-cache-clear">Clear cache</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="app-statusbar" id="app-statusbar" aria-live="polite">
+    <div class="statusbar-inner" id="statusbar-inner">
+      <span class="statusbar-item statusbar-muted">No file loaded</span>
+    </div>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+  <script type="module" src="main.js"></script>
+</body>
+</html>

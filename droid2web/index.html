@@ -55,7 +55,7 @@
       </div>
       <div class="upload-area">
         <input type="file" id="file-input" accept="*/*" multiple hidden>
-        <button class="btn btn-primary" id="btn-upload">Upload file(s)</button>
+        <button class="btn btn-primary" id="btn-upload"><span class="btn-upload-full">Upload file(s)</span><span class="btn-upload-short">Upload</span></button>
         <span class="file-name" id="file-name">No file loaded</span>
         <span class="drop-hint muted">or drag & drop (multi-DEX OK)</span>
       </div>
@@ -119,14 +119,14 @@
           <button type="button" class="btn btn-small mobile-nav-toggle" id="mobile-nav-toggle" aria-label="Open contents" aria-controls="left-panel" aria-expanded="false" title="Contents">☰</button>
           <div class="center-tabs-group center-tabs-permanent" role="tablist" aria-label="Permanent workspace tabs">
             <span class="center-tabs-group-label" title="Always available">Workspace</span>
-            <button type="button" class="tab-btn tab-btn-permanent active" data-tab="bytecode-tab" title="Permanent tab">Code</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="manifest-tab" title="Permanent tab">Manifest</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="permissions-tab" id="permissions-tab-btn" hidden title="Requested permissions and code usages">Permissions</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="components-tab" id="components-tab-btn" hidden title="Activities, services, receivers, and providers">Components</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="raw-tab" title="Permanent tab">Raw</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="info-tab" title="Permanent tab">Info</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="strings-tab" title="Permanent tab">Strings</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="security-tab" title="Permanent tab">Security</button>
+            <button type="button" class="tab-btn tab-btn-permanent active" data-tab="bytecode-tab" data-label="Code" title="Permanent tab">Code</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="manifest-tab" data-label="Manifest" data-label-short="AXML" title="Permanent tab">Manifest</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="permissions-tab" id="permissions-tab-btn" data-label="Permissions" data-label-short="Perms" hidden title="Requested permissions and code usages">Permissions</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="components-tab" id="components-tab-btn" data-label="Components" data-label-short="Comps" hidden title="Activities, services, receivers, and providers">Components</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="raw-tab" data-label="Raw" title="Permanent tab">Raw</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="info-tab" data-label="Info" title="Permanent tab">Info</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="strings-tab" data-label="Strings" data-label-short="Str" title="Permanent tab">Strings</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="security-tab" data-label="Security" data-label-short="Sec" title="Permanent tab">Security</button>
           </div>
           <div class="center-tabs-sep" id="center-tabs-sep" hidden aria-hidden="true"></div>
           <div class="center-tabs-group center-tabs-files" id="center-tabs-files-group" hidden>
@@ -167,7 +167,9 @@
               </div>
             </div>
             <div class="code-toolbar-actions">
-              <div class="decompiler-options" id="decompiler-options" title="dex-decompiler options">
+              <details class="decomp-details" id="decomp-details">
+                <summary class="decomp-details-summary btn btn-small">Decomp</summary>
+                <div class="decompiler-options" id="decompiler-options" title="dex-decompiler options">
                 <label class="decomp-opt">
                   <span class="decomp-opt-label">Mode</span>
                   <select id="decompile-mode" class="decomp-mode-select" aria-label="Decompilation mode">
@@ -188,7 +190,8 @@
                   <input type="checkbox" id="decompile-deobf">
                   <span>Deobf</span>
                 </label>
-              </div>
+                </div>
+              </details>
               <span class="pane-meta muted" id="source-meta"></span>
               <div class="source-find">
                 <button type="button" class="btn btn-small" id="source-nav-back" title="Back to previous method (Alt+←)" aria-label="Back" disabled>←</button>

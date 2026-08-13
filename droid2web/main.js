@@ -5923,12 +5923,15 @@ document.getElementById('source-export-btn')?.addEventListener('click', (e) => {
   let emulatorOpen = false;
   try {
     const storedHex = localStorage.getItem('droid2web-show-hex');
-    if (storedHex == null && window.matchMedia('(max-width: 768px)').matches) showHex = false;
+    const mobile = window.matchMedia('(max-width: 768px)').matches;
+    if (storedHex == null && mobile) showHex = false;
     else showHex = storedHex !== '0';
     // Bytecode is the primary top pane — default open.
     bytecodeOpen = localStorage.getItem('droid2web-bytecode-open') !== '0';
     sourceOpen = localStorage.getItem('droid2web-source-open') !== '0';
-    cfgOpen = localStorage.getItem('droid2web-cfg-open') !== '0';
+    const storedCfg = localStorage.getItem('droid2web-cfg-open');
+    if (storedCfg == null && mobile) cfgOpen = false;
+    else cfgOpen = storedCfg !== '0';
     emulatorOpen = localStorage.getItem('droid2web-emulator-open') === '1';
     cfgCompactLabels = localStorage.getItem('droid2web-cfg-compact') === '1';
     cfgShowAddr = localStorage.getItem('droid2web-cfg-show-addr') !== '0';
@@ -6302,9 +6305,38 @@ function closeMobileNavIfNeeded() {
   try {
     window.matchMedia(MOBILE_NAV_MQ).addEventListener('change', (ev) => {
       if (!ev.matches) setMobileNavOpen(false);
+      syncMobileChrome(ev.matches);
     });
   } catch (_) {}
+  syncMobileChrome(isMobileNavLayout());
 })();
+
+function syncMobileChrome(isMobile) {
+  document.querySelectorAll('.tab-btn[data-label]').forEach((btn) => {
+    const full = btn.getAttribute('data-label') || btn.textContent;
+    const short = btn.getAttribute('data-label-short');
+    btn.textContent = isMobile && short ? short : full;
+  });
+  const decomp = document.getElementById('decomp-details');
+  if (decomp && isMobile) decomp.open = false;
+}
+
+/** Open the contents drawer once after a file is ready (phones only). */
+function maybeOpenMobileNavAfterLoad() {
+  if (!isMobileNavLayout()) return;
+  try {
+    if (sessionStorage.getItem('droid2web-mobile-nav-autopen') === '1') return;
+    sessionStorage.setItem('droid2web-mobile-nav-autopen', '1');
+  } catch (_) {}
+  setMobileNavOpen(true);
+}
+
+document.addEventListener('click', (e) => {
+  const decomp = document.getElementById('decomp-details');
+  if (!decomp || !decomp.open || !isMobileNavLayout()) return;
+  if (e.target.closest('#decomp-details')) return;
+  decomp.open = false;
+});
 
 // Layout resizers: left sidebar + vertical docks
 (function setupLayoutResizers() {
@@ -7737,6 +7769,7 @@ async function processFile(file) {
   if (currentData && (currentType === 'apk' || currentType === 'dex' || currentType === 'axml')) {
     await resetSecurityResults();
   }
+  if (currentData) maybeOpenMobileNavAfterLoad();
 }
 
 fileInput.addEventListener('change', async (e) => {

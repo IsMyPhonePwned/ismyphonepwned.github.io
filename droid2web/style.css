@@ -527,7 +527,10 @@ header {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.25rem;
+  padding: max(0.75rem, env(safe-area-inset-top, 0px))
+           max(0.75rem, env(safe-area-inset-right, 0px))
+           max(0.75rem, env(safe-area-inset-bottom, 0px))
+           max(0.75rem, env(safe-area-inset-left, 0px));
 }
 .settings-modal[hidden] { display: none !important; }
 .settings-modal-backdrop {
@@ -544,6 +547,7 @@ header {
   z-index: 1;
   width: min(40rem, 100%);
   max-height: min(88vh, 52rem);
+  max-height: min(88dvh, 52rem);
   display: flex;
   flex-direction: column;
   padding: 0;
@@ -815,6 +819,7 @@ header {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  position: relative;
 }
 .panel {
   overflow: hidden;
@@ -6864,6 +6869,7 @@ button.info-class-link:hover {
 /* Footer / status bar */
 footer.app-statusbar {
   padding: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   border-top: 1px solid var(--border);
   font-size: 0.72rem;
   color: var(--text-muted);
@@ -7036,6 +7042,12 @@ footer.app-statusbar {
 }
 
 /* Responsive */
+.mobile-nav-toggle,
+.mobile-nav-close,
+.mobile-nav-backdrop {
+  display: none;
+}
+
 @media (max-width: 1100px) {
   .code-main-row {
     flex-direction: column;
@@ -7115,9 +7127,240 @@ footer.app-statusbar {
   .dock-panel[data-collapsed="false"].emulator-dock { max-height: 40%; }
 }
 
-@media (max-width: 640px) {
-  .header-content h1 { font-size: 1.1rem; }
-  .subtitle { display: none; }
+/* Phone / small tablet: drawer contents + compact chrome */
+@media (max-width: 768px) {
+  .mobile-nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    font-size: 1.1rem;
+    line-height: 1;
+    margin-right: 0.15rem;
+  }
+  .mobile-nav-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+  .mobile-nav-backdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 24;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: rgba(8, 10, 16, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  :root[data-theme="light"] .mobile-nav-backdrop,
+  :root[data-theme="unicorn"] .mobile-nav-backdrop {
+    background: rgba(26, 32, 44, 0.35);
+  }
+  body.mobile-nav-open .mobile-nav-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .left-panel {
+    position: absolute;
+    z-index: 25;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(88vw, 20rem) !important;
+    min-width: 0 !important;
+    max-width: 100%;
+    transform: translateX(-105%);
+    transition: transform 0.22s ease;
+    box-shadow: var(--shadow-lg);
+    border-right: 1px solid var(--border);
+  }
+  body.mobile-nav-open .left-panel {
+    transform: none;
+  }
+  #resizer-left {
+    display: none !important;
+  }
+  .center-panel {
+    min-width: 0;
+    width: 100%;
+    flex: 1 1 auto;
+  }
+
+  header {
+    padding: 0.4rem 0.55rem;
+    padding-top: max(0.4rem, env(safe-area-inset-top, 0px));
+    padding-left: max(0.55rem, env(safe-area-inset-left, 0px));
+    padding-right: max(0.55rem, env(safe-area-inset-right, 0px));
+    gap: 0.45rem;
+    align-items: flex-start;
+  }
+  .header-actions {
+    max-width: none;
+    justify-content: flex-start;
+    gap: 0.4rem;
+  }
+  .drop-hint { display: none; }
+  .theme-switcher-btn span,
+  #settings-btn span,
+  #help-btn span { display: none; }
+  .theme-switcher-btn,
+  #settings-btn,
+  #help-btn {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    padding: 0.4rem;
+    justify-content: center;
+  }
+  .header-storage-actions { max-width: none; }
+  .header-storage-actions .btn {
+    min-height: 2.5rem;
+    padding: 0.4rem 0.65rem;
+  }
+  .file-name { max-width: 9rem; }
+  .btn-upload,
+  #btn-upload {
+    min-height: 2.5rem;
+  }
+
+  /* Avoid iOS focus zoom on form controls */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  .center-tabs {
+    padding: 0.3rem 0.4rem;
+    gap: 0.3rem;
+    -webkit-overflow-scrolling: touch;
+  }
+  .center-tabs-group-label { display: none; }
+  .tab-btn {
+    padding: 0.5rem 0.7rem;
+    font-size: 0.78rem;
+    min-height: 2.35rem;
+  }
+  .btn-small {
+    min-height: 2.25rem;
+    padding: 0.4rem 0.6rem;
+  }
+  .left-mode-btn {
+    min-height: 2.25rem;
+    padding: 0.35rem 0.55rem;
+    font-size: 0.75rem;
+  }
+
+  .code-view-toolbar {
+    padding: 0.4rem 0.5rem;
+    gap: 0.45rem;
+  }
+  .code-nav {
+    width: 100%;
+    min-width: 0;
+  }
+  .package-selector-wrap,
+  .class-selector-wrap,
+  .method-selector-wrap {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+  .method-select,
+  .class-search-input,
+  .method-search-input,
+  .pane-search-input {
+    min-width: 0 !important;
+    max-width: none !important;
+    width: 100%;
+    flex: 1 1 auto;
+  }
+  .source-find {
+    flex-wrap: wrap;
+    width: 100%;
+    min-width: 0;
+  }
   .code-toolbar-actions { width: 100%; }
+  .decompiler-options {
+    width: 100%;
+  }
+
+  .code-main-row > .cfg-dock[data-collapsed="false"] {
+    min-height: 120px;
+    max-height: 42%;
+  }
+  .dock-panel[data-collapsed="false"].source-dock {
+    min-height: 120px;
+  }
+
+  .security-welcome-grid {
+    grid-template-columns: 1fr;
+  }
+  .security-toolbar .pane-search-input,
+  .perms-search-input {
+    min-width: 0;
+    flex: 1 1 100%;
+    max-width: none;
+  }
+  .security-rules-split {
+    flex-direction: column;
+  }
+  .security-rules-list-wrap {
+    max-width: none;
+    width: 100%;
+    max-height: 10rem;
+  }
+
+  .statusbar-inner {
+    gap: 0.25rem 0.4rem;
+    padding: 0.25rem 0.45rem;
+  }
+  .statusbar-brand {
+    margin-left: 0;
+    width: 100%;
+    text-align: right;
+  }
+
+  .info-res-value {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .header-content h1 { font-size: 1.05rem; }
+  .subtitle { display: none; }
+  .app-logo { width: 24px; height: 24px; }
   .emulator-controls .bytecode-params-input { width: 5rem; }
+
+  .bytecode-col-header,
+  .bytecode-line {
+    grid-template-columns: 3.4rem minmax(0, 1fr) auto;
+    font-size: 0.72rem;
+  }
+  .code-workspace:not(.hide-hex) .bytecode-col-header,
+  .code-workspace:not(.hide-hex) .bytecode-line {
+    grid-template-columns: 3.4rem minmax(4rem, 6rem) minmax(0, 1fr) auto;
+  }
+  .bytecode-xref-line,
+  .method-callers-xrefs { padding-left: 3.4rem; }
+
+  .perms-toolbar,
+  .hex-toolbar-row {
+    gap: 0.35rem;
+  }
+  .drop-zone {
+    margin: 0.75rem;
+    padding: 1.25rem 1rem;
+  }
+  .drop-zone-text { font-size: 0.95rem; }
 }

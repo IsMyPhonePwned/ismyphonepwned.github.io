@@ -5513,6 +5513,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.closest('.panel')?.querySelectorAll('.tab-content').forEach(c => {
       c.classList.toggle('active', c.id === tab);
     });
+    closeMobileNavIfNeeded();
     if (tab === 'strings-tab') {
       scheduleEnsureDexStringsLoaded();
       requestAnimationFrame(() => paintStringsVirtualWindow());
@@ -5921,7 +5922,9 @@ document.getElementById('source-export-btn')?.addEventListener('click', (e) => {
   let cfgOpen = true;
   let emulatorOpen = false;
   try {
-    showHex = localStorage.getItem('droid2web-show-hex') !== '0';
+    const storedHex = localStorage.getItem('droid2web-show-hex');
+    if (storedHex == null && window.matchMedia('(max-width: 768px)').matches) showHex = false;
+    else showHex = storedHex !== '0';
     // Bytecode is the primary top pane — default open.
     bytecodeOpen = localStorage.getItem('droid2web-bytecode-open') !== '0';
     sourceOpen = localStorage.getItem('droid2web-source-open') !== '0';
@@ -6257,6 +6260,52 @@ if (bytecodeListing) {
 
 btnUpload.addEventListener('click', () => fileInput.click());
 
+/** Phone / small-tablet: slide-over Contents drawer. */
+const MOBILE_NAV_MQ = '(max-width: 768px)';
+function isMobileNavLayout() {
+  try { return window.matchMedia(MOBILE_NAV_MQ).matches; } catch (_) { return false; }
+}
+function setMobileNavOpen(open) {
+  const want = !!open && isMobileNavLayout();
+  document.body.classList.toggle('mobile-nav-open', want);
+  const toggle = document.getElementById('mobile-nav-toggle');
+  if (toggle) {
+    toggle.setAttribute('aria-expanded', want ? 'true' : 'false');
+    toggle.setAttribute('aria-label', want ? 'Close contents' : 'Open contents');
+    toggle.title = want ? 'Close contents' : 'Contents';
+  }
+}
+function toggleMobileNav() {
+  setMobileNavOpen(!document.body.classList.contains('mobile-nav-open'));
+}
+function closeMobileNavIfNeeded() {
+  if (document.body.classList.contains('mobile-nav-open')) setMobileNavOpen(false);
+}
+(function setupMobileNavDrawer() {
+  document.getElementById('mobile-nav-toggle')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    toggleMobileNav();
+  });
+  document.getElementById('mobile-nav-close')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    setMobileNavOpen(false);
+  });
+  document.getElementById('mobile-nav-backdrop')?.addEventListener('click', () => setMobileNavOpen(false));
+  document.getElementById('tree-container')?.addEventListener('click', (e) => {
+    if (!isMobileNavLayout()) return;
+    // Close after choosing a class / method / file row (not expand-only chevrons if present).
+    if (e.target.closest('.tree-item, .tree-file, a[href]')) closeMobileNavIfNeeded();
+  });
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeMobileNavIfNeeded();
+  });
+  try {
+    window.matchMedia(MOBILE_NAV_MQ).addEventListener('change', (ev) => {
+      if (!ev.matches) setMobileNavOpen(false);
+    });
+  } catch (_) {}
+})();
+
 // Layout resizers: left sidebar + vertical docks
 (function setupLayoutResizers() {
   const layout = document.getElementById('inspector-layout');
@@ -6264,21 +6313,23 @@ btnUpload.addEventListener('click', () => fileInput.click());
   const resizerLeft = document.getElementById('resizer-left');
   if (!layout || !leftPanel || !resizerLeft) return;
 
-  resizerLeft.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    const startX = e.clientX;
+  function beginResize(clientX) {
+    if (isMobileNavLayout()) return;
+    const startX = clientX;
     const startW = leftPanel.getBoundingClientRect().width;
     const minW = 160;
     const maxW = layout.getBoundingClientRect().width * 0.55;
-    function move(e) {
-      const w = Math.round(Math.max(minW, Math.min(maxW, startW + (e.clientX - startX))));
+    function move(ev) {
+      const x = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      const w = Math.round(Math.max(minW, Math.min(maxW, startW + (x - startX))));
       leftPanel.style.width = w + 'px';
       leftPanel.style.minWidth = minW + 'px';
     }
     function up() {
       document.removeEventListener('mousemove', move);
       document.removeEventListener('mouseup', up);
+      document.removeEventListener('touchmove', move);
+      document.removeEventListener('touchend', up);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     }
@@ -6286,7 +6337,20 @@ btnUpload.addEventListener('click', () => fileInput.click());
     document.body.style.userSelect = 'none';
     document.addEventListener('mousemove', move);
     document.addEventListener('mouseup', up);
+    document.addEventListener('touchmove', move, { passive: false });
+    document.addEventListener('touchend', up);
+  }
+
+  resizerLeft.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    beginResize(e.clientX);
   });
+  resizerLeft.addEventListener('touchstart', (e) => {
+    if (!e.touches?.[0]) return;
+    e.preventDefault();
+    beginResize(e.touches[0].clientX);
+  }, { passive: false });
 })();
 
 (function setupDockResizers() {

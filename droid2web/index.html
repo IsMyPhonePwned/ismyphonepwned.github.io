@@ -2,7 +2,7 @@
 <html lang="en" data-theme="default">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>droid2web — APK, DEX, AXML, ARSC Inspector</title>
   <link rel="icon" href="logo.png" type="image/png">
   <link rel="stylesheet" href="style.css">
@@ -80,6 +80,7 @@
             <button type="button" class="btn btn-small left-mode-btn" id="apk-mode-classes" data-apk-mode="classes">Classes</button>
             <button type="button" class="btn btn-small left-mode-btn" id="apk-mode-files" data-apk-mode="files">Files</button>
           </div>
+          <button type="button" class="btn btn-small mobile-nav-close" id="mobile-nav-close" aria-label="Close contents" title="Close">×</button>
         </div>
         <div class="dex-file-wrap" id="dex-file-wrap" style="display:none">
           <label class="dex-package-label" for="dex-file-select">DEX</label>
@@ -110,10 +111,12 @@
         </div>
       </section>
       <div class="layout-resizer" id="resizer-left" title="Drag to resize"></div>
+      <button type="button" class="mobile-nav-backdrop" id="mobile-nav-backdrop" aria-label="Close contents" tabindex="-1"></button>
 
       <!-- Center: Source-first workspace -->
       <section class="panel center-panel" id="center-panel">
         <div class="center-tabs" id="center-tabs">
+          <button type="button" class="btn btn-small mobile-nav-toggle" id="mobile-nav-toggle" aria-label="Open contents" aria-controls="left-panel" aria-expanded="false" title="Contents">☰</button>
           <div class="center-tabs-group center-tabs-permanent" role="tablist" aria-label="Permanent workspace tabs">
             <span class="center-tabs-group-label" title="Always available">Workspace</span>
             <button type="button" class="tab-btn tab-btn-permanent active" data-tab="bytecode-tab" title="Permanent tab">Code</button>

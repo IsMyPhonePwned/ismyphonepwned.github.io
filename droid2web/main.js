@@ -5,8 +5,10 @@
 
 import initWasm, { parse_file, parse_dex, parse_apk, parse_axml, parse_arsc, parse_arsc_resource_map, parse_arsc_resource_tables, get_apk_file_content, get_dex_method, decompile_dex_class, run_dex_emulator, run_dex_emulator_with_history, scan_vulns, scan_semgrep, scan_semgrep_xml, get_semgrep_builtin_rules, parse_semgrep_rules, taint_solve } from './pkg/droid2web.js';
 import { createHexEditor } from './hex-editor.js';
+import { APP_VERSION } from './version.js';
 
 const LOG = '[droid2web]';
+const APP_VERSION_LABEL = `v${APP_VERSION}`;
 const PARSE_WORKER_TIMEOUT_MS = 120000;
 /** Single-method decompile on huge DEXes (Facebook-scale) can take several minutes. */
 const DECOMPILE_WORKER_TIMEOUT_MS = 300000;
@@ -518,7 +520,15 @@ function wireDebugConsoleUi() {
   flushDebugConsole();
 }
 
-debug('main.js loaded');
+debug(`main.js loaded (${APP_VERSION_LABEL})`);
+{
+  const verEl = document.getElementById('app-version');
+  if (verEl) {
+    verEl.textContent = APP_VERSION_LABEL;
+    verEl.title = `droid2web ${APP_VERSION_LABEL}`;
+  }
+  try { document.title = `droid2web ${APP_VERSION_LABEL} — APK, DEX, AXML, ARSC Inspector`; } catch (_) {}
+}
 // Warm main-thread WASM in the background so the first APK/DEX open is not blocked on fetch.
 ensureMainWasm()
   .then(() => {
@@ -8594,7 +8604,7 @@ function updateStatusBar() {
       );
     }
     statusbarInner.innerHTML = bits.join('<span class="statusbar-sep">|</span>')
-      + '<span class="statusbar-brand">droid2web · WASM</span>';
+      + `<span class="statusbar-brand">droid2web ${APP_VERSION_LABEL} · WASM</span>`;
     statusbarInner.classList.toggle('is-busy', busy);
     return;
   }
@@ -8695,7 +8705,7 @@ function updateStatusBar() {
   }
 
   const html = parts.map((p, i) => (i === 0 ? p : `<span class="statusbar-sep">|</span>${p}`)).join('');
-  statusbarInner.innerHTML = html + '<span class="statusbar-brand">droid2web · WASM</span>';
+  statusbarInner.innerHTML = html + `<span class="statusbar-brand">droid2web ${APP_VERSION_LABEL} · WASM</span>`;
   statusbarInner.classList.toggle('is-busy', busy);
   let scanBusy = false;
   try { scanBusy = !!securityScanBusy; } catch (_) {}

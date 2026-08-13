@@ -609,8 +609,8 @@
               <header class="security-rules-header">
                 <h3>Semgrep rules</h3>
                 <div class="security-rules-actions">
-                  <button type="button" class="btn btn-small btn-primary" id="security-rules-all" title="Load all built-in rules (MobHunt + OWASP MASTG)">All</button>
-                  <button type="button" class="btn btn-small" id="security-rules-builtin" title="Load MobHunt starter rules only">MobHunt</button>
+                  <button type="button" class="btn btn-small btn-primary" id="security-rules-all" title="Load all built-in rules (starter + OWASP MASTG)">All</button>
+                  <button type="button" class="btn btn-small" id="security-rules-builtin" title="Load starter Semgrep rules only">Starter</button>
                   <button type="button" class="btn btn-small" id="security-rules-mastg" title="Load bundled OWASP MASTG rules">MASTG</button>
                   <button type="button" class="btn btn-small" id="security-rules-import" title="Import a .yml file">Import…</button>
                   <input type="file" id="security-rules-file" accept=".yml,.yaml,text/yaml,text/plain" hidden>
@@ -619,7 +619,7 @@
                   <button type="button" class="btn btn-small" id="security-rules-new" title="Insert a new empty rule template">New rule</button>
                 </div>
               </header>
-              <p class="security-rules-hint muted">Edit Semgrep-style YAML below (Java/XML patterns + optional <code>native:</code> SSA hints). Default builtin is <strong>All</strong> (MobHunt + MASTG). Applied rules are included in Scan and stored in localStorage.</p>
+              <p class="security-rules-hint muted">Edit Semgrep-style YAML below (Java/XML patterns + optional <code>native:</code> SSA hints). Default builtin is <strong>All</strong> (starter + MASTG). Applied rules are included in Scan and stored in localStorage.</p>
               <div class="security-rules-split">
                 <div class="security-rules-list-wrap">
                   <div class="security-rules-list-header muted" id="security-rules-count">0 rules</div>

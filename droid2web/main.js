@@ -17044,7 +17044,7 @@ function isSecurityGroupCollapsed(key, defaultCollapsed = false) {
 function toggleSecurityGroupCollapsed(key, defaultCollapsed = false) {
   securityGroupCollapseState.set(key, !isSecurityGroupCollapsed(key, defaultCollapsed));
 }
-/** Active Semgrep rules YAML (null/empty = All builtin via WASM: MobHunt + MASTG). */
+/** Active Semgrep rules YAML (null/empty = All builtin via WASM: starter + MASTG). */
 let securitySemgrepRulesYaml = null;
 let securitySemgrepRuleInfos = [];
 /** Cached builtin rule summaries (filled once after WASM init — avoids re-parsing on every scan). */
@@ -20562,7 +20562,7 @@ function applySemgrepRulesFromEditor() {
 }
 
 function loadBuiltinSemgrepRules() {
-  // WASM builtin is the full MobHunt + MASTG set.
+  // WASM builtin is the full starter + MASTG set.
   const raw = get_semgrep_builtin_rules();
   const result = normalizeWasmResult(raw);
   if (!result?.ok) {
@@ -20576,11 +20576,11 @@ function loadBuiltinSemgrepRules() {
   if (securityRulesEditor) setSemgrepRulesEditorValue(yaml);
   renderSemgrepRulesList(rules);
   persistSemgrepRulesYaml(yaml);
-  setSecurityRulesStatus(`Loaded All built-in (${rules.length} rules · MobHunt + MASTG)`);
+  setSecurityRulesStatus(`Loaded All built-in (${rules.length} rules · starter + MASTG)`);
 }
 
-async function loadMobhuntSemgrepRules() {
-  setSecurityRulesStatus('Loading MobHunt starter…');
+async function loadStarterSemgrepRules() {
+  setSecurityRulesStatus('Loading starter rules…');
   try {
     const res = await fetch('rules/semgrep-mobhunt.yml');
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -20589,9 +20589,9 @@ async function loadMobhuntSemgrepRules() {
     if (securityRulesEditor) setSemgrepRulesEditorValue(yaml);
     renderSemgrepRulesList(rules);
     persistSemgrepRulesYaml(yaml);
-    setSecurityRulesStatus(`Loaded MobHunt starter (${rules.length} rules)`);
+    setSecurityRulesStatus(`Loaded starter (${rules.length} rules)`);
   } catch (e) {
-    setSecurityRulesStatus('MobHunt load failed: ' + (e?.message || e));
+    setSecurityRulesStatus('Starter load failed: ' + (e?.message || e));
   }
 }
 
@@ -20626,7 +20626,7 @@ async function loadAllSemgrepRulesFromFiles() {
     if (securityRulesEditor) setSemgrepRulesEditorValue(yaml);
     renderSemgrepRulesList(rules);
     persistSemgrepRulesYaml(yaml);
-    setSecurityRulesStatus(`Loaded All (${rules.length} rules · MobHunt + MASTG)`);
+    setSecurityRulesStatus(`Loaded All (${rules.length} rules · starter + MASTG)`);
   } catch (e) {
     setSecurityRulesStatus('All rules load failed: ' + (e?.message || e));
   }
@@ -20685,7 +20685,7 @@ function toggleSecurityRulesPanel() {
           renderSemgrepRulesList(validateYamlText(saved));
           setSecurityRulesStatus('Restored rules from localStorage');
         } catch (e) {
-          setSecurityRulesStatus('Saved rules invalid — load All / MobHunt / MASTG or fix YAML: ' + (e?.message || e));
+          setSecurityRulesStatus('Saved rules invalid — load All / Starter / MASTG or fix YAML: ' + (e?.message || e));
         }
       } else {
         loadBuiltinSemgrepRules();
@@ -20740,7 +20740,7 @@ document.addEventListener('keydown', (e) => {
 });
 document.getElementById('security-rules-toggle')?.addEventListener('click', () => toggleSecurityRulesPanel());
 document.getElementById('security-rules-all')?.addEventListener('click', () => loadAllSemgrepRulesFromFiles());
-document.getElementById('security-rules-builtin')?.addEventListener('click', () => loadMobhuntSemgrepRules());
+document.getElementById('security-rules-builtin')?.addEventListener('click', () => loadStarterSemgrepRules());
 document.getElementById('security-rules-mastg')?.addEventListener('click', () => loadMastgSemgrepRules());
 document.getElementById('security-rules-import')?.addEventListener('click', () => document.getElementById('security-rules-file')?.click());
 document.getElementById('security-rules-file')?.addEventListener('change', (e) => {

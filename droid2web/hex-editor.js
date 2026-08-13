@@ -151,51 +151,79 @@ export function createHexEditor(root, prefsOrOpts = {}) {
   const opts = prefsOrOpts || {};
   const prefs = { ...loadPrefs(), ...(opts.prefs || {}) };
 
+  const EMPTY_HTML =
+    '<div class="hex-empty">'
+    + '<div class="hex-empty-title">Raw bytes</div>'
+    + '<div class="hex-empty-body">Open an APK, DEX, AXML, or ARSC — or extract a file from an APK — to inspect it here.</div>'
+    + '<div class="hex-empty-hint muted">Jump here from Strings → Raw, or click file offsets in Info / Security.</div>'
+    + '</div>';
+
+  const fontSizeRem = (() => {
+    const n = Number(prefs.fontSize);
+    if (!Number.isFinite(n)) return 0.92;
+    return Math.min(1.28, Math.max(0.72, n));
+  })();
+
   root.innerHTML = `
-    <div class="hex-editor" data-hex-palette="${escHtml(prefs.palette || 'default')}">
-      <div class="hex-toolbar hex-toolbar-nav">
-        <div class="hex-toolbar-group">
-          <label class="hex-goto-wrap">
-            <span class="hex-toolbar-label">Offset</span>
-            <input type="text" class="hex-goto-input" placeholder="0x0" spellcheck="false" aria-label="Go to offset">
-          </label>
-          <button type="button" class="btn btn-small hex-goto-btn">Go</button>
-          <button type="button" class="btn btn-small hex-page-prev" title="Previous page (PageUp)">▲</button>
-          <button type="button" class="btn btn-small hex-page-next" title="Next page (PageDown)">▼</button>
-        </div>
-        <div class="hex-toolbar-group hex-toolbar-grow">
-          <input type="search" class="hex-search-input" placeholder="Search string, hex bytes, or /regex/" aria-label="Search bytes" autocomplete="off">
-          <select class="hex-search-mode" aria-label="Search mode" title="Search mode">
-            <option value="auto">Auto</option>
-            <option value="string">String</option>
-            <option value="hex">Hex</option>
-            <option value="regex">Regex</option>
-          </select>
-          <button type="button" class="btn btn-small hex-search-btn">Find</button>
-          <button type="button" class="btn btn-small hex-search-prev" title="Previous match">↑</button>
-          <button type="button" class="btn btn-small hex-search-next" title="Next match">↓</button>
-          <span class="hex-search-status muted"></span>
-        </div>
-        <div class="hex-toolbar-group">
-          <select class="hex-palette-select" aria-label="Color palette" title="Byte color palette">
-            <option value="default">Palette</option>
-            <option value="grayscale">Grayscale</option>
-            <option value="pastel">Pastel</option>
-            <option value="vivid">Vivid</option>
-            <option value="off">No color</option>
-          </select>
-          <label class="hex-toggle" title="Show per-line entropy bars">
-            <input type="checkbox" class="hex-entropy-toggle"${prefs.entropy === false ? '' : ' checked'}>
-            <span>Entropy</span>
-          </label>
-          <div class="hex-copy-wrap">
-            <button type="button" class="btn btn-small hex-copy-btn" title="Copy selection">Copy</button>
-            <select class="hex-copy-format" aria-label="Copy format" title="Copy format">
+    <div class="hex-editor" data-hex-palette="${escHtml(prefs.palette || 'default')}" style="--hex-font-size:${fontSizeRem}rem">
+      <div class="hex-toolbar">
+        <div class="hex-toolbar-row hex-toolbar-primary">
+          <div class="hex-toolbar-brand">
+            <span class="hex-toolbar-title">Raw</span>
+            <span class="hex-info muted"></span>
+          </div>
+          <div class="hex-toolbar-group">
+            <label class="hex-goto-wrap">
+              <span class="hex-toolbar-label">Offset</span>
+              <input type="text" class="hex-goto-input" placeholder="0x0" spellcheck="false" aria-label="Go to offset">
+            </label>
+            <button type="button" class="btn btn-small hex-goto-btn">Go</button>
+            <button type="button" class="btn btn-small hex-page-prev" title="Previous page (PageUp)">▲</button>
+            <button type="button" class="btn btn-small hex-page-next" title="Next page (PageDown)">▼</button>
+          </div>
+          <div class="hex-toolbar-group hex-toolbar-grow">
+            <input type="search" class="hex-search-input" placeholder="Search string, hex, or /regex/" aria-label="Search bytes" autocomplete="off">
+            <select class="hex-search-mode" aria-label="Search mode" title="Search mode">
+              <option value="auto">Auto</option>
+              <option value="string">String</option>
               <option value="hex">Hex</option>
-              <option value="hexc">C array</option>
-              <option value="ascii">ASCII</option>
-              <option value="offset">Offsets</option>
+              <option value="regex">Regex</option>
             </select>
+            <button type="button" class="btn btn-small hex-search-btn">Find</button>
+            <button type="button" class="btn btn-small hex-search-prev" title="Previous match">↑</button>
+            <button type="button" class="btn btn-small hex-search-next" title="Next match">↓</button>
+            <span class="hex-search-status muted"></span>
+          </div>
+        </div>
+        <div class="hex-toolbar-row hex-toolbar-secondary">
+          <div class="hex-toolbar-group">
+            <span class="hex-toolbar-label">View</span>
+            <select class="hex-palette-select" aria-label="Color palette" title="Byte color palette">
+              <option value="default">Palette</option>
+              <option value="grayscale">Grayscale</option>
+              <option value="pastel">Pastel</option>
+              <option value="vivid">Vivid</option>
+              <option value="off">No color</option>
+            </select>
+            <label class="hex-toggle" title="Show per-line entropy bars">
+              <input type="checkbox" class="hex-entropy-toggle"${prefs.entropy === false ? '' : ' checked'}>
+              <span>Entropy</span>
+            </label>
+            <div class="hex-font-wrap" title="Hex dump font size">
+              <button type="button" class="btn btn-small hex-font-dec" aria-label="Decrease font size">A−</button>
+              <button type="button" class="btn btn-small hex-font-inc" aria-label="Increase font size">A+</button>
+            </div>
+          </div>
+          <div class="hex-toolbar-group hex-toolbar-actions">
+            <div class="hex-copy-wrap">
+              <button type="button" class="btn btn-small hex-copy-btn" title="Copy selection">Copy</button>
+              <select class="hex-copy-format" aria-label="Copy format" title="Copy format">
+                <option value="hex">Hex</option>
+                <option value="hexc">C array</option>
+                <option value="ascii">ASCII</option>
+                <option value="offset">Offsets</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -206,15 +234,16 @@ export function createHexEditor(root, prefsOrOpts = {}) {
         <span class="hex-hdr-ent">H</span>
       </div>
       <div class="hex-dump-wrap">
-        <pre class="hex-dump" tabindex="0"><span class="muted">No data loaded — open an APK, DEX, AXML, or ARSC</span></pre>
+        <pre class="hex-dump" tabindex="0">${EMPTY_HTML}</pre>
       </div>
       <div class="hex-inspector" hidden>
+        <div class="hex-inspector-label">Selection</div>
         <div class="hex-inspector-main"></div>
         <div class="hex-inspector-ints"></div>
       </div>
       <div class="hex-status-bar">
         <span class="hex-status-left muted"></span>
-        <span class="hex-info muted"></span>
+        <span class="hex-status-mid muted"></span>
         <span class="hex-status-right muted"></span>
       </div>
     </div>`;
@@ -240,9 +269,21 @@ export function createHexEditor(root, prefsOrOpts = {}) {
   const entropyToggle = root.querySelector('.hex-entropy-toggle');
   const copyBtn = root.querySelector('.hex-copy-btn');
   const copyFormat = root.querySelector('.hex-copy-format');
+  const fontDecBtn = root.querySelector('.hex-font-dec');
+  const fontIncBtn = root.querySelector('.hex-font-inc');
   const infoEl = root.querySelector('.hex-info');
   const statusLeft = root.querySelector('.hex-status-left');
+  const statusMid = root.querySelector('.hex-status-mid');
   const statusRight = root.querySelector('.hex-status-right');
+  let currentFontRem = fontSizeRem;
+
+  function applyFontSize(rem, { persist = true } = {}) {
+    currentFontRem = Math.min(1.28, Math.max(0.72, rem));
+    shell.style.setProperty('--hex-font-size', `${currentFontRem}rem`);
+    if (persist) savePrefs({ fontSize: currentFontRem });
+    measureLines();
+    render();
+  }
 
   if (paletteSelect) paletteSelect.value = prefs.palette || 'default';
   if (copyFormat) copyFormat.value = prefs.copyFormat || 'hex';
@@ -302,8 +343,8 @@ export function createHexEditor(root, prefsOrOpts = {}) {
     const end = Math.min(len, viewOffset + pageSize());
     if (infoEl) {
       infoEl.textContent = len
-        ? `${label ? label + ' · ' : ''}${formatSize(len)} · 0x${viewOffset.toString(16)}–0x${Math.max(0, end - 1).toString(16)}`
-        : (label || 'Empty');
+        ? `${label ? label + ' · ' : ''}${formatSize(len)}`
+        : (label || 'No file');
     }
     if (statusLeft) {
       if (selectionStart >= 0 && selectionEnd >= 0) {
@@ -312,8 +353,13 @@ export function createHexEditor(root, prefsOrOpts = {}) {
         const n = hi - lo + 1;
         statusLeft.textContent = `Sel 0x${lo.toString(16)}–0x${hi.toString(16)} · ${n} byte${n === 1 ? '' : 's'}`;
       } else {
-        statusLeft.textContent = len ? `${len.toLocaleString()} bytes` : 'No bytes';
+        statusLeft.textContent = len ? `${len.toLocaleString()} bytes` : 'No bytes loaded';
       }
+    }
+    if (statusMid) {
+      statusMid.textContent = len
+        ? `View 0x${viewOffset.toString(16)}–0x${Math.max(0, end - 1).toString(16)}`
+        : '';
     }
     if (statusRight) {
       statusRight.textContent = len
@@ -381,8 +427,8 @@ export function createHexEditor(root, prefsOrOpts = {}) {
     if (!hexHdr) return;
     let s = '';
     for (let i = 0; i < BYTES_PER_LINE; i++) {
-      if (i === 8) s += '<span class="hex-mid-gap" aria-hidden="true"> </span>';
-      s += `<span class="hex-hdr-byte">${HEX_TABLE[i].toUpperCase()}</span> `;
+      if (i === 8) s += '<span class="hex-mid-gap" aria-hidden="true"></span>';
+      s += `<span class="hex-hdr-byte">${HEX_TABLE[i].toUpperCase()}</span>`;
     }
     hexHdr.innerHTML = s;
   }
@@ -390,7 +436,7 @@ export function createHexEditor(root, prefsOrOpts = {}) {
   function render() {
     clampView();
     if (!bytes || !bytes.length) {
-      dumpEl.innerHTML = '<span class="muted">No data loaded — open an APK, DEX, AXML, or ARSC</span>';
+      dumpEl.innerHTML = EMPTY_HTML;
       updateChrome();
       updateSearchStatus();
       updateInspector();
@@ -427,13 +473,13 @@ export function createHexEditor(root, prefsOrOpts = {}) {
       let asciiHtml = '';
       for (let bi = 0; bi < BYTES_PER_LINE; bi++) {
         if (bi === 8) {
-          hexHtml += '<span class="hex-mid-gap" aria-hidden="true"> </span>';
-          asciiHtml += '<span class="hex-mid-gap" aria-hidden="true"> </span>';
+          hexHtml += '<span class="hex-mid-gap" aria-hidden="true"></span>';
+          asciiHtml += '<span class="hex-mid-gap" aria-hidden="true"></span>';
         }
         const off = lineAddr + bi;
         if (off >= bytes.length) {
-          hexHtml += '<span class="hex-byte hex-byte-empty">  </span> ';
-          asciiHtml += '<span class="hex-byte hex-byte-empty"> </span>';
+          hexHtml += '<span class="hex-byte-hex hex-byte hex-byte-empty">  </span>';
+          asciiHtml += '<span class="hex-byte-ascii hex-byte hex-byte-empty"> </span>';
           continue;
         }
         const val = bytes[off];
@@ -448,7 +494,7 @@ export function createHexEditor(root, prefsOrOpts = {}) {
         const hoverCls = hoverOff === off ? ' hex-byte-hover' : '';
         const cls = `hex-byte clickable${valCls}${nullCls}${printCls}${searchCls}${selCls}${hoverCls}`;
         const tip = `0x${off.toString(16)} (${off}) · ${hexStr} · ${val}`;
-        hexHtml += `<span class="hex-byte-hex ${cls}" data-off="${off}" title="${tip}">${hexStr}</span> `;
+        hexHtml += `<span class="hex-byte-hex ${cls}" data-off="${off}" title="${tip}">${hexStr}</span>`;
         const ch = val >= 32 && val < 127 ? String.fromCharCode(val) : '.';
         const chEsc = ch === '<' ? '&lt;' : ch === '>' ? '&gt;' : ch === '&' ? '&amp;' : ch;
         asciiHtml += `<span class="hex-byte-ascii ${cls}" data-off="${off}" title="${tip}">${chEsc}</span>`;
@@ -468,7 +514,7 @@ export function createHexEditor(root, prefsOrOpts = {}) {
         `<span class="hex-bytes-col">${hexHtml}</span>` +
         `<span class="hex-ascii-col">|${asciiHtml}|</span>` +
         `${entropyBar}` +
-        `</span>\n`
+        `</span>`
       );
     }
 
@@ -696,6 +742,8 @@ export function createHexEditor(root, prefsOrOpts = {}) {
     savePrefs({ entropy: showEntropy });
     render();
   });
+  fontDecBtn?.addEventListener('click', () => applyFontSize(currentFontRem - 0.06));
+  fontIncBtn?.addEventListener('click', () => applyFontSize(currentFontRem + 0.06));
   copyFormat?.addEventListener('change', () => {
     savePrefs({ copyFormat: copyFormat.value || 'hex' });
   });
@@ -794,7 +842,7 @@ export function createHexEditor(root, prefsOrOpts = {}) {
     },
     clear() {
       this.setBytes(null, {});
-      dumpEl.innerHTML = '<span class="muted">No data loaded — open an APK, DEX, AXML, or ARSC</span>';
+      dumpEl.innerHTML = EMPTY_HTML;
     },
     goTo,
     search: runSearch,

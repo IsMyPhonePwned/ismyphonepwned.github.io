@@ -1,15 +1,22 @@
 /**
  * Web Worker: runs WASM parse / security scans off the main thread
  * so the UI stays responsive.
+ *
+ * Large results (parse_file / index_dex_classes / get_dex_strings) are returned as
+ * transferable UTF-8 JSON ArrayBuffers (`encoding: 'utf8-json'`) to avoid cloning
+ * multi-MB strings across the worker boundary.
  */
 import initWasm, {
-  parse_file,
+  parse_file_bytes,
   find_permission_usages,
   find_string_usages,
   find_method_callers,
   find_method_callees,
   find_field_xrefs,
-  index_dex_classes,
+  index_dex_classes_bytes,
+  get_dex_strings,
+  get_dex_method,
+  decompile_dex_class,
   scan_semgrep,
   scan_semgrep_xml,
   scan_vulns,
@@ -20,6 +27,13 @@ import initWasm, {
 let wasmReady = false;
 const pending = [];
 const WASM_INIT_TIMEOUT_MS = 60000;
+
+/** Ops that return transferable UTF-8 JSON bytes. */
+const TRANSFER_JSON_OPS = new Set([
+  'parse_file',
+  'index_dex_classes',
+  'get_dex_strings',
+]);
 
 function toU8(bytes) {
   if (bytes instanceof Uint8Array) return bytes;
@@ -73,6 +87,20 @@ function progressCb(id, op) {
   };
 }
 
+/** Post a result; transfer ArrayBuffer payloads when encoding is utf8-json. */
+function postResult(id, op, raw) {
+  if (TRANSFER_JSON_OPS.has(op) && raw && typeof raw.buffer === 'object') {
+    const u8 = raw instanceof Uint8Array ? raw : new Uint8Array(raw);
+    const buf = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
+    self.postMessage(
+      { type: 'result', id, op, raw: buf, encoding: 'utf8-json' },
+      [buf]
+    );
+    return;
+  }
+  self.postMessage({ type: 'result', id, op, raw });
+}
+
 function handleJob(job) {
   const id = job.id;
   try {
@@ -80,10 +108,13 @@ function handleJob(job) {
     let raw;
     if (op === 'parse_file') {
       const u8 = toU8(job.bytes);
-      raw = parse_file(u8, job.filename || 'file');
+      raw = parse_file_bytes(u8, job.filename || 'file');
     } else if (op === 'index_dex_classes') {
       const u8 = toU8(job.bytes);
-      raw = index_dex_classes(u8);
+      raw = index_dex_classes_bytes(u8);
+    } else if (op === 'get_dex_strings') {
+      const u8 = toU8(job.bytes);
+      raw = get_dex_strings(u8);
     } else if (op === 'find_permission_usages') {
       const u8 = toU8(job.bytes);
       const perms = Array.isArray(job.permissions) ? job.permissions : [];
@@ -108,6 +139,21 @@ function handleJob(job) {
     } else if (op === 'find_field_xrefs') {
       const u8 = toU8(job.bytes);
       raw = find_field_xrefs(u8, Number(job.fieldIdx) >>> 0);
+    } else if (op === 'get_dex_method') {
+      const u8 = toU8(job.bytes);
+      raw = get_dex_method(
+        u8,
+        Number(job.classIdx) >>> 0,
+        Number(job.methodIdx) >>> 0,
+        job.options || undefined
+      );
+    } else if (op === 'decompile_dex_class') {
+      const u8 = toU8(job.bytes);
+      raw = decompile_dex_class(
+        u8,
+        Number(job.classIdx) >>> 0,
+        job.options || undefined
+      );
     } else if (op === 'scan_semgrep') {
       const u8 = toU8(job.bytes);
       const yaml = job.rulesYaml && String(job.rulesYaml).trim() ? String(job.rulesYaml) : undefined;
@@ -126,7 +172,7 @@ function handleJob(job) {
     } else {
       throw new Error('Unknown worker op: ' + op);
     }
-    self.postMessage({ type: 'result', id, op, raw });
+    postResult(id, op, raw);
   } catch (err) {
     self.postMessage({
       type: 'error',

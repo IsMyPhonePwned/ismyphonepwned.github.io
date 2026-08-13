@@ -43,6 +43,10 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
         <span>Settings</span>
       </button>
+      <button type="button" class="theme-switcher-btn" id="help-btn" aria-label="Open help" title="Help">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>Help</span>
+      </button>
       <div class="header-storage-actions" title="Save or reload renames, notes, CFG, security, and UI prefs">
         <button type="button" class="btn btn-small" id="header-export-storage" title="Download analysis data (renames, notes, CFG, security, theme…) as JSON">Save</button>
         <button type="button" class="btn btn-small" id="header-import-storage" title="Load a previously saved JSON into this browser">Reload</button>
@@ -79,7 +83,7 @@
         </div>
         <div class="dex-file-wrap" id="dex-file-wrap" style="display:none">
           <label class="dex-package-label" for="dex-file-select">DEX</label>
-          <select id="dex-file-select" class="dex-package-select" aria-label="Select DEX file">
+          <select id="dex-file-select" class="dex-package-select" aria-label="Filter by DEX file or show all">
             <option value="0">classes.dex</option>
           </select>
         </div>
@@ -99,6 +103,7 @@
             <span>Show android / androidx</span>
           </label>
         </div>
+        <div id="work-notice" class="work-notice" hidden role="status" aria-live="polite"></div>
         <div class="tree-container" id="tree-container">
           <div class="muted center-text" id="tree-placeholder">Upload or drop any file — type is auto-detected</div>
           <div id="tree-content" class="tree-content" style="display:none"></div>
@@ -113,6 +118,8 @@
             <span class="center-tabs-group-label" title="Always available">Workspace</span>
             <button type="button" class="tab-btn tab-btn-permanent active" data-tab="bytecode-tab" title="Permanent tab">Code</button>
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="manifest-tab" title="Permanent tab">Manifest</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="permissions-tab" id="permissions-tab-btn" hidden title="Requested permissions and code usages">Permissions</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="components-tab" id="components-tab-btn" hidden title="Activities, services, receivers, and providers">Components</button>
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="raw-tab" title="Permanent tab">Raw</button>
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="info-tab" title="Permanent tab">Info</button>
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="strings-tab" title="Permanent tab">Strings</button>
@@ -409,6 +416,24 @@
                 </div>
               </div>
             </section>
+
+            <!-- Debug console (perf + diagnostics) — collapsed by default -->
+            <section class="dock-panel debug-dock" id="debug-console-area" data-collapsed="true">
+              <header class="dock-header" id="debug-dock-header">
+                <button type="button" class="dock-toggle" id="debug-collapse-btn" aria-expanded="false" title="Show / hide debug console">
+                  <span class="dock-chevron" aria-hidden="true"></span>
+                  <span class="dock-title">Debug</span>
+                  <span class="dock-meta muted" id="debug-console-meta"></span>
+                </button>
+                <div class="dock-header-actions" id="debug-dock-actions">
+                  <button type="button" class="btn btn-small" id="debug-clear-btn" title="Clear debug console">Clear</button>
+                  <button type="button" class="btn btn-small" id="debug-copy-btn" title="Copy debug log">Copy</button>
+                </div>
+              </header>
+              <div class="dock-body debug-dock-body" id="debug-dock-body">
+                <div class="debug-console" id="debug-console" aria-label="Debug console output" role="log"></div>
+              </div>
+            </section>
           </div>
         </div>
         <div class="tab-content" id="manifest-tab">
@@ -416,6 +441,55 @@
             <div class="res-viewer-toolbar" id="manifest-toolbar" hidden></div>
             <div class="res-viewer-scroll">
               <pre class="manifest-xml res-xml" id="manifest-xml"><span class="muted">Manifest (APK) or XML (AXML)</span></pre>
+            </div>
+          </div>
+        </div>
+        <div class="tab-content" id="permissions-tab">
+          <div class="perms-panel" id="perms-panel">
+            <div class="perms-toolbar">
+              <div class="perms-toolbar-brand">
+                <span class="perms-toolbar-title">Permissions</span>
+                <span class="perms-toolbar-meta muted" id="perms-meta"></span>
+              </div>
+              <div class="perms-toolbar-row">
+                <input type="search" id="perms-search" class="perms-search-input" placeholder="Filter permissions…" aria-label="Filter permissions" autocomplete="off">
+                <div class="perms-filters" id="perms-filters" role="toolbar" aria-label="Permission filters">
+                  <button type="button" class="perms-chip active" data-filter="all">All</button>
+                  <button type="button" class="perms-chip" data-filter="used">Used</button>
+                  <button type="button" class="perms-chip" data-filter="unused">Unused</button>
+                  <button type="button" class="perms-chip" data-filter="declared">Declared</button>
+                </div>
+                <span class="perms-count muted" id="perms-count"></span>
+              </div>
+            </div>
+            <div class="perms-body" id="perms-body">
+              <div class="muted center-text">Load an APK with a Manifest to inspect permissions</div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-content" id="components-tab">
+          <div class="perms-panel comps-panel" id="comps-panel">
+            <div class="perms-toolbar">
+              <div class="perms-toolbar-brand">
+                <span class="perms-toolbar-title">Components</span>
+                <span class="perms-toolbar-meta muted" id="comps-meta"></span>
+              </div>
+              <div class="perms-toolbar-row">
+                <input type="search" id="comps-search" class="perms-search-input" placeholder="Filter components…" aria-label="Filter components" autocomplete="off">
+                <div class="perms-filters" id="comps-filters" role="toolbar" aria-label="Component filters">
+                  <button type="button" class="perms-chip active" data-filter="all">All</button>
+                  <button type="button" class="perms-chip" data-filter="activity">Activities</button>
+                  <button type="button" class="perms-chip" data-filter="service">Services</button>
+                  <button type="button" class="perms-chip" data-filter="receiver">Receivers</button>
+                  <button type="button" class="perms-chip" data-filter="provider">Providers</button>
+                  <button type="button" class="perms-chip" data-filter="exported">Exported</button>
+                  <button type="button" class="perms-chip" data-filter="launcher">Launcher</button>
+                </div>
+                <span class="perms-count muted" id="comps-count"></span>
+              </div>
+            </div>
+            <div class="perms-body" id="comps-body">
+              <div class="muted center-text">Load an APK with a Manifest to inspect components</div>
             </div>
           </div>
         </div>
@@ -585,6 +659,35 @@
       </section>
     </div>
   </main>
+
+  <div class="settings-modal" id="help-modal" hidden aria-hidden="true" inert>
+    <div class="settings-modal-backdrop" id="help-modal-backdrop"></div>
+    <div class="settings-modal-dialog help-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">
+      <div class="settings-modal-header">
+        <h3 id="help-modal-title">Help</h3>
+        <button type="button" class="btn btn-small" id="help-close" aria-label="Close help">Close</button>
+      </div>
+      <div class="settings-modal-body" id="help-modal-body">
+        <section class="settings-section">
+          <h4 class="settings-section-title">Contact</h4>
+          <p class="settings-hint muted">Questions, feedback, or issues with droid2web:</p>
+          <p class="help-contact">
+            <a href="mailto:contact@ismyphonepwned.com">contact@ismyphonepwned.com</a>
+          </p>
+        </section>
+        <section class="settings-section">
+          <h4 class="settings-section-title">Androguard</h4>
+          <p class="settings-hint muted">droid2web is part of the Androguard ecosystem for Android reverse engineering.</p>
+          <p class="help-contact">
+            <a href="https://github.com/androguard/androguard" target="_blank" rel="noopener noreferrer">github.com/androguard/androguard</a>
+          </p>
+        </section>
+      </div>
+      <div class="settings-modal-footer">
+        <button type="button" class="btn btn-primary" id="help-done">Done</button>
+      </div>
+    </div>
+  </div>
 
   <div class="settings-modal" id="settings-modal" hidden aria-hidden="true" inert>
     <div class="settings-modal-backdrop" id="settings-modal-backdrop"></div>

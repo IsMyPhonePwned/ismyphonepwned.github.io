@@ -8,6 +8,10 @@ import { createHexEditor } from './hex-editor.js';
 
 const LOG = '[droid2web]';
 const PARSE_WORKER_TIMEOUT_MS = 120000;
+/** Single-method decompile on huge DEXes (Facebook-scale) can take several minutes. */
+const DECOMPILE_WORKER_TIMEOUT_MS = 300000;
+/** Auto “all methods” decompile above this count freezes UX on large APKs — require explicit load. */
+const ALL_METHODS_AUTO_LIMIT = 24;
 /** Per-DEX security worker budget. Large APKs (Facebook) keep partial findings on timeout. */
 const SECURITY_WORKER_TIMEOUT_MS = 90000;
 /** Max DEX files to run vuln/Semgrep/MT on (prefer classes.dex, classes2…). */
@@ -16,9 +20,11 @@ const SECURITY_MAX_DEX_FILES = 4;
 const SECURITY_MAX_DEX_BYTES = 14 * 1024 * 1024;
 const WASM_INIT_TIMEOUT_MS = 60000;
 
-/** Lazy-created worker for parse_file / security scans so main thread stays responsive. */
+/** Lazy-created workers: parse/index/decompile stay responsive while security scans run. */
 let parseWorker = null;
 let parseWorkerReady = false;
+let securityWorker = null;
+let securityWorkerReady = false;
 let wasmWorkerReqId = 0;
 /** @type {Map<number, { reject: (err: Error) => void, cleanup: () => void }>} */
 const pendingParseWorkerJobs = new Map();
@@ -26,21 +32,68 @@ const pendingParseWorkerJobs = new Map();
 let wasmReady = false;
 let wasmInitPromise = null;
 
-function getParseWorker() {
-  if (parseWorker) return parseWorker;
+/** Security-only ops — routed to a dedicated worker so indexing/browse aren't blocked. */
+const SECURITY_WORKER_OPS = new Set([
+  'scan_semgrep',
+  'scan_semgrep_xml',
+  'scan_vulns',
+  'taint_solve',
+  'get_semgrep_builtin_rules',
+]);
+
+function createNamedWorker(label) {
   const url = new URL('./parse-worker.js', import.meta.url);
-  parseWorker = new Worker(url, { type: 'module' });
-  parseWorker.addEventListener('message', (e) => {
+  const worker = new Worker(url, { type: 'module' });
+  worker.addEventListener('message', (e) => {
     if (e.data && e.data.type === 'ready') {
-      parseWorkerReady = true;
-      debug('[parseWorker] ready');
+      if (label === 'parse') parseWorkerReady = true;
+      else securityWorkerReady = true;
+      debug(`[${label}Worker] ready`);
     }
   });
-  parseWorker.addEventListener('error', (err) => {
-    warn('[parseWorker] error', err);
-    parseWorkerReady = false;
+  worker.addEventListener('error', (err) => {
+    warn(`[${label}Worker] error`, err);
+    if (label === 'parse') parseWorkerReady = false;
+    else securityWorkerReady = false;
   });
+  return worker;
+}
+
+function getParseWorker() {
+  if (parseWorker) return parseWorker;
+  parseWorker = createNamedWorker('parse');
   return parseWorker;
+}
+
+function getSecurityWorker() {
+  if (securityWorker) return securityWorker;
+  securityWorker = createNamedWorker('security');
+  return securityWorker;
+}
+
+function getWorkerForOp(op) {
+  return SECURITY_WORKER_OPS.has(op) ? getSecurityWorker() : getParseWorker();
+}
+
+/** Decode worker result: transferable UTF-8 JSON buffer, JSON string, or structured object. */
+function decodeWorkerRaw(raw, encoding) {
+  if (encoding === 'utf8-json' || raw instanceof ArrayBuffer || ArrayBuffer.isView?.(raw)) {
+    const u8 = raw instanceof Uint8Array
+      ? raw
+      : raw instanceof ArrayBuffer
+        ? new Uint8Array(raw)
+        : ArrayBuffer.isView(raw)
+          ? new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength)
+          : null;
+    if (u8) {
+      const text = (typeof TextDecoder !== 'undefined')
+        ? new TextDecoder('utf-8').decode(u8)
+        : String.fromCharCode.apply(null, u8);
+      return JSON.parse(text);
+    }
+  }
+  if (typeof raw === 'string') return JSON.parse(raw);
+  return raw;
 }
 
 /** Ensure main-thread WASM is loaded (timeout so a hung fetch cannot block forever). */
@@ -66,13 +119,14 @@ function ensureMainWasm() {
 
 /**
  * Run a WASM op in the worker. Keeps the UI thread free during long Semgrep/vuln/MT scans.
+ * Security ops use a dedicated worker so class indexing / browse stay unblocked.
  * @param {string} op
  * @param {object} payload
  * @param {{ timeoutMs?: number, transfer?: Transferable[] }} [opts]
  */
 function runInParseWorker(op, payload = {}, opts = {}) {
   return new Promise((resolve, reject) => {
-    const worker = getParseWorker();
+    const worker = getWorkerForOp(op);
     const id = ++wasmWorkerReqId;
     const timeoutMs = opts.timeoutMs ?? SECURITY_WORKER_TIMEOUT_MS;
     let settled = false;
@@ -106,8 +160,13 @@ function runInParseWorker(op, payload = {}, opts = {}) {
         }
         return;
       }
-      if (d.type === 'result') settle(resolve, d.raw);
-      else if (d.type === 'error') settle(reject, new Error(d.error || 'Worker error'));
+      if (d.type === 'result') {
+        try {
+          settle(resolve, decodeWorkerRaw(d.raw, d.encoding));
+        } catch (err) {
+          settle(reject, err instanceof Error ? err : new Error(String(err)));
+        }
+      } else if (d.type === 'error') settle(reject, new Error(d.error || 'Worker error'));
     };
     worker.addEventListener('message', handler);
     pendingParseWorkerJobs.set(id, {
@@ -121,21 +180,22 @@ function runInParseWorker(op, payload = {}, opts = {}) {
   });
 }
 
-/** Abort in-flight worker jobs (used by security Stop). Terminates the worker so WASM exits. */
+/** Abort security worker jobs (Stop). Leaves parse/index worker running. */
 function abortAllParseWorkerJobs(reason = 'Aborted') {
   const err = reason instanceof Error ? reason : new SecurityScanAbortError(String(reason));
   for (const [, job] of pendingParseWorkerJobs) {
     try { job.reject(err); } catch (_) {}
   }
   pendingParseWorkerJobs.clear();
-  if (parseWorker) {
-    try { parseWorker.terminate(); } catch (_) {}
-    parseWorker = null;
-    parseWorkerReady = false;
+  // Only kill the security worker so indexing / decompile can continue.
+  if (securityWorker) {
+    try { securityWorker.terminate(); } catch (_) {}
+    securityWorker = null;
+    securityWorkerReady = false;
   }
 }
 
-/** Run parse_file in worker; returns Promise<string> (JSON) or throws. Rejects on timeout or worker error. */
+/** Run parse_file in worker; returns Promise<object> ({ok,data,error}) after transferable decode. */
 function parseFileInWorker(bytes, filename) {
   const copy = bytes.slice();
   return runInParseWorker(
@@ -207,11 +267,51 @@ function findFieldXrefsInWorker(bytes, fieldIdx) {
   );
 }
 
+/**
+ * Options for worker decompile: JSON-cloneable, without multi-MB sibling DEXes.
+ * (Cross-DEX inlining is best-effort; keeping the UI responsive matters more on large APKs.)
+ */
+function getDexMethodOptionsForWorker() {
+  const opts = getDexMethodOptions();
+  const out = { ...opts };
+  delete out.extraDexes;
+  if (out.resourceMap && typeof out.resourceMap === 'object') {
+    const n = Object.keys(out.resourceMap).length;
+    if (n > 8000) delete out.resourceMap;
+  }
+  return out;
+}
+
+/** Decompile one method off the main thread (keeps UI responsive on large DEXes). */
+function getDexMethodInWorker(bytes, classIdx, methodIdx) {
+  const copy = bytes instanceof Uint8Array ? bytes.slice() : new Uint8Array(bytes).slice();
+  return runInParseWorker(
+    'get_dex_method',
+    {
+      bytes: copy.buffer,
+      classIdx: Number(classIdx) >>> 0,
+      methodIdx: Number(methodIdx) >>> 0,
+      options: getDexMethodOptionsForWorker(),
+    },
+    { timeoutMs: DECOMPILE_WORKER_TIMEOUT_MS, transfer: [copy.buffer] }
+  );
+}
+
 /** Compact DEX class index in worker (names + method counts only — keeps UI responsive). */
 function indexDexClassesInWorker(bytes) {
   const copy = bytes instanceof Uint8Array ? bytes.slice() : new Uint8Array(bytes).slice();
   return runInParseWorker(
     'index_dex_classes',
+    { bytes: copy.buffer },
+    { timeoutMs: PARSE_WORKER_TIMEOUT_MS, transfer: [copy.buffer] }
+  );
+}
+
+/** Load string pool on demand after browse parse omitted it. */
+function getDexStringsInWorker(bytes) {
+  const copy = bytes instanceof Uint8Array ? bytes.slice() : new Uint8Array(bytes).slice();
+  return runInParseWorker(
+    'get_dex_strings',
     { bytes: copy.buffer },
     { timeoutMs: PARSE_WORKER_TIMEOUT_MS, transfer: [copy.buffer] }
   );
@@ -263,10 +363,159 @@ function error(...args) { console.error(LOG, ...args); }
 function timer() {
   const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
   return (label) => {
-    const elapsed = typeof performance !== 'undefined' ? (performance.now() - t0).toFixed(0) : (Date.now() - t0);
-    debug('[timing]', label, elapsed + 'ms');
+    const elapsed = typeof performance !== 'undefined' ? (performance.now() - t0) : (Date.now() - t0);
+    recordPerf(label, elapsed);
     return elapsed;
   };
+}
+
+/** Debug console (collapsed dock under Emulator) — perf timings + diagnostics. */
+const DEBUG_LOG_MAX = 400;
+const DEBUG_OPEN_KEY = 'droid2web-debug-open';
+const debugLogLines = [];
+let debugConsoleFlushTimer = 0;
+let perfSessionT0 = 0;
+
+function nowMs() {
+  return typeof performance !== 'undefined' ? performance.now() : Date.now();
+}
+
+function formatDebugTs(d = new Date()) {
+  const pad = (n, w = 2) => String(n).padStart(w, '0');
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
+}
+
+/** Append a line to the Debug dock console (also mirrors to browser console). */
+function debugConsoleLog(level, message, ...extra) {
+  const text = [message, ...extra.map((x) => {
+    if (x == null) return '';
+    if (typeof x === 'string' || typeof x === 'number' || typeof x === 'boolean') return String(x);
+    try { return JSON.stringify(x); } catch (_) { return String(x); }
+  }).filter(Boolean)].join(' ');
+  const line = {
+    level: level || 'info',
+    text,
+    at: Date.now(),
+  };
+  debugLogLines.push(line);
+  if (debugLogLines.length > DEBUG_LOG_MAX) {
+    debugLogLines.splice(0, debugLogLines.length - DEBUG_LOG_MAX);
+  }
+  if (level === 'warn') warn(text);
+  else if (level === 'error') error(text);
+  else debug(text);
+  scheduleDebugConsoleFlush();
+  updateDebugConsoleMeta();
+}
+
+function recordPerf(name, ms, detail = '') {
+  const msR = Math.round(Math.max(0, Number(ms) || 0));
+  const detailBit = detail ? ` · ${detail}` : '';
+  const slow = msR >= 250 ? (msR >= 1000 ? 'VERY_SLOW' : 'SLOW') : '';
+  const tag = slow ? `[perf:${slow}]` : '[perf]';
+  debugConsoleLog('perf', `${tag} ${msR}ms  ${name}${detailBit}`);
+  return msR;
+}
+
+function clearDebugConsole() {
+  debugLogLines.length = 0;
+  perfSessionT0 = nowMs();
+  const el = document.getElementById('debug-console');
+  if (el) el.textContent = '';
+  updateDebugConsoleMeta();
+}
+
+function startPerfSession(label = 'session') {
+  clearDebugConsole();
+  debugConsoleLog('info', `[session] ${label}`);
+}
+
+function measureSync(name, fn, detail = '') {
+  const t0 = nowMs();
+  try {
+    return fn();
+  } finally {
+    recordPerf(name, nowMs() - t0, detail);
+  }
+}
+
+async function measureAsync(name, fn, detail = '') {
+  const t0 = nowMs();
+  try {
+    return await fn();
+  } finally {
+    recordPerf(name, nowMs() - t0, detail);
+  }
+}
+
+function scheduleDebugConsoleFlush() {
+  if (debugConsoleFlushTimer) return;
+  debugConsoleFlushTimer = setTimeout(() => {
+    debugConsoleFlushTimer = 0;
+    flushDebugConsole();
+  }, 60);
+}
+
+function flushDebugConsole() {
+  const el = document.getElementById('debug-console');
+  if (!el) return;
+  const start = Math.max(0, debugLogLines.length - 200);
+  let html = '';
+  for (let i = start; i < debugLogLines.length; i++) {
+    const line = debugLogLines[i];
+    const cls = line.level === 'error' || line.level === 'warn' || line.level === 'perf'
+      ? `debug-line debug-line-${line.level}`
+      : 'debug-line';
+    const slow = /\[perf:(VERY_)?SLOW\]/.test(line.text);
+    html += `<div class="${cls}${slow ? ' is-slow' : ''}"><span class="debug-ts">${escapeHtml(formatDebugTs(new Date(line.at)))}</span> ${escapeHtml(line.text)}</div>`;
+  }
+  el.innerHTML = html || '<div class="muted debug-line">No debug output yet.</div>';
+  const pane = document.getElementById('debug-console-area');
+  if (pane?.dataset.collapsed !== 'true') {
+    el.scrollTop = el.scrollHeight;
+  }
+}
+
+function updateDebugConsoleMeta() {
+  const meta = document.getElementById('debug-console-meta');
+  if (!meta) return;
+  if (!debugLogLines.length) {
+    meta.textContent = '';
+    return;
+  }
+  const last = debugLogLines[debugLogLines.length - 1];
+  const short = String(last.text || '').replace(/^\[perf(?::[^\]]+)?\]\s*/, '');
+  meta.textContent = `(${debugLogLines.length}) ${short.length > 48 ? short.slice(0, 45) + '…' : short}`;
+}
+
+function wireDebugConsoleUi() {
+  const pane = document.getElementById('debug-console-area');
+  const btn = document.getElementById('debug-collapse-btn');
+  if (!pane || !btn) return;
+  // Always start collapsed; remember only explicit open preference when expanding later.
+  setDockCollapsed(pane, true, DEBUG_OPEN_KEY);
+  btn.addEventListener('click', () => {
+    const next = pane.dataset.collapsed !== 'true';
+    setDockCollapsed(pane, next, DEBUG_OPEN_KEY);
+    if (!next) {
+      flushDebugConsole();
+      const el = document.getElementById('debug-console');
+      if (el) el.scrollTop = el.scrollHeight;
+    }
+  });
+  document.getElementById('debug-clear-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    clearDebugConsole();
+    flushDebugConsole();
+  });
+  document.getElementById('debug-copy-btn')?.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const text = debugLogLines.map((l) => `${formatDebugTs(new Date(l.at))}  ${l.text}`).join('\n');
+    try {
+      await navigator.clipboard.writeText(text || '(empty)');
+    } catch (_) {}
+  });
+  flushDebugConsole();
 }
 
 debug('main.js loaded');
@@ -735,6 +984,12 @@ function closeSettingsModal() {
   });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
+    const helpModal = document.getElementById('help-modal');
+    if (helpModal && !helpModal.hidden) {
+      e.preventDefault();
+      closeHelpModal();
+      return;
+    }
     const modal = document.getElementById('settings-modal');
     if (modal && !modal.hidden) {
       e.preventDefault();
@@ -742,6 +997,34 @@ function closeSettingsModal() {
     }
   });
   syncSettingsThemeUi();
+})();
+
+function openHelpModal() {
+  const modal = document.getElementById('help-modal');
+  if (!modal) return;
+  modal.hidden = false;
+  modal.removeAttribute('inert');
+  modal.setAttribute('aria-hidden', 'false');
+  document.getElementById('help-close')?.focus();
+}
+
+function closeHelpModal() {
+  const modal = document.getElementById('help-modal');
+  if (!modal) return;
+  modal.hidden = true;
+  modal.setAttribute('inert', '');
+  modal.setAttribute('aria-hidden', 'true');
+  document.getElementById('help-btn')?.focus();
+}
+
+(function initHelpModal() {
+  document.getElementById('help-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openHelpModal();
+  });
+  document.getElementById('help-close')?.addEventListener('click', closeHelpModal);
+  document.getElementById('help-done')?.addEventListener('click', closeHelpModal);
+  document.getElementById('help-modal-backdrop')?.addEventListener('click', closeHelpModal);
 })();
 
 // State
@@ -779,6 +1062,12 @@ let showAndroidFrameworkClasses = (() => {
 let apkExtractedFile = null;  // null | { name, kind: 'dex'|'axml'|'arsc'|'png'|'binary', data?, bytes? }
 /** Left panel mode for APK: class browser (default) or raw file tree. */
 let apkLeftMode = 'classes';
+/**
+ * APK DEX filter for the left class browser.
+ * '' = All DEXes (unified packages from apkClassToDex);
+ * otherwise a DEX path (e.g. classes2.dex) — packages from that file only.
+ */
+let apkDexFilter = '';
 /** When apkExtractedFile.kind === 'dex': selected class and method indices for bytecode/source view. */
 let apkExtractedDexSelection = { classIdx: 0, methodIdx: 0 };
 /** When currentType === 'dex' (standalone): selected class and method for bytecode/source/emulator. */
@@ -2434,6 +2723,16 @@ function clearApkResourceMap() {
   apkResourceMap = null;
   apkResourceValues = null;
   apkResourceMapPromise = null;
+  clearInfoResourceThumbUrls();
+}
+
+/** Blob URLs for Info-panel resource thumbnails (icons, etc.). */
+let infoResourceThumbUrls = [];
+function clearInfoResourceThumbUrls() {
+  for (const u of infoResourceThumbUrls) {
+    try { URL.revokeObjectURL(u); } catch (_) {}
+  }
+  infoResourceThumbUrls = [];
 }
 
 loadDecompileOptionsFromStorage();
@@ -2947,6 +3246,14 @@ let apkFileCache = {};
 let apkExtractedFileRawBytes = null;
 /** Map full class name -> { file: dexFileName, classIdx } for manifest class links. Built when APK is loaded. */
 let apkClassToDex = {};
+/**
+ * Package → unique class entries (same objects as apkClassToDex values).
+ * Built incrementally during indexing so the UI never walks Object.values(apkClassToDex)
+ * (Facebook: ~180k classes + aliases ≈ 300k+ map keys → multi-second freezes).
+ */
+let apkClassesByPackage = Object.create(null);
+/** Cached package→count for the unfiltered All-DEXes dropdown (invalidated on index/filter toggle). */
+let apkPackageCountsCache = null;
 let apkClassIndexPromise = null;
 /** permission → [{ class_name, method_name, offset, dex_file, string_index }] */
 let apkPermissionUsageIndex = null;
@@ -2960,26 +3267,101 @@ let apkDexStats = { dexFiles: 0, classes: 0, methods: 0, ready: false, totalDex:
  * Map id → { text, detail? }
  */
 const uiActivityTasks = new Map();
+let statusBarUpdateTimer = 0;
+let statusBarUpdateForced = false;
+
+function scheduleStatusBarUpdate(force = false) {
+  if (force) statusBarUpdateForced = true;
+  if (statusBarUpdateTimer) return;
+  statusBarUpdateTimer = setTimeout(() => {
+    statusBarUpdateTimer = 0;
+    const forceNow = statusBarUpdateForced;
+    statusBarUpdateForced = false;
+    updateStatusBar(forceNow);
+  }, force ? 0 : 120);
+}
 
 function setUiActivity(id, text, detail = '') {
   if (!id) return;
-  uiActivityTasks.set(String(id), {
+  const key = String(id);
+  const prev = uiActivityTasks.get(key);
+  const t = nowMs();
+  // Record when the step label changes (ignore detail-only progress spam).
+  if (prev && prev._t0 != null && prev.text !== text) {
+    recordPerf(`ui:${prev.text}`, t - prev._t0, prev.detail || '');
+  }
+  uiActivityTasks.set(key, {
     text: String(text || ''),
     detail: detail ? String(detail) : '',
     at: Date.now(),
+    _t0: prev && prev.text === text ? prev._t0 : t,
   });
-  updateStatusBar();
+  scheduleStatusBarUpdate();
 }
 
 function clearUiActivity(id) {
   if (!id) return;
-  if (uiActivityTasks.delete(String(id))) updateStatusBar();
+  const key = String(id);
+  const prev = uiActivityTasks.get(key);
+  if (prev && prev._t0 != null) {
+    recordPerf(`ui:${prev.text}`, nowMs() - prev._t0, prev.detail || '');
+  }
+  if (uiActivityTasks.delete(key)) scheduleStatusBarUpdate(true);
 }
 
 function clearAllUiActivity() {
-  if (!uiActivityTasks.size) return;
-  uiActivityTasks.clear();
-  updateStatusBar();
+  if (uiActivityTasks.size) {
+    uiActivityTasks.clear();
+    scheduleStatusBarUpdate(true);
+  }
+  setWorkNotice(null);
+}
+
+/**
+ * Left-panel notice for heavy in-browser work.
+ * Explains brief freezes so large APK loads don't look "stuck".
+ * @param {string|null} title  null/'' clears
+ * @param {string} [body]
+ * @param {{ tone?: 'info'|'warn'|'ok', sticky?: boolean, autoHideMs?: number }} [opts]
+ */
+let workNoticeHideTimer = 0;
+function setWorkNotice(title, body = '', opts = {}) {
+  const el = document.getElementById('work-notice');
+  if (!el) return;
+  if (workNoticeHideTimer) {
+    clearTimeout(workNoticeHideTimer);
+    workNoticeHideTimer = 0;
+  }
+  if (!title) {
+    el.hidden = true;
+    el.innerHTML = '';
+    el.classList.remove('is-warn', 'is-ok');
+    return;
+  }
+  const tone = opts.tone || 'info';
+  el.classList.toggle('is-warn', tone === 'warn');
+  el.classList.toggle('is-ok', tone === 'ok');
+  const dismiss = opts.sticky
+    ? ''
+    : '<button type="button" class="work-notice-dismiss" title="Dismiss" aria-label="Dismiss">×</button>';
+  el.innerHTML = `${dismiss}<span class="work-notice-title">${escapeHtml(title)}</span>`
+    + (body ? `<span class="work-notice-body">${escapeHtml(body)}</span>` : '');
+  el.hidden = false;
+  const btn = el.querySelector('.work-notice-dismiss');
+  if (btn) {
+    btn.onclick = () => setWorkNotice(null);
+  }
+  const hideMs = opts.autoHideMs != null ? opts.autoHideMs : (opts.sticky ? 0 : 10000);
+  if (hideMs > 0) {
+    workNoticeHideTimer = setTimeout(() => setWorkNotice(null), hideMs);
+  }
+}
+
+/** True when this APK is large enough that indexing can hitch the UI. */
+function isLargeApkWorkload() {
+  const n = Number(apkDexStats?.classes) || 0;
+  const dex = Number(apkDexStats?.totalDex) || listApkDexNames().length || 0;
+  return n >= 40000 || dex >= 8;
 }
 
 function shortDexLabel(name) {
@@ -5018,11 +5400,24 @@ const centerTabsMenu = document.getElementById('center-tabs-menu');
 const PERMANENT_CENTER_TABS = [
   { id: 'bytecode-tab', label: 'Code' },
   { id: 'manifest-tab', label: 'Manifest' },
+  { id: 'permissions-tab', label: 'Permissions' },
+  { id: 'components-tab', label: 'Components' },
   { id: 'raw-tab', label: 'Raw' },
   { id: 'info-tab', label: 'Info' },
   { id: 'strings-tab', label: 'Strings' },
   { id: 'security-tab', label: 'Security' },
 ];
+
+function getVisiblePermanentCenterTabs() {
+  const conditional = new Set(['permissions-tab', 'components-tab']);
+  return PERMANENT_CENTER_TABS.filter((t) => {
+    if (!conditional.has(t.id)) return true;
+    const btn = document.getElementById(
+      t.id === 'permissions-tab' ? 'permissions-tab-btn' : 'components-tab-btn'
+    );
+    return btn && !btn.hidden;
+  });
+}
 
 function getActiveCenterTabId() {
   return document.querySelector('.center-panel .tab-btn.active')?.dataset?.tab || 'bytecode-tab';
@@ -5047,7 +5442,7 @@ function renderCenterTabsMenu() {
   if (!centerTabsMenu) return;
   const activeId = getActiveCenterTabId();
   let html = '<div class="center-tabs-menu-section">Permanent</div>';
-  for (const t of PERMANENT_CENTER_TABS) {
+  for (const t of getVisiblePermanentCenterTabs()) {
     html += `<button type="button" class="center-tabs-menu-item${activeId === t.id ? ' is-active' : ''}" role="menuitem" data-tab-goto="${escapeAttr(t.id)}">` +
       `<span class="center-tabs-menu-item-label">${escapeHtml(t.label)}</span>` +
       `<span class="center-tabs-menu-item-kind">workspace</span></button>`;
@@ -5109,10 +5504,18 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       c.classList.toggle('active', c.id === tab);
     });
     if (tab === 'strings-tab') {
+      scheduleEnsureDexStringsLoaded();
       requestAnimationFrame(() => paintStringsVirtualWindow());
     }
     if (tab === 'raw-tab' && rawHexEditor && typeof rawHexEditor.refresh === 'function') {
       requestAnimationFrame(() => rawHexEditor.refresh());
+    }
+    if (tab === 'permissions-tab') {
+      renderPermissionsTab();
+      ensurePermissionUsageIndex().then(() => renderPermissionsTab()).catch(() => {});
+    }
+    if (tab === 'components-tab') {
+      renderComponentsTab();
     }
   });
 });
@@ -5222,18 +5625,37 @@ if (infoContent) {
       openClassFromManifest(null, null, className);
       return;
     }
+    const resBtn = e.target.closest('button.info-res-link, img.info-res-thumb');
+    if (resBtn) {
+      e.preventDefault();
+      const path = resBtn.dataset.path || '';
+      if (!path) return;
+      openApkResourceFile(path);
+      return;
+    }
     const btn = e.target.closest('button.info-perm-use');
     if (!btn) return;
     e.preventDefault();
-    const className = btn.dataset.class || '';
-    const methodName = btn.dataset.method || '';
-    const dexFile = btn.dataset.dex || '';
-    const offsetRaw = btn.dataset.offset;
-    const offset = offsetRaw !== '' && offsetRaw != null ? Number(offsetRaw) : null;
-    navigateToSecurityFinding(className, methodName, dexFile, {
-      offset: Number.isFinite(offset) ? offset : null,
-      hint: '',
-    });
+    handlePermissionUsageClick(btn);
+  });
+}
+
+document.getElementById('perms-body')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('button.info-perm-use, button.perms-use');
+  if (!btn) return;
+  e.preventDefault();
+  handlePermissionUsageClick(btn);
+});
+
+function handlePermissionUsageClick(btn) {
+  const className = btn.dataset.class || '';
+  const methodName = btn.dataset.method || '';
+  const dexFile = btn.dataset.dex || '';
+  const offsetRaw = btn.dataset.offset;
+  const offset = offsetRaw !== '' && offsetRaw != null ? Number(offsetRaw) : null;
+  navigateToSecurityFinding(className, methodName, dexFile, {
+    offset: Number.isFinite(offset) ? offset : null,
+    hint: '',
   });
 }
 
@@ -5386,13 +5808,19 @@ if (dexPackageSelect) {
 if (dexFileSelect) {
   dexFileSelect.addEventListener('change', () => {
     if (currentType === 'apk') {
-      const name = dexFileSelect.value;
+      const name = (dexFileSelect.value || '').trim();
+      apkDexFilter = name; // '' = All DEXes
+      selectedDexPackage = '';
+      codeViewPackage = '';
       if (name) {
-        selectedDexPackage = '';
-        codeViewPackage = '';
         showApkFile(name).then(() => {
-          if (apkLeftMode === 'classes') renderApkClassTree();
+          if (apkLeftMode === 'classes' && apkDexFilter === name) renderApkClassTree();
         }).catch((e) => warn('[dexFileSelect] APK DEX switch failed', e));
+      } else if (apkLeftMode === 'classes') {
+        renderApkClassTree();
+        ensureApkClassIndex().then(() => {
+          if (apkLeftMode === 'classes' && !apkDexFilter) renderApkClassTree();
+        }).catch(() => {});
       }
       return;
     }
@@ -5559,6 +5987,7 @@ document.getElementById('source-export-btn')?.addEventListener('click', (e) => {
     setDockCollapsed(pane, next, 'droid2web-emulator-open');
     updateWorkspaceResizers();
   });
+  wireDebugConsoleUi();
 
   document.getElementById('cfg-fit-btn')?.addEventListener('click', () => fitCfgGraph());
   document.getElementById('cfg-zoom-in-btn')?.addEventListener('click', () => zoomCfgGraph(1.25));
@@ -6031,6 +6460,7 @@ if (showAndroidClassesCb) {
     try {
       localStorage.setItem(SHOW_ANDROID_CLASSES_KEY, showAndroidFrameworkClasses ? '1' : '0');
     } catch (_) {}
+    apkPackageCountsCache = null;
     if (currentData != null) render();
     else if (currentType === 'apk' && apkLeftMode === 'classes') renderApkClassTree();
     try { updateCodeView(); } catch (_) {}
@@ -7012,9 +7442,10 @@ async function processDexList(entries) {
       }
       let result;
       try {
+        // parseFileInWorker already decodes transferable UTF-8 JSON.
         result = typeof raw === 'string' ? JSON.parse(raw) : raw;
       } catch (jsonErr) {
-        warn('[processDexList] JSON.parse failed', name, jsonErr);
+        warn('[processDexList] decode failed', name, jsonErr);
         continue;
       }
       if (!result?.ok || !result.data) {
@@ -7042,7 +7473,7 @@ async function processDexList(entries) {
     clearApkResourceMap();
     apkExtractedFile = null;
     apkExtractedDexSelection = { classIdx: 0, methodIdx: 0 };
-    apkClassToDex = {};
+    resetApkClassIndexMaps();
     apkClassIndexPromise = null;
     apkPermissionUsageIndex = null;
     apkPermissionUsagePromise = null;
@@ -7078,6 +7509,8 @@ async function processFile(file) {
     debug('[processFile]', s, file.name);
   };
   step('start');
+  startPerfSession(`load:${file.name}`);
+  xmlViewerMountCache = null;
   if (securityCachePromptResolver) closeSecurityCacheModal('keep');
   currentFilename = file.name;
   fileName.textContent = file.name;
@@ -7087,6 +7520,15 @@ async function processFile(file) {
   loadingOverlay.classList.add('visible');
   loadingOverlay.setAttribute('aria-hidden', 'false');
   setUiActivity('load', 'Loading file', file.name);
+  if (file.size > 40 * 1024 * 1024) {
+    setWorkNotice(
+      'Loading large file in this browser',
+      `${formatFileSize(file.size)} — parsing and indexing run locally (WASM). Brief freezes are normal; watch the bottom status bar.`,
+      { tone: 'warn', sticky: true }
+    );
+  } else {
+    setWorkNotice(null);
+  }
 
   const loadingTimeoutMs = 30000;
   const loadingTimeoutId = setTimeout(() => {
@@ -7116,30 +7558,21 @@ async function processFile(file) {
 
     step('parse_file (worker)... bytes.length=' + bytesForWorker.length);
     setUiActivity('load', 'Parsing file', `${file.name} · ${formatFileSize(bytes.length)}`);
-    let raw;
+    let result;
     try {
-      raw = await parseFileInWorker(bytesForWorker, file.name);
+      result = await parseFileInWorker(bytesForWorker, file.name);
     } catch (parseErr) {
       error('[processFile] parse_file (worker) failed', parseErr, 'bytes.length=' + bytesForWorker.length, 'name=' + file.name);
       throw parseErr;
     }
     t('parse_file (worker) done');
-    step('parse_file returned type=' + typeof raw + (typeof raw === 'string' ? ' len=' + raw.length + ' (MB=' + (raw.length / (1024 * 1024)).toFixed(2) + ')' : ''));
+    step('parse_file returned type=' + typeof result + (result && typeof result === 'object' ? ' keys=' + Object.keys(result).join(',') : ''));
 
     step('waiting for main-thread WASM (if still loading)…');
     await ensureMainWasm();
     t('main WASM ready');
 
-    step('JSON.parse...');
-    let result;
-    try {
-      result = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    } catch (jsonErr) {
-      error('[processFile] JSON.parse threw', jsonErr, 'raw type=' + typeof raw, typeof raw === 'string' ? 'raw.length=' + raw.length : '');
-      throw jsonErr;
-    }
-    t('JSON.parse done');
-    step('parse result ok=' + !!result.ok + (result.ok ? ' dataKeys=' + (result.data ? Object.keys(result.data).join(',') : '') : ' error=' + (result.error || '')));
+    step('parse result ok=' + !!result?.ok + (result?.ok ? ' dataKeys=' + (result.data ? Object.keys(result.data).join(',') : '') : ' error=' + (result?.error || '')));
 
     if (result.ok) {
       currentData = result.data;
@@ -7151,7 +7584,8 @@ async function processFile(file) {
       apkExtractedFile = null;
       apkExtractedDexSelection = { classIdx: 0, methodIdx: 0 };
       apkLeftMode = 'classes';
-      apkClassToDex = {};
+      apkDexFilter = '';
+      resetApkClassIndexMaps();
       apkClassIndexPromise = null;
       apkPermissionUsageIndex = null;
       apkPermissionUsagePromise = null;
@@ -7167,7 +7601,13 @@ async function processFile(file) {
         if (!Array.isArray(currentData.strings)) currentData.strings = [];
         const nc = (currentData.classes || []).length;
         const nm = (currentData.classes || []).reduce((s, c) => s + (c?.methods?.length ?? 0), 0);
-        debug('DEX loaded', 'classes=', nc, 'methods total=', nm, 'strings=', (currentData.strings || []).length);
+        debug(
+          'DEX loaded',
+          'classes=', nc,
+          'methods total=', nm,
+          'strings=', (currentData.strings || []).length,
+          currentData.strings_omitted ? `(omitted, count=${currentData.string_count || 0})` : ''
+        );
         loadedDexFiles = [summarizeDexEntry(file.name, bytesForMain, currentData)];
         activeDexIndex = 0;
         updateDexFileSelector();
@@ -7276,6 +7716,61 @@ function setStringsAndRender(stringsArray) {
   renderStringsList(true);
 }
 
+/** @type {Promise<void>|null} */
+let dexStringsLoadPromise = null;
+
+/**
+ * Browse parse omits the string pool (`strings_omitted`). Load it in the worker
+ * when the Strings tab / search needs it — still 100% in-browser WASM.
+ */
+function scheduleEnsureDexStringsLoaded() {
+  ensureDexStringsLoaded().catch((e) => warn('[strings] lazy load failed', e));
+}
+
+async function ensureDexStringsLoaded() {
+  const data = (currentType === 'apk' && apkExtractedFile?.kind === 'dex')
+    ? apkExtractedFile.data
+    : currentData;
+  if (!data || !data.strings_omitted) {
+    const existing = Array.isArray(data?.strings) ? data.strings : [];
+    if (existing.length && currentStringsArray !== existing) setStringsAndRender(existing);
+    return;
+  }
+  if (Array.isArray(data.strings) && data.strings.length > 0) {
+    setStringsAndRender(data.strings);
+    return;
+  }
+  if (dexStringsLoadPromise) return dexStringsLoadPromise;
+
+  const bytes = (currentType === 'apk' && apkExtractedFile?.kind === 'dex')
+    ? (apkExtractedFileRawBytes || apkExtractedFile.bytes)
+    : currentDexBytes;
+  if (!bytes || !bytes.length) {
+    if (stringsCountEl) {
+      stringsCountEl.textContent = data.string_count
+        ? `${formatCount(data.string_count)} strings (not loaded)`
+        : '';
+    }
+    return;
+  }
+
+  dexStringsLoadPromise = (async () => {
+    setUiActivity('strings', 'Loading strings', formatCount(data.string_count || 0));
+    try {
+      const result = await getDexStringsInWorker(bytes);
+      const list = result?.ok && Array.isArray(result.data) ? result.data : [];
+      data.strings = list;
+      data.strings_omitted = false;
+      setStringsAndRender(list);
+      debug('[strings] loaded', list.length);
+    } finally {
+      clearUiActivity('strings');
+      dexStringsLoadPromise = null;
+    }
+  })();
+  return dexStringsLoadPromise;
+}
+
 function scheduleRenderStringsList(immediate = false) {
   clearTimeout(stringsRenderTimer);
   if (immediate) {
@@ -7367,14 +7862,26 @@ function renderStringsList(resetScroll = false) {
 
   const total = currentStringsArray.length;
   const shown = stringsFilteredIdx.length;
+  const omittedHint = (() => {
+    const data = (currentType === 'apk' && apkExtractedFile?.kind === 'dex')
+      ? apkExtractedFile.data
+      : currentData;
+    if (data?.strings_omitted && !total) {
+      return Number(data.string_count) || 0;
+    }
+    return 0;
+  })();
   if (stringsCountEl) {
-    if (!total) stringsCountEl.textContent = '';
+    if (omittedHint) stringsCountEl.textContent = `${formatCount(omittedHint)} strings (loading…)`;
+    else if (!total) stringsCountEl.textContent = '';
     else if (shown === total) stringsCountEl.textContent = `${formatCount(total)} strings`;
     else stringsCountEl.textContent = `${formatCount(shown)} of ${formatCount(total)}`;
   }
 
   if (!total) {
-    stringsList.innerHTML = '<div class="strings-empty">No strings in this DEX.</div>';
+    stringsList.innerHTML = omittedHint
+      ? '<div class="strings-empty">Loading string pool…</div>'
+      : '<div class="strings-empty">No strings in this DEX.</div>';
     updateStringsDetail();
     updateStringsActionButtons();
     return;
@@ -8161,11 +8668,21 @@ function updateStatusBar() {
 
   for (const a of activities) {
     const label = a.detail ? `${a.text} — ${a.detail}` : a.text;
-    parts.push(`<span class="statusbar-item statusbar-scanning" title="${escapeAttr(label)}"><strong>${escapeHtml(truncate(label, 72))}</strong></span>`);
+    const tip = `${label}\n\nHeavy work runs in this browser tab (WASM). The UI may pause briefly — that is expected, not a crash.`;
+    parts.push(`<span class="statusbar-item statusbar-scanning" title="${escapeAttr(tip)}"><strong>${escapeHtml(truncate(label, 72))}</strong></span>`);
   }
 
-  if (!busy) {
-    parts.push('<span class="statusbar-item statusbar-ready"><strong>Ready</strong></span>');
+  if (busy) {
+    parts.push(
+      `<span class="statusbar-item statusbar-hint" title="Parsing / indexing / decompiling run locally in WASM. Large APKs can stall clicks for a moment — watch this status bar for progress.">`
+      + `<strong>Working</strong> · UI may pause briefly`
+      + `</span>`
+    );
+  } else {
+    const readyTip = isLargeApkWorkload()
+      ? `Indexed ${formatCount(apkDexStats.classes || 0)} classes. Pick a package (or search) — listing every class at once is capped to keep the UI responsive.`
+      : 'Idle — ready for the next action.';
+    parts.push(`<span class="statusbar-item statusbar-ready" title="${escapeAttr(readyTip)}"><strong>Ready</strong></span>`);
   }
 
   const mem = formatStatusMemory();
@@ -8210,6 +8727,7 @@ function ensureStatusBarMemoryTicker(want) {
 function render() {
   debug('[render] start type=', currentType);
   try {
+    updatePermissionsTabVisibility();
     if (currentType === 'dex') {
       debug('[render] renderDex...');
       renderDex();
@@ -8426,8 +8944,12 @@ function renderDex() {
   if (classes.length === 0) {
     if (dexPackageWrap) dexPackageWrap.style.display = 'none';
     treeContent.innerHTML = '<div class="muted">No classes in this DEX.</div>';
-    infoContent.innerHTML = buildDexInfoHtml(0, (currentData?.strings?.length) ?? 0);
+    const sc = currentData?.strings_omitted
+      ? (currentData.string_count || 0)
+      : ((currentData?.strings?.length) ?? 0);
+    infoContent.innerHTML = buildDexInfoHtml(0, sc);
     setStringsAndRender(currentData?.strings ?? []);
+    scheduleEnsureDexStringsLoaded();
     setManifestPlaceholder('<span class="muted">DEX has no manifest.</span>');
 
     return;
@@ -8436,6 +8958,9 @@ function renderDex() {
 
   // Build search index only when needed for text search (tag:# / tag:name skips the index).
   const strings = Array.isArray(currentData?.strings) ? currentData.strings : [];
+  const stringCount = currentData?.strings_omitted
+    ? (Number(currentData.string_count) || strings.length)
+    : strings.length;
   const parsedSearch = parseListSearchQuery(searchQuery);
   const needIndex = parsedSearch.text && (!dexSearchIndex || dexSearchIndex.classSearchable.length !== classes.length || dexSearchIndex.stringsLower.length !== strings.length);
   if (needIndex) {
@@ -8456,10 +8981,11 @@ function renderDex() {
   updateCodeView();
 
   // Info (reuse strings from earlier in renderDex): header + counts
-  infoContent.innerHTML = buildDexInfoHtml(classes.length, strings.length);
+  infoContent.innerHTML = buildDexInfoHtml(classes.length, stringCount);
 
-  // Strings (full list; strings-tab search filters via renderStringsList)
+  // Strings — pool may be omitted until Strings tab / lazy load
   setStringsAndRender(strings);
+  scheduleEnsureDexStringsLoaded();
 
   // Raw hex editor for the DEX
   setHexEditorBytes(currentDexBytes, currentFilename || 'classes.dex');
@@ -8487,9 +9013,15 @@ function selectDexMethod(classIdx, methodIdx) {
     setTimeout(async () => {
       try {
         await ensureApkResourceMap();
-        const result = get_dex_method(bytes, wantClass, wantMethod, getDexRenamesObject());
+        if (codeViewClassIdx !== wantClass || codeViewMethodIdx !== wantMethod) return;
+        setUiActivity('decomp', 'Decompiling method', `${wantClass}:${wantMethod}`);
+        const raw = await getDexMethodInWorker(bytes, wantClass, wantMethod);
+        const result = typeof normalizeWasmResult === 'function' ? normalizeWasmResult(raw) : raw;
         if (result && result.ok && result.data) {
-          currentData.classes[wantClass].methods[wantMethod] = result.data;
+          const data = typeof normalizeWasmResult === 'function'
+            ? (normalizeWasmResult(result.data) || result.data)
+            : result.data;
+          currentData.classes[wantClass].methods[wantMethod] = data;
           if (codeViewClassIdx === wantClass && codeViewMethodIdx === wantMethod) {
             selectDexMethod(wantClass, wantMethod);
           }
@@ -8506,6 +9038,8 @@ function selectDexMethod(classIdx, methodIdx) {
           setSourceContent(sourceCode, String(e?.message || e));
           clearCfgGraph();
         }
+      } finally {
+        clearUiActivity('decomp');
       }
     }, 0);
     return;
@@ -8730,9 +9264,44 @@ function countClassesByPackage(classes) {
 }
 
 /** Load all methods of a class and set combined bytecode + source in the code view. */
-async function loadAllMethodsForClass(bytes, classIdx, methods, classesRef) {
-  const bytecodeParts = [];
-  const sourceParts = [];
+let loadAllMethodsGeneration = 0;
+
+function renderAllMethodsDeferredHtml(classIdx, methodCount) {
+  const fieldsBanner = renderClassFieldsBannerHtml(classIdx) || '';
+  const body = bytecodeEmptyHtml(
+    `${methodCount} methods`,
+    `This class is large — pick a method in the dropdown, or load all (slow on big DEXes).`
+  );
+  const actions = `<div class="all-methods-deferred-actions">
+    <button type="button" class="btn btn-primary" id="load-all-methods-btn" data-class-idx="${classIdx}">Load all methods</button>
+  </div>`;
+  return (fieldsBanner || '') + body + actions;
+}
+
+function wireLoadAllMethodsButton() {
+  const btn = document.getElementById('load-all-methods-btn');
+  if (!btn || btn._wired) return;
+  btn._wired = true;
+  btn.addEventListener('click', () => {
+    const classIdx = parseInt(btn.getAttribute('data-class-idx'), 10);
+    if (Number.isNaN(classIdx)) return;
+    const ctx = getCodeViewContext();
+    if (!ctx?.bytes || !ctx.classes?.[classIdx]) return;
+    const classesRef = ctx.isApk ? apkExtractedFile.data.classes : currentData.classes;
+    const methods = Array.isArray(classesRef[classIdx]?.methods) ? classesRef[classIdx].methods : [];
+    codeViewClassIdx = classIdx;
+    codeViewMethodIdx = null;
+    loadAllMethodsForClass(ctx.bytes, classIdx, methods, classesRef, { force: true });
+  });
+}
+
+async function loadAllMethodsForClass(bytes, classIdx, methods, classesRef, { force = false } = {}) {
+  const gen = ++loadAllMethodsGeneration;
+  const stillCurrent = () =>
+    gen === loadAllMethodsGeneration
+    && codeViewMethodIdx === null
+    && codeViewClassIdx === classIdx;
+
   if (methods.length === 0) {
     const fieldsBanner = renderClassFieldsBannerHtml(classIdx) || '';
     setBytecodeListingHtml(
@@ -8742,17 +9311,54 @@ async function loadAllMethodsForClass(bytes, classIdx, methods, classesRef) {
     setSourceContentAllMethods(sourceCode, classIdx, []);
     return;
   }
+
+  // Huge classes (common in Facebook / apps with R / BuildConfig noise): don't decompile everything up front.
+  if (!force && methods.length > ALL_METHODS_AUTO_LIMIT) {
+    setBytecodeListingHtml(renderAllMethodsDeferredHtml(classIdx, methods.length), {
+      empty: false,
+      meta: `${methods.length} methods · select one or Load all`,
+      sourceMeta: `${methods.length} methods`,
+    });
+    setSourceContentAllMethods(sourceCode, classIdx, []);
+    clearCfgGraph();
+    requestAnimationFrame(() => wireLoadAllMethodsButton());
+    return;
+  }
+
   await ensureApkResourceMap();
+  if (!stillCurrent()) return;
+
+  const bytecodeParts = [];
   const methodsWithSource = [];
   let totalInsn = 0;
+  const fieldsBanner = renderClassFieldsBannerHtml(classIdx) || '';
+
   for (let methodIdx = 0; methodIdx < methods.length; methodIdx++) {
+    if (!stillCurrent()) return;
     const m = methods[methodIdx];
     const needFetch = !Array.isArray(m.bytecode) || m.bytecode.length === 0;
     if (needFetch) {
       try {
-        const result = get_dex_method(bytes, classIdx, methodIdx, getDexRenamesObject());
-        if (result?.ok && result?.data) classesRef[classIdx].methods[methodIdx] = result.data;
-      } catch (_) {}
+        setUiActivity('decomp', 'Decompiling class', `${methodIdx + 1}/${methods.length}`);
+        setBytecodeListingHtml(
+          (fieldsBanner || '') +
+            bytecodeEmptyHtml('Loading methods…', `${methodIdx + 1} / ${methods.length}`),
+          { empty: true, meta: `Loading ${methodIdx + 1}/${methods.length}`, sourceMeta: '' }
+        );
+        await yieldToUiFrame();
+        if (!stillCurrent()) return;
+        const raw = await getDexMethodInWorker(bytes, classIdx, methodIdx);
+        if (!stillCurrent()) return;
+        const result = typeof normalizeWasmResult === 'function' ? normalizeWasmResult(raw) : raw;
+        if (result?.ok && result?.data) {
+          const data = typeof normalizeWasmResult === 'function'
+            ? (normalizeWasmResult(result.data) || result.data)
+            : result.data;
+          classesRef[classIdx].methods[methodIdx] = data;
+        }
+      } catch (e) {
+        warn('[loadAllMethodsForClass]', classIdx, methodIdx, e);
+      }
     }
     const method = classesRef[classIdx].methods[methodIdx];
     const rows = Array.isArray(method?.bytecode) ? method.bytecode : [];
@@ -8767,8 +9373,11 @@ async function loadAllMethodsForClass(bytes, classIdx, methods, classesRef) {
     bytecodeParts.push(rows.length ? renderBytecodeLines(rows) : '<div class="muted bytecode-empty-method">(no code)</div>');
     bytecodeParts.push('</div>');
   }
+
+  if (!stillCurrent()) return;
+  clearUiActivity('decomp');
   setBytecodeListingHtml(
-    (renderClassFieldsBannerHtml(classIdx) || '') +
+    (fieldsBanner || '') +
       (bytecodeParts.join('') || bytecodeEmptyHtml('No bytecode', 'No instructions in this class')),
     {
       empty: totalInsn === 0 && !(classesRef[classIdx]?.fields?.length),
@@ -8923,11 +9532,19 @@ function updateCodeView() {
           try {
             await ensureApkResourceMap();
             if (codeViewClassIdx !== wantClass || codeViewMethodIdx !== wantMethod) return;
-            const result = get_dex_method(bytes, wantClass, wantMethod, getDexRenamesObject());
+            setUiActivity('decomp', 'Decompiling method', `${wantClass}:${wantMethod}`);
+            const raw = await getDexMethodInWorker(bytes, wantClass, wantMethod);
+            const result = typeof normalizeWasmResult === 'function' ? normalizeWasmResult(raw) : raw;
             if (result?.ok && result?.data && apkExtractedFile?.data?.classes?.[wantClass]) {
-              apkExtractedFile.data.classes[wantClass].methods[wantMethod] = result.data;
+              const data = typeof normalizeWasmResult === 'function'
+                ? (normalizeWasmResult(result.data) || result.data)
+                : result.data;
+              apkExtractedFile.data.classes[wantClass].methods[wantMethod] = data;
             }
           } catch (_) {}
+          finally {
+            clearUiActivity('decomp');
+          }
           if (codeViewClassIdx === wantClass && codeViewMethodIdx === wantMethod) {
             updateCodeView();
           }
@@ -8984,11 +9601,24 @@ function truncate(s, len) {
  * switch package if needed, expand the class node, highlight selection, scroll into view.
  * When the class changes, collapses the previously auto-expanded class.
  */
-function collapseTreeClassNode(classIdx) {
+function collapseTreeClassNode(classIdx, opts = {}) {
   if (!treeContent || classIdx == null || Number.isNaN(Number(classIdx))) return;
-  const el = treeContent.querySelector(
-    `.tree-item.class[data-class="${CSS.escape(String(classIdx))}"]`
-  );
+  let el = null;
+  if (opts.className) {
+    el = treeContent.querySelector(
+      `.tree-item.class[data-class-name="${CSS.escape(String(opts.className))}"]`
+    );
+  }
+  if (!el && opts.dexFile) {
+    el = treeContent.querySelector(
+      `.tree-item.class[data-dex-file="${CSS.escape(String(opts.dexFile))}"][data-class="${CSS.escape(String(classIdx))}"]`
+    );
+  }
+  if (!el) {
+    el = treeContent.querySelector(
+      `.tree-item.class[data-class="${CSS.escape(String(classIdx))}"]`
+    );
+  }
   if (!el) return;
   const ul = el.nextElementSibling;
   if (ul && ul.tagName === 'UL') {
@@ -9011,12 +9641,14 @@ function syncLeftTreeToSelectedClass() {
   const className = classes[classIdx].name || '';
   const pkg = getPackageFromClassName(className);
   const searchActive = !!(searchQuery && String(searchQuery).length);
-  const classChanged = syncLeftTreeToSelectedClass._lastClassIdx !== classIdx;
-  const prevAuto = syncLeftTreeToSelectedClass._autoExpandedClassIdx;
+  const openDex = currentType === 'apk' && apkExtractedFile?.kind === 'dex' ? apkExtractedFile.name : '';
+  const classChanged = syncLeftTreeToSelectedClass._lastClassIdx !== classIdx
+    || syncLeftTreeToSelectedClass._lastClassName !== className;
+  const prevAuto = syncLeftTreeToSelectedClass._autoExpanded;
 
   // Close the previously auto-opened class when the middle UI switches class.
-  if (classChanged && prevAuto != null && Number(prevAuto) !== Number(classIdx)) {
-    collapseTreeClassNode(prevAuto);
+  if (classChanged && prevAuto && (prevAuto.classIdx !== classIdx || prevAuto.className !== className)) {
+    collapseTreeClassNode(prevAuto.classIdx, prevAuto);
   }
 
   if (!searchActive && pkg && selectedDexPackage !== pkg) {
@@ -9029,11 +9661,25 @@ function syncLeftTreeToSelectedClass() {
     }
   }
 
-  const classEl = treeContent.querySelector(
-    `.tree-item.class[data-class="${CSS.escape(String(classIdx))}"]`
-  );
+  let classEl = null;
+  if (currentType === 'apk' && !apkDexFilter && className) {
+    classEl = treeContent.querySelector(
+      `.tree-item.class[data-class-name="${CSS.escape(className)}"]`
+    );
+  }
+  if (!classEl && openDex) {
+    classEl = treeContent.querySelector(
+      `.tree-item.class[data-dex-file="${CSS.escape(openDex)}"][data-class="${CSS.escape(String(classIdx))}"]`
+    );
+  }
+  if (!classEl) {
+    classEl = treeContent.querySelector(
+      `.tree-item.class[data-class="${CSS.escape(String(classIdx))}"]`
+    );
+  }
   if (!classEl) {
     syncLeftTreeToSelectedClass._lastClassIdx = classIdx;
+    syncLeftTreeToSelectedClass._lastClassName = className;
     syncLeftTreeToSelectedClass._lastMethodIdx = codeViewMethodIdx;
     return;
   }
@@ -9054,19 +9700,20 @@ function syncLeftTreeToSelectedClass() {
   }
 
   const kids = classEl.nextElementSibling;
+  const autoMeta = { classIdx, className, dexFile: openDex || classEl.dataset.dexFile || '' };
   if (classChanged && kids && kids.tagName === 'UL') {
     kids.style.display = '';
     const arrow = classEl.querySelector('.arrow');
     arrow?.classList.remove('collapsed');
     arrow?.classList.add('expanded');
-    syncLeftTreeToSelectedClass._autoExpandedClassIdx = classIdx;
+    syncLeftTreeToSelectedClass._autoExpanded = autoMeta;
   } else if (codeViewMethodIdx != null && kids && kids.tagName === 'UL' && kids.style.display === 'none') {
     // Method selected while class was collapsed — reveal children.
     kids.style.display = '';
     const arrow = classEl.querySelector('.arrow');
     arrow?.classList.remove('collapsed');
     arrow?.classList.add('expanded');
-    syncLeftTreeToSelectedClass._autoExpandedClassIdx = classIdx;
+    syncLeftTreeToSelectedClass._autoExpanded = autoMeta;
   }
 
   treeContent.querySelectorAll('.tree-item.selected').forEach((el) => el.classList.remove('selected'));
@@ -9093,6 +9740,7 @@ function syncLeftTreeToSelectedClass() {
 
   const methodChanged = syncLeftTreeToSelectedClass._lastMethodIdx !== codeViewMethodIdx;
   syncLeftTreeToSelectedClass._lastClassIdx = classIdx;
+  syncLeftTreeToSelectedClass._lastClassName = className;
   syncLeftTreeToSelectedClass._lastMethodIdx = codeViewMethodIdx;
   if (classChanged || methodChanged) {
     requestAnimationFrame(() => {
@@ -10369,6 +11017,12 @@ function formatXmlPretty(xml) {
   const trimmed = xml.trim();
   if (!trimmed) return '';
 
+  // Attr-per-line reformatting is O(tags×attrs) and expands size a lot.
+  // Use the fast path earlier — still readable, much cheaper to mount.
+  if (trimmed.length >= 36000) {
+    return formatXmlPrettyFast(trimmed);
+  }
+
   const ATTR_BREAK_THRESHOLD = 72;
 
   function formatOpeningTag(tag, baseIndent) {
@@ -10431,6 +11085,49 @@ function formatXmlPretty(xml) {
   return out.join('\n');
 }
 
+/** Cheap pretty-printer: indent tags, keep attrs on one line (no per-attr wrapping). */
+function formatXmlPrettyFast(xml) {
+  const s = String(xml || '').trim();
+  if (!s) return '';
+  const parts = s.split(/(<[^>]+>)/g).filter(Boolean);
+  const out = [];
+  const pads = ['', '  ', '    ', '      ', '        ', '          ', '            ', '              '];
+  const pad = (n) => {
+    const d = Math.max(0, n | 0);
+    while (pads.length <= d) pads.push('  '.repeat(pads.length));
+    return pads[d];
+  };
+  let indent = 0;
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i];
+    if (p.startsWith('</')) {
+      indent = Math.max(0, indent - 1);
+      out.push(pad(indent), p, '\n');
+    } else if (p.startsWith('<?') || p.startsWith('<!') || p.startsWith('<!--')) {
+      out.push(pad(indent), p, '\n');
+    } else if (p.startsWith('<')) {
+      const selfClosing = /\/\s*>$/.test(p);
+      out.push(pad(indent), p, '\n');
+      if (!selfClosing) indent++;
+    } else {
+      const line = p.trim();
+      if (line) out.push(pad(indent), line, '\n');
+    }
+  }
+  // Drop trailing newline for stable line counts.
+  if (out.length && out[out.length - 1] === '\n') out.pop();
+  return out.join('');
+}
+
+function countXmlNewlines(s) {
+  if (!s) return 0;
+  let n = 1;
+  for (let i = 0; i < s.length; i++) {
+    if (s.charCodeAt(i) === 10) n++;
+  }
+  return n;
+}
+
 function escapeXmlHighlight(s) {
   return String(s)
     .replace(/&/g, '&amp;')
@@ -10451,16 +11148,23 @@ function highlightXmlAttrValue(val) {
   return '<span class="xml-value">' + esc + '</span>';
 }
 
-/** Return HTML string with XML syntax highlighting (safe: escapes content). */
+/**
+ * Return HTML string with XML syntax highlighting (safe: escapes content).
+ * @param {{ lineNumbers?: boolean, preserveNewlines?: boolean }} [opts]
+ *   lineNumbers: wrap each line in .xml-line (expensive DOM — avoid on large manifests)
+ *   preserveNewlines: keep \n for mounting inside <pre> (light mode)
+ */
 function highlightXml(xml, opts = {}) {
   if (!xml || typeof xml !== 'string') return '';
   const lineNumbers = opts.lineNumbers !== false;
   const esc = escapeXmlHighlight;
   const tokens = xml.split(/(<!--[\s\S]*?-->|<[^>]+>)/g);
-  let flat = '';
-  for (const t of tokens) {
+  const parts = [];
+  for (let ti = 0; ti < tokens.length; ti++) {
+    const t = tokens[ti];
+    if (!t) continue;
     if (t.startsWith('<!--')) {
-      flat += '<span class="xml-comment">' + esc(t) + '</span>';
+      parts.push('<span class="xml-comment">', esc(t), '</span>');
     } else if (t.startsWith('<')) {
       const tagMatch = t.match(/^<\/?(\??)([\w.:-]+)/);
       const rest = tagMatch ? t.slice(tagMatch[0].length) : t;
@@ -10468,39 +11172,42 @@ function highlightXml(xml, opts = {}) {
         const optionalQ = tagMatch[1];
         const name = tagMatch[2];
         const isClose = t.startsWith('</');
-        flat += '&lt;' + (isClose ? '/' : '') + optionalQ + '<span class="xml-tag">' + esc(name) + '</span>';
+        parts.push('&lt;', isClose ? '/' : '', optionalQ, '<span class="xml-tag">', esc(name), '</span>');
       } else {
-        flat += esc(t);
+        parts.push(esc(t));
         continue;
       }
-      // Do not consume leading whitespace in the match — preserve spaces/newlines
-      // between the tag name and attrs (and between attrs) via rest.slice.
       const attrRe = /([\w.:-]+)=("([^"]*)"|'([^']*)')/g;
       let lastIdx = 0;
       let m;
       while ((m = attrRe.exec(rest)) !== null) {
-        flat += esc(rest.slice(lastIdx, m.index));
+        if (m.index > lastIdx) parts.push(esc(rest.slice(lastIdx, m.index)));
         const val = m[3] !== undefined ? m[3] : m[4];
         const quote = m[3] !== undefined ? '"' : "'";
         const attrName = m[1];
         const attrCls = attrName.includes(':') ? 'xml-attr xml-attr-ns' : 'xml-attr';
-        flat += '<span class="' + attrCls + '">' + esc(attrName) + '</span>=' + quote + highlightXmlAttrValue(val) + quote;
+        parts.push('<span class="', attrCls, '">', esc(attrName), '</span>=', quote, highlightXmlAttrValue(val), quote);
         lastIdx = attrRe.lastIndex;
       }
-      flat += esc(rest.slice(lastIdx));
+      if (lastIdx < rest.length) parts.push(esc(rest.slice(lastIdx)));
     } else {
-      // Preserve leading indentation spaces in text segments between tags
-      flat += '<span class="xml-text">' + esc(t) + '</span>';
+      parts.push('<span class="xml-text">', esc(t), '</span>');
     }
   }
-  if (!lineNumbers) return flat.replace(/\n/g, '<br>\n');
+  const flat = parts.join('');
+  if (!lineNumbers) {
+    if (opts.preserveNewlines) return flat;
+    return flat.replace(/\n/g, '<br>\n');
+  }
   const lines = flat.split('\n');
   const width = Math.max(2, String(lines.length).length);
-  return lines.map((line, i) => {
+  const out = new Array(lines.length);
+  const lnStyle = `width:${width}ch`;
+  for (let i = 0; i < lines.length; i++) {
     const n = i + 1;
-    // Keep empty lines visible; preserve leading spaces via pre-wrap on .xml-lc
-    return `<div class="xml-line" data-line="${n}" id="xml-line-${n}"><span class="xml-ln" style="width:${width}ch">${n}</span><span class="xml-lc">${line || ' '}</span></div>`;
-  }).join('');
+    out[i] = `<div class="xml-line" data-line="${n}" id="xml-line-${n}"><span class="xml-ln" style="${lnStyle}">${n}</span><span class="xml-lc">${lines[i] || ' '}</span></div>`;
+  }
+  return out.join('');
 }
 
 /** Outline entries from pretty-printed XML (opening tags only). */
@@ -10579,16 +11286,27 @@ function buildArscOverviewXml(packages) {
 function scrollXmlLineIntoView(container, line) {
   if (!container || !line) return;
   const el = container.querySelector(`.xml-line[data-line="${line}"]`);
-  if (!el) return;
-  container.querySelectorAll('.xml-line.xml-line-active').forEach((n) => n.classList.remove('xml-line-active'));
-  el.classList.add('xml-line-active');
-  el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  if (el) {
+    container.querySelectorAll('.xml-line.xml-line-active').forEach((n) => n.classList.remove('xml-line-active'));
+    el.classList.add('xml-line-active');
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    return;
+  }
+  // Plain / light mode: approximate scroll by line height.
+  const cs = getComputedStyle(container);
+  const lh = parseFloat(cs.lineHeight) || (parseFloat(cs.fontSize) || 12) * 1.35;
+  const scroller = container.closest('.res-viewer-scroll') || container;
+  scroller.scrollTop = Math.max(0, (line - 1) * lh - scroller.clientHeight * 0.35);
 }
 
 function filterXmlViewerLines(container, query) {
   if (!container) return { total: 0, matches: 0 };
   const q = (query || '').trim().toLowerCase();
   const lines = container.querySelectorAll('.xml-line');
+  if (!lines.length) {
+    const total = countXmlNewlines(container.textContent || '');
+    return { total, matches: q ? 0 : total };
+  }
   let matches = 0;
   lines.forEach((line) => {
     const text = (line.querySelector('.xml-lc')?.textContent || '').toLowerCase();
@@ -10604,10 +11322,26 @@ function filterXmlViewerLines(container, query) {
   return { total: lines.length, matches: q ? matches : lines.length };
 }
 
+/** Cache last mounted XML so remounts (tab switches / refresh) stay cheap. */
+let xmlViewerMountCache = null;
+
+function xmlViewerCacheKey(xml) {
+  const n = xml.length;
+  if (!n) return '0';
+  return `${n}:${xml.charCodeAt(0)}:${xml.charCodeAt(n >> 1)}:${xml.charCodeAt(n - 1)}:${xml.slice(0, 40)}:${xml.slice(-24)}`;
+}
+
 /**
  * Mount a rich XML viewer into `host` (or replace `codeEl` content).
  * options: { xml, meta, title, showOutlineTarget, onReady }
+ *
+ * Modes (picked by size):
+ *   full  — highlighted + per-line DOM (filterable) — small XML only
+ *   light — highlighted spans on the <pre> (indented; used for mid + Facebook-scale)
+ *
+ * Large manifests paint indented text first, then upgrade to light highlight idle.
  */
+let xmlViewerMountGen = 0;
 function mountXmlViewer(codeEl, toolbarEl, xml, options = {}) {
   const meta = options.meta || extractAxmlMeta(xml, options.data);
   if (!xml || xml === '(empty)' || (typeof xml === 'string' && (xml.startsWith('(') || xml.startsWith('No ')))) {
@@ -10618,11 +11352,108 @@ function mountXmlViewer(codeEl, toolbarEl, xml, options = {}) {
     if (codeEl) codeEl.innerHTML = `<span class="muted">${escapeHtml(xml || '')}</span>`;
     return { pretty: '', meta };
   }
-  const pretty = formatXmlPretty(xml);
-  const lineCount = pretty ? pretty.split('\n').length : 0;
+  const tAll = nowMs();
+  const cacheKey = xmlViewerCacheKey(xml);
+  const mountGen = ++xmlViewerMountGen;
+
+  let pretty;
+  let lineCount;
+  let mode;
+  let outline = [];
+  let fromCache = false;
+  let cachedHtml = '';
+
+  if (xmlViewerMountCache && xmlViewerMountCache.key === cacheKey) {
+    // Drop obsolete "plain" cache entries from older builds.
+    if (xmlViewerMountCache.mode === 'plain') {
+      xmlViewerMountCache = null;
+    } else {
+      pretty = xmlViewerMountCache.pretty;
+      lineCount = xmlViewerMountCache.lineCount;
+      mode = xmlViewerMountCache.mode;
+      outline = xmlViewerMountCache.outline || [];
+      cachedHtml = xmlViewerMountCache.html || '';
+      fromCache = true;
+    }
+  }
+  if (!fromCache) {
+    pretty = measureSync(
+      'formatXmlPretty',
+      () => formatXmlPretty(xml),
+      `${formatCount(xml.length)} chars`
+    );
+    lineCount = countXmlNewlines(pretty);
+    // Always keep indentation; only drop per-line DOM on larger XML.
+    mode = (pretty.length >= 24000 || lineCount >= 700) ? 'light' : 'full';
+  }
+
+  const light = mode === 'light';
+  // Defer highlight for big manifests so first paint shows indented structure.
+  const deferHighlight = light && !cachedHtml && pretty.length >= 48000;
+
+  function applyLightHtml(html) {
+    if (!codeEl || xmlViewerMountGen !== mountGen) return;
+    codeEl.classList.add('res-xml', 'manifest-xml', 'xml-light-mode');
+    codeEl.classList.remove('xml-plain-mode');
+    codeEl.innerHTML = html;
+    const chip = toolbarEl?.querySelector('.res-chip-xml-mode');
+    if (chip) {
+      chip.textContent = 'formatted';
+      chip.classList.remove('res-chip-warn');
+      chip.title = 'Indented + syntax highlighted (fast path for large manifests)';
+    }
+    const countEl = toolbarEl?.querySelector('.res-xml-search-count');
+    if (countEl) countEl.textContent = `${lineCount} lines`;
+  }
+
   if (codeEl) {
     codeEl.classList.add('res-xml', 'manifest-xml');
-    codeEl.innerHTML = highlightXml(pretty, { lineNumbers: true });
+    codeEl.classList.toggle('xml-light-mode', light && !deferHighlight);
+    codeEl.classList.toggle('xml-plain-mode', deferHighlight);
+    if (light) {
+      if (cachedHtml) {
+        measureSync('highlightXml+DOM-light-cache', () => applyLightHtml(cachedHtml), `${formatCount(lineCount)} lines`);
+      } else if (deferHighlight) {
+        // Immediate: indented plain text (looks structured like other manifests).
+        measureSync('mountXmlViewer-indent', () => {
+          codeEl.textContent = pretty;
+        }, `${formatCount(lineCount)} lines`);
+        const schedule = typeof requestIdleCallback === 'function'
+          ? (fn) => requestIdleCallback(fn, { timeout: 900 })
+          : (fn) => setTimeout(fn, 32);
+        schedule(() => {
+          if (xmlViewerMountGen !== mountGen) return;
+          let html = '';
+          try {
+            html = measureSync(
+              'highlightXml-deferred',
+              () => highlightXml(pretty, { lineNumbers: false, preserveNewlines: true }),
+              `${formatCount(pretty.length)} chars`
+            );
+          } catch (e) {
+            warn('[mountXmlViewer] deferred highlight failed', e);
+            return;
+          }
+          applyLightHtml(html);
+          if (xmlViewerMountCache && xmlViewerMountCache.key === cacheKey) {
+            xmlViewerMountCache.html = html;
+          }
+        });
+      } else {
+        measureSync('highlightXml+DOM-light', () => {
+          const html = highlightXml(pretty, { lineNumbers: false, preserveNewlines: true });
+          codeEl._pendingLightHtml = html;
+          applyLightHtml(html);
+        }, `${formatCount(lineCount)} lines`);
+      }
+    } else {
+      codeEl.classList.remove('xml-plain-mode', 'xml-light-mode');
+      measureSync('highlightXml+DOM', () => {
+        const html = cachedHtml || highlightXml(pretty, { lineNumbers: true });
+        if (!cachedHtml) codeEl._pendingFullHtml = html;
+        codeEl.innerHTML = html;
+      }, `${formatCount(lineCount)} lines`);
+    }
   }
   if (toolbarEl) {
     toolbarEl.hidden = false;
@@ -10637,6 +11468,11 @@ function mountXmlViewer(codeEl, toolbarEl, xml, options = {}) {
     if (meta.root_tag) chips.push(`<span class="res-chip"><span class="res-chip-k">root</span> ${escapeHtml(meta.root_tag)}</span>`);
     if (meta.permissions?.length) chips.push(`<span class="res-chip" title="${escapeAttr(meta.permissions.join('\n'))}"><span class="res-chip-k">perms</span> ${meta.permissions.length}</span>`);
     chips.push(`<span class="res-chip muted"><span class="res-chip-k">lines</span> ${lineCount}</span>`);
+    if (deferHighlight) {
+      chips.push(`<span class="res-chip res-chip-warn res-chip-xml-mode" title="Indenting now; colors apply in a moment">formatting…</span>`);
+    } else if (light) {
+      chips.push(`<span class="res-chip res-chip-xml-mode" title="Indented + syntax highlighted (fast path for large manifests)">formatted</span>`);
+    }
     toolbarEl.innerHTML = `
       <div class="res-viewer-meta">${chips.join('')}</div>
       <div class="res-viewer-actions">
@@ -10648,10 +11484,18 @@ function mountXmlViewer(codeEl, toolbarEl, xml, options = {}) {
     const countEl = toolbarEl.querySelector('.res-xml-search-count');
     const copyBtn = toolbarEl.querySelector('.res-xml-copy');
     const updateCount = () => {
+      if (light) {
+        if (countEl) countEl.textContent = deferHighlight ? `${lineCount} lines (indenting…)` : `${lineCount} lines`;
+        return;
+      }
       const r = filterXmlViewerLines(codeEl, search?.value || '');
       if (countEl) countEl.textContent = search?.value ? `${r.matches}/${r.total}` : `${r.total} lines`;
     };
     search?.addEventListener('input', updateCount);
+    if (light && search) {
+      search.disabled = true;
+      search.placeholder = 'Filter disabled (large manifest)';
+    }
     copyBtn?.addEventListener('click', async () => {
       try {
         await navigator.clipboard.writeText(pretty);
@@ -10664,7 +11508,31 @@ function mountXmlViewer(codeEl, toolbarEl, xml, options = {}) {
     });
     updateCount();
   }
-  return { pretty, meta, outline: buildXmlOutline(pretty) };
+  recordPerf('mountXmlViewer', nowMs() - tAll, fromCache ? `cache-${mode}` : (deferHighlight ? 'light-deferred' : mode));
+
+  if (!fromCache) {
+    if (mode === 'full') {
+      outline = measureSync('buildXmlOutline', () => buildXmlOutline(pretty), `${formatCount(lineCount)} lines`);
+    } else if (mode === 'light' && lineCount <= 2500) {
+      outline = measureSync('buildXmlOutline', () => buildXmlOutline(pretty), `${formatCount(lineCount)} lines`);
+    }
+    const html = codeEl?._pendingLightHtml || codeEl?._pendingFullHtml || cachedHtml || '';
+    if (codeEl) {
+      delete codeEl._pendingLightHtml;
+      delete codeEl._pendingFullHtml;
+    }
+    xmlViewerMountCache = {
+      key: cacheKey,
+      pretty,
+      html,
+      mode,
+      outline,
+      lineCount,
+      meta,
+    };
+  }
+
+  return { pretty, meta, outline, plain: false, mode, deferred: deferHighlight };
 }
 
 function renderXmlOutlineTree(outline, { selectedLine } = {}) {
@@ -12580,7 +13448,7 @@ function setSourceContentAllMethods(el, classIdx, methodsWithSource) {
 
 /** Build index: class name -> { file, classIdx } from all DEX files in current APK. */
 async function buildApkClassIndex() {
-  apkClassToDex = {};
+  resetApkClassIndexMaps();
   apkDexStats = { dexFiles: 0, classes: 0, methods: 0, ready: false, totalDex: 0, current: 0, currentName: '' };
   updateStatusBar();
   if (!currentApkBytes || currentType !== 'apk' || !Array.isArray(currentData?.files)) {
@@ -12594,23 +13462,25 @@ async function buildApkClassIndex() {
   const tIdx = timer();
   debug('[buildApkClassIndex] start dexFiles=', dexFiles.length, '(compact index)');
   setUiActivity('index', 'Indexing classes', `0/${dexFiles.length} DEX`);
+  setWorkNotice(
+    'Indexing classes in this browser',
+    dexFiles.length > 4
+      ? `${dexFiles.length} DEX files — large APKs can pause the UI for a few seconds between steps. Progress is in the bottom status bar.`
+      : 'Building a class map so Manifest links and package browse work. Progress is in the bottom status bar.',
+    { tone: 'info', sticky: true }
+  );
   await ensureMainWasm();
   // Let first paint / auto-open primary DEX land before we hog extract + worker.
   await new Promise((r) => setTimeout(r, 300));
   if (currentType !== 'apk') {
     clearUiActivity('index');
+    setWorkNotice(null);
     return;
   }
 
   for (let i = 0; i < dexFiles.length; i++) {
-    while (securityScanBusy) {
-      setUiActivity('index', 'Indexing paused', 'waiting for security scan');
-      await new Promise((r) => setTimeout(r, 300));
-      if (currentType !== 'apk') {
-        clearUiActivity('index');
-        return;
-      }
-    }
+    // Index runs on the parse worker and never waits on securityScanBusy —
+    // security uses a separate worker so browse stays responsive.
     const f = dexFiles[i];
     const label = shortDexLabel(f.name);
     const prog = `${i + 1}/${dexFiles.length}`;
@@ -12634,13 +13504,12 @@ async function buildApkClassIndex() {
         'Indexing classes',
         `${prog} · ${label} · ${formatFileSize(bytes.length)}${classBit}`
       );
-      // Compact worker index — NOT full parse_file (avoids multi-MB JSON.parse freezes).
-      const resultRaw = await indexDexClassesInWorker(bytes);
+      // Compact worker index — NOT full parse_file (avoids multi-MB freezes).
+      const result = await indexDexClassesInWorker(bytes);
       // Drop extract buffer ASAP so GC can reclaim during long multidex indexes.
       bytes = null;
       setUiActivity('index', 'Merging class index', `${prog} · ${label}${classBit}`);
       await yieldToUiFrame();
-      const result = typeof resultRaw === 'string' ? JSON.parse(resultRaw) : resultRaw;
       const list = result?.ok && Array.isArray(result?.data?.classes) ? result.data.classes : null;
       if (!list) continue;
       apkDexStats.dexFiles += 1;
@@ -12649,7 +13518,7 @@ async function buildApkClassIndex() {
       for (let c = 0; c < list.length; c++) {
         const entry = list[c];
         const name = entry?.name;
-        if (name) putApkClassIndexEntry(name, f.name, c);
+        if (name) putApkClassIndexEntry(name, f.name, c, apkClassToDex, entry?.method_count);
         apkDexStats.classes += 1;
         apkDexStats.methods += Number(entry?.method_count) || 0;
         if ((c + 1) % CHUNK === 0) {
@@ -12682,17 +13551,78 @@ async function buildApkClassIndex() {
     'Linking Manifest',
     `${formatCount(apkDexStats.classes)} classes · ${apkDexStats.dexFiles} DEX`
   );
+  setWorkNotice(
+    'Linking Manifest',
+    'Connecting component names to indexed classes. Large manifests skip full XML rewrites so the tab stays usable.',
+    { tone: 'info', sticky: true }
+  );
   updateStatusBar();
   await yieldToUiFrame();
   try {
-    await applyManifestClassLinksNowAsync();
+    await measureAsync('applyManifestClassLinksNowAsync', () =>
+      applyManifestClassLinksNowAsync({ activityId: 'index' })
+    );
   } catch (e) {
     warn('[buildApkClassIndex] manifest link failed', e);
   }
+  // Warm package-count cache in chunks so the first tree paint after Ready stays responsive.
+  setUiActivity('index', 'Preparing packages', `${formatCount(apkDexStats.classes)} classes`);
+  setWorkNotice(
+    'Preparing package list',
+    `${formatCount(apkDexStats.classes)} classes — building the package dropdown in chunks so the UI can keep responding.`,
+    { tone: 'info', sticky: true }
+  );
+  await warmApkPackageCountsCache();
   clearUiActivity('index');
   setUiActivity('ready', 'Ready', `${formatCount(apkDexStats.classes)} classes indexed`);
   updateStatusBar();
+  const pkgN = Object.keys(apkPackageCountsCache || apkClassesByPackage || {}).length;
+  setWorkNotice(
+    `Ready — ${formatCount(apkDexStats.classes)} classes indexed`,
+    pkgN
+      ? `Select a package (${formatCount(pkgN)} available) or use search. Huge packages show a capped list so the browser does not freeze.`
+      : 'Use Classes → package dropdown or search to browse. Method bodies load on demand when you open a method.',
+    { tone: 'ok', autoHideMs: 14000 }
+  );
+  // Defer unified tree rebuild to idle — never sync-walk the alias map.
+  if (currentType === 'apk' && apkLeftMode === 'classes' && !apkDexFilter) {
+    const schedule = typeof requestIdleCallback === 'function'
+      ? (fn) => requestIdleCallback(fn, { timeout: 800 })
+      : (fn) => setTimeout(fn, 0);
+    schedule(() => {
+      if (currentType !== 'apk' || apkLeftMode !== 'classes' || apkDexFilter) return;
+      try { renderApkClassTree(); } catch (_) {}
+    });
+  }
   setTimeout(() => clearUiActivity('ready'), 4000);
+}
+
+/** Build / refresh apkPackageCountsCache without blocking the UI for Facebook-scale indexes. */
+async function warmApkPackageCountsCache() {
+  if (apkPackageCountsCache) return apkPackageCountsCache;
+  const counts = Object.create(null);
+  const pkgs = Object.keys(apkClassesByPackage);
+  const CHUNK = 80;
+  for (let p = 0; p < pkgs.length; p++) {
+    const pkg = pkgs[p];
+    const list = apkClassesByPackage[pkg];
+    let n = 0;
+    for (let i = 0; i < list.length; i++) {
+      if (shouldShowClassInUi(list[i]?.className || '')) n++;
+    }
+    if (n) counts[pkg] = n;
+    if ((p + 1) % CHUNK === 0) {
+      setUiActivity(
+        'index',
+        'Preparing packages',
+        `${formatCount(p + 1)}/${formatCount(pkgs.length)} packages`
+      );
+      await yieldToUiFrame();
+      if (currentType !== 'apk') return null;
+    }
+  }
+  apkPackageCountsCache = counts;
+  return counts;
 }
 
 /** Return a promise that resolves when apkClassToDex is ready for current APK. */
@@ -12749,7 +13679,13 @@ function lookupApkClass(resolved, classToDex = apkClassToDex) {
   const keys = classNameLookupKeys(resolved);
   for (const key of keys) {
     const direct = classToDex[key];
-    if (direct) return { file: direct.file, classIdx: direct.classIdx, name: key };
+    if (direct) {
+      return {
+        file: direct.file,
+        classIdx: direct.classIdx,
+        name: direct.className || key,
+      };
+    }
   }
   return null;
 }
@@ -12769,13 +13705,73 @@ function classNameLookupKeys(name) {
   return keys;
 }
 
+/** Clear APK-wide class index + package buckets (call whenever apkClassToDex is reset). */
+function resetApkClassIndexMaps() {
+  apkClassToDex = {};
+  apkClassesByPackage = Object.create(null);
+  apkPackageCountsCache = null;
+}
+
 /** Insert into apkClassToDex under primary + $→. alias (keeps lookups O(1)). */
-function putApkClassIndexEntry(name, file, classIdx, map = apkClassToDex) {
+function putApkClassIndexEntry(name, file, classIdx, map = apkClassToDex, methodCount = 0) {
   if (!name || !map) return;
-  const entry = { file, classIdx };
+  // Already indexed under this spelling — do not duplicate package buckets.
+  if (map[name]) return;
+  const entry = {
+    file,
+    classIdx,
+    className: name,
+    methodCount: Number(methodCount) || 0,
+  };
   map[name] = entry;
   const asDots = name.replace(/\$/g, '.');
   if (asDots !== name && map[asDots] == null) map[asDots] = entry;
+
+  // Maintain package→entries for O(packages) dropdown / O(package size) lists.
+  if (map === apkClassToDex) {
+    const pkg = getPackageFromClassName(name);
+    if (!apkClassesByPackage[pkg]) apkClassesByPackage[pkg] = [];
+    apkClassesByPackage[pkg].push(entry);
+    apkPackageCountsCache = null;
+  }
+}
+
+/** Unique class-index rows via package buckets (never Object.values on the alias map). */
+function iterApkClassIndexUnique(map = apkClassToDex) {
+  if (map !== apkClassToDex) {
+    // Fallback for alternate maps (tests / partial): still unique by identity.
+    const seen = new Set();
+    const out = [];
+    for (const entry of Object.values(map || {})) {
+      if (!entry || typeof entry !== 'object' || seen.has(entry)) continue;
+      seen.add(entry);
+      const name = entry.className || '';
+      if (!name) continue;
+      out.push({
+        name,
+        file: entry.file || '',
+        classIdx: entry.classIdx,
+        methodCount: Number(entry.methodCount) || 0,
+      });
+    }
+    return out;
+  }
+  const out = [];
+  for (const pkg of Object.keys(apkClassesByPackage)) {
+    const list = apkClassesByPackage[pkg];
+    for (let i = 0; i < list.length; i++) {
+      const entry = list[i];
+      const name = entry?.className || '';
+      if (!name) continue;
+      out.push({
+        name,
+        file: entry.file || '',
+        classIdx: entry.classIdx,
+        methodCount: Number(entry.methodCount) || 0,
+      });
+    }
+  }
+  return out;
 }
 
 /**
@@ -12804,9 +13800,16 @@ function unwrapManifestClassLinks(container) {
   });
 }
 
+/**
+ * Collect candidate class-value spans.
+ * Prefer `.xml-class-ref` (marked at highlight time) — never walk every `.xml-value`
+ * on Facebook-scale manifests (tens of thousands of attrs → multi-second freezes).
+ */
 function collectManifestClassValueSpans(container) {
   const out = [];
-  container.querySelectorAll('.xml-value').forEach((span) => {
+  const seen = new Set();
+  const consider = (span) => {
+    if (!span || seen.has(span)) return;
     let prev = span.previousSibling;
     while (prev && prev.nodeType !== 1) prev = prev.previousSibling;
     if (!prev || !prev.classList?.contains('xml-attr')) return;
@@ -12816,8 +13819,11 @@ function collectManifestClassValueSpans(container) {
       return;
     }
     if (!looksLikeManifestClassValue(raw)) return;
+    seen.add(span);
     out.push(span);
-  });
+  };
+  // Highlight already tags dotted / .Relative values as xml-class-ref.
+  container.querySelectorAll('.xml-value.xml-class-ref').forEach(consider);
   return out;
 }
 
@@ -12847,19 +13853,42 @@ function applyManifestClassLinkToSpan(span, pkg, classToDex, stats) {
   }
 }
 
+/** Manifest XML big enough that full DOM re-linking freezes the UI (Facebook ~1MB). */
+function isLargeManifestXml(xml) {
+  return typeof xml === 'string' && xml.length >= 100000;
+}
+
 /** Chunked so Facebook-size manifests don't freeze after indexing hits N/N. */
-async function injectManifestClassLinksAsync(container, pkg, classToDex) {
-  const stats = { linked: 0, unresolved: 0 };
+async function injectManifestClassLinksAsync(container, pkg, classToDex, opts = {}) {
+  const stats = { linked: 0, unresolved: 0, skippedXml: false };
   if (!container || !classToDex || typeof classToDex !== 'object') return stats;
+  const actId = opts.activityId || 'manifest-link';
+
+  // Mega manifests: skip rewriting every XML value node — components strip covers navigation.
+  if (opts.skipXmlBody) {
+    stats.skippedXml = true;
+    return stats;
+  }
+
   unwrapManifestClassLinks(container);
   await yieldToUiFrame();
   const spans = collectManifestClassValueSpans(container);
-  const CHUNK = 40;
+  if (!spans.length) return stats;
+
+  // Tiny manifests finish in one tick — avoid a sticky "scanning…" status that never progresses.
+  if (spans.length <= 40) {
+    for (const span of spans) applyManifestClassLinkToSpan(span, pkg, classToDex, stats);
+    return stats;
+  }
+
+  setUiActivity(actId, 'Linking Manifest', `0/${formatCount(spans.length)} attrs`);
+  await yieldToUiFrame();
+  const CHUNK = spans.length > 800 ? 120 : 60;
   for (let i = 0; i < spans.length; i++) {
     applyManifestClassLinkToSpan(spans[i], pkg, classToDex, stats);
-    if ((i + 1) % CHUNK === 0) {
+    if ((i + 1) % CHUNK === 0 || i + 1 === spans.length) {
       setUiActivity(
-        'index',
+        actId,
         'Linking Manifest',
         `${formatCount(i + 1)}/${formatCount(spans.length)} attrs`
       );
@@ -12883,6 +13912,14 @@ function updateManifestLinksToolbarChip(stats) {
   }
   if (!chip) return;
   const indexing = !apkDexStats.ready;
+  if (stats?.skippedXml) {
+    chip.innerHTML = `<span class="res-chip-k">classes</span> components linked`
+      + (typeof stats.linked === 'number' ? ` · ${stats.linked}` : '')
+      + (indexing ? ' · indexing…' : '')
+      + ' · large XML';
+    chip.title = 'Large manifest: use the Components strip (or outline) to open classes. Full XML body links were skipped to keep the UI responsive.';
+    return;
+  }
   chip.innerHTML = `<span class="res-chip-k">classes</span> ${stats.linked} linked`
     + (stats.unresolved ? ` · ${stats.unresolved} missing` : '')
     + (indexing ? ' · indexing…' : '');
@@ -12904,31 +13941,62 @@ function applyManifestClassLinksNow() {
     || apkExtractedFile.kind !== 'axml'
     || apkExtractedFile.name === 'AndroidManifest.xml';
   if (!showingManifest || !xml) return;
+  // Sync path must stay cheap — Facebook-size DOM rewrites freeze the UI mid-index.
+  if (isLargeManifestXml(xml)) {
+    renderManifestComponentsStrip(xml, pkg, apkClassToDex);
+    updateManifestLinksToolbarChip({ linked: 0, unresolved: 0, skippedXml: true });
+    return;
+  }
   const stats = injectManifestClassLinks(codeEl, pkg, apkClassToDex);
   renderManifestComponentsStrip(xml, pkg, apkClassToDex);
   updateManifestLinksToolbarChip(stats);
   debug('[manifest] class links', stats, apkDexStats.ready ? 'ready' : 'partial');
 }
 
-async function applyManifestClassLinksNowAsync() {
-  if (currentType !== 'apk') return;
-  const pkg = currentData?.manifest?.package
-    || (typeof apkManifestXml === 'string' && (apkManifestXml.match(/\bpackage="([^"]+)"/) || [])[1])
-    || '';
-  const xml = (typeof apkManifestXml === 'string' && !apkManifestXml.startsWith('(') && !apkManifestXml.startsWith('No '))
-    ? apkManifestXml
-    : '';
-  const codeEl = ensureManifestViewerStructure().code;
-  if (!codeEl) return;
-  const showingManifest = !apkExtractedFile
-    || apkExtractedFile.kind !== 'axml'
-    || apkExtractedFile.name === 'AndroidManifest.xml';
-  if (!showingManifest || !xml) return;
-  const stats = await injectManifestClassLinksAsync(codeEl, pkg, apkClassToDex);
-  await yieldToUiFrame();
-  renderManifestComponentsStrip(xml, pkg, apkClassToDex);
-  updateManifestLinksToolbarChip(stats);
-  debug('[manifest] class links async', stats, apkDexStats.ready ? 'ready' : 'partial');
+async function applyManifestClassLinksNowAsync(opts = {}) {
+  // Dedicated id so a late remount cannot leave the APK "index" task stuck forever
+  // (refreshManifestClassLinks used to re-enter after Ready and never clear it).
+  const actId = opts.activityId || 'manifest-link';
+  const ownsActivity = actId === 'manifest-link';
+  try {
+    if (currentType !== 'apk') return;
+    const pkg = currentData?.manifest?.package
+      || (typeof apkManifestXml === 'string' && (apkManifestXml.match(/\bpackage="([^"]+)"/) || [])[1])
+      || '';
+    const xml = (typeof apkManifestXml === 'string' && !apkManifestXml.startsWith('(') && !apkManifestXml.startsWith('No '))
+      ? apkManifestXml
+      : '';
+    const codeEl = ensureManifestViewerStructure().code;
+    if (!codeEl) return;
+    const showingManifest = !apkExtractedFile
+      || apkExtractedFile.kind !== 'axml'
+      || apkExtractedFile.name === 'AndroidManifest.xml';
+    if (!showingManifest || !xml) return;
+
+    const large = isLargeManifestXml(xml);
+    setUiActivity(actId, 'Linking Manifest', large ? 'components' : 'class names');
+    await yieldToUiFrame();
+
+    // Components strip first (usable navigation) — cheap vs full XML DOM rewrite.
+    await renderManifestComponentsStripAsync(xml, pkg, apkClassToDex, { activityId: actId });
+    await yieldToUiFrame();
+
+    const stats = await injectManifestClassLinksAsync(codeEl, pkg, apkClassToDex, {
+      skipXmlBody: large,
+      activityId: actId,
+    });
+    // Surface component linked count on large manifests.
+    if (large) {
+      const strip = document.getElementById('manifest-components');
+      const linked = strip ? strip.querySelectorAll('.manifest-comp-chip.is-linked').length : 0;
+      stats.linked = linked;
+      stats.skippedXml = true;
+    }
+    updateManifestLinksToolbarChip(stats);
+    debug('[manifest] class links async', stats, apkDexStats.ready ? 'ready' : 'partial', large ? 'large-xml' : '');
+  } finally {
+    if (ownsActivity) clearUiActivity(actId);
+  }
 }
 
 /** Parse component entries from manifest XML for the quick-nav strip. */
@@ -12969,6 +14037,11 @@ function renderManifestComponentsStrip(xml, pkg, classToDex) {
     strip.innerHTML = '';
     return;
   }
+  strip.innerHTML = buildManifestComponentsStripHtml(comps, classToDex);
+  strip.hidden = false;
+}
+
+function buildManifestComponentsStripHtml(comps, classToDex) {
   const byKind = {};
   for (const c of comps) {
     if (!byKind[c.kind]) byKind[c.kind] = [];
@@ -12993,8 +14066,86 @@ function renderManifestComponentsStrip(xml, pkg, classToDex) {
     html += '</div>';
   }
   html += '</div>';
+  return html;
+}
+
+/** Yield while building the components strip on huge manifests (1000+ activities). */
+async function renderManifestComponentsStripAsync(xml, pkg, classToDex, opts = {}) {
+  const actId = opts.activityId || 'manifest-link';
+  let strip = document.getElementById('manifest-components');
+  const toolbar = document.getElementById('manifest-toolbar');
+  const viewer = document.getElementById('manifest-viewer');
+  if (!viewer) return { linked: 0, total: 0 };
+  if (!strip) {
+    strip = document.createElement('div');
+    strip.id = 'manifest-components';
+    strip.className = 'manifest-components';
+    strip.hidden = true;
+    if (toolbar?.parentNode) toolbar.insertAdjacentElement('afterend', strip);
+    else viewer.prepend(strip);
+  }
+
+  const comps = extractManifestComponents(xml, pkg);
+  if (!comps.length || currentType !== 'apk') {
+    strip.hidden = true;
+    strip.innerHTML = '';
+    return { linked: 0, total: 0 };
+  }
+
+  // Cap chip explosion on extreme manifests; still link all via XML/outline for smaller apps.
+  const MAX_CHIPS = 2500;
+  const list = comps.length > MAX_CHIPS ? comps.slice(0, MAX_CHIPS) : comps;
+
+  // Small apps: build strip sync without status-bar spam.
+  if (list.length <= 80) {
+    strip.innerHTML = buildManifestComponentsStripHtml(list, classToDex);
+    strip.hidden = false;
+    return { linked: strip.querySelectorAll('.manifest-comp-chip.is-linked').length, total: comps.length };
+  }
+
+  if (comps.length > 400) {
+    setUiActivity(actId, 'Linking Manifest', `components 0/${formatCount(list.length)}`);
+    await yieldToUiFrame();
+  }
+
+  const byKind = {};
+  for (const c of list) {
+    if (!byKind[c.kind]) byKind[c.kind] = [];
+    byKind[c.kind].push(c);
+  }
+  const order = ['application', 'activity', 'activity-alias', 'service', 'receiver', 'provider', 'instrumentation'];
+  let html = '<div class="manifest-components-head"><span class="manifest-components-title">Components</span>';
+  html += `<span class="muted manifest-components-count">${comps.length}${comps.length > MAX_CHIPS ? ` (showing ${MAX_CHIPS})` : ''}</span></div><div class="manifest-components-body">`;
+  let linked = 0;
+  let done = 0;
+  const YIELD_EVERY = 200;
+  for (const kind of order) {
+    const kindList = byKind[kind];
+    if (!kindList?.length) continue;
+    html += `<div class="manifest-comp-group"><span class="manifest-comp-kind">${escapeHtml(kind)}</span>`;
+    for (const c of kindList) {
+      const info = lookupApkClass(c.resolved, classToDex);
+      const short = (c.raw.startsWith('.') ? c.raw : (c.resolved.split('.').pop() || c.raw));
+      if (info) {
+        linked += 1;
+        html += `<button type="button" class="manifest-comp-chip is-linked" data-file="${escapeAttr(info.file)}" data-class-idx="${info.classIdx}" data-class="${escapeAttr(info.name)}" title="${escapeAttr(info.name)}">${escapeHtml(short)}</button>`;
+      } else {
+        html += `<span class="manifest-comp-chip is-missing" title="Not found: ${escapeAttr(c.resolved)}">${escapeHtml(short)}</span>`;
+      }
+      done += 1;
+      if (done % YIELD_EVERY === 0) {
+        setUiActivity(actId, 'Linking Manifest', `components ${formatCount(done)}/${formatCount(list.length)}`);
+        await yieldToUiFrame();
+      }
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  setUiActivity(actId, 'Linking Manifest', 'rendering components');
+  await yieldToUiFrame();
   strip.innerHTML = html;
   strip.hidden = false;
+  return { linked, total: comps.length };
 }
 
 /** Re-apply class links + component strip after Manifest XML is (re)mounted. */
@@ -13004,18 +14155,14 @@ function refreshManifestClassLinks() {
     if (strip) { strip.hidden = true; strip.innerHTML = ''; }
     return Promise.resolve();
   }
-  // Link what we already know immediately; refine as the class index grows.
+  // Cheap sync pass with whatever of the class index is ready.
   applyManifestClassLinksNow();
-  // Defer full multidex index so auto-open / Info clicks aren't starved on Facebook APKs.
+  // Kick indexing, but do NOT run a second async link after it finishes —
+  // buildApkClassIndex already does the final async pass. A duplicate pass was
+  // leaving "Linking Manifest — scanning class attrs" stuck in the status bar.
   return new Promise((resolve) => {
     setTimeout(() => {
-      ensureApkClassIndex()
-        .then(async () => {
-          if (currentType === 'apk') {
-            try { await applyManifestClassLinksNowAsync(); } catch (_) {}
-          }
-        })
-        .finally(resolve);
+      ensureApkClassIndex().finally(resolve);
     }, 500);
   });
 }
@@ -13023,11 +14170,40 @@ function refreshManifestClassLinks() {
 /** Show APK AndroidManifest.xml in the Manifest tab and wire class links. */
 function showApkManifestInViewer(extraMeta) {
   if (apkManifestXml == null) return;
-  setXmlContent(null, apkManifestXml, {
+  const xml = apkManifestXml;
+  const opts = {
     useManifestHost: true,
     title: 'AndroidManifest.xml',
     meta: extraMeta,
-  });
+  };
+
+  // Mid/large manifests: paint plain text first so the tab isn't blank while
+  // highlight / toolbar wiring runs on the main thread.
+  if (typeof xml === 'string' && xml.length >= 20000
+    && !xml.startsWith('(') && !xml.startsWith('No ')) {
+    const struct = ensureManifestViewerStructure();
+    const codeEl = struct.code;
+    const prettyFast = formatXmlPrettyFast(xml);
+    if (codeEl) {
+      codeEl.classList.add('res-xml', 'manifest-xml', 'xml-plain-mode');
+      codeEl.classList.remove('xml-light-mode');
+      // Direct text on the existing <pre> — do not nest another <pre>.
+      codeEl.textContent = prettyFast;
+    }
+    const gen = (showApkManifestInViewer._gen = (showApkManifestInViewer._gen || 0) + 1);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (showApkManifestInViewer._gen !== gen || apkManifestXml !== xml) return;
+        measureSync('showApkManifestInViewer', () => setXmlContent(null, xml, opts), `${formatCount(String(xml).length)} chars`);
+        refreshManifestClassLinks();
+      });
+    });
+    return;
+  }
+
+  measureSync('showApkManifestInViewer', () => {
+    setXmlContent(null, xml, opts);
+  }, `${formatCount(String(xml).length)} chars`);
   refreshManifestClassLinks();
 }
 
@@ -13147,7 +14323,14 @@ async function openClassFromManifest(file, classIdx, className) {
     updateCodeView();
     switchToCenterTab('bytecode-tab');
     requestAnimationFrame(() => {
-      const el = treeContent?.querySelector(`.tree-item.class[data-class="${idx}"]`);
+      const el =
+        (fullName
+          ? treeContent?.querySelector(`.tree-item.class[data-class-name="${CSS.escape(fullName)}"]`)
+          : null)
+        || treeContent?.querySelector(
+          `.tree-item.class[data-dex-file="${CSS.escape(file)}"][data-class="${idx}"]`
+        )
+        || treeContent?.querySelector(`.tree-item.class[data-class="${idx}"]`);
       if (el) {
         treeContent.querySelectorAll('.tree-item.selected').forEach((n) => n.classList.remove('selected'));
         el.classList.add('selected');
@@ -13254,21 +14437,28 @@ function updateApkLeftModeButtons() {
 function updateApkDexFileSelector() {
   if (!dexFileWrap || !dexFileSelect) return;
   const names = listApkDexNames();
-  if (names.length <= 1) {
-    dexFileWrap.style.display = names.length === 1 ? 'flex' : 'none';
-  } else {
-    dexFileWrap.style.display = 'flex';
-  }
   if (!names.length) {
+    dexFileWrap.style.display = 'none';
     dexFileSelect.innerHTML = '';
     return;
   }
-  const active = apkExtractedFile?.kind === 'dex' ? apkExtractedFile.name : names[0];
-  dexFileSelect.innerHTML = names.map((n) => {
+  dexFileWrap.style.display = 'flex';
+  let html = '';
+  if (names.length > 1) {
+    html += `<option value="">All DEXes (${names.length})</option>`;
+  }
+  html += names.map((n) => {
     const short = n.includes('/') ? n.split('/').pop() : n;
     return `<option value="${escapeAttr(n)}">${escapeHtml(short)}</option>`;
   }).join('');
-  dexFileSelect.value = names.includes(active) ? active : names[0];
+  dexFileSelect.innerHTML = html;
+  if (names.length === 1) {
+    // Single DEX: no All option; keep filter empty (unified == that DEX).
+    dexFileSelect.value = names[0];
+    return;
+  }
+  const want = apkDexFilter || '';
+  dexFileSelect.value = want && names.includes(want) ? want : '';
 }
 
 async function setApkLeftMode(mode) {
@@ -13276,16 +14466,171 @@ async function setApkLeftMode(mode) {
   apkLeftMode = mode;
   updateApkLeftModeButtons();
   if (mode === 'classes') {
-    if (!apkExtractedFile || apkExtractedFile.kind !== 'dex') {
-      const primary = pickPrimaryApkDex();
-      if (primary) {
-        await showApkFile(primary);
+    const names = listApkDexNames();
+    const useUnified = names.length > 1 && !apkDexFilter;
+    if (useUnified) {
+      renderApkClassTree();
+      ensureApkClassIndex().then(() => {
+        if (apkLeftMode === 'classes' && !apkDexFilter) renderApkClassTree();
+      }).catch(() => {});
+      // Warm-open primary DEX for code view without leaving All filter.
+      if (!apkExtractedFile || apkExtractedFile.kind !== 'dex') {
+        const primary = pickPrimaryApkDex();
+        if (primary) {
+          showApkFile(primary).catch((e) => warn('[setApkLeftMode] warm-open failed', e));
+        }
       }
+    } else {
+      if (!apkExtractedFile || apkExtractedFile.kind !== 'dex') {
+        const want = apkDexFilter || pickPrimaryApkDex();
+        if (want) await showApkFile(want);
+      }
+      renderApkClassTree();
     }
-    renderApkClassTree();
   } else {
     renderApkFileTree();
   }
+}
+
+/** Unified package → classes map across all APK DEXes (from light class index). */
+function buildApkUnifiedPackageMap() {
+  // Back-compat: full map (expensive on Facebook). Prefer counts + per-package builders.
+  return measureSync('buildApkUnifiedPackageMap', () => {
+    const packageMap = {};
+    for (const entry of buildApkUnifiedClassesForPackage(null, { allPackages: true })) {
+      const pkg = entry.pkg;
+      if (!packageMap[pkg]) packageMap[pkg] = [];
+      packageMap[pkg].push(entry);
+    }
+    for (const pkg of Object.keys(packageMap)) {
+      packageMap[pkg].sort((a, b) => a.shortName.localeCompare(b.shortName));
+    }
+    return packageMap;
+  });
+}
+
+/** Package name → class count for All-DEXes browser (no per-class arrays). */
+function buildApkUnifiedPackageCounts() {
+  return measureSync('buildApkUnifiedPackageCounts', () => {
+    const parsed = searchQuery ? parseListSearchQuery(searchQuery) : null;
+    const q = (parsed?.text || '').toLowerCase();
+    const filtering = !!(q || parsed?.bookmarks || parsed?.tag || parsed?.methodOnly);
+
+    // Fast path: use package buckets (O(packages) or O(classes) once, then cached).
+    if (!filtering) {
+      if (apkPackageCountsCache) return apkPackageCountsCache;
+      const counts = Object.create(null);
+      const pkgs = Object.keys(apkClassesByPackage);
+      for (let p = 0; p < pkgs.length; p++) {
+        const pkg = pkgs[p];
+        const list = apkClassesByPackage[pkg];
+        let n = 0;
+        for (let i = 0; i < list.length; i++) {
+          if (shouldShowClassInUi(list[i]?.className || '')) n++;
+        }
+        if (n) counts[pkg] = n;
+      }
+      apkPackageCountsCache = counts;
+      return counts;
+    }
+
+    // Search / bookmark filter: walk package buckets only (not alias map).
+    const counts = Object.create(null);
+    const pkgs = Object.keys(apkClassesByPackage);
+    for (let p = 0; p < pkgs.length; p++) {
+      const pkg = pkgs[p];
+      const list = apkClassesByPackage[pkg];
+      let n = 0;
+      for (let i = 0; i < list.length; i++) {
+        const entry = list[i];
+        const name = entry?.className || '';
+        if (!name || !shouldShowClassInUi(name)) continue;
+        if (parsed?.bookmarks && !findBookmark('class', name)) continue;
+        if (parsed?.tag || parsed?.methodOnly) continue;
+        if (q) {
+          const display = getDisplayClassName(name).toLowerCase();
+          const short = display.split('.').filter(Boolean).pop() || '';
+          if (!name.toLowerCase().includes(q) && !display.includes(q) && !short.includes(q)) continue;
+        }
+        n++;
+      }
+      if (n) counts[pkg] = n;
+    }
+    return counts;
+  }, `${formatCount(apkDexStats.classes || 0)} classes`);
+}
+
+/**
+ * Classes for one package (or all packages if opts.allPackages).
+ * Uses apkClassesByPackage — never scans the full alias map.
+ */
+function buildApkUnifiedClassesForPackage(packageName, opts = {}) {
+  const out = [];
+  const openDex = apkExtractedFile?.kind === 'dex' ? apkExtractedFile.name : '';
+  const openClasses = openDex && Array.isArray(apkExtractedFile?.data?.classes)
+    ? apkExtractedFile.data.classes
+    : [];
+  const parsed = searchQuery ? parseListSearchQuery(searchQuery) : null;
+  const q = (parsed?.text || '').toLowerCase();
+  const allPackages = !!opts.allPackages;
+  const MAX_SEARCH = opts.maxSearch || 2500;
+  /** Cap DOM materialization for huge packages (e.g. com.facebook.*). */
+  const MAX_PKG = opts.maxPackage || 2000;
+
+  const pushEntry = (entry) => {
+    const name = entry?.className || '';
+    if (!name || !shouldShowClassInUi(name)) return false;
+    if (parsed?.bookmarks && !findBookmark('class', name)) return false;
+    if (parsed?.tag || parsed?.methodOnly) return false;
+    if (q) {
+      const display = getDisplayClassName(name).toLowerCase();
+      const short = display.split('.').filter(Boolean).pop() || '';
+      if (!name.toLowerCase().includes(q) && !display.includes(q) && !short.includes(q)) return false;
+    }
+    const fullClassDisplay = getDisplayClassName(name);
+    const shortName = fullClassDisplay.split('.').filter(Boolean).pop() || '?';
+    const classIdx = entry.classIdx;
+    const file = entry.file || '';
+    let methodsWithIdx = [];
+    let fieldsOverride;
+    if (!allPackages && file === openDex && openClasses[classIdx]?.name === name) {
+      const methods = Array.isArray(openClasses[classIdx].methods) ? openClasses[classIdx].methods : [];
+      methodsWithIdx = methods.map((m, methodIdx) => ({ methodIdx, m }));
+      fieldsOverride = Array.isArray(openClasses[classIdx].fields) ? openClasses[classIdx].fields : [];
+    }
+    out.push({
+      classIdx,
+      shortName,
+      methodsWithIdx,
+      methodCountHint: Number(entry.methodCount) || 0,
+      fieldsOverride,
+      dexFile: file,
+      className: name,
+      unified: true,
+      pkg: getPackageFromClassName(name),
+    });
+    return true;
+  };
+
+  if (!allPackages && packageName) {
+    const list = apkClassesByPackage[packageName] || [];
+    for (let i = 0; i < list.length; i++) {
+      pushEntry(list[i]);
+      if (out.length >= MAX_PKG) break;
+    }
+  } else {
+    const pkgs = Object.keys(apkClassesByPackage);
+    for (let p = 0; p < pkgs.length; p++) {
+      const list = apkClassesByPackage[pkgs[p]];
+      for (let i = 0; i < list.length; i++) {
+        pushEntry(list[i]);
+        if (q && out.length >= MAX_SEARCH) break;
+      }
+      if (q && out.length >= MAX_SEARCH) break;
+    }
+  }
+  out.sort((a, b) => a.shortName.localeCompare(b.shortName));
+  return out;
 }
 
 /** Build package map for a classes array (optionally filtered by search). Shared by DEX / APK class trees. */
@@ -13358,11 +14703,24 @@ function wireDexClassTreeHandlers(classes, { isApk }) {
       }
       const classIdx = parseInt(el.dataset.class, 10);
       if (Number.isNaN(classIdx)) return;
+      const dexFile = (el.dataset.dexFile || '').trim();
+      const className = (el.dataset.className || '').trim();
+      const unified = el.dataset.unified === '1';
+      if (isApk && unified && dexFile) {
+        const openName = apkExtractedFile?.kind === 'dex' ? apkExtractedFile.name : '';
+        const alreadyOpen = openName === dexFile
+          && Array.isArray(classes)
+          && classes[classIdx]?.name === (className || classes[classIdx]?.name);
+        if (!alreadyOpen) {
+          openClassFromManifest(dexFile, classIdx, className || undefined);
+          return;
+        }
+      }
       codeViewClassIdx = classIdx;
       codeViewMethodIdx = null;
       if (isApk) {
         apkExtractedDexSelection = { classIdx, methodIdx: 0 };
-        codeViewPackage = getPackageFromClassName(classes[classIdx]?.name || '');
+        codeViewPackage = getPackageFromClassName(classes[classIdx]?.name || className || '');
       }
       updateCodeView();
     });
@@ -13488,8 +14846,17 @@ function wireDexClassTreeHandlers(classes, { isApk }) {
       if (e.target.closest('.tree-bookmark-star')) return;
       e.preventDefault();
       const classIdx = parseInt(el.dataset.class, 10);
+      const dexFile = (el.dataset.dexFile || '').trim();
+      const unified = el.dataset.unified === '1';
+      const fullName = (el.dataset.className || '').trim()
+        || (Number.isNaN(classIdx) ? '' : (classes[classIdx]?.name || ''));
+      if (!fullName) return;
+      if (unified && dexFile && apkExtractedFile?.name !== dexFile) {
+        // Open the owning DEX first so rename/export see full class data.
+        openClassFromManifest(dexFile, classIdx, fullName);
+        return;
+      }
       if (Number.isNaN(classIdx) || !classes[classIdx]) return;
-      const fullName = classes[classIdx].name;
       const items = [
         {
           label: 'Rename class…',
@@ -13525,9 +14892,9 @@ function wireDexClassTreeHandlers(classes, { isApk }) {
   syncListBookmarksFilterButton();
 }
 
-function renderClassTreeFromPackageMap(classes, packageMap, { isApk }) {
+function renderClassTreeFromPackageMap(classes, packageMap, { isApk, skipPackageSelect = false } = {}) {
   const sortedPackages = Object.keys(packageMap).sort();
-  if (dexPackageSelect) {
+  if (dexPackageSelect && !skipPackageSelect) {
     dexPackageSelect.innerHTML = '<option value="">Select package…</option>' +
       sortedPackages.map((pkg) => {
         const n = packageMap[pkg]?.length || 0;
@@ -13539,16 +14906,36 @@ function renderClassTreeFromPackageMap(classes, packageMap, { isApk }) {
 
   const renderClassList = (pkgClasses) => {
     let html = '';
-    pkgClasses.forEach(({ classIdx, shortName, methodsWithIdx }) => {
-      const className = classes[classIdx]?.name ?? '';
-      const methodCount = methodsWithIdx?.length || 0;
-      const fields = Array.isArray(classes[classIdx]?.fields) ? classes[classIdx].fields : [];
+    pkgClasses.forEach((entry) => {
+      const {
+        classIdx,
+        shortName,
+        methodsWithIdx,
+        methodCountHint,
+        fieldsOverride,
+        dexFile,
+        className: entryClassName,
+        unified,
+      } = entry;
+      const className = entryClassName || classes[classIdx]?.name || '';
+      const methodCount = (methodsWithIdx && methodsWithIdx.length)
+        || methodCountHint
+        || 0;
+      const fields = Array.isArray(fieldsOverride)
+        ? fieldsOverride
+        : (Array.isArray(classes[classIdx]?.fields) ? classes[classIdx].fields : []);
       const fieldCount = fields.length;
       const countBits = [
         fieldCount ? formatCountLabel(fieldCount, 'field') : null,
         formatCountLabel(methodCount, 'method'),
       ].filter(Boolean).join(', ');
-      html += `<li><div class="tree-item class${findBookmark('class', className) ? ' is-bookmarked' : ''}" data-class="${classIdx}"><span class="arrow ${expandAll ? 'expanded' : 'collapsed'}"></span><span class="tree-item-label">${escapeHtml(shortName)}</span> <span class="muted tree-count">(${escapeHtml(countBits)})</span>${treeBookmarkStarHtml('class', classIdx, null, className)}${treeAnnotationBadgeHtml('class', className)}</div><ul style="${expandAll ? '' : 'display:none'}">`;
+      const dexAttr = dexFile
+        ? ` data-dex-file="${escapeAttr(dexFile)}" data-class-name="${escapeAttr(className)}" data-unified="${unified ? '1' : '0'}"`
+        : (entryClassName ? ` data-class-name="${escapeAttr(className)}"` : '');
+      const dexHint = unified && dexFile && listApkDexNames().length > 1
+        ? ` <span class="muted tree-dex-hint" title="${escapeAttr(dexFile)}">[${escapeHtml((dexFile.includes('/') ? dexFile.split('/').pop() : dexFile))}]</span>`
+        : '';
+      html += `<li><div class="tree-item class${findBookmark('class', className) ? ' is-bookmarked' : ''}" data-class="${classIdx}"${dexAttr}><span class="arrow ${expandAll ? 'expanded' : 'collapsed'}"></span><span class="tree-item-label">${escapeHtml(shortName)}</span>${dexHint} <span class="muted tree-count">(${escapeHtml(countBits)})</span>${treeBookmarkStarHtml('class', classIdx, null, className)}${treeAnnotationBadgeHtml('class', className)}</div><ul style="${expandAll ? '' : 'display:none'}">`;
       if (fields.length) {
         html += `<li class="tree-section-label muted">fields</li>`;
         fields.forEach((f, fieldLocalIdx) => {
@@ -13562,7 +14949,7 @@ function renderClassTreeFromPackageMap(classes, packageMap, { isApk }) {
         });
         html += `<li class="tree-section-label muted">methods</li>`;
       }
-      methodsWithIdx.forEach(({ methodIdx, m }) => {
+      (methodsWithIdx || []).forEach(({ methodIdx, m }) => {
         const methodDisplayName = getDisplayMethodName(className, m?.name ?? '');
         const mKey = methodAnnotationKey(className, m?.name ?? '');
         html += `<li><div class="tree-item method${findBookmark('method', mKey) ? ' is-bookmarked' : ''}" data-class="${classIdx}" data-method="${methodIdx}"><span class="tree-item-label">${escapeHtml(methodDisplayName)}</span>${treeBookmarkStarHtml('method', classIdx, methodIdx, mKey)}${treeAnnotationBadgeHtml('method', mKey)}</div></li>`;
@@ -13608,11 +14995,9 @@ function renderClassTreeFromPackageMap(classes, packageMap, { isApk }) {
 }
 
 function renderApkClassTree() {
-  const classes = Array.isArray(apkExtractedFile?.data?.classes) ? apkExtractedFile.data.classes : [];
-  const dexName = apkExtractedFile?.name || 'classes.dex';
-  const short = dexName.includes('/') ? dexName.split('/').pop() : dexName;
-  leftPanelTitle.textContent = 'Classes';
-  leftPanelTitle.title = dexName;
+  const tTree = nowMs();
+  const names = listApkDexNames();
+  const useUnified = names.length > 1 && !apkDexFilter;
   updateApkLeftModeButtons();
   treePlaceholder.style.display = 'none';
   treeContent.style.display = 'block';
@@ -13620,8 +15005,138 @@ function renderApkClassTree() {
   if (dexPackageWrap) dexPackageWrap.style.display = 'block';
   updateApkDexFileSelector();
 
+  if (useUnified) {
+    leftPanelTitle.textContent = 'Classes';
+    leftPanelTitle.title = `All DEXes (${names.length})`;
+    const hasIndex = (apkDexStats.classes || 0) > 0
+      || Object.keys(apkClassesByPackage || {}).length > 0;
+    if (!hasIndex) {
+      if (dexPackageWrap) dexPackageWrap.style.display = 'none';
+      const prog = apkDexStats?.totalDex
+        ? `${apkDexStats.current || 0}/${apkDexStats.totalDex}`
+        : '';
+      treeContent.innerHTML = apkDexStats?.ready
+        ? '<div class="muted">No classes indexed yet. Switch to Files to browse the APK.</div>'
+        : `<div class="work-notice is-warn" style="margin:8px 0">`
+          + `<span class="work-notice-title">Indexing classes${prog ? ` (${escapeHtml(prog)})` : ''}…</span>`
+          + `<span class="work-notice-body">Large APKs can briefly freeze clicks while a DEX is indexed. The bottom status bar shows progress — this is expected.</span>`
+          + `</div>`;
+      ensureApkClassIndex().then(() => {
+        if (apkLeftMode === 'classes' && !apkDexFilter) renderApkClassTree();
+      }).catch(() => {});
+      return;
+    }
+
+    const searchActive = !!(searchQuery && String(searchQuery).length);
+    const counts = buildApkUnifiedPackageCounts();
+    const sortedPackages = Object.keys(counts).sort();
+    // Huge package lists (Facebook) — don't inject 10k+ <option>s in one go.
+    const MAX_PKG_OPTIONS = 2500;
+    const packageOptions = sortedPackages.length > MAX_PKG_OPTIONS
+      ? sortedPackages.slice(0, MAX_PKG_OPTIONS)
+      : sortedPackages;
+    if (dexPackageSelect) {
+      let optsHtml = '<option value="">Select package…</option>';
+      if (selectedDexPackage && counts[selectedDexPackage] != null
+        && !packageOptions.includes(selectedDexPackage)) {
+        optsHtml += `<option value="${escapeAttr(selectedDexPackage)}" selected>${escapeHtml(selectedDexPackage)} (${formatCountLabel(counts[selectedDexPackage])})</option>`;
+      }
+      optsHtml += packageOptions.map((pkg) => {
+        const n = counts[pkg] || 0;
+        return `<option value="${escapeAttr(pkg)}"${pkg === selectedDexPackage ? ' selected' : ''}>${escapeHtml(pkg)} (${formatCountLabel(n)})</option>`;
+      }).join('');
+      if (sortedPackages.length > MAX_PKG_OPTIONS) {
+        optsHtml += `<option disabled>… ${formatCount(sortedPackages.length - MAX_PKG_OPTIONS)} more — use search</option>`;
+      }
+      dexPackageSelect.innerHTML = optsHtml;
+    }
+
+    const openClasses = apkExtractedFile?.kind === 'dex' && Array.isArray(apkExtractedFile?.data?.classes)
+      ? apkExtractedFile.data.classes
+      : [];
+
+    if (searchActive) {
+      // Cap search materialization so typing doesn't freeze on 100k+ classes.
+      const matches = measureSync(
+        'unifiedSearchClasses',
+        () => buildApkUnifiedClassesForPackage(null, { allPackages: true, maxSearch: 800 }),
+        searchQuery
+      );
+      if (!matches.length) {
+        treeContent.innerHTML = `<div class="muted">No matches for “${escapeHtml(searchQuery)}”.</div>`;
+      } else {
+        const byPkg = {};
+        for (const e of matches) {
+          if (!byPkg[e.pkg]) byPkg[e.pkg] = [];
+          byPkg[e.pkg].push(e);
+        }
+        renderClassTreeFromPackageMap(openClasses, byPkg, { isApk: true, skipPackageSelect: true });
+      }
+    } else if (!selectedDexPackage) {
+      treeContent.innerHTML = `<div class="muted">Select a package above to view classes.`
+        + (sortedPackages.length ? ` <span class="muted">(${formatCount(sortedPackages.length)} packages)</span>` : '')
+        + `</div>`
+        + (isLargeApkWorkload()
+          ? `<div class="work-notice" style="margin-top:10px"><span class="work-notice-title">Tip for large APKs</span>`
+            + `<span class="work-notice-body">Don’t expand everything at once — pick a package or search. Method source loads only when you open a method.</span></div>`
+          : '');
+    } else {
+      const MAX_PKG = 2000;
+      const pkgClasses = measureSync(
+        'unifiedPackageClasses',
+        () => buildApkUnifiedClassesForPackage(selectedDexPackage, { maxPackage: MAX_PKG }),
+        selectedDexPackage
+      );
+      const totalInPkg = counts[selectedDexPackage] || pkgClasses.length;
+      if (!pkgClasses.length) {
+        treeContent.innerHTML = '<div class="muted">No classes in this package.</div>';
+      } else {
+        renderClassTreeFromPackageMap(openClasses, { [selectedDexPackage]: pkgClasses }, { isApk: true, skipPackageSelect: true });
+        if (totalInPkg > pkgClasses.length) {
+          const note = document.createElement('div');
+          note.className = 'work-notice is-warn';
+          note.style.margin = '8px 0 0';
+          note.innerHTML = `<span class="work-notice-title">Showing ${escapeHtml(formatCount(pkgClasses.length))} of ${escapeHtml(formatCount(totalInPkg))} classes</span>`
+            + `<span class="work-notice-body">List is capped on purpose so the browser stays responsive. Narrow with search (or another package).</span>`;
+          treeContent.appendChild(note);
+        }
+      }
+    }
+
+    if (!apkDexStats?.ready) {
+      ensureApkClassIndex().catch(() => {});
+    }
+    recordPerf('renderApkClassTree', nowMs() - tTree, 'unified');
+    return;
+  }
+
+  // Single-DEX filter (or APK with only one DEX).
+  const wantDex = apkDexFilter || names[0] || '';
+  if (wantDex && apkExtractedFile?.kind === 'dex' && apkExtractedFile.name !== wantDex) {
+    treeContent.innerHTML = `<div class="muted">Opening ${escapeHtml(wantDex.includes('/') ? wantDex.split('/').pop() : wantDex)}…</div>`;
+    showApkFile(wantDex).then(() => {
+      if (apkLeftMode === 'classes' && (apkDexFilter === wantDex || (!apkDexFilter && names.length <= 1))) {
+        renderApkClassTree();
+      }
+    }).catch((e) => warn('[renderApkClassTree] open DEX failed', e));
+    return;
+  }
+
+  const classes = Array.isArray(apkExtractedFile?.data?.classes) ? apkExtractedFile.data.classes : [];
+  const dexName = apkExtractedFile?.name || wantDex || 'classes.dex';
+  const short = dexName.includes('/') ? dexName.split('/').pop() : dexName;
+  leftPanelTitle.textContent = 'Classes';
+  leftPanelTitle.title = dexName;
+
   if (!classes.length) {
     if (dexPackageWrap) dexPackageWrap.style.display = 'none';
+    if (wantDex && (!apkExtractedFile || apkExtractedFile.name !== wantDex)) {
+      treeContent.innerHTML = `<div class="muted">Opening ${escapeHtml(short)}…</div>`;
+      showApkFile(wantDex).then(() => {
+        if (apkLeftMode === 'classes') renderApkClassTree();
+      }).catch((e) => warn('[renderApkClassTree] open DEX failed', e));
+      return;
+    }
     treeContent.innerHTML = '<div class="muted">No classes in this DEX. Switch to Files to browse the APK.</div>';
     return;
   }
@@ -13635,6 +15150,7 @@ function renderApkClassTree() {
 
   const packageMap = buildDexPackageMap(classes);
   renderClassTreeFromPackageMap(classes, packageMap, { isApk: true });
+  recordPerf('renderApkClassTree', nowMs() - tTree, short);
 }
 
 function renderApkFileTree() {
@@ -13773,11 +15289,11 @@ async function buildPermissionUsageIndex(permissions) {
   await ensureMainWasm();
   // Let the first paint / Info clicks land before we queue heavy worker jobs.
   await yieldToUi();
-  while (securityScanBusy || (currentType === 'apk' && apkClassIndexPromise && !apkDexStats.ready)) {
+  while (currentType === 'apk' && apkClassIndexPromise && !apkDexStats.ready) {
     setUiActivity(
       'perms',
       'Permission scan paused',
-      securityScanBusy ? 'waiting for security scan' : 'waiting for class index'
+      'waiting for class index'
     );
     await new Promise((r) => setTimeout(r, 250));
     if (currentType !== 'apk' && currentType !== 'dex') {
@@ -13847,7 +15363,455 @@ function refreshApkPermissionInfoSection() {
   if (currentType !== 'apk' || !infoContent) return;
   if (!currentData?.manifest && !currentData?.files) return;
   infoContent.innerHTML = buildApkInfoHtml(currentData);
+  hydrateInfoResourceThumbs();
+  renderPermissionsTab();
+  renderComponentsTab();
 }
+
+/** Short label for a permission name (last dotted segment). */
+function shortPermissionLabel(name) {
+  const s = String(name || '');
+  const i = s.lastIndexOf('.');
+  return i >= 0 ? s.slice(i + 1) : s;
+}
+
+/** Common dangerous/runtime Android permissions — badge for quick scanning. */
+const DANGEROUS_ANDROID_PERMISSIONS = new Set([
+  'android.permission.READ_CALENDAR', 'android.permission.WRITE_CALENDAR',
+  'android.permission.CAMERA',
+  'android.permission.READ_CONTACTS', 'android.permission.WRITE_CONTACTS', 'android.permission.GET_ACCOUNTS',
+  'android.permission.ACCESS_FINE_LOCATION', 'android.permission.ACCESS_COARSE_LOCATION', 'android.permission.ACCESS_BACKGROUND_LOCATION',
+  'android.permission.RECORD_AUDIO',
+  'android.permission.READ_PHONE_STATE', 'android.permission.READ_PHONE_NUMBERS', 'android.permission.CALL_PHONE',
+  'android.permission.READ_CALL_LOG', 'android.permission.WRITE_CALL_LOG', 'android.permission.ADD_VOICEMAIL',
+  'android.permission.USE_SIP', 'android.permission.PROCESS_OUTGOING_CALLS',
+  'android.permission.BODY_SENSORS', 'android.permission.BODY_SENSORS_BACKGROUND',
+  'android.permission.SEND_SMS', 'android.permission.RECEIVE_SMS', 'android.permission.READ_SMS',
+  'android.permission.RECEIVE_WAP_PUSH', 'android.permission.RECEIVE_MMS',
+  'android.permission.READ_EXTERNAL_STORAGE', 'android.permission.WRITE_EXTERNAL_STORAGE',
+  'android.permission.READ_MEDIA_IMAGES', 'android.permission.READ_MEDIA_VIDEO', 'android.permission.READ_MEDIA_AUDIO',
+  'android.permission.NEARBY_WIFI_DEVICES', 'android.permission.BLUETOOTH_CONNECT', 'android.permission.BLUETOOTH_SCAN',
+  'android.permission.POST_NOTIFICATIONS', 'android.permission.ACTIVITY_RECOGNITION',
+]);
+
+let permissionsTabFilter = 'all';
+let permissionsTabSearch = '';
+
+function apkHasManifestForPermissionsTab() {
+  if (currentType !== 'apk' || !currentData) return false;
+  if (Array.isArray(currentData.files) && currentData.files.some((f) => f.name === 'AndroidManifest.xml')) return true;
+  const m = currentData.manifest;
+  if (m && (m.uses_permissions?.length || m.uses_permission_details?.length || m.permissions_declared?.length)) return true;
+  if (typeof apkManifestXml === 'string' && apkManifestXml && !apkManifestXml.startsWith('(') && !apkManifestXml.startsWith('No ')) return true;
+  return false;
+}
+
+function updatePermissionsTabVisibility() {
+  const btn = document.getElementById('permissions-tab-btn');
+  const show = apkHasManifestForPermissionsTab();
+  if (btn) btn.hidden = !show;
+  if (!show && getActiveCenterTabId() === 'permissions-tab') {
+    switchToCenterTab('bytecode-tab');
+  }
+  updateComponentsTabVisibility();
+  if (centerTabsMenu && !centerTabsMenu.hidden) renderCenterTabsMenu();
+}
+
+function collectPermissionsTabRows() {
+  const m = currentData?.manifest || {};
+  const details = Array.isArray(m.uses_permission_details) && m.uses_permission_details.length
+    ? m.uses_permission_details
+    : (m.uses_permissions || []).map((name) => ({ name }));
+  const declared = Array.isArray(m.permissions_declared) ? m.permissions_declared : [];
+  const rows = [];
+  const seen = new Set();
+  for (const p of details) {
+    const name = String(p?.name || '').trim();
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    rows.push({
+      name,
+      kind: 'uses',
+      maxSdk: p.max_sdk_version != null ? p.max_sdk_version : null,
+      dangerous: DANGEROUS_ANDROID_PERMISSIONS.has(name),
+    });
+  }
+  for (const nameRaw of declared) {
+    const name = String(nameRaw || '').trim();
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    rows.push({ name, kind: 'declared', maxSdk: null, dangerous: false });
+  }
+  // Fallback: pull from decoded AXML meta if structured manifest is empty.
+  if (!rows.length && typeof apkManifestXml === 'string') {
+    const meta = extractAxmlMeta(apkManifestXml, null);
+    for (const nameRaw of (meta.permissions || [])) {
+      const name = String(nameRaw || '').trim();
+      if (!name || seen.has(name)) continue;
+      seen.add(name);
+      rows.push({
+        name,
+        kind: 'uses',
+        maxSdk: null,
+        dangerous: DANGEROUS_ANDROID_PERMISSIONS.has(name),
+      });
+    }
+  }
+  return rows;
+}
+
+function permissionUsageCount(name) {
+  const list = apkPermissionUsageIndex?.[name];
+  return Array.isArray(list) ? list.length : 0;
+}
+
+function renderPermissionUsageListHtml(permission, { max = 12 } = {}) {
+  const name = String(permission || '');
+  if (apkPermissionUsageStatus === 'loading' || !apkPermissionUsageIndex) {
+    return `<div class="perms-uses muted">Scanning DEX string references…</div>`;
+  }
+  const list = apkPermissionUsageIndex[name];
+  if (!list || !list.length) {
+    return `<div class="perms-uses muted">No code string references found</div>`;
+  }
+  const links = list.slice(0, max).map((u) => {
+    const simpleClass = String(u.class_name || '').split('.').pop() || u.class_name || '?';
+    const loc = `${simpleClass}#${u.method_name || '?'}`;
+    const off = u.offset != null ? formatSecHexOffset(u.offset) : '';
+    const title = `${u.class_name}#${u.method_name}${off ? ' @ ' + off : ''}${u.dex_file ? ' · ' + u.dex_file : ''}`;
+    return `<button type="button" class="perms-use info-perm-use" data-class="${escapeAttr(u.class_name)}" data-method="${escapeAttr(u.method_name)}" data-dex="${escapeAttr(u.dex_file || '')}" data-offset="${u.offset ?? ''}" title="${escapeAttr(title)}">${escapeHtml(loc)}${off ? ` <span class="muted">${escapeHtml(off)}</span>` : ''}</button>`;
+  }).join('');
+  const more = list.length > max
+    ? `<span class="perms-use-more muted">+${formatCount(list.length - max)} more</span>`
+    : '';
+  return `<div class="perms-uses"><span class="perms-use-count">${formatCount(list.length)} use${list.length === 1 ? '' : 's'}</span>${links}${more}</div>`;
+}
+
+function renderPermissionsTab() {
+  const body = document.getElementById('perms-body');
+  const metaEl = document.getElementById('perms-meta');
+  const countEl = document.getElementById('perms-count');
+  if (!body) return;
+
+  if (!apkHasManifestForPermissionsTab()) {
+    body.innerHTML = '<div class="muted center-text">Load an APK with a Manifest to inspect permissions</div>';
+    if (metaEl) metaEl.textContent = '';
+    if (countEl) countEl.textContent = '';
+    return;
+  }
+
+  const rows = collectPermissionsTabRows();
+  const q = (permissionsTabSearch || '').trim().toLowerCase();
+  let usedN = 0;
+  let unusedN = 0;
+  let declaredN = 0;
+  for (const r of rows) {
+    if (r.kind === 'declared') {
+      declaredN += 1;
+      continue;
+    }
+    const n = permissionUsageCount(r.name);
+    if (n > 0) usedN += 1;
+    else unusedN += 1;
+  }
+
+  if (metaEl) {
+    const scan = apkPermissionUsageStatus === 'loading'
+      ? ' · scanning…'
+      : (apkPermissionUsageStatus === 'ready' ? '' : '');
+    metaEl.textContent = `${formatCount(rows.length)} listed · ${formatCount(usedN)} used · ${formatCount(unusedN)} unused${declaredN ? ` · ${formatCount(declaredN)} declared` : ''}${scan}`;
+  }
+
+  const filtered = rows.filter((r) => {
+    if (permissionsTabFilter === 'declared' && r.kind !== 'declared') return false;
+    if (permissionsTabFilter === 'used') {
+      if (r.kind === 'declared') return false;
+      if (apkPermissionUsageStatus === 'ready' && permissionUsageCount(r.name) <= 0) return false;
+    }
+    if (permissionsTabFilter === 'unused') {
+      if (r.kind === 'declared') return false;
+      if (apkPermissionUsageStatus === 'ready' && permissionUsageCount(r.name) > 0) return false;
+    }
+    if (permissionsTabFilter === 'all' && r.kind === 'declared') {
+      // Keep declared in All, at the end after uses — still include.
+    }
+    if (!q) return true;
+    return r.name.toLowerCase().includes(q) || shortPermissionLabel(r.name).toLowerCase().includes(q);
+  });
+
+  // Sort: uses first (dangerous, then by usage count desc, then name), declared last.
+  filtered.sort((a, b) => {
+    if (a.kind !== b.kind) return a.kind === 'uses' ? -1 : 1;
+    if (a.dangerous !== b.dangerous) return a.dangerous ? -1 : 1;
+    const ua = permissionUsageCount(a.name);
+    const ub = permissionUsageCount(b.name);
+    if (ua !== ub) return ub - ua;
+    return a.name.localeCompare(b.name);
+  });
+
+  if (countEl) {
+    countEl.textContent = filtered.length === rows.length
+      ? `${formatCount(filtered.length)} shown`
+      : `${formatCount(filtered.length)} / ${formatCount(rows.length)}`;
+  }
+
+  if (!rows.length) {
+    body.innerHTML = '<div class="muted center-text">No <code>uses-permission</code> entries found in the Manifest</div>';
+    return;
+  }
+  if (!filtered.length) {
+    body.innerHTML = '<div class="muted center-text">No permissions match this filter</div>';
+    return;
+  }
+
+  const parts = [];
+  let lastKind = '';
+  for (const r of filtered) {
+    if (r.kind !== lastKind) {
+      lastKind = r.kind;
+      parts.push(`<div class="perms-section-label">${r.kind === 'declared' ? 'Declared (custom)' : 'Requested (uses-permission)'}</div>`);
+    }
+    const short = shortPermissionLabel(r.name);
+    const badges = [];
+    if (r.dangerous) badges.push('<span class="perms-badge perms-badge-danger">dangerous</span>');
+    if (r.kind === 'declared') badges.push('<span class="perms-badge">declared</span>');
+    if (r.maxSdk != null) badges.push(`<span class="perms-badge">maxSdk ${escapeHtml(String(r.maxSdk))}</span>`);
+    const usageN = permissionUsageCount(r.name);
+    if (apkPermissionUsageStatus === 'ready') {
+      badges.push(usageN
+        ? `<span class="perms-badge perms-badge-used">${formatCount(usageN)} use${usageN === 1 ? '' : 's'}</span>`
+        : '<span class="perms-badge perms-badge-unused">unused</span>');
+    }
+    parts.push(
+      `<article class="perms-card${r.dangerous ? ' is-dangerous' : ''}${usageN ? ' is-used' : ''}" data-perm="${escapeAttr(r.name)}">` +
+      `<header class="perms-card-head">` +
+      `<div class="perms-card-titles"><span class="perms-card-short">${escapeHtml(short)}</span>` +
+      `<span class="perms-card-full muted" title="${escapeAttr(r.name)}">${escapeHtml(r.name)}</span></div>` +
+      `<div class="perms-card-badges">${badges.join('')}</div>` +
+      `</header>` +
+      (r.kind === 'uses' ? renderPermissionUsageListHtml(r.name) : '<div class="perms-uses muted">App-defined permission</div>') +
+      `</article>`
+    );
+  }
+  body.innerHTML = parts.join('');
+}
+
+function wirePermissionsTabControls() {
+  const search = document.getElementById('perms-search');
+  const filters = document.getElementById('perms-filters');
+  search?.addEventListener('input', () => {
+    permissionsTabSearch = search.value || '';
+    renderPermissionsTab();
+  });
+  search?.addEventListener('keydown', (e) => e.stopPropagation());
+  filters?.addEventListener('click', (e) => {
+    const chip = e.target.closest('.perms-chip[data-filter]');
+    if (!chip) return;
+    permissionsTabFilter = chip.dataset.filter || 'all';
+    filters.querySelectorAll('.perms-chip').forEach((c) => c.classList.toggle('active', c === chip));
+    renderPermissionsTab();
+  });
+}
+wirePermissionsTabControls();
+
+let componentsTabFilter = 'all';
+let componentsTabSearch = '';
+
+function apkHasComponentsForTab() {
+  if (currentType !== 'apk' || !currentData) return false;
+  const m = currentData.manifest;
+  if (m && (
+    m.activities?.length || m.services?.length || m.receivers?.length || m.providers?.length
+  )) return true;
+  return apkHasManifestForPermissionsTab();
+}
+
+function updateComponentsTabVisibility() {
+  const btn = document.getElementById('components-tab-btn');
+  const show = apkHasComponentsForTab();
+  if (btn) btn.hidden = !show;
+  if (!show && getActiveCenterTabId() === 'components-tab') {
+    switchToCenterTab('bytecode-tab');
+  }
+}
+
+function collectComponentsTabRows() {
+  const m = currentData?.manifest || {};
+  const pkg = m.package || currentData?.package || '';
+  const rows = [];
+  const pushAll = (kind, list) => {
+    for (const c of (Array.isArray(list) ? list : [])) {
+      const name = String(c?.name || '').trim();
+      if (!name) continue;
+      rows.push({
+        kind,
+        name,
+        resolved: resolveManifestClass(name, pkg),
+        exported: c.exported,
+        enabled: c.enabled,
+        permission: c.permission || '',
+        process: c.process || '',
+        authorities: c.authorities || '',
+        isLauncher: !!c.is_launcher,
+      });
+    }
+  };
+  pushAll('activity', m.activities);
+  pushAll('service', m.services);
+  pushAll('receiver', m.receivers);
+  pushAll('provider', m.providers);
+  return rows;
+}
+
+function renderComponentsTab() {
+  const body = document.getElementById('comps-body');
+  const metaEl = document.getElementById('comps-meta');
+  const countEl = document.getElementById('comps-count');
+  if (!body) return;
+
+  if (!apkHasComponentsForTab()) {
+    body.innerHTML = '<div class="muted center-text">Load an APK with a Manifest to inspect components</div>';
+    if (metaEl) metaEl.textContent = '';
+    if (countEl) countEl.textContent = '';
+    return;
+  }
+
+  const rows = collectComponentsTabRows();
+  const counts = { activity: 0, service: 0, receiver: 0, provider: 0, exported: 0, launcher: 0 };
+  for (const r of rows) {
+    if (counts[r.kind] != null) counts[r.kind] += 1;
+    if (r.exported === true) counts.exported += 1;
+    if (r.isLauncher) counts.launcher += 1;
+  }
+  if (metaEl) {
+    metaEl.textContent = [
+      counts.activity ? `${formatCount(counts.activity)} activities` : null,
+      counts.service ? `${formatCount(counts.service)} services` : null,
+      counts.receiver ? `${formatCount(counts.receiver)} receivers` : null,
+      counts.provider ? `${formatCount(counts.provider)} providers` : null,
+      counts.exported ? `${formatCount(counts.exported)} exported` : null,
+    ].filter(Boolean).join(' · ') || 'No components';
+  }
+
+  const q = (componentsTabSearch || '').trim().toLowerCase();
+  const filtered = rows.filter((r) => {
+    if (componentsTabFilter === 'activity' && r.kind !== 'activity') return false;
+    if (componentsTabFilter === 'service' && r.kind !== 'service') return false;
+    if (componentsTabFilter === 'receiver' && r.kind !== 'receiver') return false;
+    if (componentsTabFilter === 'provider' && r.kind !== 'provider') return false;
+    if (componentsTabFilter === 'exported' && r.exported !== true) return false;
+    if (componentsTabFilter === 'launcher' && !r.isLauncher) return false;
+    if (!q) return true;
+    return r.name.toLowerCase().includes(q)
+      || r.resolved.toLowerCase().includes(q)
+      || shortPermissionLabel(r.name).toLowerCase().includes(q)
+      || (r.permission && r.permission.toLowerCase().includes(q))
+      || (r.authorities && r.authorities.toLowerCase().includes(q));
+  });
+
+  const kindOrder = { activity: 0, service: 1, receiver: 2, provider: 3 };
+  filtered.sort((a, b) => {
+    const ka = kindOrder[a.kind] ?? 9;
+    const kb = kindOrder[b.kind] ?? 9;
+    if (ka !== kb) return ka - kb;
+    if (a.isLauncher !== b.isLauncher) return a.isLauncher ? -1 : 1;
+    if ((a.exported === true) !== (b.exported === true)) return a.exported === true ? -1 : 1;
+    return a.resolved.localeCompare(b.resolved);
+  });
+
+  if (countEl) {
+    countEl.textContent = filtered.length === rows.length
+      ? `${formatCount(filtered.length)} shown`
+      : `${formatCount(filtered.length)} / ${formatCount(rows.length)}`;
+  }
+
+  if (!rows.length) {
+    body.innerHTML = '<div class="muted center-text">No activities, services, receivers, or providers in the Manifest</div>';
+    return;
+  }
+  if (!filtered.length) {
+    body.innerHTML = '<div class="muted center-text">No components match this filter</div>';
+    return;
+  }
+
+  const kindLabel = {
+    activity: 'Activities',
+    service: 'Services',
+    receiver: 'Receivers',
+    provider: 'Providers',
+  };
+  const parts = [];
+  let lastKind = '';
+  for (const r of filtered) {
+    if (r.kind !== lastKind) {
+      lastKind = r.kind;
+      parts.push(`<div class="perms-section-label">${kindLabel[r.kind] || r.kind}</div>`);
+    }
+    const short = shortPermissionLabel(r.name);
+    const badges = [];
+    badges.push(`<span class="perms-badge perms-badge-kind">${escapeHtml(r.kind)}</span>`);
+    if (r.isLauncher) badges.push('<span class="perms-badge perms-badge-used">launcher</span>');
+    if (r.exported === true) badges.push('<span class="perms-badge perms-badge-danger">exported</span>');
+    if (r.exported === false) badges.push('<span class="perms-badge">not exported</span>');
+    if (r.enabled === false) badges.push('<span class="perms-badge perms-badge-unused">disabled</span>');
+
+    const metaBits = [];
+    if (r.permission) {
+      metaBits.push(`<div class="comps-meta-row"><span class="comps-meta-k">permission</span> <span class="comps-meta-v">${escapeHtml(r.permission)}</span></div>`);
+    }
+    if (r.process) {
+      metaBits.push(`<div class="comps-meta-row"><span class="comps-meta-k">process</span> <span class="comps-meta-v">${escapeHtml(r.process)}</span></div>`);
+    }
+    if (r.authorities) {
+      metaBits.push(`<div class="comps-meta-row"><span class="comps-meta-k">authorities</span> <span class="comps-meta-v">${escapeHtml(r.authorities)}</span></div>`);
+    }
+
+    parts.push(
+      `<article class="perms-card comps-card${r.exported === true ? ' is-dangerous' : ''}${r.isLauncher ? ' is-used' : ''}" data-class="${escapeAttr(r.resolved)}">` +
+      `<header class="perms-card-head">` +
+      `<div class="perms-card-titles">` +
+      `<span class="perms-card-short">${escapeHtml(short)}</span>` +
+      `<button type="button" class="info-class-link comps-class-link" data-class="${escapeAttr(r.resolved)}" title="${escapeAttr('Open ' + r.resolved)}">${escapeHtml(r.resolved)}</button>` +
+      (r.name !== r.resolved ? `<span class="perms-card-full muted">${escapeHtml(r.name)}</span>` : '') +
+      `</div>` +
+      `<div class="perms-card-badges">${badges.join('')}</div>` +
+      `</header>` +
+      (metaBits.length ? `<div class="comps-meta">${metaBits.join('')}</div>` : '') +
+      `<div class="comps-actions">` +
+      `<button type="button" class="btn btn-small comps-open-btn info-class-link" data-class="${escapeAttr(r.resolved)}">Open class</button>` +
+      `</div>` +
+      `</article>`
+    );
+  }
+  body.innerHTML = parts.join('');
+}
+
+function wireComponentsTabControls() {
+  const search = document.getElementById('comps-search');
+  const filters = document.getElementById('comps-filters');
+  const body = document.getElementById('comps-body');
+  search?.addEventListener('input', () => {
+    componentsTabSearch = search.value || '';
+    renderComponentsTab();
+  });
+  search?.addEventListener('keydown', (e) => e.stopPropagation());
+  filters?.addEventListener('click', (e) => {
+    const chip = e.target.closest('.perms-chip[data-filter]');
+    if (!chip) return;
+    componentsTabFilter = chip.dataset.filter || 'all';
+    filters.querySelectorAll('.perms-chip').forEach((c) => c.classList.toggle('active', c === chip));
+    renderComponentsTab();
+  });
+  body?.addEventListener('click', (e) => {
+    const btn = e.target.closest('button.info-class-link, button.comps-open-btn');
+    if (!btn) return;
+    e.preventDefault();
+    const className = btn.dataset.class || '';
+    if (!className) return;
+    openClassFromManifest(null, null, className);
+  });
+}
+wireComponentsTabControls();
 
 function renderPermissionUsageLinks(permission) {
   const name = String(permission || '');
@@ -13909,10 +15873,10 @@ function resolveApkResourceDisplay(raw) {
   if (!original) return { display: '', title: '', raw: '' };
   // Already a literal label / path
   if (!original.startsWith('@') && !/^0x[0-9a-fA-F]+$/i.test(original)) {
-    return { display: original, title: '', raw: original };
+    return { display: original, title: '', raw: original, name: '', value: original.startsWith('res/') ? original : '' };
   }
   const id = parseAndroidResourceRefId(original);
-  if (id == null) return { display: original, title: '', raw: original };
+  if (id == null) return { display: original, title: '', raw: original, name: '', value: '' };
   const key = String(id);
   const name = apkResourceMap?.[key] || apkResourceMap?.[id] || '';
   let value = apkResourceValues?.[key] || apkResourceValues?.[id] || '';
@@ -13930,13 +15894,169 @@ function resolveApkResourceDisplay(raw) {
   if (name) {
     return { display: name, title: original, raw: original, name, value: '' };
   }
-  return { display: original, title: '', raw: original };
+  return { display: original, title: '', raw: original, name: '', value: '' };
+}
+
+/** Parse `R.mipmap.ic_launcher` / `android.R.drawable.foo` → { type, name }. */
+function parseResourceJavaName(javaName) {
+  const m = String(javaName || '').match(/^(?:android\.)?R\.([A-Za-z_]\w*)\.([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)$/);
+  if (!m) return null;
+  return { type: m[1], name: m[2] };
+}
+
+function isApkImagePath(path) {
+  return /\.(png|jpe?g|gif|webp|bmp)$/i.test(String(path || ''));
+}
+
+function isApkXmlPath(path) {
+  return /\.xml$/i.test(String(path || ''));
+}
+
+/** Density preference for picking a preview drawable. */
+function resourcePathDensityScore(path) {
+  const m = String(path || '').match(/-(xxxhdpi|xxhdpi|xhdpi|hdpi|mdpi|ldpi|anydpi|nodpi)(?:-|$)/i);
+  if (!m) return 3;
+  const order = { xxxhdpi: 6, xxhdpi: 5, xhdpi: 4, hdpi: 3, mdpi: 2, ldpi: 1, anydpi: 0, nodpi: 0 };
+  return order[m[1].toLowerCase()] ?? 3;
+}
+
+/**
+ * Find APK zip entries for a resource type/name (e.g. mipmap / ic_launcher).
+ * Matches res/{type}/name.ext and res/{type}-qualifiers/name.ext.
+ */
+function findApkResourceFilesByTypeName(type, entryName) {
+  const files = Array.isArray(currentData?.files) ? currentData.files : [];
+  if (!type || !entryName || !files.length) return [];
+  const hits = [];
+  const wantStem = String(entryName);
+  for (const f of files) {
+    const n = f.name || '';
+    if (!n.startsWith('res/')) continue;
+    const parts = n.split('/');
+    if (parts.length < 3) continue;
+    const folder = parts[1] || '';
+    if (!(folder === type || folder.startsWith(`${type}-`))) continue;
+    const base = parts[parts.length - 1] || '';
+    const stem = base.replace(/\.[^.]+$/, '');
+    if (stem === wantStem) hits.push(n);
+  }
+  return hits;
+}
+
+/** Resolve resource attr → APK file paths (best first). */
+function resolveApkResourceFilePaths(raw, resolved) {
+  const r = resolved || resolveApkResourceDisplay(raw);
+  const files = Array.isArray(currentData?.files) ? currentData.files : [];
+  const fileSet = new Set(files.map((f) => f.name));
+  const out = [];
+  const push = (p) => {
+    if (!p || out.includes(p) || !fileSet.has(p)) return;
+    out.push(p);
+  };
+
+  // Direct path from ARSC value or literal.
+  const val = String(r.value || '').trim();
+  if (val.startsWith('res/')) push(val);
+  if (String(r.display || '').startsWith('res/')) push(r.display);
+
+  const parsed = parseResourceJavaName(r.name)
+    || (typeof r.display === 'string' && r.display.startsWith('R.') ? parseResourceJavaName(r.display) : null);
+  if (parsed) {
+    for (const p of findApkResourceFilesByTypeName(parsed.type, parsed.name)) push(p);
+  }
+
+  // Prefer images, then higher density, then shorter path.
+  out.sort((a, b) => {
+    const ia = isApkImagePath(a) ? 1 : 0;
+    const ib = isApkImagePath(b) ? 1 : 0;
+    if (ia !== ib) return ib - ia;
+    const da = resourcePathDensityScore(a);
+    const db = resourcePathDensityScore(b);
+    if (da !== db) return db - da;
+    return a.length - b.length;
+  });
+  return out;
+}
+
+function pickApkResourcePreviewPath(paths) {
+  return (paths || []).find((p) => isApkImagePath(p)) || null;
+}
+
+async function openApkResourceFile(path) {
+  if (!path || currentType !== 'apk') return;
+  try {
+    await showApkFile(path);
+    if (apkExtractedFile) addOrShowFileTab(apkExtractedFile);
+  } catch (e) {
+    warn('[info] open resource failed', path, e);
+  }
+}
+
+/** After Info HTML is mounted, fill icon thumbnails from APK bytes. */
+function hydrateInfoResourceThumbs() {
+  if (!infoContent || currentType !== 'apk' || !currentApkBytes) return;
+  clearInfoResourceThumbUrls();
+  const imgs = infoContent.querySelectorAll('img.info-res-thumb[data-path]');
+  imgs.forEach((img) => {
+    const path = img.dataset.path || '';
+    if (!path || !isApkImagePath(path)) return;
+    try {
+      const bytes = get_apk_file_content(currentApkBytes, path);
+      if (!bytes?.length) {
+        img.hidden = true;
+        return;
+      }
+      const ext = (path.split('.').pop() || 'png').toLowerCase();
+      const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
+        : ext === 'gif' ? 'image/gif'
+          : ext === 'webp' ? 'image/webp'
+            : 'image/png';
+      const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
+      infoResourceThumbUrls.push(url);
+      img.src = url;
+      img.hidden = false;
+    } catch (_) {
+      img.hidden = true;
+    }
+  });
 }
 
 function infoResourceProp(label, raw) {
   if (raw == null || raw === '') return '';
   const resolved = resolveApkResourceDisplay(raw);
-  return infoProp(label, resolved.display, { title: resolved.title || undefined });
+  const paths = resolveApkResourceFilePaths(raw, resolved);
+  const primary = paths[0] || '';
+  const preview = pickApkResourcePreviewPath(paths);
+  const title = resolved.title || resolved.raw || resolved.display;
+
+  let valueHtml = '';
+  if (preview) {
+    valueHtml += `<img class="info-res-thumb" data-path="${escapeAttr(preview)}" alt="" title="${escapeAttr(preview)}" hidden />`;
+  }
+  if (primary) {
+    const short = primary.split('/').pop() || primary;
+    valueHtml += `<button type="button" class="info-res-link" data-path="${escapeAttr(primary)}" title="${escapeAttr(primary)}">${escapeHtml(resolved.display || short)}</button>`;
+    if (resolved.name && resolved.display !== resolved.name) {
+      valueHtml += `<span class="info-res-rname muted">${escapeHtml(resolved.name)}</span>`;
+    }
+    if (paths.length > 1) {
+      const extras = paths.slice(1, 6).map((p) => {
+        const s = p.split('/').pop() || p;
+        return `<button type="button" class="info-res-link info-res-alt" data-path="${escapeAttr(p)}" title="${escapeAttr(p)}">${escapeHtml(s)}</button>`;
+      }).join('');
+      const more = paths.length > 6 ? `<span class="muted">+${paths.length - 6}</span>` : '';
+      valueHtml += `<span class="info-res-alts">${extras}${more}</span>`;
+    }
+  } else {
+    valueHtml += escapeHtml(resolved.display || String(raw));
+    if (resolved.name && resolved.display !== resolved.name) {
+      valueHtml += ` <span class="muted">(${escapeHtml(resolved.name)})</span>`;
+    }
+  }
+
+  return `<div class="info-row info-res-row"${title ? ` title="${escapeAttr(title)}"` : ''}>` +
+    `<span class="info-label">${escapeHtml(label)}</span>` +
+    `<span class="info-value info-res-value">${valueHtml}</span></div>`;
 }
 
 function infoBool(label, value) {
@@ -14118,15 +16238,21 @@ function buildApkInfoHtml(data) {
 }
 
 function renderApk() {
+  const tRender = nowMs();
   const files = currentData.files || [];
   debug('[renderApk] start files=', files.length, 'search=', searchQuery || '(none)', 'mode=', apkLeftMode);
 
   // Info: always show rich APK / manifest / signing metadata
-  infoContent.innerHTML = buildApkInfoHtml(currentData);
+  infoContent.innerHTML = measureSync('buildApkInfoHtml', () => buildApkInfoHtml(currentData));
+  hydrateInfoResourceThumbs();
+  updatePermissionsTabVisibility();
+  renderPermissionsTab();
+  renderComponentsTab();
   // Resolve @7F… label/icon/theme once ARSC maps are ready.
   ensureApkResourceMap().then(() => {
     if (currentType !== 'apk' || !infoContent) return;
     infoContent.innerHTML = buildApkInfoHtml(currentData);
+    hydrateInfoResourceThumbs();
   }).catch(() => {});
   // Defer permission scan until class index is ready so Facebook multidex
   // doesn't fight the worker / freeze after "20/20".
@@ -14136,7 +16262,10 @@ function renderApk() {
       await ensureApkClassIndex();
     } catch (_) {}
     if (currentType !== 'apk') return;
-    ensurePermissionUsageIndex().then(() => refreshApkPermissionInfoSection());
+    ensurePermissionUsageIndex().then(() => {
+      refreshApkPermissionInfoSection();
+      renderPermissionsTab();
+    });
   }, 600);
 
   setStringsAndRender(apkExtractedFile?.kind === 'dex' && Array.isArray(apkExtractedFile?.data?.strings) ? apkExtractedFile.data.strings : []);
@@ -14175,7 +16304,33 @@ function renderApk() {
   updateApkLeftModeButtons();
 
   const primaryDex = pickPrimaryApkDex(files);
+  const dexNames = listApkDexNames(files);
+  const useUnified = dexNames.length > 1 && !apkDexFilter;
   const needAutoOpen = !apkExtractedFile && !!primaryDex && apkLeftMode === 'classes';
+
+  if (apkLeftMode === 'classes' && useUnified) {
+    // Multidex: show unified packages immediately; warm-open primary DEX for code view.
+    leftPanelTitle.textContent = 'Classes';
+    leftPanelTitle.title = `All DEXes (${dexNames.length})`;
+    treePlaceholder.style.display = 'none';
+    treeContent.style.display = 'block';
+    if (listSearchWrap) listSearchWrap.style.display = 'flex';
+    renderApkClassTree();
+    if (needAutoOpen) {
+      showApkFile(primaryDex).then(() => {
+        if (currentType !== 'apk' || apkLeftMode !== 'classes') return;
+        if (!apkDexFilter) renderApkClassTree();
+        debug('[renderApk] warm-opened', primaryDex, '(All DEXes)');
+      }).catch((e) => {
+        warn('[renderApk] warm-open DEX failed', e);
+      });
+    }
+    debug('[renderApk] renderApkExtractedContent...');
+    renderApkExtractedContent();
+    debug('[renderApk] done');
+    recordPerf('renderApk', nowMs() - tRender, 'unified');
+    return;
+  }
 
   if (needAutoOpen) {
     leftPanelTitle.textContent = 'Classes';
@@ -14195,6 +16350,7 @@ function renderApk() {
       renderApkFileTree();
       renderApkExtractedContent();
     });
+    recordPerf('renderApk', nowMs() - tRender, 'auto-open');
     return;
   }
 
@@ -14208,10 +16364,12 @@ function renderApk() {
   debug('[renderApk] renderApkExtractedContent...');
   renderApkExtractedContent();
   debug('[renderApk] done');
+  recordPerf('renderApk', nowMs() - tRender, apkLeftMode);
 }
 
 async function showApkFile(name) {
   debug('[showApkFile] start', name);
+  const tShowAll = nowMs();
   if (!currentApkBytes || currentType !== 'apk') {
     warn('showApkFile: no APK loaded');
     return;
@@ -14223,6 +16381,7 @@ async function showApkFile(name) {
       el.classList.toggle('selected', el.dataset.name === name);
     });
     renderApkExtractedContent();
+    recordPerf('showApkFile', nowMs() - tShowAll, 'same');
     return;
   }
   const cached = apkFileCache[name];
@@ -14235,7 +16394,11 @@ async function showApkFile(name) {
       el.classList.toggle('selected', el.dataset.name === name);
     });
     renderApkExtractedContent();
-    if (apkExtractedFile?.kind === 'dex' && Array.isArray(apkExtractedFile?.data?.strings)) setStringsAndRender(apkExtractedFile.data.strings);
+    if (apkExtractedFile?.kind === 'dex' && Array.isArray(apkExtractedFile?.data?.strings)) {
+      setStringsAndRender(apkExtractedFile.data.strings);
+    }
+    if (apkExtractedFile?.kind === 'dex') scheduleEnsureDexStringsLoaded();
+    recordPerf('showApkFile', nowMs() - tShowAll, 'cache');
     return;
   }
   const short = shortDexLabel(name);
@@ -14254,6 +16417,13 @@ async function showApkFile(name) {
     }
     apkExtractedFileRawBytes = bytes;
     debug('[showApkFile] extracted', name, 'size=', bytes.length);
+    if (name.toLowerCase().endsWith('.dex') && bytes.length > 4 * 1024 * 1024) {
+      setWorkNotice(
+        `Parsing ${short}`,
+        `${formatFileSize(bytes.length)} — class tree metadata loads first; method bodies wait until you open a method. The tab may hitch briefly.`,
+        { tone: 'warn', sticky: true }
+      );
+    }
     setUiActivity(
       'open-file',
       name.toLowerCase().endsWith('.dex') ? 'Parsing DEX' : 'Parsing file',
@@ -14262,13 +16432,15 @@ async function showApkFile(name) {
 
     const u8 = new Uint8Array(bytes);
     debug('[showApkFile] parse_file...', name, 'bytes=', bytes.length);
-    let resultRaw;
+    let result;
     try {
       // Large DEXes (Facebook) must not run on the main thread or Info clicks freeze.
+      // Browse parse omits string pool; method bodies stay on-demand via get_dex_method.
       if (name.toLowerCase().endsWith('.dex') || bytes.length > 2 * 1024 * 1024) {
-        resultRaw = await parseFileInWorker(u8, name);
+        result = await parseFileInWorker(u8, name);
       } else {
-        resultRaw = parse_file(u8, name);
+        const resultRaw = parse_file(u8, name);
+        result = typeof resultRaw === 'string' ? JSON.parse(resultRaw) : resultRaw;
       }
     } catch (e) {
       error('[showApkFile] parse_file threw', name, e);
@@ -14276,7 +16448,6 @@ async function showApkFile(name) {
     }
     tShow('parse_file(' + name + ')');
     debug('[showApkFile] parse_file done');
-    const result = typeof resultRaw === 'string' ? JSON.parse(resultRaw) : resultRaw;
     debug('parse_file for', name, result.ok ? 'ok' : 'fail');
 
     const ext = (name.split('.').pop() || '').toLowerCase();
@@ -14289,7 +16460,12 @@ async function showApkFile(name) {
         if (!Array.isArray(data.strings)) data.strings = data.strings ?? [];
         const nc = data.classes.length;
         const nm = data.classes.reduce((s, c) => s + (c?.methods?.length ?? 0), 0);
-        debug('[showApkFile] DEX', name, 'classes=', nc, 'methods total=', nm);
+        debug(
+          '[showApkFile] DEX', name,
+          'classes=', nc,
+          'methods total=', nm,
+          data.strings_omitted ? `strings_omitted=${data.string_count || 0}` : `strings=${data.strings.length}`
+        );
         apkExtractedFile = { name, kind: 'dex', data, bytes };
         apkExtractedDexSelection = { classIdx: 0, methodIdx: 0 };
       } else if (name.endsWith('.xml') || name === 'AndroidManifest.xml') {
@@ -14314,9 +16490,19 @@ async function showApkFile(name) {
     treeContent.querySelectorAll('.tree-item.apk-file').forEach(el => {
       el.classList.toggle('selected', el.dataset.name === name);
     });
-    if (apkExtractedFile?.kind === 'dex' && Array.isArray(apkExtractedFile?.data?.strings)) setStringsAndRender(apkExtractedFile.data.strings);
+    if (apkExtractedFile?.kind === 'dex') {
+      scheduleEnsureDexStringsLoaded();
+    }
   } finally {
     clearUiActivity('open-file');
+    // Keep indexing / Ready notices; clear only the per-DEX parse sticky.
+    if (!uiActivityTasks.has('index') && !uiActivityTasks.has('ready')) {
+      const el = document.getElementById('work-notice');
+      if (el && !el.hidden && el.classList.contains('is-warn')) {
+        setWorkNotice(null);
+      }
+    }
+    recordPerf('showApkFile', nowMs() - tShowAll, shortDexLabel(name));
   }
 }
 
@@ -14327,12 +16513,23 @@ function seedPartialApkClassIndexFromDex(dexName, classes) {
   for (let idx = 0; idx < classes.length; idx++) {
     const name = classes[idx]?.name;
     if (!name || apkClassToDex[name]) continue;
-    putApkClassIndexEntry(name, dexName, idx);
+    const methodCount = Array.isArray(classes[idx]?.methods) ? classes[idx].methods.length : 0;
+    putApkClassIndexEntry(name, dexName, idx, apkClassToDex, methodCount);
     added += 1;
   }
   if (added) {
     debug('[class-index] seeded', added, 'classes from open DEX', dexName);
     try { applyManifestClassLinksNow(); } catch (_) {}
+    // Avoid rebuilding the unified tree on every seed while the full index is still running.
+    if (
+      currentType === 'apk'
+      && apkLeftMode === 'classes'
+      && !apkDexFilter
+      && listApkDexNames().length > 1
+      && apkDexStats?.ready
+    ) {
+      try { renderApkClassTree(); } catch (_) {}
+    }
   }
 }
 
@@ -14343,6 +16540,13 @@ function switchToCenterTab(tabId) {
   if (centerTabsMenu && !centerTabsMenu.hidden) renderCenterTabsMenu();
   if (tabId === 'raw-tab' && rawHexEditor && typeof rawHexEditor.refresh === 'function') {
     requestAnimationFrame(() => rawHexEditor.refresh());
+  }
+  if (tabId === 'permissions-tab') {
+    renderPermissionsTab();
+    ensurePermissionUsageIndex().then(() => renderPermissionsTab()).catch(() => {});
+  }
+  if (tabId === 'components-tab') {
+    renderComponentsTab();
   }
 }
 
@@ -14676,7 +16880,11 @@ function renderAxml() {
   }
   bytecodeListing.innerHTML = '<div class="muted">AXML — structure outline on the left; full XML in Manifest</div>';
 
-  const outline = mounted?.outline || buildXmlOutline(formatXmlPretty(xml));
+  const outline = (mounted?.outline && mounted.outline.length)
+    ? mounted.outline
+    : (mounted?.pretty && mounted.mode !== 'plain'
+      ? buildXmlOutline(mounted.pretty)
+      : []);
   treePlaceholder.style.display = 'none';
   treeContent.style.display = 'block';
   treeContent.innerHTML = renderXmlOutlineTree(outline);

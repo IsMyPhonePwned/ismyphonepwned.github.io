@@ -119,6 +119,18 @@ export function get_dex_method(bytes, class_idx, method_idx, options) {
 }
 
 /**
+ * Load DEX string pool on demand (after browse parse omitted it).
+ * @param {Uint8Array} bytes
+ * @returns {Uint8Array}
+ */
+export function get_dex_strings(bytes) {
+    const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.get_dex_strings(ptr0, len0);
+    return ret;
+}
+
+/**
  * Return built-in MobHunt Semgrep rules YAML + parsed rule summaries.
  * @returns {any}
  */
@@ -146,6 +158,18 @@ export function index_dex_classes(bytes) {
     } finally {
         wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
     }
+}
+
+/**
+ * Same as [`index_dex_classes_js`] but UTF-8 JSON as transferable `Uint8Array`.
+ * @param {Uint8Array} bytes
+ * @returns {Uint8Array}
+ */
+export function index_dex_classes_bytes(bytes) {
+    const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.index_dex_classes_bytes(ptr0, len0);
+    return ret;
 }
 
 export function init() {
@@ -257,6 +281,21 @@ export function parse_file(bytes, filename) {
     } finally {
         wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
     }
+}
+
+/**
+ * Same as [`parse_file`] but returns UTF-8 JSON as `Uint8Array` for transferable worker results.
+ * @param {Uint8Array} bytes
+ * @param {string} filename
+ * @returns {Uint8Array}
+ */
+export function parse_file_bytes(bytes, filename) {
+    const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(filename, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.parse_file_bytes(ptr0, len0, ptr1, len1);
+    return ret;
 }
 
 /**
@@ -558,6 +597,10 @@ function __wbg_get_imports() {
         },
         __wbg_new_5c365a7570baea64: function() {
             const ret = new Object();
+            return ret;
+        },
+        __wbg_new_from_slice_87b95dbde92b7cc2: function(arg0, arg1) {
+            const ret = new Uint8Array(getArrayU8FromWasm0(arg0, arg1));
             return ret;
         },
         __wbg_next_2ae970b266acf6e5: function(arg0) {

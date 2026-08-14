@@ -242,6 +242,20 @@ function findMethodCallersInWorker(bytes, classIdx, methodIdx) {
   );
 }
 
+/** Full reverse call traces (root → … → target) for a method. */
+function findMethodCallTracesInWorker(bytes, classIdx, methodIdx) {
+  const copy = bytes instanceof Uint8Array ? bytes.slice() : new Uint8Array(bytes).slice();
+  return runInParseWorker(
+    'find_method_call_traces',
+    {
+      bytes: copy.buffer,
+      classIdx: Number(classIdx) >>> 0,
+      methodIdx: Number(methodIdx) >>> 0,
+    },
+    { timeoutMs: Math.max(PARSE_WORKER_TIMEOUT_MS, 180000), transfer: [copy.buffer] }
+  );
+}
+
 /** Methods invoked from a method (worker). */
 function findMethodCalleesInWorker(bytes, classIdx, methodIdx) {
   const copy = bytes instanceof Uint8Array ? bytes.slice() : new Uint8Array(bytes).slice();
@@ -7013,6 +7027,26 @@ if (bytecodeListing) {
       if (!Number.isNaN(idx)) openFieldXrefsPanel(idx);
       return;
     }
+    const callTraceBtn = e.target.closest('.call-trace-btn');
+    if (callTraceBtn && bytecodeListing.contains(callTraceBtn)) {
+      e.preventDefault();
+      e.stopPropagation();
+      const ci = parseInt(callTraceBtn.getAttribute('data-class-idx'), 10);
+      const mi = parseInt(callTraceBtn.getAttribute('data-method-idx'), 10);
+      if (!Number.isNaN(ci) && !Number.isNaN(mi)) {
+        const panel = bytecodeListing.querySelector(
+          `.call-trace-panel[data-class-idx="${CSS.escape(String(ci))}"][data-method-idx="${CSS.escape(String(mi))}"]`
+        );
+        if (panel && !panel.hidden && panel.dataset.loaded === '1') {
+          panel.hidden = true;
+          return;
+        }
+        loadAndShowCallTraces(ci, mi, panel).then(() => {
+          if (panel) panel.dataset.loaded = '1';
+        });
+      }
+      return;
+    }
     const callerEl = e.target.closest('.method-caller-ref, .method-callee-ref');
     if (callerEl && bytecodeListing.contains(callerEl)) {
       e.preventDefault();
@@ -10679,8 +10713,77 @@ function renderMethodCalleesHtml(info) {
   return `<span class="bc-xref-label">; XREF uses[${callees.length}${truncated ? '+' : ''}]:</span> ${refs}${more}`;
 }
 
-function renderMethodXrefsBundleHtml(callersInfo, calleesInfo) {
-  return `${renderMethodCallersHtml(callersInfo)}<br>${renderMethodCalleesHtml(calleesInfo)}`;
+function renderMethodXrefsBundleHtml(callersInfo, calleesInfo, classIdx, methodIdx) {
+  const ci = classIdx ?? '';
+  const mi = methodIdx ?? '';
+  return `${renderMethodCallersHtml(callersInfo)}<br>${renderMethodCalleesHtml(calleesInfo)}`
+    + `<br><button type="button" class="btn btn-small call-trace-btn" data-class-idx="${ci}" data-method-idx="${mi}" title="Show full reverse call paths (who calls this, and their callers)">Call trace</button>`
+    + `<div class="call-trace-panel" data-class-idx="${ci}" data-method-idx="${mi}" hidden></div>`;
+}
+
+function renderCallTracePathsHtml(info) {
+  const paths = Array.isArray(info?.paths) ? info.paths : [];
+  const truncated = !!(info?.truncated);
+  const maxDepth = info?.max_depth ?? info?.maxDepth ?? '';
+  if (!paths.length) {
+    return `<div class="call-trace-empty muted">No reverse call paths found.</div>`;
+  }
+  const maxShow = 24;
+  const rows = paths.slice(0, maxShow).map((p, pi) => {
+    const frames = Array.isArray(p?.frames) ? p.frames : [];
+    const bits = frames.map((f, fi) => {
+      const className = f.class_name || f.className || '';
+      const methodName = f.method_name || f.methodName || '';
+      const simple = className.split('.').pop() || className || '?';
+      const ci = f.class_idx ?? f.classIdx;
+      const mi = f.method_idx_in_class ?? f.methodIdxInClass;
+      const off = f.offset;
+      const kind = f.invoke_kind || f.invokeKind || '';
+      const isTarget = fi === frames.length - 1;
+      const label = `${simple}.${methodName || '?'}`;
+      const title = [kind, off != null ? formatSecHexOffset(off) : '', className].filter(Boolean).join(' · ');
+      return `<span class="bc-xref-ref method-caller-ref call-trace-frame${isTarget ? ' is-target' : ''}" role="link" tabindex="0" data-class-idx="${ci ?? ''}" data-method-idx="${mi ?? ''}" data-class="${escapeAttr(className)}" data-method="${escapeAttr(methodName)}" data-offset="${off ?? ''}" title="${escapeAttr(title)}">${escapeHtml(label)}</span>`;
+    }).join('<span class="call-trace-arrow" aria-hidden="true"> → </span>');
+    return `<div class="call-trace-path" data-path="${pi}"><span class="call-trace-path-n muted">#${pi + 1}</span> ${bits}</div>`;
+  }).join('');
+  const more = paths.length > maxShow
+    ? `<div class="muted call-trace-more">+${paths.length - maxShow} more path(s)</div>`
+    : '';
+  const note = truncated
+    ? `<div class="muted call-trace-note">Truncated (depth ≤ ${escapeHtml(String(maxDepth))}, path/fan-in caps).</div>`
+    : `<div class="muted call-trace-note">${paths.length} path(s)${maxDepth ? ` · depth ≤ ${escapeHtml(String(maxDepth))}` : ''}</div>`;
+  return `${note}${rows}${more}`;
+}
+
+async function loadAndShowCallTraces(classIdx, methodIdx, panelEl) {
+  const panel = panelEl || bytecodeListing?.querySelector(
+    `.call-trace-panel[data-class-idx="${CSS.escape(String(classIdx))}"][data-method-idx="${CSS.escape(String(methodIdx))}"]`
+  );
+  if (!panel) return;
+  const ctx = getCodeViewContext();
+  const bytes = ctx?.bytes;
+  if (!bytes?.length) {
+    panel.hidden = false;
+    panel.innerHTML = `<div class="muted">No DEX bytes loaded.</div>`;
+    return;
+  }
+  panel.hidden = false;
+  panel.innerHTML = `<div class="muted">Building reverse call traces…</div>`;
+  try {
+    const raw = await findMethodCallTracesInWorker(bytes, classIdx, methodIdx);
+    if (codeViewClassIdx !== classIdx || codeViewMethodIdx !== methodIdx) return;
+    const result = typeof normalizeWasmResult === 'function' ? normalizeWasmResult(raw) : raw;
+    if (!result?.ok) {
+      panel.innerHTML = `<div class="muted">${escapeHtml(result?.error || 'Call trace failed')}</div>`;
+      return;
+    }
+    let info = result.data || result;
+    if (typeof normalizeWasmResult === 'function') info = normalizeWasmResult(info) || info;
+    panel.innerHTML = renderCallTracePathsHtml(info);
+  } catch (e) {
+    if (codeViewClassIdx !== classIdx || codeViewMethodIdx !== methodIdx) return;
+    panel.innerHTML = `<div class="muted">${escapeHtml(e?.message || String(e))}</div>`;
+  }
 }
 
 /** Load method callers + callees and inject under the method header (async, worker). */
@@ -10706,7 +10809,7 @@ async function loadAndShowMethodCallers(classIdx, methodIdx) {
   slot.hidden = false;
   if (methodCallersCache.has(cacheKey)) {
     const cached = methodCallersCache.get(cacheKey);
-    slot.innerHTML = renderMethodXrefsBundleHtml(cached.callers, cached.callees);
+    slot.innerHTML = renderMethodXrefsBundleHtml(cached.callers, cached.callees, classIdx, methodIdx);
     return;
   }
   slot.innerHTML = `<span class="bc-xref-label">; XREF:</span> <span class="muted">finding usages…</span>`;
@@ -10739,7 +10842,7 @@ async function loadAndShowMethodCallers(classIdx, methodIdx) {
       callees: calleesInfo.error ? { callees: [], truncated: false } : calleesInfo,
     };
     methodCallersCache.set(cacheKey, bundle);
-    still.innerHTML = renderMethodXrefsBundleHtml(bundle.callers, bundle.callees);
+    still.innerHTML = renderMethodXrefsBundleHtml(bundle.callers, bundle.callees, classIdx, methodIdx);
   } catch (e) {
     if (reqId !== methodCallersRequestId) return;
     const still = bytecodeListing?.querySelector(
@@ -18285,14 +18388,18 @@ function securityCategoryClass(cat) {
 
 function securitySeverityClass(catOrSev) {
   const s = String(catOrSev || '').toLowerCase().trim();
-  if (s === 'high' || s === 'critical' || s === 'error') return 'sev-high';
+  if (s === 'critical' || s === 'error' || s === 'high') return 'sev-high';
   if (s === 'medium' || s === 'med' || s === 'warning') return 'sev-med';
   if (s === 'low') return 'sev-low';
   if (s === 'info' || s === 'informational') return 'sev-info';
   const c = securityCategoryClass(catOrSev);
-  if (/rce|code.?exec|sql|command|spoof|pending|path.?trav|deserial/.test(c)) return 'sev-high';
-  if (/webview|intent|ipc|injection/.test(c)) return 'sev-med';
-  if (/secret|hardcoded|crypto|ssl|cert|logging/.test(c)) return 'sev-low';
+  if (/rce|process.?exec|code.?exec|sqlcipher|sql_injection|command|spoof|pending|path.?trav|deserial|ssl_trust|pinning|reflection|credential_broadcast|uri_permission|world_readable/.test(c)) {
+    return 'sev-high';
+  }
+  if (/webview|intent|ipc|injection|biometric|keystore|broadcast|pick_file|host_check|storage/.test(c)) {
+    return 'sev-med';
+  }
+  if (/secret|hardcoded|crypto|ssl|cert|logging|tracker/.test(c)) return 'sev-low';
   return 'sev-info';
 }
 
@@ -18302,7 +18409,38 @@ function vulnFindingSeverityClass(f) {
 }
 
 function formatCategoryLabel(cat) {
-  return String(cat || 'other').replace(/_/g, ' ');
+  const c = String(cat || 'other');
+  const pretty = {
+    intent_spoofing: 'Intent spoofing',
+    ipc_intent_validation: 'IPC Intent validation',
+    rce_dynamic_loading: 'Dynamic code loading',
+    rce_process_exec: 'Process execution',
+    insecure_logging: 'Insecure logging',
+    sql_injection: 'SQL injection',
+    webview_unsafe: 'Unsafe WebView',
+    webview_js_bridge_user_url: 'JS bridge + user URL',
+    webview_weak_host_check: 'Weak host check',
+    hardcoded_secrets_review: 'Possible secrets',
+    pending_intent: 'PendingIntent',
+    path_traversal: 'Path traversal',
+    weak_crypto: 'Weak crypto',
+    unsafe_deserialization: 'Unsafe deserialization',
+    world_readable_storage: 'World-readable storage',
+    sticky_ordered_broadcast: 'Sticky/ordered broadcast',
+    ssl_trust_all: 'Trust-all SSL',
+    pinning_bypass: 'Pinning bypass',
+    reflection_rce: 'Reflection RCE',
+    sqlcipher_hardcoded_passphrase: 'SQLCipher passphrase',
+    implicit_intent_launch: 'Implicit Intent',
+    biometric_without_crypto: 'Biometric without crypto',
+    keystore_no_user_auth: 'Keystore without user auth',
+    tracker_fingerprint_api: 'Tracker / ads API',
+    credential_broadcast: 'Credential broadcast',
+    pick_file_theft: 'Pick-file theft',
+    uri_permission_result_forward: 'URI grant via setResult',
+    uri_permission_grant_flow: 'URI grant flow',
+  };
+  return pretty[c] || c.replace(/_/g, ' ');
 }
 
 /** Collect DEX byte buffers to scan — extract only primary/capped DEXes (not every Facebook multidex). */
@@ -18545,7 +18683,7 @@ function renderSecurityOverview() {
       <span class="security-stat-value">${stats.total}</span>
       <span class="security-stat-label">Total findings</span>
     </button>
-    <button type="button" class="security-stat-card sev-high${securitySeverityFilter === 'sev-high' ? ' active' : ''}" data-sev="sev-high" title="Filter High severity">
+    <button type="button" class="security-stat-card sev-high${securitySeverityFilter === 'sev-high' ? ' active' : ''}" data-sev="sev-high" title="Filter High / Critical severity">
       <span class="security-stat-value">${stats.sev.high}</span>
       <span class="security-stat-label">High</span>
     </button>
@@ -18603,8 +18741,8 @@ function renderSecurityOverview() {
         `<span class="security-scan-pill-k">${escapeHtml(label)}</span>` +
         `<span class="security-scan-pill-v">${showCount ? count : '—'}</span></button>`;
     };
-    securityOverviewScans.innerHTML =
-      pill('vuln', 'Vuln scan', stats.vulnN, securityScansRun.vuln) +
+      securityOverviewScans.innerHTML =
+      pill('vuln', 'Vuln detectors', stats.vulnN, securityScansRun.vuln) +
       pill('semgrep', 'Semgrep', stats.sgN, securityScansRun.semgrep) +
       pill('mt', 'MT taint', stats.mtN, securityScansRun.mt) +
       (stats.cats ? `<span class="security-scan-pill muted-pill">${stats.cats} vuln categor${stats.cats === 1 ? 'y' : 'ies'}</span>` : '');
@@ -18619,13 +18757,13 @@ function renderSecuritySourceTabs() {
     return;
   }
   const tabs = [
-    ['', 'All', stats.total],
-    ['vuln', 'Vuln', stats.vulnN],
+    ['', 'All scanners', stats.total],
+    ['vuln', 'Vuln detectors', stats.vulnN],
     ['semgrep', 'Semgrep', stats.sgN],
     ['mt', 'MT taint', stats.mtN],
   ];
   securitySourceTabsEl.innerHTML = tabs.map(([key, label, n]) =>
-    `<button type="button" class="security-source-tab${securitySourceFilter === key ? ' active' : ''}" data-source="${escapeAttr(key)}">` +
+    `<button type="button" class="security-source-tab${securitySourceFilter === key ? ' active' : ''}" data-source="${escapeAttr(key)}" title="${escapeAttr(key ? securityScannerLabel(key) : 'Show findings from all scanners')}">` +
     `${escapeHtml(label)}<span class="chip-n">${n}</span></button>`
   ).join('');
 }
@@ -18712,6 +18850,7 @@ function collectFilteredSecurityItems() {
     const sevCls = vulnFindingSeverityClass(f);
     items.push({
       kind: 'vuln',
+      scanner: 'vuln',
       sevCls,
       sevRank: securitySeverityRank(sevCls),
       className: f.class_name || '',
@@ -18727,6 +18866,7 @@ function collectFilteredSecurityItems() {
     const sevCls = semgrepSeverityClass(f.severity);
     items.push({
       kind: 'semgrep',
+      scanner: 'semgrep',
       sevCls,
       sevRank: securitySeverityRank(sevCls),
       className: f.class_name || '',
@@ -18744,6 +18884,7 @@ function collectFilteredSecurityItems() {
     const nav = securityMtNavTarget(iss);
     items.push({
       kind: 'mt',
+      scanner: 'mt',
       sevCls,
       sevRank: securitySeverityRank(sevCls),
       className: nav.className || '',
@@ -18802,6 +18943,15 @@ function renderUnifiedSecurityFindings(items) {
       .filter((k) => sevCounts[k])
       .map((k) => `<span class="security-group-sev ${k}">${sevCounts[k]}</span>`)
       .join('');
+    const scannerCounts = { vuln: 0, semgrep: 0, mt: 0 };
+    for (const i of groupItems) {
+      const s = i.scanner || i.kind;
+      if (scannerCounts[s] != null) scannerCounts[s]++;
+    }
+    const scannerBits = ['vuln', 'semgrep', 'mt']
+      .filter((k) => scannerCounts[k])
+      .map((k) => `<span class="security-group-scanner scanner-${k}" title="${escapeAttr(securityScannerLabel(k))}">${escapeHtml(securityScannerLabel(k))} ${scannerCounts[k]}</span>`)
+      .join('');
     const simple = securityClassSimpleName(className);
     const pkg = securityClassPackageName(className);
     const dexHint = dexFile ? `<span class="muted security-group-dex">${escapeHtml(shortDexLabel(dexFile))}</span>` : '';
@@ -18813,6 +18963,7 @@ function renderUnifiedSecurityFindings(items) {
           ${pkg ? `<span class="muted security-group-pkg">${escapeHtml(pkg)}</span>` : ''}
           <span class="muted security-group-count">${groupItems.length}</span>
           ${sevBits}
+          ${scannerBits}
           ${dexHint}
         </button>
         <button type="button" class="security-group-open" data-open-class="${escapeAttr(className)}" data-dex="${escapeAttr(dexFile)}" title="Open class in Code">Open</button>
@@ -18850,6 +19001,18 @@ function renderSecurityFindingsList() {
         ? `${items.length} finding${items.length === 1 ? '' : 's'}`
         : `${items.length} of ${totalAvailable} shown`;
       countText += ` · ${classCount} class${classCount === 1 ? '' : 'es'}`;
+      if (!securitySourceFilter) {
+        const bits = [];
+        const vulnN = items.filter((i) => i.scanner === 'vuln').length;
+        const sgN = items.filter((i) => i.scanner === 'semgrep').length;
+        const mtN = items.filter((i) => i.scanner === 'mt').length;
+        if (vulnN) bits.push(`${vulnN} vuln`);
+        if (sgN) bits.push(`${sgN} Semgrep`);
+        if (mtN) bits.push(`${mtN} MT`);
+        if (bits.length) countText += ` · ${bits.join(' · ')}`;
+      } else {
+        countText += ` · ${securityScannerLabel(securitySourceFilter)}`;
+      }
       if (securitySeverityFilter) countText += ` · ${securitySeverityLabel(securitySeverityFilter)}`;
       if (securityVerdictFilter === 'tp') countText += ' · TP';
       else if (securityVerdictFilter === 'fp') countText += ' · FP';
@@ -19051,9 +19214,33 @@ function readSecurityFindingNav(el) {
 }
 
 function renderScannerTag(scanner) {
-  const labels = { vuln: 'Vuln', semgrep: 'Semgrep', mt: 'MT' };
-  const label = labels[scanner] || scanner;
-  return `<span class="security-scanner-tag scanner-${escapeAttr(scanner)}">${escapeHtml(label)}</span>`;
+  const meta = {
+    vuln: {
+      short: 'Vuln',
+      label: 'Vuln detectors',
+      title: 'Vulnerability detectors (dex-decompiler): IPC, PendingIntent, WebView, SSL, crypto, storage, …',
+    },
+    semgrep: {
+      short: 'Semgrep',
+      label: 'Semgrep',
+      title: 'Semgrep-style rules (starter / MASTG YAML patterns + native SSA hints)',
+    },
+    mt: {
+      short: 'MT',
+      label: 'MT taint',
+      title: 'Mariana Trench–style global taint solver (sources → sinks with traces)',
+    },
+  };
+  const m = meta[scanner] || { short: scanner, label: scanner, title: scanner };
+  return `<span class="security-scanner-tag scanner-${escapeAttr(scanner)}" title="${escapeAttr(m.title)}"><span class="security-scanner-k">${escapeHtml(m.short)}</span><span class="security-scanner-label">${escapeHtml(m.label)}</span></span>`;
+}
+
+function securityScannerLabel(scanner) {
+  return ({
+    vuln: 'Vuln detectors',
+    semgrep: 'Semgrep',
+    mt: 'MT taint',
+  })[scanner] || scanner;
 }
 
 function renderVulnFindingCard(f, opts = {}) {
@@ -19121,8 +19308,9 @@ function renderVulnFindingCard(f, opts = {}) {
     detailLines.push(`<div class="security-finding-detail muted"><span class="security-finding-k">Details</span> ${escapeHtml(message)}</div>`);
   }
   const verdictCls = verdict ? ` verdict-${verdict}` : '';
-  return `<div class="security-finding ${sev}${verdictCls}" role="button" tabindex="0" data-kind="vuln" data-finding-id="${escapeAttr(findingId)}" data-class="${escapeAttr(f.class_name || '')}" data-method="${escapeAttr(f.method_name || '')}" data-dex="${escapeAttr(f.dex_file || '')}"${sinkOff != null ? ` data-offset="${sinkOff}"` : ''} data-hint="${escapeAttr(hint)}" title="${escapeAttr(tip)}">
+  return `<div class="security-finding ${sev}${verdictCls}" role="button" tabindex="0" data-kind="vuln" data-scanner="vuln" data-finding-id="${escapeAttr(findingId)}" data-class="${escapeAttr(f.class_name || '')}" data-method="${escapeAttr(f.method_name || '')}" data-dex="${escapeAttr(f.dex_file || '')}"${sinkOff != null ? ` data-offset="${sinkOff}"` : ''} data-hint="${escapeAttr(hint)}" title="${escapeAttr(tip)}">
     <div class="security-finding-top">${renderScannerTag('vuln')}<span class="security-badge ${sev}">${escapeHtml(securitySeverityLabel(sev))}</span><span class="security-badge cat-${escapeAttr(catCls)}">${escapeHtml(title)}</span>${cwe ? `<span class="security-badge muted">${escapeHtml(cwe)}</span>` : ''}${dexHint}<span class="security-finding-loc">${escapeHtml(loc)}${sinkHex ? ` @ ${escapeHtml(sinkHex)}` : ''}</span>${renderFindingVerdictControls(findingId)}</div>
+    <div class="security-finding-detail security-finding-scanner"><span class="security-finding-k">Scanner</span> ${escapeHtml(securityScannerLabel('vuln'))} <span class="muted">(native vulnerability detectors)</span></div>
     ${detailLines.join('')}
   </div>`;
 }
@@ -19154,8 +19342,9 @@ function renderMtFindingCard(iss, idx, opts = {}) {
   const dexHint = (!grouped && iss.dex_file) ? `<span class="muted">${escapeHtml(iss.dex_file)}</span>` : '';
   const title = [iss.rule_name, nav.className && nav.methodName ? `${nav.className}#${nav.methodName}` : iss.callable, sinkHex, iss.description].filter(Boolean).join(' · ');
   const verdictCls = verdict ? ` verdict-${verdict}` : '';
-  return `<div class="security-finding sev-med${verdictCls}" role="button" tabindex="0" data-kind="mt" data-finding-id="${escapeAttr(findingId)}" data-class="${escapeAttr(nav.className)}" data-method="${escapeAttr(nav.methodName)}" data-dex="${escapeAttr(nav.dexFile)}"${nav.offset != null ? ` data-offset="${nav.offset}"` : ''} data-hint="${escapeAttr(iss.callable || '')}" title="${escapeAttr(title)}">
-    <div class="security-finding-top">${renderScannerTag('mt')}<span class="security-badge mt">MT ${escapeHtml(String(iss.rule_code ?? ''))}</span>${dexHint}<span class="security-finding-loc">${escapeHtml(loc)}${sinkHex ? ` @ ${escapeHtml(sinkHex)}` : ''}</span>${renderFindingVerdictControls(findingId)}</div>
+  return `<div class="security-finding sev-med${verdictCls}" role="button" tabindex="0" data-kind="mt" data-scanner="mt" data-finding-id="${escapeAttr(findingId)}" data-class="${escapeAttr(nav.className)}" data-method="${escapeAttr(nav.methodName)}" data-dex="${escapeAttr(nav.dexFile)}"${nav.offset != null ? ` data-offset="${nav.offset}"` : ''} data-hint="${escapeAttr(iss.callable || '')}" title="${escapeAttr(title)}">
+    <div class="security-finding-top">${renderScannerTag('mt')}<span class="security-badge mt">rule ${escapeHtml(String(iss.rule_code ?? ''))}</span>${dexHint}<span class="security-finding-loc">${escapeHtml(loc)}${sinkHex ? ` @ ${escapeHtml(sinkHex)}` : ''}</span>${renderFindingVerdictControls(findingId)}</div>
+    <div class="security-finding-detail security-finding-scanner"><span class="security-finding-k">Scanner</span> ${escapeHtml(securityScannerLabel('mt'))} <span class="muted">(Mariana Trench–style taint)</span></div>
     <div class="security-finding-detail"><span class="security-finding-k">Rule</span> ${escapeHtml(iss.rule_name || 'rule')}</div>
     <div class="security-finding-detail"><span class="security-finding-k">Flow</span> ${escapeHtml(iss.source_kind || '?')} → ${escapeHtml(iss.sink_kind || '?')}</div>
     ${iss.description ? `<div class="security-finding-detail muted">${escapeHtml(iss.description)}</div>` : ''}
@@ -19193,11 +19382,12 @@ function renderSemgrepFindingCard(f, opts = {}) {
     detailLines.push(`<div class="security-finding-detail muted">${escapeHtml(meta.join(' · '))}</div>`);
   }
   const navAttrs = isXml
-    ? `data-kind="semgrep-xml" data-class="${escapeAttr(f.class_name || f.dex_file || '')}" data-method="(xml)"`
-    : `data-kind="semgrep" data-class="${escapeAttr(f.class_name || '')}" data-method="${escapeAttr(f.method_name || '')}" data-dex="${escapeAttr(f.dex_file || '')}"${sinkOff != null ? ` data-offset="${sinkOff}"` : ''} data-hint="${escapeAttr(hint)}"`;
+    ? `data-kind="semgrep-xml" data-scanner="semgrep" data-class="${escapeAttr(f.class_name || f.dex_file || '')}" data-method="(xml)"`
+    : `data-kind="semgrep" data-scanner="semgrep" data-class="${escapeAttr(f.class_name || '')}" data-method="${escapeAttr(f.method_name || '')}" data-dex="${escapeAttr(f.dex_file || '')}"${sinkOff != null ? ` data-offset="${sinkOff}"` : ''} data-hint="${escapeAttr(hint)}"`;
   const verdictCls = verdict ? ` verdict-${verdict}` : '';
   return `<div class="security-finding ${sevCls}${verdictCls}" role="button" tabindex="0" data-finding-id="${escapeAttr(findingId)}" ${navAttrs} title="${escapeAttr(title)}">
     <div class="security-finding-top">${renderScannerTag('semgrep')}<span class="security-badge semgrep">${escapeHtml(sev || 'INFO')}</span><span class="security-badge cat-semgrep">${escapeHtml(f.rule_id || 'rule')}</span>${dexHint}<span class="security-finding-loc">${escapeHtml(loc)}${sinkHex ? ` @ ${escapeHtml(sinkHex)}` : ''}</span>${renderFindingVerdictControls(findingId)}</div>
+    <div class="security-finding-detail security-finding-scanner"><span class="security-finding-k">Scanner</span> ${escapeHtml(securityScannerLabel('semgrep'))} <span class="muted">${isXml ? '(XML / manifest rules)' : '(DEX pattern + native rules)'}</span></div>
     ${detailLines.join('')}
   </div>`;
 }

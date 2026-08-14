@@ -12,6 +12,7 @@ import initWasm, {
   find_string_usages,
   find_method_callers,
   find_method_callees,
+  find_method_call_traces,
   find_field_xrefs,
   index_dex_classes_bytes,
   get_dex_strings,
@@ -125,6 +126,13 @@ function handleJob(job) {
     } else if (op === 'find_method_callers') {
       const u8 = toU8(job.bytes);
       raw = find_method_callers(
+        u8,
+        Number(job.classIdx) >>> 0,
+        Number(job.methodIdx) >>> 0
+      );
+    } else if (op === 'find_method_call_traces') {
+      const u8 = toU8(job.bytes);
+      raw = find_method_call_traces(
         u8,
         Number(job.classIdx) >>> 0,
         Number(job.methodIdx) >>> 0

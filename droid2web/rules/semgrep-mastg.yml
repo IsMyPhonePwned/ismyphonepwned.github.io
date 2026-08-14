@@ -1,6 +1,6 @@
 # OWASP MASTG Android Semgrep rules (bundled for droid2web)
 # Source: dex-decompiler/rules/semgrep/android/mastg/
-# Regenerate: python3 scripts/merge_android_semgrep_rules.py
+# Regenerate: python3 droid2web/scripts/merge_android_semgrep_rules.py
 #
 rules:
 

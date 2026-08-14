@@ -3648,6 +3648,50 @@ body.cfg-fullscreen #cfg-graph-wrap {
 .method-callers-xrefs .method-caller-ref:hover { color: var(--accent); text-decoration: underline; }
 .method-callers-xrefs .field-xref-ref { color: color-mix(in srgb, var(--syn-data) 85%, var(--text)); }
 .method-callers-xrefs .field-xref-ref:hover { color: var(--accent); text-decoration: underline; }
+.call-trace-btn {
+  margin-top: 0.25rem;
+}
+.call-trace-panel {
+  margin-top: 0.35rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-2) 80%, var(--bg));
+  max-height: 14rem;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.call-trace-panel[hidden] { display: none !important; }
+.call-trace-note,
+.call-trace-more,
+.call-trace-empty {
+  font-size: 0.72rem;
+  margin-bottom: 0.3rem;
+}
+.call-trace-path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.2rem;
+  padding: 0.2rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+.call-trace-path:first-of-type { border-top: 0; }
+.call-trace-path-n {
+  flex-shrink: 0;
+  min-width: 1.6rem;
+}
+.call-trace-arrow {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+.call-trace-frame.is-target {
+  font-weight: 700;
+  color: var(--accent);
+}
 .field-xrefs-panel {
   margin-bottom: 0.35rem;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
@@ -4708,30 +4752,69 @@ button.security-stat-card.active {
   border-style: dashed;
 }
 .security-scanner-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 0.1rem 0.35rem;
-  border-radius: 3px;
+  letter-spacing: 0.04em;
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
   border: 1px solid var(--border);
   flex-shrink: 0;
   line-height: 1.2;
+  white-space: nowrap;
+}
+.security-scanner-tag .security-scanner-k {
+  opacity: 0.85;
+}
+.security-scanner-tag .security-scanner-label {
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-weight: 600;
+  font-size: 0.68rem;
 }
 .security-scanner-tag.scanner-vuln {
   color: var(--orange);
-  border-color: color-mix(in srgb, var(--orange) 40%, var(--border));
-  background: color-mix(in srgb, var(--orange) 12%, transparent);
+  border-color: color-mix(in srgb, var(--orange) 45%, var(--border));
+  background: color-mix(in srgb, var(--orange) 14%, transparent);
 }
 .security-scanner-tag.scanner-semgrep {
-  color: var(--purple);
-  border-color: color-mix(in srgb, var(--purple) 40%, var(--border));
-  background: color-mix(in srgb, var(--purple) 12%, transparent);
+  color: color-mix(in srgb, #9b6dff 70%, var(--accent));
+  border-color: color-mix(in srgb, #9b6dff 40%, var(--border));
+  background: color-mix(in srgb, #9b6dff 12%, transparent);
 }
 .security-scanner-tag.scanner-mt {
   color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.security-finding-scanner {
+  margin-top: 0.15rem;
+}
+.security-group-scanner {
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 0.08rem 0.3rem;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.security-group-scanner.scanner-vuln {
+  color: var(--orange);
+  border-color: color-mix(in srgb, var(--orange) 35%, var(--border));
+}
+.security-group-scanner.scanner-semgrep {
+  color: color-mix(in srgb, #9b6dff 70%, var(--accent));
+  border-color: color-mix(in srgb, #9b6dff 35%, var(--border));
+}
+.security-group-scanner.scanner-mt {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+@media (max-width: 640px) {
+  .security-scanner-tag .security-scanner-k { display: none; }
 }
 .security-badge {
   display: inline-block;

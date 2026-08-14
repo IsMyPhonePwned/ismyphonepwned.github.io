@@ -28,6 +28,20 @@ export function find_field_xrefs(bytes, field_idx) {
 }
 
 /**
+ * Full reverse call traces (root → … → target) for a method.
+ * @param {Uint8Array} bytes
+ * @param {number} class_idx
+ * @param {number} method_idx
+ * @returns {any}
+ */
+export function find_method_call_traces(bytes, class_idx, method_idx) {
+    const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.find_method_call_traces(ptr0, len0, class_idx, method_idx);
+    return ret;
+}
+
+/**
  * Methods invoked from (class_idx, method_idx).
  * @param {Uint8Array} bytes
  * @param {number} class_idx

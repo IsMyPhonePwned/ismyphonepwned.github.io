@@ -20,7 +20,7 @@
     <div class="header-content">
       <img src="logo.png" alt="" class="app-logo" width="28" height="28">
       <div class="header-title-block">
-        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.2.0</span></h1>
+        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.0</span> <span class="app-date" id="app-date" title="Release date">18 Aug 2026</span></h1>
         <p class="subtitle">APK, DEX, AXML, ARSC inspection in the browser</p>
       </div>
     </div>
@@ -578,7 +578,7 @@
           <div class="security-panel" id="security-panel">
             <div class="security-toolbar">
               <div class="security-actions">
-                <button type="button" class="btn btn-primary" id="security-scan" title="Run vulnerability detectors (incl. PITracker PendingIntent, SSL, WebView, crypto…), Semgrep, and MT taint analysis">Scan</button>
+                <button type="button" class="btn btn-primary" id="security-scan" title="Run vulnerability detectors (PendingIntent, ZipSlip, Custom Tabs, broadcasts, SSL, WebView, crypto…), Semgrep, and MT taint analysis">Scan</button>
                 <button type="button" class="btn btn-small" id="security-rules-toggle" title="View, edit, or create Semgrep rules">Rules</button>
                 <button type="button" class="btn btn-small" id="security-clear-cache" title="Clear cached results for this file">Clear cache</button>
                 <button type="button" class="btn btn-small" id="security-export-storage" title="Download analysis localStorage (scans, TP/FP, rules, renames, notes)">Export</button>
@@ -681,7 +681,7 @@
         </section>
         <section class="settings-section">
           <h4 class="settings-section-title">Security scans</h4>
-          <p class="settings-hint muted">Scan runs three local engines from dex-decompiler: vulnerability detectors (IPC, PendingIntent/PITracker, WebView, SSL, crypto, storage, trackers, …), Semgrep-style rules (starter + OWASP MASTG), and Mariana Trench–style taint solving.</p>
+          <p class="settings-hint muted">Scan runs three local engines from dex-decompiler: vulnerability detectors (IPC, PendingIntent/PITracker, ZipSlip, Custom Tabs, nested Intent redirect, broadcasts, WebView, SSL, crypto, storage, trackers, …), Semgrep-style rules (starter + OWASP MASTG), and Mariana Trench–style taint solving (including field/extra breadcrumbs on traces).</p>
         </section>
         <section class="settings-section">
           <h4 class="settings-section-title">Contact</h4>

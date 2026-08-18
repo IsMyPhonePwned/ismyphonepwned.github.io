@@ -5,10 +5,21 @@
 
 import initWasm, { parse_file, parse_dex, parse_apk, parse_axml, parse_arsc, parse_arsc_resource_map, parse_arsc_resource_tables, get_apk_file_content, get_dex_method, decompile_dex_class, run_dex_emulator, run_dex_emulator_with_history, scan_vulns, scan_semgrep, scan_semgrep_xml, get_semgrep_builtin_rules, parse_semgrep_rules, taint_solve } from './pkg/droid2web.js';
 import { createHexEditor } from './hex-editor.js';
-import { APP_VERSION } from './version.js';
+import { APP_VERSION, APP_DATE } from './version.js';
 
 const LOG = '[droid2web]';
+function formatAppDateLabel(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '').trim());
+  if (!m) return String(iso || '');
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = months[Number(m[2]) - 1] || m[2];
+  return `${Number(m[3])} ${month} ${m[1]}`;
+}
+const APP_DATE_LABEL = formatAppDateLabel(APP_DATE);
 const APP_VERSION_LABEL = `v${APP_VERSION}`;
+const APP_RELEASE_LABEL = APP_DATE_LABEL
+  ? `${APP_VERSION_LABEL} · ${APP_DATE_LABEL}`
+  : APP_VERSION_LABEL;
 const PARSE_WORKER_TIMEOUT_MS = 120000;
 /** Single-method decompile on huge DEXes (Facebook-scale) can take several minutes. */
 const DECOMPILE_WORKER_TIMEOUT_MS = 300000;
@@ -534,14 +545,19 @@ function wireDebugConsoleUi() {
   flushDebugConsole();
 }
 
-debug(`main.js loaded (${APP_VERSION_LABEL})`);
+debug(`main.js loaded (${APP_RELEASE_LABEL})`);
 {
   const verEl = document.getElementById('app-version');
   if (verEl) {
     verEl.textContent = APP_VERSION_LABEL;
-    verEl.title = `droid2web ${APP_VERSION_LABEL}`;
+    verEl.title = `droid2web ${APP_RELEASE_LABEL}`;
   }
-  try { document.title = `droid2web ${APP_VERSION_LABEL} — APK, DEX, AXML, ARSC Inspector`; } catch (_) {}
+  const dateEl = document.getElementById('app-date');
+  if (dateEl) {
+    dateEl.textContent = APP_DATE_LABEL;
+    dateEl.title = `Released ${APP_DATE}`;
+  }
+  try { document.title = `droid2web ${APP_RELEASE_LABEL} — APK, DEX, AXML, ARSC Inspector`; } catch (_) {}
 }
 // Warm main-thread WASM in the background so the first APK/DEX open is not blocked on fetch.
 ensureMainWasm()
@@ -8735,7 +8751,7 @@ function updateStatusBar() {
       );
     }
     statusbarInner.innerHTML = bits.join('<span class="statusbar-sep">|</span>')
-      + `<span class="statusbar-brand">droid2web ${APP_VERSION_LABEL} · WASM</span>`;
+      + `<span class="statusbar-brand">droid2web ${APP_RELEASE_LABEL} · WASM</span>`;
     statusbarInner.classList.toggle('is-busy', busy);
     return;
   }
@@ -8836,7 +8852,7 @@ function updateStatusBar() {
   }
 
   const html = parts.map((p, i) => (i === 0 ? p : `<span class="statusbar-sep">|</span>${p}`)).join('');
-  statusbarInner.innerHTML = html + `<span class="statusbar-brand">droid2web ${APP_VERSION_LABEL} · WASM</span>`;
+  statusbarInner.innerHTML = html + `<span class="statusbar-brand">droid2web ${APP_RELEASE_LABEL} · WASM</span>`;
   statusbarInner.classList.toggle('is-busy', busy);
   let scanBusy = false;
   try { scanBusy = !!securityScanBusy; } catch (_) {}
@@ -18393,10 +18409,10 @@ function securitySeverityClass(catOrSev) {
   if (s === 'low') return 'sev-low';
   if (s === 'info' || s === 'informational') return 'sev-info';
   const c = securityCategoryClass(catOrSev);
-  if (/rce|process.?exec|code.?exec|sqlcipher|sql_injection|command|spoof|pending|path.?trav|deserial|ssl_trust|pinning|reflection|credential_broadcast|uri_permission|world_readable/.test(c)) {
+  if (/rce|process.?exec|code.?exec|sqlcipher|sql_injection|command|spoof|pending|path.?trav|zip_slip|deserial|ssl_trust|pinning|reflection|credential_broadcast|uri_permission|world_readable|package_context|parse_uri|grant_smuggle/.test(c)) {
     return 'sev-high';
   }
-  if (/webview|intent|ipc|injection|biometric|keystore|broadcast|pick_file|host_check|storage/.test(c)) {
+  if (/webview|intent|ipc|injection|biometric|keystore|broadcast|pick_file|host_check|storage|custom_tabs|logcat/.test(c)) {
     return 'sev-med';
   }
   if (/secret|hardcoded|crypto|ssl|cert|logging|tracker/.test(c)) return 'sev-low';
@@ -18412,17 +18428,31 @@ function formatCategoryLabel(cat) {
   const c = String(cat || 'other');
   const pretty = {
     intent_spoofing: 'Intent spoofing',
+    intent_redirect_nested: 'Nested Intent redirect',
+    intent_redirect_grant_smuggle: 'URI FLAG_GRANT smuggling',
     ipc_intent_validation: 'IPC Intent validation',
     rce_dynamic_loading: 'Dynamic code loading',
     rce_process_exec: 'Process execution',
+    rce_package_context: 'createPackageContext ACE',
     insecure_logging: 'Insecure logging',
     sql_injection: 'SQL injection',
+    provider_sql_injection: 'Provider SQL injection',
     webview_unsafe: 'Unsafe WebView',
+    webview_unsafe_url: 'Unsafe WebView URL',
+    webview_javascript_interface: 'WebView JS interface',
+    webview_file_access: 'WebView file access',
     webview_js_bridge_user_url: 'JS bridge + user URL',
+    webview_cookie_exfil: 'WebView cookie exfil',
     webview_weak_host_check: 'Weak host check',
+    webview_resource_response_file: 'WebResourceResponse file leak',
+    deeplink_webview_js_bridge: 'Deeplink → WebView → JS bridge',
+    custom_tabs_intent_url: 'Custom Tabs URL from Intent',
     hardcoded_secrets_review: 'Possible secrets',
     pending_intent: 'PendingIntent',
     path_traversal: 'Path traversal',
+    provider_path_traversal: 'Provider path traversal',
+    zip_slip: 'ZIP path traversal (ZipSlip)',
+    logcat_external_storage: 'Logcat to external storage',
     weak_crypto: 'Weak crypto',
     unsafe_deserialization: 'Unsafe deserialization',
     world_readable_storage: 'World-readable storage',
@@ -18432,13 +18462,20 @@ function formatCategoryLabel(cat) {
     reflection_rce: 'Reflection RCE',
     sqlcipher_hardcoded_passphrase: 'SQLCipher passphrase',
     implicit_intent_launch: 'Implicit Intent',
+    implicit_intent_sensitive: 'Implicit Intent + secrets',
     biometric_without_crypto: 'Biometric without crypto',
     keystore_no_user_auth: 'Keystore without user auth',
     tracker_fingerprint_api: 'Tracker / ads API',
     credential_broadcast: 'Credential broadcast',
+    sensitive_broadcast: 'Sensitive broadcast extras',
+    broadcast_intent_redirect: 'Broadcast Intent redirect',
+    command_receiver: 'Command BroadcastReceiver',
+    exported_receiver_intent_redirect: 'Exported receiver redirect',
     pick_file_theft: 'Pick-file theft',
     uri_permission_result_forward: 'URI grant via setResult',
     uri_permission_grant_flow: 'URI grant flow',
+    uri_permission_setresult_passthrough: 'setResult(getIntent()) passthrough',
+    intent_parse_uri_redirect: 'Intent.parseUri redirect',
   };
   return pretty[c] || c.replace(/_/g, ' ');
 }
@@ -19218,7 +19255,7 @@ function renderScannerTag(scanner) {
     vuln: {
       short: 'Vuln',
       label: 'Vuln detectors',
-      title: 'Vulnerability detectors (dex-decompiler): IPC, PendingIntent, WebView, SSL, crypto, storage, …',
+      title: 'Vulnerability detectors (dex-decompiler): IPC, PendingIntent, ZipSlip, Custom Tabs, broadcasts, WebView, SSL, crypto, storage, …',
     },
     semgrep: {
       short: 'Semgrep',
@@ -19228,7 +19265,7 @@ function renderScannerTag(scanner) {
     mt: {
       short: 'MT',
       label: 'MT taint',
-      title: 'Mariana Trench–style global taint solver (sources → sinks with traces)',
+      title: 'Mariana Trench–style global taint solver (sources → sinks, heap/field + extra breadcrumbs)',
     },
   };
   const m = meta[scanner] || { short: scanner, label: scanner, title: scanner };
@@ -19336,7 +19373,9 @@ function renderMtFindingCard(iss, idx, opts = {}) {
     ? `<button type="button" class="security-trace-toggle" data-trace-toggle="${traceId}">Show trace (${frames.length})</button>
        <ol class="security-trace" id="${traceId}" hidden>${frames.map((t) => {
          const off = t.offset != null ? ` @ ${formatSecHexOffset(t.offset)}` : '';
-         return `<li><strong>${escapeHtml(t.class_name || '')}#${escapeHtml(t.method_name || '')}</strong><code>${escapeHtml(off)}</code> <span class="muted">[${escapeHtml(t.kind || '')}]</span> ${escapeHtml(t.description || '')}</li>`;
+         const extra = t.extra ? ` <code>${escapeHtml(t.extra)}</code>` : '';
+         const field = t.field ? ` <code>${escapeHtml(t.field)}</code>` : '';
+         return `<li><strong>${escapeHtml(t.class_name || '')}#${escapeHtml(t.method_name || '')}</strong><code>${escapeHtml(off)}</code> <span class="muted">[${escapeHtml(t.kind || '')}]</span> ${escapeHtml(t.description || '')}${extra}${field}</li>`;
        }).join('')}</ol>`
     : '';
   const dexHint = (!grouped && iss.dex_file) ? `<span class="muted">${escapeHtml(iss.dex_file)}</span>` : '';

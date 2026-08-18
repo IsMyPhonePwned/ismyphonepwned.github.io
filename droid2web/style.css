@@ -421,13 +421,17 @@ header {
   letter-spacing: -0.02em;
   line-height: 1.2;
 }
-.app-version {
+.app-version,
+.app-date {
   font-size: 0.68em;
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--text-muted);
   vertical-align: middle;
   margin-left: 0.15rem;
+}
+.app-date {
+  font-weight: 500;
 }
 .subtitle {
   color: var(--text-muted);

@@ -20,7 +20,7 @@
     <div class="header-content">
       <img src="logo.png" alt="" class="app-logo" width="28" height="28">
       <div class="header-title-block">
-        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.1</span> <span class="app-date" id="app-date" title="Release date">19 Aug 2026</span></h1>
+        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.2</span> <span class="app-date" id="app-date" title="Release date">19 Aug 2026</span></h1>
         <p class="subtitle">APK, DEX, AXML, ARSC inspection in the browser</p>
       </div>
     </div>
@@ -207,6 +207,7 @@
                 <span class="pane-search-count muted" id="source-search-count"></span>
                 <button type="button" class="btn btn-small" id="source-fold-all" title="Collapse all blocks" aria-label="Collapse all">⊟</button>
                 <button type="button" class="btn btn-small" id="source-unfold-all" title="Expand all blocks" aria-label="Expand all">⊞</button>
+                <button type="button" class="btn btn-small" id="source-copy-btn" title="Copy decompiled source to clipboard" aria-label="Copy source" disabled>Copy</button>
                 <button type="button" class="btn btn-small source-export-btn" id="source-export-btn" title="Download decompiled Java (class / package / DEX)" aria-label="Export source" aria-haspopup="menu">⬇</button>
               </div>
             </div>
@@ -375,6 +376,7 @@
                   <span class="pane-meta muted" id="source-meta"></span>
                 </button>
                 <div class="dock-header-actions" id="source-dock-actions">
+                  <button type="button" class="btn btn-small" id="source-dock-copy-btn" title="Copy decompiled source to clipboard" aria-label="Copy source" disabled>Copy</button>
                   <button type="button" class="btn btn-small btn-icon dock-maximize-btn" id="source-maximize-btn" title="Maximize source (Esc to restore)" aria-label="Maximize source" aria-pressed="false">
                     <svg class="dock-max-icon dock-max-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
                     <svg class="dock-max-icon dock-max-restore" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>

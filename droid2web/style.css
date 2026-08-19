@@ -6603,6 +6603,87 @@ button.info-res-alt {
 }
 .info-cert { margin-top: 0.35rem; padding: 0.35rem 0.4rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); }
 .info-cert .info-section { border-top: 0; margin-top: 0; padding-top: 0; }
+.info-mono { font-family: var(--mono); font-size: 0.78rem; word-break: break-all; }
+.meta-inf-viewer { height: 100%; }
+.meta-inf-scroll { padding: 0.5rem 0.65rem 1rem; }
+.meta-inf-summary { margin-bottom: 0.65rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); }
+.meta-inf-filter-wrap { margin: 0.35rem 0 0.65rem; }
+.meta-inf-filter {
+  width: 100%;
+  max-width: 28rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.82rem;
+}
+.meta-inf-section { margin-top: 0.75rem; }
+.meta-inf-section-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 0.35rem;
+}
+.meta-inf-attr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+.meta-inf-attr-table th {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.2rem 0.65rem 0.2rem 0;
+  color: var(--muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.meta-inf-attr-table td { padding: 0.2rem 0; vertical-align: top; }
+.meta-inf-attr-table.compact th { font-size: 0.72rem; }
+.meta-inf-entry-list { display: flex; flex-direction: column; gap: 0.35rem; }
+.meta-inf-entry {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+  padding: 0.25rem 0.45rem 0.35rem;
+}
+.meta-inf-entry summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+  align-items: baseline;
+}
+.meta-inf-entry summary::-webkit-details-marker { display: none; }
+.meta-inf-entry-name { font-family: var(--mono); font-size: 0.78rem; word-break: break-all; }
+.meta-inf-entry-digest { font-size: 0.68rem; }
+.meta-inf-digest {
+  margin: 0.35rem 0 0.15rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+.meta-inf-cert-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.meta-inf-raw {
+  margin: 0;
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  white-space: pre-wrap;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  max-height: 70vh;
+  overflow: auto;
+}
+.meta-inf-empty { padding: 0.35rem 0; font-size: 0.82rem; }
+.tree-item.apk-file-manifest .apk-file-kind { color: var(--accent); }
+.tree-item.apk-file-signature .apk-file-kind { color: #dda95b; }
+.tree-item.apk-file-pkcs7 .apk-file-kind { color: #4ec9b0; }
 .info-perm-row .info-value { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
 .info-perm-name { font-family: var(--mono); font-size: 0.78rem; word-break: break-all; }
 .info-perm-uses {

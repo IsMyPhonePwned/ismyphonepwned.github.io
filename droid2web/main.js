@@ -3,8 +3,9 @@
  * Loads WASM, parses files, displays bytecode + source (DEX) and manifest/XML (APK/AXML/ARSC)
  */
 
-import initWasm, { parse_file, parse_dex, parse_apk, parse_axml, parse_arsc, parse_arsc_resource_map, parse_arsc_resource_tables, get_apk_file_content, get_dex_method, decompile_dex_class, run_dex_emulator, run_dex_emulator_with_history, scan_vulns, scan_semgrep, scan_semgrep_xml, get_semgrep_builtin_rules, parse_semgrep_rules, taint_solve } from './pkg/droid2web.js';
+import initWasm, { parse_file, parse_dex, parse_apk, parse_axml, parse_arsc, parse_arsc_resource_map, parse_arsc_resource_tables, get_apk_file_content, get_dex_method, decompile_dex_class, run_dex_emulator, run_dex_emulator_with_history, scan_vulns, scan_semgrep, scan_semgrep_xml, get_semgrep_builtin_rules, parse_semgrep_rules, taint_solve, parse_meta_inf_file } from './pkg/droid2web.js';
 import { createHexEditor } from './hex-editor.js';
+import { mountMetaInfViewer, isMetaInfFile, metaInfTreeIcon } from './meta-inf-viewer.js';
 import { APP_VERSION, APP_DATE } from './version.js';
 import { findSourceCallSites, findSourceFieldSites } from './java-source-sites.js';
 import { initDexDiff } from './dex-diff.js';
@@ -1103,7 +1104,7 @@ let showAndroidFrameworkClasses = (() => {
 })();
 
 /** When viewing an APK: the currently selected extracted file (DEX/PNG/ARSC/AXML). Does not replace currentData. */
-let apkExtractedFile = null;  // null | { name, kind: 'dex'|'axml'|'arsc'|'png'|'binary', data?, bytes? }
+let apkExtractedFile = null;  // null | { name, kind: 'dex'|'axml'|'arsc'|'png'|'metainf'|'binary', data?, bytes? }
 /** Left panel mode for APK: class browser (default) or raw file tree. */
 let apkLeftMode = 'classes';
 /**
@@ -5949,6 +5950,36 @@ document.getElementById('source-export-btn')?.addEventListener('click', (e) => {
   const r = e.currentTarget.getBoundingClientRect();
   openSourceExportMenu(r.left, r.bottom + 4);
 });
+document.getElementById('source-copy-btn')?.addEventListener('click', (e) => {
+  copySourceCode(e.currentTarget);
+});
+document.getElementById('source-dock-copy-btn')?.addEventListener('click', (e) => {
+  copySourceCode(e.currentTarget);
+});
+
+/** Plain decompiled Java currently shown in the source pane (ignores HTML markup / folds). */
+function getSourcePlainText() {
+  if (currentSourceRaw) return currentSourceRaw;
+  if (Array.isArray(currentSourceBlocks) && currentSourceBlocks.length > 0) {
+    return currentSourceBlocks.map((b) => b.raw).filter(Boolean).join('\n\n');
+  }
+  if (!sourceCode) return '';
+  return (sourceCode.innerText || sourceCode.textContent || '').trim();
+}
+
+function updateSourceCopyButtons() {
+  const hasSource = !!getSourcePlainText();
+  for (const id of ['source-copy-btn', 'source-dock-copy-btn']) {
+    const btn = document.getElementById(id);
+    if (btn) btn.disabled = !hasSource;
+  }
+}
+
+async function copySourceCode(feedbackBtn) {
+  const text = getSourcePlainText();
+  if (!text) return;
+  await copyTextToClipboard(text, 'Copied', feedbackBtn);
+}
 
 /* Dock collapse + bytecode search / hex toggle */
 (function initCodeViewChrome() {
@@ -8245,7 +8276,7 @@ function updateStringsActionButtons() {
   if (stringsExportBtn) stringsExportBtn.disabled = !hasFiltered;
 }
 
-async function copyTextToClipboard(text, okMsg) {
+async function copyTextToClipboard(text, okMsg, feedbackBtn) {
   try {
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);
@@ -8262,7 +8293,7 @@ async function copyTextToClipboard(text, okMsg) {
     if (okMsg && typeof setSecurityStatus === 'function') {
       /* no-op — prefer subtle UI */
     }
-    const btn = stringsCopyBtn;
+    const btn = feedbackBtn || stringsCopyBtn;
     if (btn && okMsg) {
       const prev = btn.textContent;
       btn.textContent = 'Copied';
@@ -13470,6 +13501,7 @@ function renderSourceWithSearch() {
       if (target && sourceCode.parentElement) target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
     restoreSourceIdentHighlight();
+    updateSourceCopyButtons();
     return;
   }
   if (!currentSourceRaw) {
@@ -13478,6 +13510,7 @@ function renderSourceWithSearch() {
     if (sourceSearchCount) sourceSearchCount.textContent = '';
     sourceSearchMatches = [];
     sourceIdentHighlight = null;
+    updateSourceCopyButtons();
     return;
   }
   const looksLikeJava = currentSourceRaw.length > 20 && (
@@ -13525,6 +13558,7 @@ function renderSourceWithSearch() {
     if (target && sourceCode.parentElement) target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
   restoreSourceIdentHighlight();
+  updateSourceCopyButtons();
 }
 
 /** Set source tab content: when el is the Code tab source pane, store raw and render with highlight + search. */
@@ -14544,8 +14578,11 @@ function renderApkTree(node, depth = 0) {
       const path = val._path;
       const size = val._size;
       const ext = path.split('.').pop().toLowerCase();
-      const icon = ext === 'dex' ? ' dex' : ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'gif' || ext === 'webp' ? ' img' : ext === 'xml' ? ' xml' : ext === 'arsc' ? ' arsc' : '';
-      html += `<li><div class="tree-item apk-file" data-name="${escapeAttr(path)}" title="${escapeAttr(path)}">${escapeHtml(seg)}${icon ? ' <span class="muted">[' + icon.trim() + ']</span>' : ''} <span class="muted">(${size})</span></div></li>`;
+      const metaIcon = path.toUpperCase().startsWith('META-INF/') ? metaInfTreeIcon(path) : '';
+      const icon = metaIcon
+        || (ext === 'dex' ? ' dex' : ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'gif' || ext === 'webp' ? ' img' : ext === 'xml' ? ' xml' : ext === 'arsc' ? ' arsc' : '');
+      const typeHint = metaIcon === ' mf' ? 'manifest' : metaIcon === ' sf' ? 'signature' : metaIcon === ' sign' ? 'pkcs7' : '';
+      html += `<li><div class="tree-item apk-file${typeHint ? ` apk-file-${typeHint}` : ''}" data-name="${escapeAttr(path)}" title="${escapeAttr(path)}">${escapeHtml(seg)}${icon ? ' <span class="muted apk-file-kind">[' + icon.trim() + ']</span>' : ''} <span class="muted">(${size})</span></div></li>`;
     } else {
       const childHtml = renderApkTree(val, depth + 1);
       html += `<li><div class="tree-item apk-folder" data-folder="${escapeAttr(seg)}"><span class="arrow collapsed"></span>${escapeHtml(seg)}</div>${childHtml.replace(/^<ul class="tree">/, '<ul class="tree" style="display:none">')}</li>`;
@@ -16573,6 +16610,24 @@ async function showApkFile(name) {
     }
     apkExtractedFileRawBytes = bytes;
     debug('[showApkFile] extracted', name, 'size=', bytes.length);
+
+    if (isMetaInfFile(name)) {
+      let metaData = { kind: 'text', raw: '' };
+      try {
+        metaData = JSON.parse(parse_meta_inf_file(name, bytes));
+      } catch (e) {
+        warn('[showApkFile] parse_meta_inf_file failed', name, e);
+      }
+      apkExtractedFile = { name, kind: 'metainf', data: metaData, bytes };
+      apkFileCache[name] = apkExtractedFile;
+      renderApkExtractedContent();
+      treeContent.querySelectorAll('.tree-item.apk-file').forEach(el => {
+        el.classList.toggle('selected', el.dataset.name === name);
+      });
+      recordPerf('showApkFile', nowMs() - tShowAll, 'metainf');
+      return;
+    }
+
     if (name.toLowerCase().endsWith('.dex') && bytes.length > 4 * 1024 * 1024) {
       setWorkNotice(
         `Parsing ${short}`,
@@ -16762,6 +16817,10 @@ function renderContentIntoFileTab(tabId, ef) {
       title: ef.name || 'resources.arsc',
       overviewXml: ef.data?.overview_xml || buildArscOverviewXml(pkgs),
     });
+    return;
+  }
+  if (ef.kind === 'metainf') {
+    mountMetaInfViewer(container, { name: ef.name, data: ef.data, bytes: ef.bytes });
     return;
   }
   if (ef.kind === 'png' && ef.bytes) {
@@ -16955,6 +17014,15 @@ function renderApkExtractedContent() {
     if (lastApkImageBlobUrl) { URL.revokeObjectURL(lastApkImageBlobUrl); lastApkImageBlobUrl = null; }
     addOrShowFileTab(ef);
     bytecodeListing.innerHTML = '<div class="muted">Viewing resource — see file tab</div>';
+    sourceCode.innerHTML = '';
+    setRawTabHex(ef);
+    if (apkManifestXml != null) showApkManifestInViewer();
+    return;
+  }
+  if (ef.kind === 'metainf') {
+
+    addOrShowFileTab(ef);
+    bytecodeListing.innerHTML = '<div class="muted">Viewing META-INF signing file — see file tab</div>';
     sourceCode.innerHTML = '';
     setRawTabHex(ef);
     if (apkManifestXml != null) showApkManifestInViewer();

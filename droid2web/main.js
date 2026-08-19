@@ -6,6 +6,8 @@
 import initWasm, { parse_file, parse_dex, parse_apk, parse_axml, parse_arsc, parse_arsc_resource_map, parse_arsc_resource_tables, get_apk_file_content, get_dex_method, decompile_dex_class, run_dex_emulator, run_dex_emulator_with_history, scan_vulns, scan_semgrep, scan_semgrep_xml, get_semgrep_builtin_rules, parse_semgrep_rules, taint_solve } from './pkg/droid2web.js';
 import { createHexEditor } from './hex-editor.js';
 import { APP_VERSION, APP_DATE } from './version.js';
+import { findSourceCallSites, findSourceFieldSites } from './java-source-sites.js';
+import { initDexDiff } from './dex-diff.js';
 
 const LOG = '[droid2web]';
 function formatAppDateLabel(iso) {
@@ -1070,6 +1072,8 @@ function closeHelpModal() {
 // State
 let currentData = null;
 let currentType = null;  // 'dex' | 'apk' | 'axml' | 'arsc'
+/** DEX compare UI API (filled after initDexDiff). */
+let dexDiffApi = null;
 let currentApkBytes = null;  // For extracting files from APK
 /** Cached resources.arsc id → R.type.name map for the current APK (plain object). */
 let apkResourceMap = null;
@@ -5446,6 +5450,7 @@ const PERMANENT_CENTER_TABS = [
   { id: 'info-tab', label: 'Info' },
   { id: 'strings-tab', label: 'Strings' },
   { id: 'security-tab', label: 'Security' },
+  { id: 'diff-tab', label: 'Compare' },
 ];
 
 function getVisiblePermanentCenterTabs() {
@@ -5558,6 +5563,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     if (tab === 'components-tab') {
       renderComponentsTab();
     }
+    if (tab === 'diff-tab') dexDiffApi?.syncLoadedUi?.();
   });
 });
 
@@ -8727,6 +8733,7 @@ function collectStatusBarActivities() {
 }
 
 function updateStatusBar() {
+  try { dexDiffApi?.syncLoadedUi?.(); } catch (_) {}
   if (!statusbarInner) return;
   const parts = [];
   const activities = collectStatusBarActivities();
@@ -12505,11 +12512,6 @@ function highlightJavaLine(line, searchTerm) {
 
 /* ===== Source call links (click callee → open method / CFG) ===== */
 
-const SOURCE_CALL_SKIP = new Set([
-  'if', 'for', 'while', 'switch', 'catch', 'synchronized', 'return', 'throw',
-  'assert', 'new', 'typeof', 'instanceof', 'case', 'else',
-]);
-
 const JAVA_SHORT_TYPE_PREFIXES = [
   'java.lang.', 'java.util.', 'java.io.', 'java.net.', 'java.nio.',
   'android.content.', 'android.os.', 'android.app.', 'android.view.',
@@ -12716,78 +12718,6 @@ function receiverLooksLikeType(receiver) {
     return /^[A-Z]/.test(last || '');
   }
   return /^[A-Z]/.test(r);
-}
-
-/** Find call / `new` sites on a source line (plain text). */
-function findSourceCallSites(line) {
-  const sites = [];
-  const newRe = /\bnew\s+((?:[A-Za-z_][\w]*\.)*[A-Za-z_][\w]*)\s*\(/g;
-  let m;
-  while ((m = newRe.exec(line))) {
-    sites.push({
-      start: m.index + m[0].indexOf(m[1]),
-      end: m.index + m[0].length - 1,
-      kind: 'new',
-      receiver: m[1],
-      methodName: '<init>',
-      display: m[1],
-    });
-  }
-  const callRe = /((?:[A-Za-z_][\w]*\.)*[A-Za-z_][\w]*)\.([A-Za-z_][\w]*)\s*\(/g;
-  while ((m = callRe.exec(line))) {
-    if (SOURCE_CALL_SKIP.has(m[2])) continue;
-    // Avoid matching the Type in `new Type(` already covered
-    const before = line.slice(Math.max(0, m.index - 4), m.index);
-    if (/\bnew\s*$/.test(before)) continue;
-    sites.push({
-      start: m.index,
-      end: m.index + m[1].length + 1 + m[2].length,
-      kind: 'call',
-      receiver: m[1],
-      methodName: m[2],
-      display: `${m[1]}.${m[2]}`,
-    });
-  }
-  sites.sort((a, b) => a.start - b.start || b.end - a.end);
-  const out = [];
-  let lastEnd = -1;
-  for (const s of sites) {
-    if (s.start < lastEnd) continue;
-    out.push(s);
-    lastEnd = s.end;
-  }
-  return out;
-}
-
-/** Field reads/writes: `obj.field` / `Type.field` not followed by `(`. */
-function findSourceFieldSites(line) {
-  const sites = [];
-  const re = /((?:[A-Za-z_][\w]*\.)*[A-Za-z_][\w]*)\.([A-Za-z_][\w]*)(?!\s*\()/g;
-  let m;
-  while ((m = re.exec(line))) {
-    const receiver = m[1];
-    const fieldName = m[2];
-    if (SOURCE_CALL_SKIP.has(fieldName)) continue;
-    // Skip package-looking chains that end mid-FQCN (e.g. com.example inside import)
-    if (/^(?:import|package)\b/.test(line.trim())) continue;
-    sites.push({
-      start: m.index,
-      end: m.index + m[0].length,
-      kind: 'field',
-      receiver,
-      fieldName,
-      display: `${receiver}.${fieldName}`,
-    });
-  }
-  sites.sort((a, b) => a.start - b.start || b.end - a.end);
-  const out = [];
-  let lastEnd = -1;
-  for (const s of sites) {
-    if (s.start < lastEnd) continue;
-    out.push(s);
-    lastEnd = s.end;
-  }
-  return out;
 }
 
 function resolveSourceFieldSite(site, fieldMatcher) {
@@ -16774,6 +16704,7 @@ function switchToCenterTab(tabId) {
   if (tabId === 'components-tab') {
     renderComponentsTab();
   }
+  if (tabId === 'diff-tab') dexDiffApi?.syncLoadedUi?.();
 }
 
 /** Revoke and clear all blob URLs for file tabs, remove DOM, clear state. */
@@ -21201,3 +21132,40 @@ document.getElementById('security-panel')?.addEventListener('keydown', (e) => {
 });
 
 try { updateStatusBar(); } catch (e) { console.warn("[droid2web] statusbar init", e); }
+
+try {
+  dexDiffApi = initDexDiff({
+    runInParseWorker,
+    getDexMethodInWorker,
+    getApkFileContent: get_apk_file_content,
+    ensureWasm: ensureMainWasm,
+    escapeHtml,
+    normalizeWasmResult,
+    timeoutMs: Math.max(PARSE_WORKER_TIMEOUT_MS, 180000),
+    switchToTab: switchToCenterTab,
+    getLoadedFile: () => {
+      if (currentType === 'apk' && currentApkBytes?.length) {
+        return { name: currentFilename || 'app.apk', bytes: currentApkBytes };
+      }
+      if (currentType === 'dex' && currentDexBytes?.length) {
+        return { name: currentFilename || 'classes.dex', bytes: currentDexBytes };
+      }
+      if (currentFileBytes?.length && /\.(apk|dex)$/i.test(currentFilename || '')) {
+        return { name: currentFilename, bytes: currentFileBytes };
+      }
+      return null;
+    },
+  });
+  document.getElementById('btn-compare-with')?.addEventListener('click', () => {
+    document.getElementById('compare-with-file')?.click();
+  });
+  document.getElementById('compare-with-file')?.addEventListener('change', (e) => {
+    const input = e.target;
+    const f = input.files?.[0];
+    input.value = '';
+    if (f) dexDiffApi?.compareAgainstFile?.(f);
+  });
+  dexDiffApi?.syncLoadedUi?.();
+} catch (e) {
+  console.warn('[droid2web] dex diff init', e);
+}

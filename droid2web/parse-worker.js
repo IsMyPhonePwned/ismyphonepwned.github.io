@@ -23,6 +23,7 @@ import initWasm, {
   scan_vulns,
   taint_solve,
   get_semgrep_builtin_rules,
+  diff_dex,
 } from './pkg/droid2web.js';
 
 let wasmReady = false;
@@ -34,6 +35,7 @@ const TRANSFER_JSON_OPS = new Set([
   'parse_file',
   'index_dex_classes',
   'get_dex_strings',
+  'diff_dex',
 ]);
 
 function toU8(bytes) {
@@ -177,6 +179,10 @@ function handleJob(job) {
       raw = taint_solve(u8);
     } else if (op === 'get_semgrep_builtin_rules') {
       raw = get_semgrep_builtin_rules();
+    } else if (op === 'diff_dex') {
+      const left = toU8(job.left);
+      const right = toU8(job.right);
+      raw = diff_dex(left, job.leftName || 'left', right, job.rightName || 'right');
     } else {
       throw new Error('Unknown worker op: ' + op);
     }

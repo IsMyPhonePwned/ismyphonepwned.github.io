@@ -20,7 +20,7 @@
     <div class="header-content">
       <img src="logo.png" alt="" class="app-logo" width="28" height="28">
       <div class="header-title-block">
-        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.0</span> <span class="app-date" id="app-date" title="Release date">18 Aug 2026</span></h1>
+        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.1</span> <span class="app-date" id="app-date" title="Release date">19 Aug 2026</span></h1>
         <p class="subtitle">APK, DEX, AXML, ARSC inspection in the browser</p>
       </div>
     </div>
@@ -56,6 +56,11 @@
       <div class="upload-area">
         <input type="file" id="file-input" accept="*/*" multiple hidden>
         <button class="btn btn-primary" id="btn-upload"><span class="btn-upload-full">Upload file(s)</span><span class="btn-upload-short">Upload</span></button>
+        <button type="button" class="btn btn-small" id="btn-compare-with" hidden title="Keep this APK and pick another to diff DEX bytecode">
+          <span class="btn-compare-full">Compare with…</span>
+          <span class="btn-compare-short">Diff</span>
+        </button>
+        <input type="file" id="compare-with-file" accept=".apk,.dex,application/vnd.android.package-archive,application/octet-stream" hidden>
         <span class="file-name" id="file-name">No file loaded</span>
         <span class="drop-hint muted">or drag & drop (multi-DEX OK)</span>
       </div>
@@ -127,6 +132,7 @@
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="info-tab" data-label="Info" title="Permanent tab">Info</button>
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="strings-tab" data-label="Strings" data-label-short="Str" title="Permanent tab">Strings</button>
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="security-tab" data-label="Security" data-label-short="Sec" title="Permanent tab">Security</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="diff-tab" id="diff-tab-btn" data-label="Compare" data-label-short="Diff" title="Compare DEX bytecode in two APKs">Compare</button>
           </div>
           <div class="center-tabs-sep" id="center-tabs-sep" hidden aria-hidden="true"></div>
           <div class="center-tabs-group center-tabs-files" id="center-tabs-files-group" hidden>
@@ -662,6 +668,55 @@
             </div>
           </div>
         </div>
+        <div class="tab-content" id="diff-tab">
+          <div class="dex-diff-panel" id="dex-diff-panel">
+            <div class="dex-diff-toolbar">
+              <div class="dex-diff-quick" id="dex-diff-quick" hidden>
+                <div class="dex-diff-quick-loaded" title="Currently opened APK or DEX">
+                  <span class="dex-diff-drop-k">This file</span>
+                  <strong class="dex-diff-quick-name" id="dex-diff-quick-name">—</strong>
+                </div>
+                <span class="dex-diff-quick-vs" aria-hidden="true">vs</span>
+                <button type="button" class="btn btn-primary" id="dex-diff-quick-pick" title="Pick another APK or DEX and run the DEX diff">Choose other APK…</button>
+                <input type="file" id="dex-diff-quick-file" accept=".apk,.dex,application/vnd.android.package-archive,application/octet-stream" hidden>
+              </div>
+              <div class="dex-diff-drops">
+                <div class="dex-diff-drop" id="dex-diff-drop-left" role="button" tabindex="0" title="Old / left APK or DEX">
+                  <span class="dex-diff-drop-k">A · old</span>
+                  <span class="dex-diff-drop-name muted" id="dex-diff-name-left">Drop APK or DEX</span>
+                  <button type="button" class="btn btn-small" id="dex-diff-use-left" hidden>Use loaded</button>
+                </div>
+                <input type="file" id="dex-diff-file-left" accept=".apk,.dex,application/vnd.android.package-archive,application/octet-stream" hidden>
+                <div class="dex-diff-drop" id="dex-diff-drop-right" role="button" tabindex="0" title="New / right APK or DEX">
+                  <span class="dex-diff-drop-k">B · new</span>
+                  <span class="dex-diff-drop-name muted" id="dex-diff-name-right">Drop APK or DEX</span>
+                  <button type="button" class="btn btn-small" id="dex-diff-use-right" hidden>Use loaded</button>
+                </div>
+                <input type="file" id="dex-diff-file-right" accept=".apk,.dex,application/vnd.android.package-archive,application/octet-stream" hidden>
+              </div>
+              <div class="dex-diff-actions">
+                <button type="button" class="btn btn-primary" id="dex-diff-run" disabled title="Match DEX classes with SimHash + LSH, then open a method for a source diff">Compare DEX</button>
+                <button type="button" class="btn btn-small" id="dex-diff-export" hidden title="Download the structural match report">Export JSON</button>
+                <span class="dex-diff-status muted" id="dex-diff-status">Compare two APKs or DEX files. Only Dalvik bytecode is matched — resources and the manifest are ignored.</span>
+              </div>
+            </div>
+            <div class="dex-diff-summary" id="dex-diff-summary" hidden></div>
+            <div class="dex-diff-filters" id="dex-diff-filters" hidden>
+              <input type="search" id="dex-diff-search" class="pane-search-input" placeholder="Filter classes…" aria-label="Filter differing classes" autocomplete="off">
+              <label class="list-filter-opt pane-toggle" title="Include android.* and androidx.* in the class list">
+                <input type="checkbox" id="dex-diff-show-android">
+                <span>Show android / androidx</span>
+              </label>
+            </div>
+            <div class="dex-diff-body" id="dex-diff-body" hidden>
+              <div class="dex-diff-classes" id="dex-diff-classes"></div>
+              <div class="dex-diff-detail">
+                <div class="dex-diff-methods" id="dex-diff-methods"></div>
+                <div class="dex-diff-source" id="dex-diff-source"></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
   </main>
@@ -682,6 +737,10 @@
         <section class="settings-section">
           <h4 class="settings-section-title">Security scans</h4>
           <p class="settings-hint muted">Scan runs three local engines from dex-decompiler: vulnerability detectors (IPC, PendingIntent/PITracker, ZipSlip, Custom Tabs, nested Intent redirect, broadcasts, WebView, SSL, crypto, storage, trackers, …), Semgrep-style rules (starter + OWASP MASTG), and Mariana Trench–style taint solving (including field/extra breadcrumbs on traces).</p>
+        </section>
+        <section class="settings-section">
+          <h4 class="settings-section-title">Compare (DEX)</h4>
+          <p class="settings-hint muted">With an APK or DEX already open, click <strong>Compare with…</strong> in the header (or <strong>Choose other APK…</strong> on the Compare tab) and pick the other build. Side A is the file you already loaded; only Dalvik bytecode is matched. Identical classes are omitted. Click a changed method for a line-aligned source diff — nothing is sent to the cloud.</p>
         </section>
         <section class="settings-section">
           <h4 class="settings-section-title">Contact</h4>

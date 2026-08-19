@@ -15,6 +15,28 @@ export function decompile_dex_class(bytes, class_idx, options) {
 }
 
 /**
+ * Compare DEX code in two APK/DEX blobs (multi-DEX union, SimHash + LSH matching).
+ * Returns transferable UTF-8 JSON `{ok, data?, error?}`.
+ * @param {Uint8Array} left
+ * @param {string} left_name
+ * @param {Uint8Array} right
+ * @param {string} right_name
+ * @returns {Uint8Array}
+ */
+export function diff_dex(left, left_name, right, right_name) {
+    const ptr0 = passArray8ToWasm0(left, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(left_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(right, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passStringToWasm0(right_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.diff_dex(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    return ret;
+}
+
+/**
  * Field get/put sites for a field_ids index.
  * @param {Uint8Array} bytes
  * @param {number} field_idx

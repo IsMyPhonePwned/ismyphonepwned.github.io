@@ -423,7 +423,7 @@ export function initDexDiff(deps) {
   function useLoaded(side) {
     const loaded = typeof getLoadedFile === 'function' ? getLoadedFile() : null;
     if (!loaded?.bytes?.length) {
-      setStatus('Load an APK or DEX first, or drop a file here.', true);
+      setStatus('Load an APK, APKM, or DEX first, or drop a file here.', true);
       return;
     }
     setSide(side, { name: loaded.name || 'loaded', bytes: loaded.bytes });

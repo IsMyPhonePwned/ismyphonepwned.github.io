@@ -1,9 +1,9 @@
 /**
- * droid2web — APK, DEX, AXML, ARSC inspector
+ * droid2web — APK, APKM, DEX, AXML, ARSC inspector
  * Loads WASM, parses files, displays bytecode + source (DEX) and manifest/XML (APK/AXML/ARSC)
  */
 
-import initWasm, { parse_file, parse_dex, parse_apk, parse_axml, parse_arsc, parse_arsc_resource_map, parse_arsc_resource_tables, get_apk_file_content, get_dex_method, decompile_dex_class, run_dex_emulator, run_dex_emulator_with_history, scan_vulns, scan_semgrep, scan_semgrep_xml, get_semgrep_builtin_rules, parse_semgrep_rules, taint_solve, parse_meta_inf_file } from './pkg/droid2web.js';
+import initWasm, { parse_file, parse_dex, parse_apk, parse_axml, parse_arsc, parse_arsc_resource_map, parse_arsc_resource_tables, get_apk_file_content, prepare_apk_bytes, get_dex_method, decompile_dex_class, run_dex_emulator, run_dex_emulator_with_history, scan_vulns, scan_semgrep, scan_semgrep_xml, get_semgrep_builtin_rules, parse_semgrep_rules, taint_solve, parse_meta_inf_file } from './pkg/droid2web.js';
 import { createHexEditor } from './hex-editor.js';
 import { mountMetaInfViewer, isMetaInfFile, metaInfTreeIcon } from './meta-inf-viewer.js';
 import { APP_VERSION, APP_DATE } from './version.js';
@@ -560,7 +560,7 @@ debug(`main.js loaded (${APP_RELEASE_LABEL})`);
     dateEl.textContent = APP_DATE_LABEL;
     dateEl.title = `Released ${APP_DATE}`;
   }
-  try { document.title = `droid2web ${APP_RELEASE_LABEL} — APK, DEX, AXML, ARSC Inspector`; } catch (_) {}
+  try { document.title = `droid2web ${APP_RELEASE_LABEL} — APK, APKM, DEX, AXML, ARSC Inspector`; } catch (_) {}
 }
 // Warm main-thread WASM in the background so the first APK/DEX open is not blocked on fetch.
 ensureMainWasm()
@@ -7773,6 +7773,11 @@ async function processFile(file) {
       currentDexBytes = currentType === 'dex' ? bytesForMain : null;
       currentFileBytes = bytesForMain;
       if (currentType === 'dex') currentDexSelection = { classIdx: 0, methodIdx: 0 };
+      if (currentType === 'apk' && currentData?.apkm?.base_name) {
+        const splits = Array.isArray(currentData.apkm.splits) ? currentData.apkm.splits.length : 0;
+        fileName.textContent = `${file.name} → ${currentData.apkm.base_name}${splits ? ` (+${splits} splits)` : ''}`;
+        fileName.title = `${file.name}\nAPKM base: ${currentData.apkm.base_name}`;
+      }
       dexSearchIndex = null;
       apkExtractedFile = null;
       apkExtractedDexSelection = { classIdx: 0, methodIdx: 0 };
@@ -7808,7 +7813,16 @@ async function processFile(file) {
         clearStandaloneDexSession();
       }
       if (currentType === 'apk') {
-        currentApkBytes = bytesForMain;
+        // APKM → store base.apk bytes so tree / get_apk_file_content work.
+        try {
+          const prepared = typeof prepare_apk_bytes === 'function'
+            ? prepare_apk_bytes(bytesForMain)
+            : null;
+          currentApkBytes = prepared?.length ? new Uint8Array(prepared) : bytesForMain;
+        } catch (prepErr) {
+          warn('[processFile] prepare_apk_bytes failed, using raw bytes', prepErr);
+          currentApkBytes = bytesForMain;
+        }
         clearApkResourceMap();
         // Warm ARSC → R.* map for decompiler (async, non-blocking).
         ensureApkResourceMap().catch(() => {});
@@ -7874,7 +7888,7 @@ function detectType(bytes, name) {
   if (bytes.length >= 4 && bytes[0] === 0x03 && bytes[1] === 0x00 && bytes[2] === 0x08) return 'axml';
   if (bytes.length >= 4 && bytes[0] === 0x02 && bytes[1] === 0x00 && bytes[2] === 0x0c) return 'arsc';
   if (n.endsWith('.dex')) return 'dex';
-  if (n.endsWith('.apk') || n.endsWith('.jar') || n.endsWith('.zip')) return 'apk';
+  if (n.endsWith('.apk') || n.endsWith('.apkm') || n.endsWith('.jar') || n.endsWith('.zip')) return 'apk';
   if (n.endsWith('.xml') || n.endsWith('.axml')) return 'axml';
   if (n.endsWith('.arsc')) return 'arsc';
   return 'unknown';
@@ -16393,6 +16407,29 @@ function buildApkInfoHtml(data) {
     infoBool('resources.arsc', s.has_resources_arsc),
   ].join('');
 
+  const apkm = data?.apkm;
+  let apkmSection = '';
+  if (apkm && apkm.base_name) {
+    const splits = Array.isArray(apkm.splits) ? apkm.splits : [];
+    const splitList = splits.length
+      ? infoListItems(splits, (n) =>
+          `<div class="info-row"><span class="info-label">·</span><span class="info-value">${escapeHtml(n)}</span></div>`, 24)
+      : '<div class="muted">No split APKs</div>';
+    let pname = null;
+    if (apkm.info_json) {
+      try {
+        const j = JSON.parse(apkm.info_json);
+        pname = j.pname || j.package_name || j.package || null;
+      } catch (_) { /* ignore */ }
+    }
+    apkmSection = infoSection('APKM container', [
+      infoProp('Base', apkm.base_name),
+      infoProp('Splits', String(splits.length)),
+      infoProp('info.json package', pname),
+      splitList,
+    ].join(''));
+  }
+
   const certs = Array.isArray(sig.certificates) ? sig.certificates : [];
   const signingHead = [
     infoProp('Schemes', (sig.schemes || []).join(', ') || (certs.length ? 'present' : null)),
@@ -16416,6 +16453,7 @@ function buildApkInfoHtml(data) {
 
   return [
     infoSection('Identity', identity),
+    apkmSection,
     infoSection('Application', application),
     infoSection(`Permissions (${permDetails.length})`, permissions),
     infoSection(`Declared permissions (${(m.permissions_declared || []).length})`, declared),

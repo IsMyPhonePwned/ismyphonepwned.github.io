@@ -370,6 +370,24 @@ export function parse_semgrep_rules(yaml) {
 }
 
 /**
+ * If `bytes` is an APKM, return the base APK bytes; otherwise return a copy of `bytes`.
+ * Call this before storing APK bytes for `get_apk_file_content` / tree extraction.
+ * @param {Uint8Array} bytes
+ * @returns {Uint8Array | undefined}
+ */
+export function prepare_apk_bytes(bytes) {
+    const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.prepare_apk_bytes(ptr0, len0);
+    let v2;
+    if (ret[0] !== 0) {
+        v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    }
+    return v2;
+}
+
+/**
  * Run the bytecode emulator on a method. Params: JSON array, e.g. "[]" or "[5, 3]" for int args.
  * Returns { ok, data?: EmulatorRunResult, error? }.
  * @param {Uint8Array} bytes

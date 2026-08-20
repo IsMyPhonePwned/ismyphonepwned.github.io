@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>droid2web — APK, DEX, AXML, ARSC Inspector</title>
+  <title>droid2web — APK, APKM, DEX, AXML, ARSC Inspector</title>
   <link rel="icon" href="logo.png" type="image/png">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/styles/vis-network.min.css">
@@ -20,8 +20,8 @@
     <div class="header-content">
       <img src="logo.png" alt="" class="app-logo" width="28" height="28">
       <div class="header-title-block">
-        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.2</span> <span class="app-date" id="app-date" title="Release date">19 Aug 2026</span></h1>
-        <p class="subtitle">APK, DEX, AXML, ARSC inspection in the browser</p>
+        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.3</span> <span class="app-date" id="app-date" title="Release date">20 Aug 2026</span></h1>
+        <p class="subtitle">APK, APKM, DEX, AXML, ARSC inspection in the browser</p>
       </div>
     </div>
     <div class="header-actions">
@@ -60,7 +60,7 @@
           <span class="btn-compare-full">Compare with…</span>
           <span class="btn-compare-short">Diff</span>
         </button>
-        <input type="file" id="compare-with-file" accept=".apk,.dex,application/vnd.android.package-archive,application/octet-stream" hidden>
+        <input type="file" id="compare-with-file" accept=".apk,.apkm,.dex,application/vnd.android.package-archive,application/octet-stream" hidden>
         <span class="file-name" id="file-name">No file loaded</span>
         <span class="drop-hint muted">or drag & drop (multi-DEX OK)</span>
       </div>
@@ -74,7 +74,7 @@
     </div>
     <div class="drop-zone" id="drop-zone">
       <span class="drop-zone-text">Drop any file here to analyze</span>
-      <span class="drop-zone-hint muted">APK, DEX (one or many), AXML, ARSC — type detected automatically</span>
+      <span class="drop-zone-hint muted">APK, APKM, DEX (one or many), AXML, ARSC — type detected automatically</span>
     </div>
     <div class="inspector-layout" id="inspector-layout">
       <!-- Left: Tree / File list -->
@@ -679,27 +679,27 @@
                   <strong class="dex-diff-quick-name" id="dex-diff-quick-name">—</strong>
                 </div>
                 <span class="dex-diff-quick-vs" aria-hidden="true">vs</span>
-                <button type="button" class="btn btn-primary" id="dex-diff-quick-pick" title="Pick another APK or DEX and run the DEX diff">Choose other APK…</button>
-                <input type="file" id="dex-diff-quick-file" accept=".apk,.dex,application/vnd.android.package-archive,application/octet-stream" hidden>
+                <button type="button" class="btn btn-primary" id="dex-diff-quick-pick" title="Pick another APK, APKM, or DEX and run the DEX diff">Choose other APK…</button>
+                <input type="file" id="dex-diff-quick-file" accept=".apk,.apkm,.dex,application/vnd.android.package-archive,application/octet-stream" hidden>
               </div>
               <div class="dex-diff-drops">
                 <div class="dex-diff-drop" id="dex-diff-drop-left" role="button" tabindex="0" title="Old / left APK or DEX">
                   <span class="dex-diff-drop-k">A · old</span>
-                  <span class="dex-diff-drop-name muted" id="dex-diff-name-left">Drop APK or DEX</span>
+                  <span class="dex-diff-drop-name muted" id="dex-diff-name-left">Drop APK, APKM, or DEX</span>
                   <button type="button" class="btn btn-small" id="dex-diff-use-left" hidden>Use loaded</button>
                 </div>
-                <input type="file" id="dex-diff-file-left" accept=".apk,.dex,application/vnd.android.package-archive,application/octet-stream" hidden>
+                <input type="file" id="dex-diff-file-left" accept=".apk,.apkm,.dex,application/vnd.android.package-archive,application/octet-stream" hidden>
                 <div class="dex-diff-drop" id="dex-diff-drop-right" role="button" tabindex="0" title="New / right APK or DEX">
                   <span class="dex-diff-drop-k">B · new</span>
-                  <span class="dex-diff-drop-name muted" id="dex-diff-name-right">Drop APK or DEX</span>
+                  <span class="dex-diff-drop-name muted" id="dex-diff-name-right">Drop APK, APKM, or DEX</span>
                   <button type="button" class="btn btn-small" id="dex-diff-use-right" hidden>Use loaded</button>
                 </div>
-                <input type="file" id="dex-diff-file-right" accept=".apk,.dex,application/vnd.android.package-archive,application/octet-stream" hidden>
+                <input type="file" id="dex-diff-file-right" accept=".apk,.apkm,.dex,application/vnd.android.package-archive,application/octet-stream" hidden>
               </div>
               <div class="dex-diff-actions">
                 <button type="button" class="btn btn-primary" id="dex-diff-run" disabled title="Match DEX classes with SimHash + LSH, then open a method for a source diff">Compare DEX</button>
                 <button type="button" class="btn btn-small" id="dex-diff-export" hidden title="Download the structural match report">Export JSON</button>
-                <span class="dex-diff-status muted" id="dex-diff-status">Compare two APKs or DEX files. Only Dalvik bytecode is matched — resources and the manifest are ignored.</span>
+                <span class="dex-diff-status muted" id="dex-diff-status">Compare two APKs, APKMs, or DEX files. Only Dalvik bytecode is matched — resources and the manifest are ignored.</span>
               </div>
             </div>
             <div class="dex-diff-summary" id="dex-diff-summary" hidden></div>
@@ -733,7 +733,7 @@
       <div class="settings-modal-body" id="help-modal-body">
         <section class="settings-section">
           <h4 class="settings-section-title">Privacy</h4>
-          <p class="settings-hint">Nothing is sent to the cloud. Your APKs, DEX files, and analysis stay local on this machine — parsing, decompiling, and scans all run in your browser (WASM).</p>
+          <p class="settings-hint">Nothing is sent to the cloud. Your APKs, APKM split packages, DEX files, and analysis stay local on this machine — parsing, decompiling, and scans all run in your browser (WASM).</p>
           <p class="settings-hint muted">Notes, renames, and scan results are stored only in this browser’s localStorage (or in files you export yourself).</p>
         </section>
         <section class="settings-section">

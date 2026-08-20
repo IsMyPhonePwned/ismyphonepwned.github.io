@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="assets/iphone-dashboard.css">
     <script src="assets/sigma-rules-urls.js"></script>
     <script src="assets/sigma-match-ui.js"></script>
+    <script src="assets/sigma-rules-editor.js"></script>
     <script src="assets/iphone-sigma.js" defer></script>
     <script src="assets/timeline-view.js" defer></script>
     <script src="assets/iphone-mobipwn-panels.js" defer></script>
@@ -26,7 +27,7 @@
                     <h1 class="logo-text">IsMyPhonePwned ?</h1>
                     <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400;" data-i18n="pageSubtitle">iPhone · sysdiagnose</span>
                     <span class="page-version">
-                        <span data-i18n="pageVersion">v0.4.0-beta • Updated 9 August 2026</span>
+                        <span data-i18n="pageVersion">v0.5.0-beta • Updated 9 August 2026</span>
                         <span class="page-version-edition" title="DEF CON edition">
                             <img class="page-version-edition-logo" src="assets/defcon31-logo.png" alt="" width="18" height="18" decoding="async">
                             <span>defcon edition</span>
@@ -640,7 +641,7 @@
         window.IPHONE_I18N = {
             en: {
                 pageSubtitle: 'iPhone · sysdiagnose',
-                pageVersion: 'v0.4.0-beta • Updated 9 August 2026',
+                pageVersion: 'v0.5.0-beta • Updated 9 August 2026',
                 wasmLoading: '⏳ Loading…',
                 wasmReady: '✓ Ready',
                 wasmFailed: '❌ Failed to load',
@@ -793,6 +794,27 @@
                 sigmaNoRules: 'No rules loaded.',
                 sigmaShowContent: 'Show rule content',
                 sigmaHideContent: 'Hide rule content',
+                sigmaRescan: 'Rescan with current rules',
+                sigmaAddRule: 'Add rule',
+                sigmaResetRules: 'Reset to bundled',
+                sigmaDeleteRule: 'Delete',
+                sigmaEditContent: 'Edit rule YAML',
+                sigmaRulesEditHint: 'Edit YAML below, add or delete rules, then rescan the same dump.',
+                sigmaRescanUnavailable: 'Keep this tab open after a successful scan so the dump stays in memory.',
+                sigmaRescanNeedDump: 'No dump in memory to rescan. Run an analysis first.',
+                sigmaRescanBusy: 'Rescanning with current rules…',
+                sigmaRescanDone: 'Rescan complete.',
+                sigmaResetDone: 'Bundled rules restored. Click Rescan to re-run analysis.',
+                sigmaRuleCustom: 'Custom',
+                sigmaRuleLoaded: 'Loaded',
+                sigmaRuleFailed: 'Failed',
+                sigmaRuleSourceCustom: 'Session',
+                sigmaRuleFieldSource: 'Source',
+                sigmaRuleFieldStatus: 'Load',
+                sigmaRuleFieldTitle: 'Title',
+                sigmaRuleFieldId: 'ID',
+                sigmaRuleFieldLevel: 'Level',
+                sigmaRulesToolbar: 'Rules session',
                 sigmaNoMatches: 'No matches.',
                 sigmaMatchCount: '{n} occurrences',
                 sigmaMatchCountOne: '1 occurrence',
@@ -1240,7 +1262,7 @@
             },
             fr: {
                 pageSubtitle: 'iPhone · sysdiagnose',
-                pageVersion: 'v0.4.0-beta • Mis à jour le 9 août 2026',
+                pageVersion: 'v0.5.0-beta • Mis à jour le 9 août 2026',
                 wasmLoading: '⏳ Chargement...',
                 wasmReady: '✓ Prêt',
                 wasmFailed: '❌ Échec du chargement',
@@ -1376,6 +1398,27 @@
                 sigmaNoRules: 'Aucune règle chargée.',
                 sigmaShowContent: 'Afficher le contenu de la règle',
                 sigmaHideContent: 'Masquer le contenu de la règle',
+                sigmaRescan: 'Relancer avec les règles actuelles',
+                sigmaAddRule: 'Ajouter une règle',
+                sigmaResetRules: 'Réinitialiser (bundlées)',
+                sigmaDeleteRule: 'Supprimer',
+                sigmaEditContent: 'Modifier le YAML de la règle',
+                sigmaRulesEditHint: 'Modifiez le YAML, ajoutez ou supprimez des règles, puis relancez sur le même dump.',
+                sigmaRescanUnavailable: 'Gardez cet onglet ouvert après une analyse réussie pour conserver le dump en mémoire.',
+                sigmaRescanNeedDump: 'Aucun dump en mémoire. Lancez d’abord une analyse.',
+                sigmaRescanBusy: 'Nouvelle analyse avec les règles actuelles…',
+                sigmaRescanDone: 'Nouvelle analyse terminée.',
+                sigmaResetDone: 'Règles bundlées restaurées. Cliquez sur Relancer pour réanalyser.',
+                sigmaRuleCustom: 'Personnalisée',
+                sigmaRuleLoaded: 'Chargée',
+                sigmaRuleFailed: 'Échec',
+                sigmaRuleSourceCustom: 'Session',
+                sigmaRuleFieldSource: 'Source',
+                sigmaRuleFieldStatus: 'Chargement',
+                sigmaRuleFieldTitle: 'Titre',
+                sigmaRuleFieldId: 'ID',
+                sigmaRuleFieldLevel: 'Niveau',
+                sigmaRulesToolbar: 'Session de règles',
                 sigmaNoMatches: 'Aucune correspondance.',
                 sigmaMatchCount: '{n} occurrences',
                 sigmaMatchCountOne: '1 occurrence',
@@ -1823,7 +1866,7 @@
             },
             zh: {
                 pageSubtitle: 'iPhone · sysdiagnose',
-                pageVersion: 'v0.4.0-beta • 更新于 2026年8月9日',
+                pageVersion: 'v0.5.0-beta • 更新于 2026年8月9日',
                 wasmLoading: '⏳ 加载中...',
                 wasmReady: '✓ 就绪',
                 wasmFailed: '❌ 加载失败',
@@ -1955,6 +1998,27 @@
                 sigmaNoRules: '未加载规则。',
                 sigmaShowContent: '显示规则内容',
                 sigmaHideContent: '隐藏规则内容',
+                sigmaRescan: '用当前规则重新扫描',
+                sigmaAddRule: '添加规则',
+                sigmaResetRules: '恢复内置规则',
+                sigmaDeleteRule: '删除',
+                sigmaEditContent: '编辑规则 YAML',
+                sigmaRulesEditHint: '可编辑下方 YAML、添加或删除规则，然后对同一份 dump 重新扫描。',
+                sigmaRescanUnavailable: '成功分析后请保持此标签页打开，以便 dump 保留在内存中。',
+                sigmaRescanNeedDump: '内存中没有可重新扫描的 dump。请先完成一次分析。',
+                sigmaRescanBusy: '正在用当前规则重新扫描…',
+                sigmaRescanDone: '重新扫描完成。',
+                sigmaResetDone: '已恢复内置规则。点击重新扫描以再次分析。',
+                sigmaRuleCustom: '自定义',
+                sigmaRuleLoaded: '已加载',
+                sigmaRuleFailed: '失败',
+                sigmaRuleSourceCustom: '会话',
+                sigmaRuleFieldSource: '来源',
+                sigmaRuleFieldStatus: '加载',
+                sigmaRuleFieldTitle: '标题',
+                sigmaRuleFieldId: 'ID',
+                sigmaRuleFieldLevel: '级别',
+                sigmaRulesToolbar: '规则会话',
                 sigmaNoMatches: '无匹配。',
                 sigmaMatchCount: '{n} 次出现',
                 sigmaMatchCountOne: '1 次出现',
@@ -2502,8 +2566,14 @@
         let sysdiagnoseArchives = [];
         let selectedSysdiagnosePath = null;
         let sysdiagnoseFile = null;
+        /** Raw archive bytes kept for rule rescan after a successful analysis. */
+        let currentSysdiagnoseBytes = null;
+        let currentSysdiagnoseName = null;
         let analyzerWasmReady = false;
         let iphoneIdeviceOk = false;
+        window.currentSysdiagnoseBytes = null;
+        window.currentSysdiagnoseName = null;
+        window.currentResults = null;
 
         async function ensureAnalyzerWasm() {
             if (analyzerWasmReady) return;
@@ -7992,6 +8062,7 @@
             el.textContent = msg;
             el.className = 'status ' + (type || 'info');
         }
+        window.showStatus = showStatus;
         function hideStatus() {
             document.getElementById('status').className = 'status';
         }
@@ -8100,7 +8171,7 @@
             await analyzeSysdiagnoseBytes(new Uint8Array(buf), sysdiagnoseFile.name);
         };
 
-        async function analyzeSysdiagnoseBytes(u8, displayName) {
+        async function analyzeSysdiagnoseBytes(u8, displayName, sigmaPackOverride) {
             var _t = window.IPHONE_I18N[window.currentLang] || window.IPHONE_I18N.en;
             hideProgress();
             hideSpinner();
@@ -8117,15 +8188,20 @@
                 });
                 console.log('[SYSDIAGNOSE] Starting analysis', {
                     name: displayName,
-                    size_bytes: u8.byteLength
+                    size_bytes: u8.byteLength,
+                    rescan: !!sigmaPackOverride
                 });
                 var hashPromise = calculateHashIphone(u8);
-                var sigmaPromise = typeof fetchSigmaRules === 'function' ? fetchSigmaRules() : Promise.resolve({ rules: '', rulesInfo: [] });
+                var sigmaPromise = sigmaPackOverride
+                    ? Promise.resolve(sigmaPackOverride)
+                    : typeof fetchSigmaRules === 'function'
+                      ? fetchSigmaRules()
+                      : Promise.resolve({ rules: '', rulesInfo: [] });
                 await new Promise(function (r) {
                     requestAnimationFrame(r);
                 });
                 var sigmaPack = await sigmaPromise;
-                var rulesOk = (sigmaPack.rulesInfo || []).filter(function (r) { return r.success; }).length;
+                var rulesOk = (sigmaPack.rulesInfo || []).filter(function (r) { return r.success || (r.content && String(r.content).trim()); }).length;
                 setSysdiagnoseIngestProgress(true, 22, _t.ingestPhaseSigma, rulesOk + ' rules', {
                     step: 'sigma',
                     busy: true
@@ -8183,7 +8259,12 @@
                     parserCount: out && out.parsers ? Object.keys(out.parsers).length : 0,
                     sha256: hashHex
                 });
+                currentSysdiagnoseBytes = u8 instanceof Uint8Array ? u8 : new Uint8Array(u8);
+                currentSysdiagnoseName = displayName;
+                window.currentSysdiagnoseBytes = currentSysdiagnoseBytes;
+                window.currentSysdiagnoseName = currentSysdiagnoseName;
                 currentResults = out;
+                window.currentResults = out;
                 await new Promise(function (r) {
                     window.requestAnimationFrame(r);
                 });
@@ -8209,9 +8290,11 @@
                             ? stDone.analysers_ok
                             : trIphone('countUnknown');
                     showStatus(
-                        trIphone('analyzeDoneStatus')
-                            .replace('{parsersOk}', String(doneOk))
-                            .replace('{analysersOk}', String(anOk)),
+                        sigmaPackOverride
+                            ? (_t.sigmaRescanDone || 'Rescan complete.')
+                            : trIphone('analyzeDoneStatus')
+                                  .replace('{parsersOk}', String(doneOk))
+                                  .replace('{analysersOk}', String(anOk)),
                         'success'
                     );
                     finishSysdiagnoseIngestProgress(true, _t.ingestProgressDone, formatBytes(u8.byteLength));
@@ -8225,6 +8308,27 @@
                 hideSpinner();
             }
         }
+
+        window.rescanSysdiagnoseWithCurrentRules = async function () {
+            var _t = window.IPHONE_I18N[window.currentLang] || window.IPHONE_I18N.en;
+            if (!currentSysdiagnoseBytes || !currentSysdiagnoseBytes.byteLength) {
+                showStatus(_t.sigmaRescanNeedDump || 'No dump in memory to rescan. Run an analysis first.', 'error');
+                return;
+            }
+            var sigmaEl = document.getElementById('iphone-sigma-rules-container');
+            if (window.SigmaRulesEditor && sigmaEl) {
+                window.SigmaRulesEditor.syncFromDom(sigmaEl);
+            }
+            var sigmaPack = window.SigmaRulesEditor
+                ? window.SigmaRulesEditor.getPack()
+                : { rules: '', rulesInfo: [] };
+            showStatus(_t.sigmaRescanBusy || 'Rescanning with current rules…', 'info');
+            await analyzeSysdiagnoseBytes(
+                currentSysdiagnoseBytes,
+                currentSysdiagnoseName || 'sysdiagnose',
+                sigmaPack
+            );
+        };
 
         function setStatusPill(id, state, value) {
             var node = document.getElementById(id);

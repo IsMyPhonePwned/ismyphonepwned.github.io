@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="assets/sysdiagnose-file-panel.css">
     <script src="assets/sigma-rules-urls.js"></script>
     <script src="assets/sigma-match-ui.js"></script>
+    <script src="assets/sigma-rules-editor.js"></script>
     <script src="assets/timeline-view.js" defer></script>
 
 </head>
@@ -23,7 +24,7 @@
                 <div style="display: flex; flex-direction: column; gap: 0.25rem;">
                     <h1 class="logo-text">IsMyPhonePwned ?</h1>
                     <span class="page-version">
-                        <span data-i18n="pageVersion">v0.4.0-beta • Updated 9 August 2026</span>
+                        <span data-i18n="pageVersion">v0.5.0-beta • Updated 9 August 2026</span>
                         <span class="page-version-edition" title="DEF CON edition">
                             <img class="page-version-edition-logo" src="assets/defcon31-logo.png" alt="" width="18" height="18" decoding="async">
                             <span>defcon edition</span>
@@ -857,7 +858,7 @@
     <script>
         window.BUGREPORT_I18N = {
             en: {
-                pageVersion: 'v0.4.0-beta • Updated 9 August 2026',
+                pageVersion: 'v0.5.0-beta • Updated 9 August 2026',
                 wasmLoading: 'Loading…',
                 wasmReady: 'Ready',
                 wasmFailed: 'Failed',
@@ -985,6 +986,27 @@
                 sigmaNoRules: 'No rules loaded.',
                 sigmaShowContent: 'Show rule content',
                 sigmaHideContent: 'Hide rule content',
+                sigmaRescan: 'Rescan with current rules',
+                sigmaAddRule: 'Add rule',
+                sigmaResetRules: 'Reset to bundled',
+                sigmaDeleteRule: 'Delete',
+                sigmaEditContent: 'Edit rule YAML',
+                sigmaRulesEditHint: 'Edit YAML below, add or delete rules, then rescan the same dump.',
+                sigmaRescanUnavailable: 'Keep this tab open after a successful scan so the dump stays in memory.',
+                sigmaRescanNeedDump: 'No dump in memory to rescan. Run an analysis first.',
+                sigmaRescanBusy: 'Rescanning with current rules…',
+                sigmaRescanDone: 'Rescan complete.',
+                sigmaResetDone: 'Bundled rules restored. Click Rescan to re-run analysis.',
+                sigmaRuleCustom: 'Custom',
+                sigmaRuleLoaded: 'Loaded',
+                sigmaRuleFailed: 'Failed',
+                sigmaRuleSourceCustom: 'Session',
+                sigmaRuleFieldSource: 'Source',
+                sigmaRuleFieldStatus: 'Load',
+                sigmaRuleFieldTitle: 'Title',
+                sigmaRuleFieldId: 'ID',
+                sigmaRuleFieldLevel: 'Level',
+                sigmaRulesToolbar: 'Rules session',
                 sigmaNoMatches: 'No matches.',
                 sigmaMatchCount: '{n} occurrences',
                 sigmaMatchCountOne: '1 occurrence',
@@ -1192,7 +1214,7 @@
                 navGitHub: 'GitHub'
             },
             fr: {
-                pageVersion: 'v0.4.0-beta • Mis à jour le 9 août 2026',
+                pageVersion: 'v0.5.0-beta • Mis à jour le 9 août 2026',
                 wasmLoading: 'Chargement…',
                 wasmReady: 'Prêt',
                 wasmFailed: 'Échec',
@@ -1321,6 +1343,27 @@
                 sigmaNoRules: 'Aucune règle chargée.',
                 sigmaShowContent: 'Afficher le contenu de la règle',
                 sigmaHideContent: 'Masquer le contenu de la règle',
+                sigmaRescan: 'Relancer avec les règles actuelles',
+                sigmaAddRule: 'Ajouter une règle',
+                sigmaResetRules: 'Réinitialiser (bundlées)',
+                sigmaDeleteRule: 'Supprimer',
+                sigmaEditContent: 'Modifier le YAML de la règle',
+                sigmaRulesEditHint: 'Modifiez le YAML, ajoutez ou supprimez des règles, puis relancez sur le même dump.',
+                sigmaRescanUnavailable: 'Gardez cet onglet ouvert après une analyse réussie pour conserver le dump en mémoire.',
+                sigmaRescanNeedDump: 'Aucun dump en mémoire. Lancez d’abord une analyse.',
+                sigmaRescanBusy: 'Nouvelle analyse avec les règles actuelles…',
+                sigmaRescanDone: 'Nouvelle analyse terminée.',
+                sigmaResetDone: 'Règles bundlées restaurées. Cliquez sur Relancer pour réanalyser.',
+                sigmaRuleCustom: 'Personnalisée',
+                sigmaRuleLoaded: 'Chargée',
+                sigmaRuleFailed: 'Échec',
+                sigmaRuleSourceCustom: 'Session',
+                sigmaRuleFieldSource: 'Source',
+                sigmaRuleFieldStatus: 'Chargement',
+                sigmaRuleFieldTitle: 'Titre',
+                sigmaRuleFieldId: 'ID',
+                sigmaRuleFieldLevel: 'Niveau',
+                sigmaRulesToolbar: 'Session de règles',
                 sigmaNoMatches: 'Aucune correspondance.',
                 sigmaMatchCount: '{n} occurrences',
                 sigmaMatchCountOne: '1 occurrence',
@@ -1528,7 +1571,7 @@
                 navGitHub: 'GitHub'
             },
             zh: {
-                pageVersion: 'v0.4.0-beta • 更新于 2026年8月9日',
+                pageVersion: 'v0.5.0-beta • 更新于 2026年8月9日',
                 wasmLoading: '加载中…',
                 wasmReady: '就绪',
                 wasmFailed: '失败',
@@ -1657,6 +1700,27 @@
                 sigmaNoRules: '未加载规则。',
                 sigmaShowContent: '显示规则内容',
                 sigmaHideContent: '隐藏规则内容',
+                sigmaRescan: '用当前规则重新扫描',
+                sigmaAddRule: '添加规则',
+                sigmaResetRules: '恢复内置规则',
+                sigmaDeleteRule: '删除',
+                sigmaEditContent: '编辑规则 YAML',
+                sigmaRulesEditHint: '可编辑下方 YAML、添加或删除规则，然后对同一份 dump 重新扫描。',
+                sigmaRescanUnavailable: '成功分析后请保持此标签页打开，以便 dump 保留在内存中。',
+                sigmaRescanNeedDump: '内存中没有可重新扫描的 dump。请先完成一次分析。',
+                sigmaRescanBusy: '正在用当前规则重新扫描…',
+                sigmaRescanDone: '重新扫描完成。',
+                sigmaResetDone: '已恢复内置规则。点击重新扫描以再次分析。',
+                sigmaRuleCustom: '自定义',
+                sigmaRuleLoaded: '已加载',
+                sigmaRuleFailed: '失败',
+                sigmaRuleSourceCustom: '会话',
+                sigmaRuleFieldSource: '来源',
+                sigmaRuleFieldStatus: '加载',
+                sigmaRuleFieldTitle: '标题',
+                sigmaRuleFieldId: 'ID',
+                sigmaRuleFieldLevel: '级别',
+                sigmaRulesToolbar: '规则会话',
                 sigmaNoMatches: '无匹配。',
                 sigmaMatchCount: '{n} 次出现',
                 sigmaMatchCountOne: '1 次出现',
@@ -2010,6 +2074,111 @@
             await displayResults(result);
             console.timeEnd('[ANALYZE] displayResults');
             return result;
+        }
+
+        function renderAndroidSigmaRulesEditor(data) {
+            const sigmaEl = document.getElementById('sigma-rules-container');
+            if (!sigmaEl) return;
+            const pack = i18nPack();
+            const info = asWasmArray(data && data.sigma_rules_info);
+            if (!window.SigmaRulesEditor) {
+                sigmaEl.innerHTML =
+                    '<p class="detection-empty">' +
+                    escapeHtml(pack.sigmaNoRules || 'No rules loaded.') +
+                    '</p>';
+                return;
+            }
+            window.SigmaRulesEditor.setSession(info);
+            window.SigmaRulesEditor.renderInto(sigmaEl, {
+                i18nPack: pack,
+                canRescan: !!(currentBugreportBytes && currentBugreportBytes.byteLength),
+                onRescan: function () {
+                    rescanBugreportWithCurrentRules();
+                },
+                onReset: function () {
+                    resetAndroidSigmaRules();
+                },
+            });
+        }
+
+        async function resetAndroidSigmaRules() {
+            const pack = i18nPack();
+            const sigmaEl = document.getElementById('sigma-rules-container');
+            const fresh = await fetchSigmaRules();
+            if (window.SigmaRulesEditor) {
+                window.SigmaRulesEditor.setSession(fresh.rulesInfo || []);
+                if (currentResults) {
+                    currentResults.sigma_rules_info = window.SigmaRulesEditor.getPack().rulesInfo;
+                }
+                window.SigmaRulesEditor.renderInto(sigmaEl, {
+                    i18nPack: i18nPack(),
+                    canRescan: !!(currentBugreportBytes && currentBugreportBytes.byteLength),
+                    onRescan: function () {
+                        rescanBugreportWithCurrentRules();
+                    },
+                    onReset: function () {
+                        resetAndroidSigmaRules();
+                    },
+                });
+            }
+            updateSigmaSummaryBar(
+                currentResults || { sigma_rules_info: fresh.rulesInfo || [], sigma_matches: [] }
+            );
+            showStatus(pack.sigmaResetDone || 'Bundled rules restored. Click Rescan to re-run analysis.', 'info');
+        }
+
+        async function rescanBugreportWithCurrentRules() {
+            const pack = i18nPack();
+            if (!currentBugreportBytes || !currentBugreportBytes.byteLength) {
+                showStatus(pack.sigmaRescanNeedDump || 'No dump in memory to rescan. Run an analysis first.', 'error');
+                return;
+            }
+            if (!adb) {
+                try {
+                    adb = new Adb();
+                    window.adb = adb;
+                } catch (e) {
+                    showStatus(String(e && e.message ? e.message : e), 'error');
+                    return;
+                }
+            }
+            const sigmaEl = document.getElementById('sigma-rules-container');
+            if (window.SigmaRulesEditor && sigmaEl) {
+                window.SigmaRulesEditor.syncFromDom(sigmaEl);
+            }
+            const sigmaPack = window.SigmaRulesEditor
+                ? window.SigmaRulesEditor.getPack()
+                : { rules: '', rulesInfo: [] };
+            const prevFileInfo = currentResults && currentResults.file_info;
+            try {
+                showStatus(pack.sigmaRescanBusy || 'Rescanning with current rules…', 'info');
+                setAndroidProgress(20, pack.sigmaRescanBusy || 'Rescanning…', {
+                    step: 'sigma',
+                    busy: true,
+                });
+                await yieldToBrowser();
+                setAndroidProgress(40, pack.ingestPhaseParse || 'Parsing…', {
+                    step: 'parse',
+                    busy: true,
+                    showHint: true,
+                });
+                await yieldToBrowser();
+                const rawWasm = await adb.analyze_bugreport(
+                    currentBugreportBytes,
+                    sigmaPack.rules || ''
+                );
+                await finishBugreportAnalysis(rawWasm, function (result) {
+                    result.sigma_rules_info = sigmaPack.rulesInfo || [];
+                    if (prevFileInfo) result.file_info = prevFileInfo;
+                    result.analysis_timestamp = new Date().toISOString();
+                });
+                showStatus(pack.sigmaRescanDone || 'Rescan complete.', 'success');
+                finishAndroidIngestProgress(true, pack.sigmaRescanDone || 'Rescan complete.');
+            } catch (err) {
+                console.error('[RESCAN] failed', err);
+                showStatus(String(err && err.message ? err.message : err), 'error');
+                finishAndroidIngestProgress(false, pack.ingestProgressError, String(err && err.message ? err.message : err));
+            }
         }
         
         // Calculate SHA-256 hash
@@ -2500,6 +2669,7 @@
                 actionsEl.style.display = 'none';
             }
             currentBugreportBytes = null;
+            if (window.SigmaRulesEditor) window.SigmaRulesEditor.clearSession();
             const dlBtn = document.getElementById('file-download-bugreport-btn');
             if (dlBtn) {
                 dlBtn.style.display = 'none';
@@ -4262,63 +4432,9 @@
             }
             await yieldToBrowser();
 
-            // Detection / Sigma rules (title, id, description, status, level, fetch success)
-            const sigmaEl = document.getElementById('sigma-rules-container');
-            const pack = i18nPack();
-            const info = asWasmArray(data.sigma_rules_info);
-            if (info.length > 0) {
-                sigmaEl.innerHTML = info
-                    .map((rawR) => {
-                        const r = mapPlainTop(rawR) || rawR;
-                        const fetchBadge = r.success
-                            ? '<span class="sigma-fetch-ok">✓ Fetched</span>'
-                            : '<span class="sigma-fetch-err">✗ ' + escapeHtml(r.fetchError || 'Failed') + '</span>';
-                        const rows = [
-                            ['URL', escapeHtml(r.url)],
-                            ['Server', fetchBadge],
-                            ['Title', r.title ? escapeHtml(r.title) : '-'],
-                            ['ID', r.id ? escapeHtml(r.id) : '-'],
-                            ['Description', r.description ? escapeHtml(r.description) : '-'],
-                            ['Status', r.status ? escapeHtml(r.status) : '-'],
-                            ['Level', r.level ? escapeHtml(r.level) : '-'],
-                        ];
-                        const body = rows
-                            .map(
-                                ([l, v]) =>
-                                    '<div class="sigma-rule-row"><span class="sigma-rule-label">' +
-                                    escapeHtml(l) +
-                                    '</span><span class="sigma-rule-value">' +
-                                    v +
-                                    '</span></div>'
-                            )
-                            .join('');
-                        const content = typeof r.content === 'string' ? r.content.trim() : '';
-                        const contentHtml =
-                            content && typeof window.highlightSigmaYamlHtml === 'function'
-                                ? window.highlightSigmaYamlHtml(content)
-                                : escapeHtml(content);
-                        const contentBlock = content
-                            ? '<details class="sigma-rule-content"><summary class="sigma-rule-content__summary">' +
-                              escapeHtml(pack.sigmaShowContent || 'Show rule content') +
-                              '</summary><pre class="sigma-rule-content__pre">' +
-                              contentHtml +
-                              '</pre></details>'
-                            : '';
-                        return '<div class="sigma-rule-card">' + body + contentBlock + '</div>';
-                    })
-                    .join('');
-                sigmaEl.querySelectorAll('details.sigma-rule-content').forEach(function (det) {
-                    det.addEventListener('toggle', function () {
-                        var sum = det.querySelector('summary');
-                        if (!sum) return;
-                        sum.textContent = det.open
-                            ? pack.sigmaHideContent || 'Hide rule content'
-                            : pack.sigmaShowContent || 'Show rule content';
-                    });
-                });
-            } else {
-                sigmaEl.innerHTML = '<p class="detection-empty">' + escapeHtml(pack.sigmaNoRules || 'No rules loaded.') + '</p>';
-            }
+            // Detection / Sigma rules (editable session pack)
+            renderAndroidSigmaRulesEditor(data);
+            await yieldToBrowser();
 
             const matchesEl = document.getElementById('sigma-matches-container');
             const matches = asWasmArray(data.sigma_matches);

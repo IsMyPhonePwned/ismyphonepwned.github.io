@@ -1,4 +1,4 @@
-/** Sigma rules fetch + results UI for iphone.html (shared patterns with android.html). */
+/** Sigma rules fetch + editable session UI for iphone.html (shared patterns with android.html). */
 (function () {
     'use strict';
 
@@ -45,6 +45,9 @@
     }
 
     function parseSigmaRuleMeta(yamlText) {
+        if (window.SigmaRulesEditor && window.SigmaRulesEditor.parseMeta) {
+            return window.SigmaRulesEditor.parseMeta(yamlText);
+        }
         var o = { title: null, id: null, description: null, status: null, level: null };
         if (!yamlText || typeof yamlText !== 'string') return o;
         function m(name, pat) {
@@ -185,88 +188,90 @@
         bar.innerHTML = chips.join('');
     }
 
-    function renderSigmaRulesContainerHtml(data) {
-        var pack = i18nPack();
-        var info = asWasmArray(data.sigma_rules_info);
-        if (!info.length) {
-            return '<p class="detection-empty">' + escapeHtml(pack.sigmaNoRules || 'No rules loaded.') + '</p>';
-        }
-        return info
-            .map(function (rawR) {
-                var r = mapPlainTop(rawR) || rawR;
-                var fetchBadge = r.success
-                    ? '<span class="sigma-fetch-ok">✓ Fetched</span>'
-                    : '<span class="sigma-fetch-err">✗ ' + escapeHtml(r.fetchError || 'Failed') + '</span>';
-                var rows = [
-                    ['URL', escapeHtml(r.url)],
-                    ['Server', fetchBadge],
-                    ['Title', r.title ? escapeHtml(r.title) : '-'],
-                    ['ID', r.id ? escapeHtml(r.id) : '-'],
-                    ['Description', r.description ? escapeHtml(r.description) : '-'],
-                    ['Status', r.status ? escapeHtml(r.status) : '-'],
-                    ['Level', r.level ? escapeHtml(r.level) : '-'],
-                ];
-                var body = rows
-                    .map(function (row) {
-                        return (
-                            '<div class="sigma-rule-row"><span class="sigma-rule-label">' +
-                            escapeHtml(row[0]) +
-                            '</span><span class="sigma-rule-value">' +
-                            row[1] +
-                            '</span></div>'
-                        );
-                    })
-                    .join('');
-                var content = typeof r.content === 'string' ? r.content.trim() : '';
-                var contentHtml =
-                    content && typeof window.highlightSigmaYamlHtml === 'function'
-                        ? window.highlightSigmaYamlHtml(content)
-                        : escapeHtml(content);
-                var contentBlock = content
-                    ? '<details class="sigma-rule-content"><summary class="sigma-rule-content__summary">' +
-                      escapeHtml(pack.sigmaShowContent || 'Show rule content') +
-                      '</summary><pre class="sigma-rule-content__pre">' +
-                      contentHtml +
-                      '</pre></details>'
-                    : '';
-                return '<div class="sigma-rule-card">' + body + contentBlock + '</div>';
-            })
-            .join('');
+    function canRescanSysdiagnose() {
+        return !!(window.currentSysdiagnoseBytes && window.currentSysdiagnoseBytes.byteLength);
     }
 
-    function wireSigmaRuleContentToggles(root) {
-        if (!root) return;
+    function renderIphoneSigmaRulesEditor(data) {
+        var sigmaEl = document.getElementById('iphone-sigma-rules-container');
+        if (!sigmaEl) return;
         var pack = i18nPack();
-        root.querySelectorAll('details.sigma-rule-content').forEach(function (det) {
-            det.addEventListener('toggle', function () {
-                var sum = det.querySelector('summary');
-                if (!sum) return;
-                sum.textContent = det.open
-                    ? pack.sigmaHideContent || 'Hide rule content'
-                    : pack.sigmaShowContent || 'Show rule content';
-            });
+        var info = asWasmArray(data && data.sigma_rules_info);
+        if (!window.SigmaRulesEditor) {
+            sigmaEl.innerHTML =
+                '<p class="detection-empty">' + escapeHtml(pack.sigmaNoRules || 'No rules loaded.') + '</p>';
+            return;
+        }
+        window.SigmaRulesEditor.setSession(info);
+        window.SigmaRulesEditor.renderInto(sigmaEl, {
+            i18nPack: pack,
+            canRescan: canRescanSysdiagnose(),
+            blankRuleYaml: [
+                'title: Custom rule',
+                'id: custom-rule',
+                'status: experimental',
+                'description: |',
+                '  Describe what this rule detects.',
+                'logsource:',
+                '  product: ios',
+                'detection:',
+                '  selection:',
+                '    # field: value',
+                '  condition: selection',
+                'level: medium',
+                '',
+            ].join('\n'),
+            onRescan: function () {
+                if (typeof window.rescanSysdiagnoseWithCurrentRules === 'function') {
+                    window.rescanSysdiagnoseWithCurrentRules();
+                }
+            },
+            onReset: function () {
+                resetIphoneSigmaRules();
+            },
         });
     }
 
+    async function resetIphoneSigmaRules() {
+        var pack = i18nPack();
+        var fresh = await fetchSigmaRules();
+        if (window.SigmaRulesEditor) {
+            window.SigmaRulesEditor.setSession(fresh.rulesInfo || []);
+            if (window.currentResults) {
+                window.currentResults.sigma_rules_info = window.SigmaRulesEditor.getPack().rulesInfo;
+            }
+            renderIphoneSigmaRulesEditor({
+                sigma_rules_info: window.SigmaRulesEditor.getPack().rulesInfo,
+            });
+        }
+        updateSigmaSummaryBar(
+            window.currentResults || {
+                sigma_rules_info: fresh.rulesInfo || [],
+                sigma_matches: [],
+            }
+        );
+        if (typeof window.showStatus === 'function') {
+            window.showStatus(pack.sigmaResetDone || 'Bundled rules restored. Click Rescan to re-run analysis.', 'info');
+        }
+    }
+
     var sigmaDetailsData = null;
-    var sigmaDetailsBuilt = false;
+    var sigmaRulesBuilt = false;
+    var sigmaMatchesBuilt = false;
 
     function ensureSysdiagnoseSigmaDetails() {
-        if (sigmaDetailsBuilt || !sigmaDetailsData) return;
-        sigmaDetailsBuilt = true;
-        var pack = i18nPack();
-        var sigmaEl = document.getElementById('iphone-sigma-rules-container');
-        var matchesEl = document.getElementById('iphone-sigma-matches-container');
-        if (sigmaEl) {
-            sigmaEl.innerHTML = renderSigmaRulesContainerHtml(sigmaDetailsData);
-            wireSigmaRuleContentToggles(sigmaEl);
+        if (!sigmaDetailsData) return;
+        if (!sigmaRulesBuilt) {
+            renderIphoneSigmaRulesEditor(sigmaDetailsData);
+            sigmaRulesBuilt = true;
         }
-        if (matchesEl) {
-            matchesEl.innerHTML = renderSigmaMatchesGroupedHtml(asWasmArray(sigmaDetailsData.sigma_matches));
-            wireSigmaMatchesContainer(matchesEl);
-        }
-        if (!sigmaEl && !matchesEl) {
-            sigmaDetailsBuilt = false;
+        if (!sigmaMatchesBuilt) {
+            var matchesEl = document.getElementById('iphone-sigma-matches-container');
+            if (matchesEl) {
+                matchesEl.innerHTML = renderSigmaMatchesGroupedHtml(asWasmArray(sigmaDetailsData.sigma_matches));
+                wireSigmaMatchesContainer(matchesEl);
+                sigmaMatchesBuilt = true;
+            }
         }
     }
 
@@ -274,7 +279,8 @@
         opts = opts || {};
         data = data || {};
         sigmaDetailsData = data;
-        sigmaDetailsBuilt = false;
+        sigmaRulesBuilt = false;
+        sigmaMatchesBuilt = false;
         var section = document.getElementById('iphone-detection-section');
         if (!section) return;
         section.style.display = 'block';
@@ -283,22 +289,36 @@
         var pack = i18nPack();
         var sigmaEl = document.getElementById('iphone-sigma-rules-container');
         var matchesEl = document.getElementById('iphone-sigma-matches-container');
+        // Always show the editable rules session; optionally defer matches.
+        if (sigmaEl) {
+            renderIphoneSigmaRulesEditor(data);
+            sigmaRulesBuilt = true;
+        }
         var hint = '<p class="detection-empty">' + escapeHtml(pack.sigmaExpandHint || 'Expand to load details.') + '</p>';
         if (opts.deferDetails) {
-            if (sigmaEl) sigmaEl.innerHTML = hint;
             if (matchesEl) matchesEl.innerHTML = hint;
             return;
         }
-        ensureSysdiagnoseSigmaDetails();
+        if (matchesEl) {
+            matchesEl.innerHTML = renderSigmaMatchesGroupedHtml(asWasmArray(data.sigma_matches));
+            wireSigmaMatchesContainer(matchesEl);
+            sigmaMatchesBuilt = true;
+        }
     }
 
     function hideSysdiagnoseSigmaUI() {
         var section = document.getElementById('iphone-detection-section');
         if (section) section.style.display = 'none';
+        if (window.SigmaRulesEditor) window.SigmaRulesEditor.clearSession();
+        sigmaDetailsData = null;
+        sigmaRulesBuilt = false;
+        sigmaMatchesBuilt = false;
     }
 
     window.fetchSigmaRules = fetchSigmaRules;
     window.renderSysdiagnoseSigmaUI = renderSysdiagnoseSigmaUI;
     window.ensureIphoneSigmaDetails = ensureSysdiagnoseSigmaDetails;
     window.hideSysdiagnoseSigmaUI = hideSysdiagnoseSigmaUI;
+    window.renderIphoneSigmaRulesEditor = renderIphoneSigmaRulesEditor;
+    window.resetIphoneSigmaRules = resetIphoneSigmaRules;
 })();

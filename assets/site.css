@@ -3497,6 +3497,88 @@
     white-space: pre-wrap;
     word-break: break-word;
 }
+
+.sigma-session-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.65rem;
+    margin: 0 0 0.85rem;
+    padding: 0.75rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--bg-secondary) 70%, var(--bg-card) 30%);
+}
+.sigma-session-hint {
+    flex: 1 1 100%;
+    margin: 0.15rem 0 0;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+.sigma-session-btn {
+    width: auto !important;
+    min-width: 0;
+    padding: 0.45rem 0.85rem !important;
+    font-size: 0.8rem !important;
+    font-weight: 600;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+.sigma-session-btn:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--accent) 12%, var(--bg-card));
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+.sigma-session-btn--primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+.sigma-session-btn--primary:hover:not(:disabled) {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+    color: #fff;
+}
+.sigma-session-btn--danger {
+    color: var(--error);
+    border-color: color-mix(in srgb, var(--error) 35%, var(--border));
+}
+.sigma-session-btn--danger:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--error) 10%, var(--bg-card));
+    border-color: var(--error);
+}
+.sigma-rule-card-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    margin: 0.45rem 0 0.15rem;
+}
+.sigma-rule-editor {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0.55rem 0 0;
+    padding: 0.75rem 0.85rem;
+    min-height: 12rem;
+    max-height: 28rem;
+    resize: vertical;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--bg-secondary) 88%, #1e293b 12%);
+    color: var(--text-primary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.72rem;
+    line-height: 1.5;
+}
+.sigma-rule-editor:focus {
+    outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    outline-offset: 1px;
+}
+[data-theme="dark"] .sigma-rule-editor {
+    background: #0f172a;
+}
 [data-theme="dark"] .sigma-rule-content__pre {
     background: color-mix(in srgb, var(--bg-secondary) 70%, #0b1220 30%);
 }

@@ -167,13 +167,20 @@
 
                 <!-- Use Existing from Device -->
                 <div id="tab-device" class="hidden">
-                    <p data-i18n="deviceDesc">Connect to device and select an existing bugreport.</p>
+                    <p data-i18n="deviceDesc">Connect to device, then choose Analysis (existing bugreport) or Backup (.ab).</p>
                     <div style="display: flex; gap: 0.5rem;">
                         <button id="btn-connect-device" disabled onclick="connectDevice()" style="flex: 1;" data-i18n="btnConnectDevice">Connect to Device</button>
                         <button id="btn-disconnect-device" class="hidden" onclick="disconnectDevice()" title="Disconnect from device" style="background: var(--error); padding: 0.75rem; min-width: 44px; font-size: 1.2rem; line-height: 1;">
                             🔌
                         </button>
                     </div>
+
+                    <div id="android-device-action" class="tabs tabs-sub" role="tablist" aria-label="Device action" style="margin-top: 1rem;">
+                        <button type="button" class="tab tab-android-action active" data-android-action="analysis" onclick="switchAndroidDeviceAction('analysis')" data-i18n="actionAnalysis">Analysis</button>
+                        <button type="button" class="tab tab-android-action" data-android-action="backup" onclick="switchAndroidDeviceAction('backup')" data-i18n="actionBackup">Backup</button>
+                    </div>
+
+                    <div id="android-action-analysis">
                     <div id="listing-status" class="listing-indicator hidden" style="text-align: center; padding: 1rem; margin: 1rem 0;">
                         <div style="margin-bottom: 0.5rem; font-weight: 500;" data-i18n="scanningDevice">📡 Scanning device for bugreports...</div>
                         <div style="font-size: 0.75rem; color: var(--text-secondary);" data-i18n="scanningTime">This may take a few seconds</div>
@@ -194,6 +201,36 @@
                                 <span id="bugreport-selected-name" class="bugreport-picker-selected-name">—</span>
                             </div>
                             <button type="button" id="btn-analyze-device" class="bugreport-picker-analyze" onclick="analyzeFromDevice()" data-i18n="analyzeSelected">Analyze bugreport</button>
+                        </div>
+                    </div>
+                    </div>
+
+                    <div id="android-action-backup" class="hidden" style="margin-top: 0.75rem;">
+                        <p style="font-size: 0.8125rem; color: var(--text-secondary); margin: 0 0 0.75rem;" data-i18n="backupActionDesc">Create an ADB .ab backup on the connected phone. Telephony stays in memory and is analyzed here; Full streams to a file on disk (Chrome/Edge) so multi‑GB backups work.</p>
+                        <form id="android-backup-form" autocomplete="off" onsubmit="event.preventDefault(); window.createAndroidBackup(); return false;">
+                        <input type="text" name="username" autocomplete="username" value="backup" tabindex="-1" aria-hidden="true" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">
+                        <label style="display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.65rem;">
+                            <span data-i18n="backupScopeLabel">Backup scope</span>
+                            <select id="android-backup-scope" name="backup-scope" style="max-width: 22rem; padding: 0.4rem 0.55rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary);">
+                                <option value="telephony" data-i18n-option="backupScopeTelephony">Telephony (SMS) only</option>
+                                <option value="full" data-i18n-option="backupScopeFull">Full (stream to disk)</option>
+                            </select>
+                        </label>
+                        <label style="display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+                            <span data-i18n="backupPasswordLabel">Backup password (if encrypted)</span>
+                            <input type="password" id="android-backup-password" name="backup-password" autocomplete="current-password" style="max-width: 22rem; padding: 0.4rem 0.55rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary);">
+                        </label>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+                            <button type="submit" id="btn-android-create-backup" data-i18n="btnCreateAbBackup">Create .ab backup</button>
+                            <button type="button" id="btn-android-download-ab" class="hidden" onclick="window.downloadAndroidAb()" data-i18n="btnDownloadAb">Download .ab</button>
+                            <button type="button" id="btn-android-analyze-saved" class="hidden" onclick="window.analyzeAndroidSavedBackup()" data-i18n="btnAnalyzeSavedAb">Analyze saved .ab</button>
+                            <button type="button" id="btn-android-backup-json" class="hidden" onclick="window.downloadAndroidBackupJson()" data-i18n="btnDownloadBackupJson">Download JSON</button>
+                        </div>
+                        </form>
+                        <div id="android-backup-results" class="hidden" style="margin-top: 1.25rem;">
+                            <h3 style="margin: 0 0 0.5rem; font-size: 1.05rem;" data-i18n="backupResultsTitle">Backup analysis</h3>
+                            <table class="detail-table" style="margin-bottom: 0.75rem;"><tbody id="android-backup-summary"></tbody></table>
+                            <p id="android-backup-warnings" style="font-size: 0.8125rem; color: var(--text-secondary);"></p>
                         </div>
                     </div>
                 </div>
@@ -852,6 +889,9 @@
                 <span style="margin: 0 0.5rem;">·</span>
                 <a href="https://github.com/IsMyPhonePwned/" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none; font-weight: 500;" data-i18n="navGitHub">GitHub</a>
             </p>
+            <div class="bmc-footer">
+                <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="ping2a" data-color="#FFDD00" data-emoji="☕" data-font="Cookie" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#ffffff"></script>
+            </div>
         </footer>
     </div>
 
@@ -913,6 +953,35 @@
                 tabGenerate: 'Generate New',
                 tabDevice: 'From Device',
                 tabUpload: 'Upload File',
+                actionAnalysis: 'Analysis',
+                actionBackup: 'Backup',
+                deviceDesc: 'Connect to device, then choose Analysis (existing bugreport) or Backup (.ab).',
+                backupActionDesc: 'Create an ADB .ab backup on the connected phone. Telephony stays in memory and is analyzed here; Full streams to a file on disk (Chrome/Edge) so multi‑GB backups work.',
+                backupStreamPick: 'Choose where to save the .ab file…',
+                backupStreamNeedPicker: 'Full backup needs the File System Access API (Chrome or Edge on desktop). Or use Telephony scope, or desktop adb + upload.',
+                backupStreamWriting: 'Streaming backup to disk — confirm on the phone…',
+                backupStreamProgress: 'Writing backup… {mb} MB',
+                backupStreamDone: '✓ Saved {mb} MB to disk. Use “Analyze saved .ab” if it fits in memory (~<1.2 GB), or open it later in backup.html.',
+                btnAnalyzeSavedAb: 'Analyze saved .ab',
+                backupAnalyzeSavedBusy: 'Reading saved .ab for analysis…',
+                backupAnalyzeSavedTooLarge: 'Saved archive is {mb} MB — too large to load entirely in the browser. Keep the file on disk; use Telephony scope for in-browser analyze.',
+                backupAnalyzeSavedNeedFile: 'No saved backup handle. Create a Full backup first (stream to disk).',
+                backupStreamAbort: 'Save cancelled.',
+                backupScopeTelephony: 'Telephony (SMS) only',
+                backupScopeFull: 'Full (stream to disk)',
+                backupScopeLabel: 'Backup scope',
+                backupPasswordLabel: 'Backup password (if encrypted)',
+                btnCreateAbBackup: 'Create .ab backup',
+                btnDownloadAb: 'Download .ab',
+                backupResultsTitle: 'Backup analysis',
+                btnDownloadBackupJson: 'Download JSON',
+                backupNeedConnect: 'Connect to the device first, then create the backup.',
+                backupProgressTitle: 'Creating backup',
+                backupProgressAnalyzeTitle: 'Analyzing backup',
+                backupStatusCreating: 'Creating .ab backup — confirm the dialog on the phone…',
+                backupStatusAnalyzing: 'Analyzing backup locally…',
+                backupPhaseCreate: 'Creating Android backup…',
+                backupPhaseAnalyze: 'Analyzing backup…',
                 dashTabOverview: 'Overview',
                 dashTabApps: 'Apps',
                 dashTabNetwork: 'Network',
@@ -945,7 +1014,6 @@
                 generateBtnBusy: 'Generating… {t}',
                 generateBtnRetry: 'Retry Generation',
                 generateTimeout: 'Operation timed out after {t}. Bugreport generation can take 5–15 minutes. Try again, or use “From Device” if a report already exists.',
-                deviceDesc: 'Connect to device and select an existing bugreport.',
                 btnConnectDevice: 'Connect to Device',
                 scanningDevice: '📡 Scanning device for bugreports...',
                 scanningTime: 'This may take a few seconds',
@@ -1269,6 +1337,35 @@
                 tabGenerate: 'Générer',
                 tabDevice: 'Depuis l\'appareil',
                 tabUpload: 'Envoyer un fichier',
+                actionAnalysis: 'Analyse',
+                actionBackup: 'Sauvegarde',
+                deviceDesc: 'Connectez l’appareil, puis choisissez Analyse (bugreport existant) ou Sauvegarde (.ab).',
+                backupActionDesc: 'Créer une sauvegarde ADB .ab sur le téléphone connecté. Téléphonie reste en mémoire et est analysée ici ; Complet s’écrit sur disque (Chrome/Edge) pour les multi‑Go.',
+                backupStreamPick: 'Choisissez où enregistrer le fichier .ab…',
+                backupStreamNeedPicker: 'La sauvegarde complète nécessite l’API File System Access (Chrome ou Edge desktop). Ou utilisez Téléphonie, ou adb desktop + import.',
+                backupStreamWriting: 'Écriture de la sauvegarde sur disque — confirmez sur le téléphone…',
+                backupStreamProgress: 'Écriture… {mb} Mo',
+                backupStreamDone: '✓ {mb} Mo enregistrés. Utilisez « Analyser le .ab » s’il tient en mémoire (~<1,2 Go), ou ouvrez-le plus tard dans backup.html.',
+                btnAnalyzeSavedAb: 'Analyser le .ab enregistré',
+                backupAnalyzeSavedBusy: 'Lecture du .ab pour analyse…',
+                backupAnalyzeSavedTooLarge: 'L’archive fait {mb} Mo — trop volumineuse pour le navigateur. Gardez le fichier ; utilisez Téléphonie pour une analyse in-browser.',
+                backupAnalyzeSavedNeedFile: 'Aucun fichier sauvegardé. Créez d’abord une sauvegarde Complète (flux disque).',
+                backupStreamAbort: 'Enregistrement annulé.',
+                backupScopeLabel: 'Portée de la sauvegarde',
+                backupScopeTelephony: 'Téléphonie (SMS) uniquement',
+                backupScopeFull: 'Complète (flux vers disque)',
+                backupPasswordLabel: 'Mot de passe de sauvegarde (si chiffré)',
+                btnCreateAbBackup: 'Créer la sauvegarde .ab',
+                btnDownloadAb: 'Télécharger .ab',
+                backupResultsTitle: 'Analyse de la sauvegarde',
+                btnDownloadBackupJson: 'Télécharger JSON',
+                backupNeedConnect: 'Connectez d’abord l’appareil, puis créez la sauvegarde.',
+                backupProgressTitle: 'Création de la sauvegarde',
+                backupProgressAnalyzeTitle: 'Analyse de la sauvegarde',
+                backupStatusCreating: 'Création de la sauvegarde .ab — confirmez sur le téléphone…',
+                backupStatusAnalyzing: 'Analyse locale de la sauvegarde…',
+                backupPhaseCreate: 'Création de la sauvegarde Android…',
+                backupPhaseAnalyze: 'Analyse de la sauvegarde…',
                 dashTabOverview: 'Aperçu',
                 dashTabApps: 'Apps',
                 dashTabNetwork: 'Réseau',
@@ -1302,7 +1399,6 @@
                 generateBtnBusy: 'Génération… {t}',
                 generateBtnRetry: 'Réessayer',
                 generateTimeout: 'Délai dépassé après {t}. La génération peut prendre 5–15 minutes. Réessayez, ou utilisez « Depuis l’appareil » si un rapport existe déjà.',
-                deviceDesc: 'Connectez l\'appareil et sélectionnez un bug report existant.',
                 btnConnectDevice: 'Connecter l\'appareil',
                 scanningDevice: '📡 Recherche des bug reports...',
                 scanningTime: 'Cela peut prendre quelques secondes',
@@ -1626,6 +1722,35 @@
                 tabGenerate: '生成新的',
                 tabDevice: '从设备',
                 tabUpload: '上传文件',
+                actionAnalysis: '分析',
+                actionBackup: '备份',
+                deviceDesc: '连接设备后，选择分析（已有 bugreport）或备份（.ab）。',
+                backupActionDesc: '在已连接手机上创建 ADB .ab 备份。电话（短信）保留在内存中并在此分析；完整备份流式写入磁盘（Chrome/Edge），以支持数 GB 大小。',
+                backupStreamPick: '选择保存 .ab 文件的位置…',
+                backupStreamNeedPicker: '完整备份需要 File System Access API（桌面 Chrome 或 Edge）。也可使用“仅电话”，或桌面 adb + 上传。',
+                backupStreamWriting: '正在将备份写入磁盘 — 请在手机上确认…',
+                backupStreamProgress: '正在写入… {mb} MB',
+                backupStreamDone: '✓ 已保存 {mb} MB。若体积可放入内存（约 <1.2 GB）可点“分析已保存的 .ab”，或稍后在 backup.html 打开。',
+                btnAnalyzeSavedAb: '分析已保存的 .ab',
+                backupAnalyzeSavedBusy: '正在读取已保存的 .ab 以便分析…',
+                backupAnalyzeSavedTooLarge: '归档为 {mb} MB — 过大，无法在浏览器中整文件加载。请保留磁盘文件；浏览器内分析请用“仅电话”。',
+                backupAnalyzeSavedNeedFile: '没有已保存的备份句柄。请先创建完整备份（流式写入磁盘）。',
+                backupStreamAbort: '已取消保存。',
+                backupScopeLabel: '备份范围',
+                backupScopeTelephony: '仅电话（短信）',
+                backupScopeFull: '完整（流式写入磁盘）',
+                backupPasswordLabel: '备份密码（如已加密）',
+                btnCreateAbBackup: '创建 .ab 备份',
+                btnDownloadAb: '下载 .ab',
+                backupResultsTitle: '备份分析',
+                btnDownloadBackupJson: '下载 JSON',
+                backupNeedConnect: '请先连接设备，再创建备份。',
+                backupProgressTitle: '正在创建备份',
+                backupProgressAnalyzeTitle: '正在分析备份',
+                backupStatusCreating: '正在创建 .ab 备份 — 请在手机上确认对话框…',
+                backupStatusAnalyzing: '正在本地分析备份…',
+                backupPhaseCreate: '正在创建 Android 备份…',
+                backupPhaseAnalyze: '正在分析备份…',
                 dashTabOverview: '总览',
                 dashTabApps: '应用',
                 dashTabNetwork: '网络',
@@ -1659,7 +1784,6 @@
                 generateBtnBusy: '生成中… {t}',
                 generateBtnRetry: '重试生成',
                 generateTimeout: '操作在 {t} 后超时。Bugreport 生成可能需要 5–15 分钟。请重试，或若已有报告请使用「从设备」。',
-                deviceDesc: '连接设备并选择已有的 bugreport。',
                 btnConnectDevice: '连接设备',
                 scanningDevice: '📡 正在扫描设备中的 bugreport...',
                 scanningTime: '通常只需几秒钟',
@@ -1951,6 +2075,13 @@
             var crashSearch = document.getElementById('crash-search-input');
             if (crashSearch && t.dashCrashSearch) crashSearch.placeholder = t.dashCrashSearch;
             if (typeof window.rerenderBugreportPicker === 'function') window.rerenderBugreportPicker();
+            var scopeSel = document.getElementById('android-backup-scope');
+            if (scopeSel) {
+                Array.prototype.forEach.call(scopeSel.options, function (opt) {
+                    var ok = opt.getAttribute('data-i18n-option');
+                    if (ok && t[ok]) opt.textContent = t[ok];
+                });
+            }
             var themeBtn = document.querySelector('.theme-toggle');
             var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
             if (themeBtn) {
@@ -1989,7 +2120,7 @@
     </script>
 
     <script type="module">
-        import init, { Adb, generate_keypair, has_keypair } from './pkg/ismyphonepwned_wasm.js';
+        import init, { Adb, generate_keypair, has_keypair, analyzeBackup } from './pkg/ismyphonepwned_wasm.js';
 
         let adb = null;
         let uploadedFile = null;
@@ -1997,8 +2128,51 @@
         let currentResults = null;
         /** Raw bytes of the bugreport that was analyzed (for re-download from results UI). */
         let currentBugreportBytes = null;
+        /** Last created Android .ab bytes (Backup tab). */
+        let currentAndroidAbBytes = null;
+        let currentAndroidBackupJson = null;
+        /** @type {FileSystemFileHandle | null} */
+        let currentAndroidBackupFileHandle = null;
+        const ANDROID_OPFS_BACKUP = 'impwned-last-android-backup.ab';
 
         window.adb = null;
+
+        async function ensureAndroidHandleReadable(handle) {
+            if (!handle || typeof handle.queryPermission !== 'function') return true;
+            const opts = { mode: 'read' };
+            let state = await handle.queryPermission(opts);
+            if (state === 'granted') return true;
+            if (typeof handle.requestPermission === 'function') {
+                state = await handle.requestPermission(opts);
+            }
+            return state === 'granted';
+        }
+
+        async function openAndroidOpfsBackupWritable() {
+            if (!navigator.storage || typeof navigator.storage.getDirectory !== 'function') {
+                return null;
+            }
+            const root = await navigator.storage.getDirectory();
+            const handle = await root.getFileHandle(ANDROID_OPFS_BACKUP, { create: true });
+            const writable = await handle.createWritable();
+            return { handle, writable };
+        }
+
+        async function readAndroidBackupFileFromHandle(handle) {
+            await ensureAndroidHandleReadable(handle);
+            let lastErr = null;
+            for (let attempt = 0; attempt < 5; attempt++) {
+                try {
+                    if (attempt > 0) {
+                        await new Promise(function (r) { setTimeout(r, 400 * attempt); });
+                    }
+                    return await handle.getFile();
+                } catch (e) {
+                    lastErr = e;
+                }
+            }
+            throw lastErr || new Error('getFile failed');
+        }
 
         /** ADB interface filter (USB class 0xff / 0x42 / 0x01) — must match Rust `WebUsbTransport`. */
         const ADB_USB_FILTERS = Object.freeze([
@@ -2424,6 +2598,27 @@
             hideResults();
         };
 
+        window.switchAndroidDeviceAction = function (action) {
+            const mode = action === 'backup' ? 'backup' : 'analysis';
+            document.querySelectorAll('.tab-android-action').forEach(function (t) {
+                t.classList.toggle('active', t.getAttribute('data-android-action') === mode);
+            });
+            const analysis = document.getElementById('android-action-analysis');
+            const backup = document.getElementById('android-action-backup');
+            if (analysis) analysis.classList.toggle('hidden', mode !== 'analysis');
+            if (backup) backup.classList.toggle('hidden', mode !== 'backup');
+        };
+
+        (function openAndroidTabFromHash() {
+            const hash = (location.hash || '').replace(/^#/, '').toLowerCase();
+            if (hash === 'backup') {
+                window.switchAndroidTab('device');
+                window.switchAndroidDeviceAction('backup');
+            } else if (hash === 'device' || hash === 'upload' || hash === 'generate') {
+                window.switchAndroidTab(hash);
+            }
+        })();
+
         // Status messages
         function showStatus(message, type = 'info') {
             const statusEl = document.getElementById('status');
@@ -2531,6 +2726,8 @@
                 wrap.setAttribute('aria-busy', 'false');
                 if (elapsedEl) elapsedEl.hidden = true;
                 if (hintEl) hintEl.classList.add('hidden');
+                const stepsEl = document.getElementById('bugreport-ingest-steps');
+                if (stepsEl) stepsEl.classList.remove('hidden');
                 setAndroidIngestStepActive('');
                 const legacy = document.getElementById('progress');
                 if (legacy) legacy.classList.remove('show');
@@ -2569,6 +2766,9 @@
             }
             if (opts.step) setAndroidIngestStepActive(opts.step);
             if (opts.done) markAllAndroidIngestStepsDone();
+
+            const stepsEl = document.getElementById('bugreport-ingest-steps');
+            if (stepsEl) stepsEl.classList.toggle('hidden', !!opts.hideSteps);
 
             wrap.classList.toggle('is-busy', !!opts.busy && !opts.done && !opts.error);
             wrap.classList.toggle('is-parsing', !!opts.showHint && !!opts.busy && !opts.done && !opts.error);
@@ -2613,7 +2813,9 @@
         function setAndroidProgress(percent, label, opts) {
             opts = opts || {};
             const busy = opts.busy != null ? opts.busy : true;
-            const step = opts.step || inferAndroidIngestStep(percent, label);
+            const step = opts.hideSteps
+                ? ''
+                : opts.step || inferAndroidIngestStep(percent, label);
             setBugreportIngestProgress(true, percent, label || '', opts.detail || '', {
                 step: step,
                 busy: busy && percent < 100 && !opts.done && !opts.error,
@@ -2622,6 +2824,7 @@
                 showHint: !!opts.showHint,
                 hint: opts.hint,
                 title: opts.title,
+                hideSteps: !!opts.hideSteps,
                 scroll: opts.scroll
             });
         }
@@ -8393,6 +8596,380 @@
         }
 
         // Connect to device
+        function androidBackupServiceArgs() {
+            const scope = (document.getElementById('android-backup-scope') || {}).value || 'telephony';
+            if (scope === 'full') {
+                return '-nocompress -apk -obb -shared -system -all';
+            }
+            return '-nocompress com.android.providers.telephony';
+        }
+
+        function renderAndroidBackupSummary(out) {
+            const wrap = document.getElementById('android-backup-results');
+            const body = document.getElementById('android-backup-summary');
+            const warnEl = document.getElementById('android-backup-warnings');
+            const jsonBtn = document.getElementById('btn-android-backup-json');
+            if (!wrap || !body) return;
+            body.textContent = '';
+            const rows = [
+                ['Kind', out.kind],
+                ['Platform', out.platform],
+                ['Encrypted', out.encrypted != null ? String(out.encrypted) : null],
+                ['Files', out.files_total != null ? String(out.files_total) : null],
+                ['SMS', out.sms_total != null ? String(out.sms_total) : null],
+                ['Device', out.device_name || out.product_name || out.serial],
+            ];
+            rows.forEach(function (pair) {
+                if (pair[1] == null || pair[1] === '') return;
+                const tr = document.createElement('tr');
+                const th = document.createElement('th');
+                th.textContent = pair[0];
+                const td = document.createElement('td');
+                td.textContent = String(pair[1]);
+                tr.appendChild(th);
+                tr.appendChild(td);
+                body.appendChild(tr);
+            });
+            if (warnEl) {
+                const warnings = Array.isArray(out.warnings) ? out.warnings : [];
+                warnEl.textContent = warnings.length ? warnings.join(' · ') : '';
+            }
+            if (jsonBtn) jsonBtn.classList.toggle('hidden', !currentAndroidBackupJson);
+            wrap.classList.remove('hidden');
+        }
+
+        window.downloadAndroidAb = function () {
+            if (!currentAndroidAbBytes) return;
+            const blob = new Blob([currentAndroidAbBytes], { type: 'application/octet-stream' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'backup.ab';
+            a.click();
+            setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+        };
+
+        window.downloadAndroidBackupJson = function () {
+            if (!currentAndroidBackupJson) return;
+            const blob = new Blob([currentAndroidBackupJson], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'backup-analysis.json';
+            a.click();
+            setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+        };
+
+        window.analyzeAndroidSavedBackup = async function () {
+            const btn = document.getElementById('btn-android-analyze-saved');
+            try {
+                if (typeof analyzeBackup !== 'function') {
+                    showStatus('⚠️ WebAssembly not loaded yet. Please wait a moment and try again.', 'error');
+                    return;
+                }
+                if (btn) btn.disabled = true;
+                showStatus(trAndroid('backupAnalyzeSavedBusy'), 'info');
+                showProgress(20, trAndroid('backupAnalyzeSavedBusy'), {
+                    busy: true,
+                    hideSteps: true,
+                    title: trAndroid('backupProgressAnalyzeTitle') || 'Analyzing backup',
+                    step: '',
+                });
+
+                let file = null;
+                let lastErr = null;
+
+                // Prefer OPFS copy (same-origin, avoids NotReadableError on the disk path).
+                if (navigator.storage && typeof navigator.storage.getDirectory === 'function') {
+                    try {
+                        const root = await navigator.storage.getDirectory();
+                        const opfsHandle = await root.getFileHandle(ANDROID_OPFS_BACKUP);
+                        file = await readAndroidBackupFileFromHandle(opfsHandle);
+                    } catch (e) {
+                        lastErr = e;
+                    }
+                }
+                if (!file && currentAndroidBackupFileHandle) {
+                    try {
+                        file = await readAndroidBackupFileFromHandle(currentAndroidBackupFileHandle);
+                    } catch (e) {
+                        lastErr = e;
+                    }
+                }
+                if (!file) {
+                    if (!currentAndroidBackupFileHandle) {
+                        showStatus(trAndroid('backupAnalyzeSavedNeedFile'), 'error');
+                        hideProgress();
+                        return;
+                    }
+                    throw lastErr || new Error('getFile failed');
+                }
+
+                const mb = file.size / 1048576;
+                if (file.size > 1200 * 1048576) {
+                    showStatus(
+                        (trAndroid('backupAnalyzeSavedTooLarge') || 'Too large ({mb} MB)').replace(
+                            '{mb}',
+                            mb.toFixed(0)
+                        ),
+                        'error'
+                    );
+                    hideProgress();
+                    return;
+                }
+
+                const buf = await file.arrayBuffer();
+                const ab = new Uint8Array(buf);
+                currentAndroidAbBytes = ab;
+                const passwordEl = document.getElementById('android-backup-password');
+                const password = passwordEl && passwordEl.value ? passwordEl.value : null;
+                showProgress(70, trAndroid('backupPhaseAnalyze') || 'Analyzing backup…', {
+                    busy: true,
+                    hideSteps: true,
+                    title: trAndroid('backupProgressAnalyzeTitle') || 'Analyzing backup',
+                    step: '',
+                });
+                const raw = analyzeBackup(['backup.ab'], [ab], password, null);
+                const out = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                currentAndroidBackupJson = JSON.stringify(out, null, 2);
+                renderAndroidBackupSummary(out || {});
+                showStatus(
+                    '✓ Backup ready — ' +
+                        (out && out.kind ? out.kind : 'analyzed') +
+                        (out && out.files_total != null ? ' · ' + out.files_total + ' files' : ''),
+                    'success'
+                );
+                hideProgress();
+            } catch (error) {
+                console.error('[BACKUP] analyze saved error:', error);
+                let msg = String(error && error.message ? error.message : error);
+                if (error && error.name === 'NotReadableError') {
+                    msg =
+                        'Could not read the saved file. On backup.html use “Use last streamed backup” (browser copy), or copy backup.ab to a new path and open it with “Open .ab (Chrome)…”.';
+                }
+                showStatus(msg, 'error');
+                hideProgress();
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        };
+
+        window.createAndroidBackup = async function () {
+            const btn = document.getElementById('btn-android-create-backup');
+            const dlBtn = document.getElementById('btn-android-download-ab');
+            const scope = (document.getElementById('android-backup-scope') || {}).value || 'telephony';
+            const streamToDisk = scope === 'full';
+            let writable = null;
+            let opfsWritable = null;
+            try {
+                if (typeof Adb === 'undefined') {
+                    showStatus('⚠️ WebAssembly not loaded yet. Please wait a moment and try again.', 'error');
+                    return;
+                }
+                if (!streamToDisk && typeof analyzeBackup !== 'function') {
+                    showStatus('⚠️ WebAssembly not loaded yet. Please wait a moment and try again.', 'error');
+                    return;
+                }
+
+                if (!adb || typeof adb.is_connected !== 'function' || !adb.is_connected()) {
+                    showStatus(trAndroid('backupNeedConnect'), 'error');
+                    return;
+                }
+
+                if (btn) {
+                    btn.disabled = true;
+                    btn.textContent = trAndroid('btnCreateAbBackup') + '…';
+                }
+
+                const args = androidBackupServiceArgs();
+                console.log('[BACKUP] Android backup args', args, 'streamToDisk=', streamToDisk);
+
+                if (streamToDisk) {
+                    if (typeof window.showSaveFilePicker !== 'function' || typeof adb.backupStream !== 'function') {
+                        showStatus(trAndroid('backupStreamNeedPicker'), 'error');
+                        return;
+                    }
+                    showStatus(trAndroid('backupStreamPick'), 'info');
+                    let handle;
+                    try {
+                        handle = await window.showSaveFilePicker({
+                            suggestedName: 'backup.ab',
+                            types: [
+                                {
+                                    description: 'Android Backup',
+                                    accept: { 'application/octet-stream': ['.ab'] },
+                                },
+                            ],
+                        });
+                    } catch (pickErr) {
+                        if (pickErr && pickErr.name === 'AbortError') {
+                            showStatus(trAndroid('backupStreamAbort'), 'info');
+                            return;
+                        }
+                        throw pickErr;
+                    }
+                    writable = await handle.createWritable();
+                    try {
+                        const opfs = await openAndroidOpfsBackupWritable();
+                        if (opfs) opfsWritable = opfs.writable;
+                    } catch (opfsErr) {
+                        console.warn('[BACKUP] OPFS mirror unavailable', opfsErr);
+                    }
+
+                    const backupTitle = trAndroid('backupProgressTitle') || 'Creating backup';
+                    showStatus(trAndroid('backupStreamWriting'), 'info');
+                    showProgress(8, trAndroid('backupStreamWriting'), {
+                        busy: true,
+                        hideSteps: true,
+                        title: backupTitle,
+                        step: '',
+                    });
+
+                    let bytesWritten = 0;
+                    let lastUiAt = 0;
+                    const totalBytes = await adb.backupStream(args, async function (chunk) {
+                        // Copy chunk — WASM memory views must not be reused across awaits.
+                        const copy = chunk.slice
+                            ? chunk.slice()
+                            : new Uint8Array(chunk);
+                        await writable.write(copy);
+                        if (opfsWritable) {
+                            await opfsWritable.write(copy);
+                        }
+                        bytesWritten += copy.byteLength || copy.length || 0;
+                        const now = performance.now();
+                        if (now - lastUiAt > 400) {
+                            lastUiAt = now;
+                            const mb = (bytesWritten / 1048576).toFixed(1);
+                            const label = (trAndroid('backupStreamProgress') || 'Writing backup… {mb} MB').replace(
+                                '{mb}',
+                                mb
+                            );
+                            const pct = Math.min(92, 8 + Math.log10(Math.max(bytesWritten, 1)) * 12);
+                            showProgress(pct, label, {
+                                busy: true,
+                                hideSteps: true,
+                                title: backupTitle,
+                                step: '',
+                            });
+                        }
+                    });
+
+                    await writable.close();
+                    writable = null;
+                    if (opfsWritable) {
+                        try {
+                            await opfsWritable.close();
+                        } catch (closeOpfsErr) {
+                            console.warn('[BACKUP] OPFS close', closeOpfsErr);
+                        }
+                        opfsWritable = null;
+                    }
+                    currentAndroidAbBytes = null;
+                    currentAndroidBackupFileHandle = handle;
+                    if (dlBtn) dlBtn.classList.add('hidden');
+                    const analyzeSavedBtn = document.getElementById('btn-android-analyze-saved');
+                    if (analyzeSavedBtn) analyzeSavedBtn.classList.remove('hidden');
+
+                    const mb = ((typeof totalBytes === 'number' ? totalBytes : bytesWritten) / 1048576).toFixed(2);
+                    const doneMsg = (trAndroid('backupStreamDone') || '✓ Saved {mb} MB to disk.').replace('{mb}', mb);
+                    showStatus(doneMsg, 'success');
+                    const wrap = document.getElementById('android-backup-results');
+                    const body = document.getElementById('android-backup-summary');
+                    const warnEl = document.getElementById('android-backup-warnings');
+                    const jsonBtn = document.getElementById('btn-android-backup-json');
+                    const mirrored = !!navigator.storage && typeof navigator.storage.getDirectory === 'function';
+                    if (wrap && body) {
+                        body.textContent = '';
+                        [
+                            ['Mode', 'Stream to disk' + (mirrored ? ' + browser copy' : '')],
+                            ['Scope', 'full'],
+                            ['Bytes', String(Math.round(typeof totalBytes === 'number' ? totalBytes : bytesWritten))],
+                            ['Size', mb + ' MB'],
+                        ].forEach(function (pair) {
+                            const tr = document.createElement('tr');
+                            const th = document.createElement('th');
+                            th.textContent = pair[0];
+                            const td = document.createElement('td');
+                            td.textContent = pair[1];
+                            tr.appendChild(th);
+                            tr.appendChild(td);
+                            body.appendChild(tr);
+                        });
+                        if (warnEl) {
+                            warnEl.textContent = mirrored
+                                ? 'Saved to disk and a browser copy. Use “Analyze saved .ab” here, or on backup.html “Use last streamed backup” (avoids file-lock errors).'
+                                : 'Saved to disk. Prefer “Analyze saved .ab”, or on backup.html use “Open .ab (Chrome)…” after copying the file to a new path.';
+                        }
+                        if (jsonBtn) jsonBtn.classList.add('hidden');
+                        wrap.classList.remove('hidden');
+                    }
+                    hideProgress();
+                    return;
+                }
+
+                const backupTitle = trAndroid('backupProgressTitle') || 'Creating backup';
+                const backupOpts = { busy: true, hideSteps: true, title: backupTitle, step: '' };
+                showStatus(trAndroid('backupStatusCreating') || 'Creating .ab backup — confirm the dialog on the phone…', 'info');
+                showProgress(25, trAndroid('backupPhaseCreate') || 'Creating Android backup…', backupOpts);
+
+                const ab = await adb.backup(args);
+                currentAndroidAbBytes = ab;
+                if (dlBtn) dlBtn.classList.remove('hidden');
+
+                showStatus(trAndroid('backupStatusAnalyzing') || 'Analyzing backup locally…', 'info');
+                showProgress(70, trAndroid('backupPhaseAnalyze') || 'Analyzing backup…', {
+                    busy: true,
+                    hideSteps: true,
+                    title: trAndroid('backupProgressAnalyzeTitle') || 'Analyzing backup',
+                    step: '',
+                });
+
+                const passwordEl = document.getElementById('android-backup-password');
+                const password = passwordEl && passwordEl.value ? passwordEl.value : null;
+                const raw = analyzeBackup(['backup.ab'], [ab], password, null);
+                const out = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                currentAndroidBackupJson = JSON.stringify(out, null, 2);
+                renderAndroidBackupSummary(out || {});
+                showStatus(
+                    '✓ Backup ready — ' +
+                        (out && out.kind ? out.kind : 'analyzed') +
+                        (out && out.files_total != null ? ' · ' + out.files_total + ' files' : ''),
+                    'success'
+                );
+                hideProgress();
+            } catch (error) {
+                console.error('[BACKUP] create error:', error);
+                if (writable) {
+                    try {
+                        await writable.abort();
+                    } catch (_) {
+                        /* ignore */
+                    }
+                    writable = null;
+                }
+                if (opfsWritable) {
+                    try {
+                        await opfsWritable.abort();
+                    } catch (_) {
+                        /* ignore */
+                    }
+                    opfsWritable = null;
+                }
+                let msg = 'Backup failed: ';
+                if (error && error.message) {
+                    msg += error.message;
+                } else {
+                    msg += String(error);
+                }
+                showStatus(msg, 'error');
+                hideProgress();
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = trAndroid('btnCreateAbBackup');
+                }
+            }
+        };
+
         window.connectDevice = async function() {
             try {
                 if (typeof Adb === 'undefined') {
@@ -8416,6 +8993,14 @@
                 
                 btn.textContent = 'Connected ✓';
                 btn.disabled = true;
+                document.getElementById('btn-disconnect-device').classList.remove('hidden');
+
+                const backupActionActive = document.querySelector('.tab-android-action.active')?.getAttribute('data-android-action') === 'backup';
+                if (backupActionActive) {
+                    showStatus('✓ Connected — choose Create .ab backup below', 'success');
+                    hideProgress();
+                    return;
+                }
                 
                 showStatus('Connected! Listing bugreports...', 'info');
                 setAndroidProgress(40, 'Listing bugreports…');
@@ -8441,8 +9026,6 @@
                     hideBugreportPicker();
                     showStatus('⚠️ No bugreports found on device. Try generating a new one or use the "Generate New" tab.', 'error');
                 }
-
-                document.getElementById('btn-disconnect-device').classList.remove('hidden');
                 
                 hideProgress();
             } catch (error) {

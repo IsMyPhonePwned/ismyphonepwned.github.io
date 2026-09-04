@@ -3902,3 +3902,17 @@
         grid-template-columns: 1fr 1fr;
     }
 }
+
+/* Buy Me a Coffee footer widget */
+.bmc-footer {
+    margin-top: 1.25rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.bmc-footer a,
+.bmc-footer button,
+.bmc-footer img {
+    width: auto !important;
+    max-width: 100%;
+}

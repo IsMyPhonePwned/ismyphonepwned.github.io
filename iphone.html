@@ -198,8 +198,15 @@
                     <p id="analyzer-plist-status" class="hint" style="margin-top: 0.55rem;">—</p>
                 </section>
 
-                <section class="step" id="step-archives">
-                    <h2><span class="num">3</span><span class="ttl" data-i18n="iosStepArchivesTitle">Sysdiagnose archives</span></h2>
+                <section class="step" id="step-action">
+                    <h2><span class="num">3</span><span class="ttl" data-i18n="iosStepActionTitle">Action</span></h2>
+                    <p class="hint" data-i18n="iosStepActionHint">Same connection — choose Analysis (sysdiagnose) or Backup (MobileBackup2).</p>
+                    <div class="tabs tabs-sub" role="tablist" aria-label="Device action" style="margin: 0.5rem 0 0.75rem;">
+                        <button type="button" class="tab tab-iphone-action active" data-iphone-action="analysis" onclick="switchIphoneDeviceAction('analysis')" data-i18n="actionAnalysis">Analysis</button>
+                        <button type="button" class="tab tab-iphone-action" data-iphone-action="backup" onclick="switchIphoneDeviceAction('backup')" data-i18n="actionBackup">Backup</button>
+                    </div>
+
+                    <div id="iphone-action-analysis">
                     <p id="iphone-device-label" class="hint" style="margin: 0 0 0.75rem;">Connect and pair first, then refresh to list archives on the device.</p>
                     <div class="btn-row" style="margin-bottom: 0.75rem;">
                         <button type="button" class="btn" id="btn-refresh-sysdiagnose" disabled data-i18n="iosRefreshArchives">Refresh archives</button>
@@ -228,6 +235,33 @@
                                 </div>
                             </div>
                             <button type="button" id="btn-analyze-device-sysdiagnose" class="sysdiagnose-picker-analyze" data-i18n="analyzeSelectedSysdiagnose">Analyze selected archive</button>
+                        </div>
+                    </div>
+                    </div>
+
+                    <div id="iphone-action-backup" class="hidden">
+                        <p class="hint" data-i18n="backupActionDesc">Create a MobileBackup2 backup on the paired iPhone, then analyze it locally. Large backups may run out of browser memory.</p>
+                        <form id="iphone-backup-form" autocomplete="off" onsubmit="event.preventDefault(); window.createIphoneBackupTab(); return false;">
+                        <input type="text" name="username" autocomplete="username" value="backup" tabindex="-1" aria-hidden="true" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">
+                        <label style="display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.8125rem; color: var(--text-secondary); margin: 0.75rem 0 0.65rem;">
+                            <span data-i18n="backupPasswordLabel">Backup password (if encrypted)</span>
+                            <input type="password" id="iphone-backup-password" name="backup-password" autocomplete="current-password" style="max-width: 22rem; padding: 0.4rem 0.55rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary);">
+                        </label>
+                        <label style="display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+                            <span data-i18n="backupKeyLabel">Derived key (hex, optional)</span>
+                            <input type="text" id="iphone-backup-derived-key" name="derived-key" autocomplete="off" spellcheck="false" placeholder="64 hex chars" style="max-width: 28rem; padding: 0.4rem 0.55rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); font-family: ui-monospace, monospace; font-size: 0.75rem;">
+                        </label>
+                        <div class="btn-row" style="flex-wrap: wrap; gap: 0.5rem;">
+                            <button type="submit" class="btn btn-primary" id="btn-iphone-create-backup" disabled>
+                                <span data-i18n="btnCreateIosBackup">Create backup</span>
+                            </button>
+                            <button type="button" class="btn hidden" id="btn-iphone-backup-json" onclick="window.downloadIphoneBackupJson()" data-i18n="btnDownloadBackupJson">Download JSON</button>
+                        </div>
+                        </form>
+                        <div id="iphone-backup-results" class="hidden" style="margin-top: 1.25rem;">
+                            <h3 style="margin: 0 0 0.5rem; font-size: 1.05rem;" data-i18n="backupResultsTitle">Backup analysis</h3>
+                            <table class="detail-table" style="margin-bottom: 0.75rem;"><tbody id="iphone-backup-summary"></tbody></table>
+                            <p id="iphone-backup-warnings" style="font-size: 0.8125rem; color: var(--text-secondary);"></p>
                         </div>
                     </div>
                 </section>
@@ -634,6 +668,9 @@
             <p style="margin-top: 0.5rem; font-size: 0.8rem;">
                 <a href="https://github.com/IsMyPhonePwned/" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;" data-i18n="navGitHub">GitHub</a>
             </p>
+            <div class="bmc-footer">
+                <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="ping2a" data-color="#FFDD00" data-emoji="☕" data-font="Cookie" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#ffffff"></script>
+            </div>
         </footer>
     </div>
 
@@ -668,6 +705,20 @@
                 ideviceFailed: '❌ idevice',
                 tabFromDevice: 'From Device',
                 tabUpload: 'Upload File',
+                actionAnalysis: 'Analysis',
+                actionBackup: 'Backup',
+                iosStepActionTitle: 'Action',
+                iosStepActionHint: 'Same connection — choose Analysis (sysdiagnose) or Backup (MobileBackup2).',
+                backupActionDesc: 'Create a MobileBackup2 backup on the paired iPhone, then analyze it locally. Large backups may run out of browser memory.',
+                backupPasswordLabel: 'Backup password (if encrypted)',
+                backupKeyLabel: 'Derived key (hex, optional)',
+                btnCreateIosBackup: 'Create backup',
+                btnDownloadBackupJson: 'Download JSON',
+                backupResultsTitle: 'Backup analysis',
+                backupNeedConnect: 'Request and pair the iPhone first (steps 1–2), then create the backup.',
+                backupStatusCreating: 'Creating MobileBackup2 backup…',
+                backupStatusAnalyzing: 'Analyzing backup locally…',
+                backupStatusDone: 'Backup analysis complete',
                 iphoneAdvancedBlurb: 'Syslog, pcap, crash reports, and lockdown diagnostics are on',
                 iosStepTrigger:
                     'Trigger sysdiagnose on the phone (Volume Up, Volume Down, Side — ~0.7s), wait ~5 minutes.',
@@ -1286,6 +1337,20 @@
                 webusbFailedTitle: 'WebUSB indisponible dans ce navigateur',
                 tabFromDevice: 'Depuis l’appareil',
                 tabUpload: 'Importer un fichier',
+                actionAnalysis: 'Analyse',
+                actionBackup: 'Sauvegarde',
+                iosStepActionTitle: 'Action',
+                iosStepActionHint: 'Même connexion — choisissez Analyse (sysdiagnose) ou Sauvegarde (MobileBackup2).',
+                backupActionDesc: 'Créer une sauvegarde MobileBackup2 sur l’iPhone appairé, puis l’analyser localement. Les grosses sauvegardes peuvent saturer la mémoire.',
+                backupPasswordLabel: 'Mot de passe de sauvegarde (si chiffré)',
+                backupKeyLabel: 'Clé dérivée (hex, optionnel)',
+                btnCreateIosBackup: 'Créer la sauvegarde',
+                btnDownloadBackupJson: 'Télécharger JSON',
+                backupResultsTitle: 'Analyse de la sauvegarde',
+                backupNeedConnect: 'Demandez et appairagez d’abord l’iPhone (étapes 1–2), puis créez la sauvegarde.',
+                backupStatusCreating: 'Création de la sauvegarde MobileBackup2…',
+                backupStatusAnalyzing: 'Analyse locale de la sauvegarde…',
+                backupStatusDone: 'Analyse de la sauvegarde terminée',
                 iphoneAdvancedBlurb: 'Syslog, pcap, rapports de crash et diagnostics lockdown sont sur',
                 iosStepTrigger:
                     'Déclencher le sysdiagnose (Volume +, Volume −, bouton latéral — ~0,7 s), attendre ~5 min.',
@@ -1890,6 +1955,20 @@
                 webusbFailedTitle: '当前浏览器不支持 WebUSB',
                 tabFromDevice: '从设备',
                 tabUpload: '上传文件',
+                actionAnalysis: '分析',
+                actionBackup: '备份',
+                iosStepActionTitle: '操作',
+                iosStepActionHint: '同一连接 — 选择分析（sysdiagnose）或备份（MobileBackup2）。',
+                backupActionDesc: '在已配对的 iPhone 上创建 MobileBackup2 备份并在本地分析。大型备份可能会耗尽浏览器内存。',
+                backupPasswordLabel: '备份密码（如已加密）',
+                backupKeyLabel: '派生密钥（十六进制，可选）',
+                btnCreateIosBackup: '创建备份',
+                btnDownloadBackupJson: '下载 JSON',
+                backupResultsTitle: '备份分析',
+                backupNeedConnect: '请先请求并配对 iPhone（步骤 1–2），再创建备份。',
+                backupStatusCreating: '正在创建 MobileBackup2 备份…',
+                backupStatusAnalyzing: '正在本地分析备份…',
+                backupStatusDone: '备份分析完成',
                 iphoneAdvancedBlurb: 'syslog、pcap、崩溃报告和 lockdown 诊断请使用',
                 iosStepTrigger: '在手机上触发 sysdiagnose（音量+、音量-、侧键约 0.7 秒），等待约 5 分钟。',
                 iosStepConnect: 'USB 连接并在浏览器中请求 Apple 设备。',
@@ -2507,6 +2586,28 @@
             if (dev) dev.classList.toggle('hidden', tab !== 'device');
             if (up) up.classList.toggle('hidden', tab !== 'upload');
         };
+
+        window.switchIphoneDeviceAction = function (action) {
+            var mode = action === 'backup' ? 'backup' : 'analysis';
+            document.querySelectorAll('.tab-iphone-action').forEach(function (btn) {
+                btn.classList.toggle('active', btn.getAttribute('data-iphone-action') === mode);
+            });
+            var analysis = document.getElementById('iphone-action-analysis');
+            var backup = document.getElementById('iphone-action-backup');
+            if (analysis) analysis.classList.toggle('hidden', mode !== 'analysis');
+            if (backup) backup.classList.toggle('hidden', mode !== 'backup');
+        };
+
+        (function openIphoneTabFromHash() {
+            var hash = (location.hash || '').replace(/^#/, '').toLowerCase();
+            if (hash === 'backup') {
+                window.switchIphoneTab('device');
+                window.switchIphoneDeviceAction('backup');
+            } else if (hash === 'upload' || hash === 'device') {
+                window.switchIphoneTab(hash);
+            }
+        })();
+
         window.toggleSection = function (id) {
             var content = document.getElementById(id + '-content');
             var btn = event.target;
@@ -2541,13 +2642,14 @@
     </script>
 
     <script type="module">
-        import init, { analyzeSysdiagnose } from './pkg/ismyphonepwned_wasm.js';
+        import init, { analyzeSysdiagnose, analyzeBackup } from './pkg/ismyphonepwned_wasm.js';
         import {
             setConnectedDevice,
             pickIphoneDevice,
             pairIphoneDevice,
             listSysdiagnoseArchives,
             downloadSysdiagnoseArchive,
+            createIosBackup,
             formatBytes,
             diagnoseWebUsb,
             readPlistRootDictStrings,
@@ -2571,6 +2673,7 @@
         let currentSysdiagnoseName = null;
         let analyzerWasmReady = false;
         let iphoneIdeviceOk = false;
+        let currentIphoneBackupJson = null;
         window.currentSysdiagnoseBytes = null;
         window.currentSysdiagnoseName = null;
         window.currentResults = null;
@@ -8393,8 +8496,98 @@
             if (pairBtn) pairBtn.disabled = iosBusy || !iphoneDevice;
             if (refreshBtn) refreshBtn.disabled = iosBusy || !iphoneDevice || !paired;
             if (browseBtn) browseBtn.disabled = iosBusy;
+            var bakBtn = document.getElementById('btn-iphone-create-backup');
+            if (bakBtn) bakBtn.disabled = iosBusy || !iphoneDevice || !paired;
             updateAnalyzerPairXmlUi();
         }
+
+        function renderIphoneBackupSummary(out) {
+            var wrap = document.getElementById('iphone-backup-results');
+            var body = document.getElementById('iphone-backup-summary');
+            var warnEl = document.getElementById('iphone-backup-warnings');
+            var jsonBtn = document.getElementById('btn-iphone-backup-json');
+            if (!wrap || !body) return;
+            body.textContent = '';
+            [
+                ['Kind', out.kind],
+                ['Platform', out.platform],
+                ['Encrypted', out.encrypted != null ? String(out.encrypted) : null],
+                ['Files', out.files_total != null ? String(out.files_total) : null],
+                ['Device', out.device_name || out.product_name || out.serial || out.udid],
+            ].forEach(function (pair) {
+                if (pair[1] == null || pair[1] === '') return;
+                var tr = document.createElement('tr');
+                var th = document.createElement('th');
+                th.textContent = pair[0];
+                var td = document.createElement('td');
+                td.textContent = String(pair[1]);
+                tr.appendChild(th);
+                tr.appendChild(td);
+                body.appendChild(tr);
+            });
+            if (warnEl) {
+                var warnings = Array.isArray(out.warnings) ? out.warnings : [];
+                warnEl.textContent = warnings.length ? warnings.join(' · ') : '';
+            }
+            if (jsonBtn) jsonBtn.classList.toggle('hidden', !currentIphoneBackupJson);
+            wrap.classList.remove('hidden');
+        }
+
+        window.downloadIphoneBackupJson = function () {
+            if (!currentIphoneBackupJson) return;
+            var blob = new Blob([currentIphoneBackupJson], { type: 'application/json' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'ios-backup-analysis.json';
+            a.click();
+            setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+        };
+
+        window.createIphoneBackupTab = async function () {
+            if (iosBusy) return;
+            var t = window.IPHONE_I18N[window.currentLang] || window.IPHONE_I18N.en;
+            if (!iphoneDevice || !sessionPairXml) {
+                showStatus(t.backupNeedConnect || 'Pair first', 'error');
+                return;
+            }
+            iosBusy = true;
+            updateIphoneDeviceUi();
+            try {
+                await ensureAnalyzerWasm();
+                await ensureIdeviceWasm();
+
+                showStatus(t.backupStatusCreating || 'Creating backup…', 'info');
+                setIosLastAction(t.backupStatusCreating || 'Creating backup…', 'ok');
+                var res = await createIosBackup(iphoneDevice, {
+                    plistXml: sessionPairXml,
+                    verbose: true,
+                });
+                var files = (res && res.files) || {};
+                var names = Object.keys(files);
+                if (!names.length) throw new Error('MobileBackup2 returned no files');
+                var blobs = names.map(function (n) { return files[n]; });
+
+                showStatus(t.backupStatusAnalyzing || 'Analyzing…', 'info');
+                var pwEl = document.getElementById('iphone-backup-password');
+                var keyEl = document.getElementById('iphone-backup-derived-key');
+                var password = pwEl && pwEl.value ? pwEl.value : null;
+                var derived = keyEl && keyEl.value ? keyEl.value.trim() : null;
+                var raw = analyzeBackup(names, blobs, password, derived || null);
+                var out = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                currentIphoneBackupJson = JSON.stringify(out, null, 2);
+                renderIphoneBackupSummary(out || {});
+                showStatus(t.backupStatusDone || 'Done', 'success');
+                setIosLastAction(t.backupStatusDone || 'Done', 'ok');
+            } catch (e) {
+                console.error('[BACKUP] iOS create error:', e);
+                var msg = String(e && e.message ? e.message : e);
+                showStatus(msg, 'error');
+                setIosLastAction(msg, 'err');
+            } finally {
+                iosBusy = false;
+                updateIphoneDeviceUi();
+            }
+        };
 
         function setSessionPairFromFile(xml, fileName) {
             sessionPairXml = xml;

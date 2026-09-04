@@ -64,6 +64,41 @@ export class Adb {
         return ret;
     }
     /**
+     * Run on-device `backup:` and stream an Android Backup (`.ab`) archive.
+     *
+     * `args` is the flag/package list after `backup:` (same as platform `adb backup` without `-f`),
+     * e.g. `"-nocompress com.android.providers.telephony"` or `"-nocompress -apk -all"`.
+     * Confirm the backup UI on the phone. Can take a long time; result is buffered in memory.
+     *
+     * For large / full-device backups prefer [`Self::backup_stream`], which writes chunks via a
+     * JS callback (e.g. File System Access API) without holding the whole archive in WASM.
+     * @param {string} args
+     * @returns {Promise<Uint8Array>}
+     */
+    backup(args) {
+        const ptr0 = passStringToWasm0(args, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.adb_backup(this.__wbg_ptr, ptr0, len0);
+        return ret;
+    }
+    /**
+     * Stream `backup:` chunks to a JS callback instead of buffering the whole `.ab` in WASM.
+     *
+     * `on_chunk` is called with each `Uint8Array` payload. It may return a `Promise` (awaited)
+     * — use that to `writable.write(chunk)` via the File System Access API.
+     *
+     * Returns total bytes streamed. Confirm the backup UI on the phone.
+     * @param {string} args
+     * @param {Function} on_chunk
+     * @returns {Promise<number>}
+     */
+    backupStream(args, on_chunk) {
+        const ptr0 = passStringToWasm0(args, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.adb_backupStream(this.__wbg_ptr, ptr0, len0, on_chunk);
+        return ret;
+    }
+    /**
      * Generate a full bugreport (can take several minutes)
      * Returns the bugreport as a Uint8Array
      * @returns {Promise<Uint8Array>}
@@ -389,6 +424,34 @@ export class JsDeviceInfo {
 if (Symbol.dispose) JsDeviceInfo.prototype[Symbol.dispose] = JsDeviceInfo.prototype.free;
 
 /**
+ * Analyze an uploaded **iOS / Android backup** (or `.impb` package) from file bytes.
+ *
+ * `names` is a JS `string[]` of relative paths; `blobs` is a parallel `Uint8Array[]`.
+ * Optional `password` / `derived_key_hex` unlock encrypted backups or `.impb` packages.
+ *
+ * Accepts an iTunes/Finder backup folder, an Android `.ab`, an unpacked `apps/` tree,
+ * or a single `.impb`. Returns a JSON string for `JSON.parse` in JS.
+ *
+ * Shape: `{ ok, kind, platform, encrypted, meta, files, files_total, sms, warnings, … }`.
+ * @param {any} names
+ * @param {any} blobs
+ * @param {string | null} [password]
+ * @param {string | null} [derived_key_hex]
+ * @returns {any}
+ */
+export function analyzeBackup(names, blobs, password, derived_key_hex) {
+    var ptr0 = isLikeNone(password) ? 0 : passStringToWasm0(password, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    var len0 = WASM_VECTOR_LEN;
+    var ptr1 = isLikeNone(derived_key_hex) ? 0 : passStringToWasm0(derived_key_hex, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    var len1 = WASM_VECTOR_LEN;
+    const ret = wasm.analyzeBackup(names, blobs, ptr0, len0, ptr1, len1);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
  * Analyze Android **Intrusion Logging** (AAPM) NDJSON from uploaded file bytes.
  *
  * `payload` is JSON: `{ "files": [ { "name": "intrusion.txt", "data": [u8, ...] } ] }`.
@@ -540,6 +603,14 @@ function __wbg_get_imports() {
             const ret = arg0 === undefined;
             return ret;
         },
+        __wbg___wbindgen_string_get_7ed5322991caaec5: function(arg0, arg1) {
+            const obj = arg1;
+            const ret = typeof(obj) === 'string' ? obj : undefined;
+            var ptr1 = isLikeNone(ret) ? 0 : passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            var len1 = WASM_VECTOR_LEN;
+            getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
+            getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
+        },
         __wbg___wbindgen_throw_6b64449b9b9ed33c: function(arg0, arg1) {
             throw new Error(getStringFromWasm0(arg0, arg1));
         },
@@ -615,6 +686,10 @@ function __wbg_get_imports() {
                 wasm.__wbindgen_free(deferred0_0, deferred0_1, 1);
             }
         },
+        __wbg_from_0dbf29f09e7fb200: function(arg0) {
+            const ret = Array.from(arg0);
+            return ret;
+        },
         __wbg_getDate_a6d29e0195e2b922: function(arg0) {
             const ret = arg0.getDate();
             return ret;
@@ -670,6 +745,16 @@ function __wbg_get_imports() {
         },
         __wbg_info_7479429238bffbce: function(arg0) {
             console.info(arg0);
+        },
+        __wbg_instanceof_Promise_78658358a9b27cd4: function(arg0) {
+            let result;
+            try {
+                result = arg0 instanceof Promise;
+            } catch (_) {
+                result = false;
+            }
+            const ret = result;
+            return ret;
         },
         __wbg_instanceof_UsbAlternateInterface_2d171503b4a168b7: function(arg0) {
             let result;
@@ -1033,27 +1118,27 @@ function __wbg_get_imports() {
             console.warn(arg0);
         },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 1970, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 2023, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm_bindgen_66ec25bfdabc88e0___convert__closures_____invoke___wasm_bindgen_66ec25bfdabc88e0___JsValue__core_9b3796e30d99ddb7___result__Result_____wasm_bindgen_66ec25bfdabc88e0___JsError___true_);
             return ret;
         },
         __wbindgen_cast_0000000000000002: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [NamedExternref("USBDevice")], shim_idx: 922, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [NamedExternref("USBDevice")], shim_idx: 968, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm_bindgen_66ec25bfdabc88e0___convert__closures_____invoke___wasm_bindgen_66ec25bfdabc88e0___sys__Undefined__core_9b3796e30d99ddb7___result__Result_____wasm_bindgen_66ec25bfdabc88e0___JsError___true_);
             return ret;
         },
         __wbindgen_cast_0000000000000003: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [NamedExternref("USBInTransferResult")], shim_idx: 922, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [NamedExternref("USBInTransferResult")], shim_idx: 968, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm_bindgen_66ec25bfdabc88e0___convert__closures_____invoke___wasm_bindgen_66ec25bfdabc88e0___sys__Undefined__core_9b3796e30d99ddb7___result__Result_____wasm_bindgen_66ec25bfdabc88e0___JsError___true__2);
             return ret;
         },
         __wbindgen_cast_0000000000000004: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [NamedExternref("USBOutTransferResult")], shim_idx: 922, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [NamedExternref("USBOutTransferResult")], shim_idx: 968, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm_bindgen_66ec25bfdabc88e0___convert__closures_____invoke___wasm_bindgen_66ec25bfdabc88e0___sys__Undefined__core_9b3796e30d99ddb7___result__Result_____wasm_bindgen_66ec25bfdabc88e0___JsError___true__3);
             return ret;
         },
         __wbindgen_cast_0000000000000005: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [NamedExternref("undefined")], shim_idx: 922, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [NamedExternref("undefined")], shim_idx: 968, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm_bindgen_66ec25bfdabc88e0___convert__closures_____invoke___wasm_bindgen_66ec25bfdabc88e0___sys__Undefined__core_9b3796e30d99ddb7___result__Result_____wasm_bindgen_66ec25bfdabc88e0___JsError___true__4);
             return ret;
         },

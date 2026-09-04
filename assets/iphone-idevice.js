@@ -19,6 +19,7 @@ import initIdevice, {
     lockdownSyslog,
     lockdownPcap,
     lockdownScreenshot,
+    lockdownMobileBackup2,
 } from '../pkg-idevice/idevice_wasm.js';
 
 export const PAIR_STORAGE_KEY = 'idevice-rs.pairRecordXml';
@@ -203,6 +204,31 @@ export async function downloadSysdiagnoseArchive(device, devicePath, options = {
     };
 }
 
+/**
+ * Create an iTunes-layout backup over WebUSB (MobileBackup2) into memory.
+ * Requires a stored pair-record plist. Returns { ok, udid, filesReceived, files }.
+ */
+export async function createIosBackup(device, options = {}) {
+    await ensureIdeviceWasm();
+    const plist = (options.plistXml ?? getStoredPairPlist() ?? '').trim();
+    if (!plist) {
+        throw new Error('Pair the iPhone first (pair record required for MobileBackup2).');
+    }
+    const tls = getTlsSettingsFromDom();
+    const verbose = !!options.verbose;
+    const res = await lockdownMobileBackup2(
+        device,
+        plist,
+        options.tlsClientAuth || tls.tlsClientAuth,
+        options.tlsSni || tls.tlsSni,
+        verbose
+    );
+    if (!res || res.ok === false) {
+        throw new Error((res && res.error) || 'MobileBackup2 failed');
+    }
+    return res;
+}
+
 export function formatBytes(n) {
     if (n == null || Number.isNaN(n)) return '—';
     if (n < 1024) return `${n} B`;
@@ -232,4 +258,5 @@ export {
     lockdownSyslog,
     lockdownPcap,
     lockdownScreenshot,
+    lockdownMobileBackup2,
 };

@@ -7069,6 +7069,71 @@ footer.app-statusbar {
   box-shadow: 0 -1px 0 color-mix(in srgb, var(--border) 80%, transparent);
 }
 
+/* Buy Me a Coffee — compact chip in the status bar */
+.statusbar-bmc {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  padding: 0 0.55rem 0 0.35rem;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+}
+.statusbar-bmc .bmc-btn-container {
+  display: flex;
+  align-items: center;
+  line-height: 0;
+}
+.statusbar-bmc a.bmc-btn,
+.statusbar-bmc .bmc-btn {
+  position: static !important;
+  inset: auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.25rem;
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  width: auto !important;
+  height: 1.4rem !important;
+  margin: 0 !important;
+  padding: 0 0.55rem !important;
+  border: 1px solid color-mix(in srgb, #000 18%, transparent) !important;
+  border-radius: 4px !important;
+  font-size: 0.72rem !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  white-space: nowrap;
+  text-decoration: none !important;
+  z-index: auto !important;
+  transition: filter 0.12s ease, transform 0.12s ease;
+}
+.statusbar-bmc .bmc-btn:hover,
+.statusbar-bmc .bmc-btn:focus-visible {
+  filter: brightness(0.97);
+  transform: translateY(-0.5px) !important;
+}
+.statusbar-bmc .bmc-btn-text {
+  margin-left: 0 !important;
+  width: auto !important;
+  flex-shrink: 1 !important;
+  font-size: inherit !important;
+  font-family: inherit !important;
+  line-height: 1 !important;
+  white-space: nowrap;
+}
+.statusbar-bmc .bmc-btn svg {
+  height: 0.95rem !important;
+  width: auto !important;
+  margin: 0 !important;
+  margin-bottom: 0 !important;
+  transform: none !important;
+  flex-shrink: 0 !important;
+  vertical-align: middle !important;
+}
+
 .xml-plain-mode,
 .res-xml.xml-plain-mode,
 .manifest-xml.xml-plain-mode {
@@ -7106,7 +7171,9 @@ footer.app-statusbar {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.15rem 0;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
+  width: auto;
   padding: 0.28rem 0.75rem;
   font-family: var(--mono);
   line-height: 1.35;
@@ -7507,11 +7574,16 @@ footer.app-statusbar {
   .statusbar-inner {
     gap: 0.25rem 0.4rem;
     padding: 0.25rem 0.45rem;
+    flex: 1;
+    min-width: 0;
   }
   .statusbar-brand {
     margin-left: 0;
     width: 100%;
     text-align: right;
+  }
+  .statusbar-bmc {
+    padding: 0 0.4rem;
   }
 
   .info-res-value {
@@ -7698,6 +7770,14 @@ footer.app-statusbar {
   }
   .statusbar-inner {
     font-size: 0.68rem;
+  }
+  .statusbar-bmc a.bmc-btn,
+  .statusbar-bmc .bmc-btn {
+    padding: 0 0.4rem !important;
+    font-size: 0.62rem !important;
+  }
+  .statusbar-bmc .bmc-btn-text {
+    display: none !important;
   }
 
   .security-rules-actions {

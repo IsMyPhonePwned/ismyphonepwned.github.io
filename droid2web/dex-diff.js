@@ -407,6 +407,7 @@ export function initDexDiff(deps) {
     const quick = document.getElementById('dex-diff-quick');
     const quickName = document.getElementById('dex-diff-quick-name');
     const hdr = document.getElementById('btn-compare-with');
+    const repack = document.getElementById('btn-repack');
     if (quick) quick.hidden = !show;
     if (quickName) quickName.textContent = show ? (loaded.name || 'loaded') : '—';
     if (hdr) {
@@ -414,6 +415,10 @@ export function initDexDiff(deps) {
       hdr.title = show
         ? `Keep ${loaded.name} and pick another APK or DEX to compare`
         : 'Upload an APK or DEX first';
+    }
+    if (repack) {
+      const isApk = show && /\.apkm?$/i.test(loaded?.name || '');
+      repack.hidden = !isApk;
     }
     if (show && !state.left) {
       setSide('left', { name: loaded.name || 'loaded', bytes: loaded.bytes });

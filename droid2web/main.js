@@ -3,12 +3,14 @@
  * Loads WASM, parses files, displays bytecode + source (DEX) and manifest/XML (APK/AXML/ARSC)
  */
 
-import initWasm, { parse_file, parse_dex, parse_apk, parse_axml, parse_arsc, parse_arsc_resource_map, parse_arsc_resource_tables, get_apk_file_content, prepare_apk_bytes, get_dex_method, decompile_dex_class, run_dex_emulator, run_dex_emulator_with_history, scan_vulns, scan_semgrep, scan_semgrep_xml, get_semgrep_builtin_rules, parse_semgrep_rules, taint_solve, parse_meta_inf_file } from './pkg/droid2web.js';
+import initWasm, { parse_file, parse_dex, parse_apk, parse_axml, parse_arsc, parse_arsc_resource_map, parse_arsc_resource_tables, get_apk_file_content, prepare_apk_bytes, get_dex_method, decompile_dex_class, run_dex_emulator, run_dex_emulator_with_history, scan_vulns, scan_semgrep, scan_semgrep_xml, get_semgrep_builtin_rules, parse_semgrep_rules, taint_solve, parse_meta_inf_file, patch_decode, patch_list, patch_read, patch_write, patch_delete, patch_build, patch_inject_goauld, patch_inject_goauld_session, patch_session_package, patch_debug_keystore_bytes, patch_clear, patch_has_session } from './pkg/droid2web.js';
 import { createHexEditor } from './hex-editor.js';
 import { mountMetaInfViewer, isMetaInfFile, metaInfTreeIcon } from './meta-inf-viewer.js';
 import { APP_VERSION, APP_DATE } from './version.js';
 import { findSourceCallSites, findSourceFieldSites } from './java-source-sites.js';
 import { initDexDiff } from './dex-diff.js';
+import { initPatchUi, openPatchTabWithLoadedApk } from './patch-ui.js';
+import { initDeviceUi, openDeviceTab } from './device-ui.js';
 
 const LOG = '[droid2web]';
 function formatAppDateLabel(iso) {
@@ -21274,4 +21276,57 @@ try {
   dexDiffApi?.syncLoadedUi?.();
 } catch (e) {
   console.warn('[droid2web] dex diff init', e);
+}
+
+try {
+  initPatchUi(
+    {
+      patch_decode,
+      patch_list,
+      patch_read,
+      patch_write,
+      patch_delete,
+      patch_build,
+      patch_inject_goauld,
+      patch_inject_goauld_session,
+      patch_session_package,
+      patch_debug_keystore_bytes,
+      patch_clear,
+      patch_has_session,
+    },
+    {
+      getApkBytes: () => (currentType === 'apk' && currentApkBytes?.length ? currentApkBytes : null),
+      getApkName: () => currentFilename || 'app.apk',
+    },
+  );
+  document.getElementById('btn-repack')?.addEventListener('click', () => {
+    openPatchTabWithLoadedApk(switchToCenterTab);
+  });
+} catch (e) {
+  console.warn('[droid2web] patch ui init', e);
+}
+
+try {
+  initDeviceUi({
+    getApkBytes: () => (currentType === 'apk' && currentApkBytes?.length ? currentApkBytes : null),
+    getApkName: () => currentFilename || 'app.apk',
+    getPackageHint: () => {
+      // Android application id (manifest) — not DEX Java package names.
+      const fromManifest =
+        currentData?.manifest?.package ||
+        currentData?.package ||
+        currentData?.packageName ||
+        null;
+      if (fromManifest && typeof fromManifest === 'string' && fromManifest.trim()) {
+        return fromManifest.trim();
+      }
+      if (typeof apkManifestXml === 'string') {
+        const m = apkManifestXml.match(/\bpackage="([^"]+)"/);
+        if (m?.[1]) return m[1].trim();
+      }
+      return null;
+    },
+  });
+} catch (e) {
+  console.warn('[droid2web] device ui init', e);
 }

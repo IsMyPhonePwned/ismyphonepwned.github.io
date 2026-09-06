@@ -370,6 +370,179 @@ export function parse_semgrep_rules(yaml) {
 }
 
 /**
+ * Build the active project → APK bytes.
+ * @param {string} options_json
+ * @returns {Uint8Array}
+ */
+export function patch_build(options_json) {
+    const ptr0 = passStringToWasm0(options_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.patch_build(ptr0, len0);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * Clear the in-memory patch session.
+ */
+export function patch_clear() {
+    wasm.patch_clear();
+}
+
+/**
+ * Generate (or return) a serialized debug key for IndexedDB caching.
+ * Pass empty/undefined to create a new embedded debug key; pass prior bytes to reuse.
+ * @param {Uint8Array | null} [existing]
+ * @returns {Uint8Array}
+ */
+export function patch_debug_keystore_bytes(existing) {
+    var ptr0 = isLikeNone(existing) ? 0 : passArray8ToWasm0(existing, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    const ret = wasm.patch_debug_keystore_bytes(ptr0, len0);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * Decode APK bytes into the in-memory patch session.
+ * @param {Uint8Array} apk_bytes
+ * @param {string} apk_name
+ * @param {string} options_json
+ * @returns {any}
+ */
+export function patch_decode(apk_bytes, apk_name, options_json) {
+    const ptr0 = passArray8ToWasm0(apk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(apk_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passStringToWasm0(options_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.patch_decode(ptr0, len0, ptr1, len1, ptr2, len2);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * Delete a project file (relative path).
+ * @param {string} rel_path
+ */
+export function patch_delete(rel_path) {
+    const ptr0 = passStringToWasm0(rel_path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.patch_delete(ptr0, len0);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * Whether a patch session is loaded.
+ * @returns {boolean}
+ */
+export function patch_has_session() {
+    const ret = wasm.patch_has_session();
+    return ret !== 0;
+}
+
+/**
+ * Decode + inject goauld agent + build in one shot (replaces session).
+ * @param {Uint8Array} apk_bytes
+ * @param {Uint8Array} agent_so
+ * @param {string} apk_name
+ * @param {string} options_json
+ * @returns {Uint8Array}
+ */
+export function patch_inject_goauld(apk_bytes, agent_so, apk_name, options_json) {
+    const ptr0 = passArray8ToWasm0(apk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(agent_so, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passStringToWasm0(apk_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passStringToWasm0(options_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.patch_inject_goauld(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * Inject goauld into the active patch session (keeps session editable), then optionally leave files in VFS.
+ * @param {Uint8Array} agent_so
+ */
+export function patch_inject_goauld_session(agent_so) {
+    const ptr0 = passArray8ToWasm0(agent_so, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.patch_inject_goauld_session(ptr0, len0);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * List relative project file paths in the active session.
+ * @returns {any}
+ */
+export function patch_list() {
+    const ret = wasm.patch_list();
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * Read a project file (relative path).
+ * @param {string} rel_path
+ * @returns {Uint8Array}
+ */
+export function patch_read(rel_path) {
+    const ptr0 = passStringToWasm0(rel_path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.patch_read(ptr0, len0);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * Best-effort package name from session AndroidManifest.xml (text).
+ * @returns {any}
+ */
+export function patch_session_package() {
+    const ret = wasm.patch_session_package();
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * Write/replace a project file (relative path).
+ * @param {string} rel_path
+ * @param {Uint8Array} data
+ */
+export function patch_write(rel_path, data) {
+    const ptr0 = passStringToWasm0(rel_path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.patch_write(ptr0, len0, ptr1, len1);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
  * If `bytes` is an APKM, return the base APK bytes; otherwise return a copy of `bytes`.
  * Call this before storing APK bytes for `get_apk_file_content` / tree extraction.
  * @param {Uint8Array} bytes
@@ -703,10 +876,18 @@ function __wbg_get_imports() {
         __wbg_prototypesetcall_7c3092bff32833dc: function(arg0, arg1, arg2) {
             Uint8Array.prototype.set.call(getArrayU8FromWasm0(arg0, arg1), arg2);
         },
+        __wbg_push_48849432fb818a7b: function(arg0, arg1) {
+            const ret = arg0.push(arg1);
+            return ret;
+        },
         __wbg_set_0992bb8f727d2d33: function(arg0, arg1, arg2) {
             const ret = arg0.set(arg1, arg2);
             return ret;
         },
+        __wbg_set_3d19fa7d88f45d6b: function() { return handleError(function (arg0, arg1, arg2) {
+            const ret = Reflect.set(arg0, arg1, arg2);
+            return ret;
+        }, arguments); },
         __wbg_set_6be42768c690e380: function(arg0, arg1, arg2) {
             arg0[arg1] = arg2;
         },
@@ -935,6 +1116,12 @@ function passStringToWasm0(arg, malloc, realloc) {
 
     WASM_VECTOR_LEN = offset;
     return ptr;
+}
+
+function takeFromExternrefTable0(idx) {
+    const value = wasm.__wbindgen_externrefs.get(idx);
+    wasm.__externref_table_dealloc(idx);
+    return value;
 }
 
 let cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true });

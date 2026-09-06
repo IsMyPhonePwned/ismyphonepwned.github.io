@@ -20,7 +20,7 @@
     <div class="header-content">
       <img src="logo.png" alt="" class="app-logo" width="28" height="28">
       <div class="header-title-block">
-        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.3</span> <span class="app-date" id="app-date" title="Release date">20 Aug 2026</span></h1>
+        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.16</span> <span class="app-date" id="app-date" title="Release date">5 Sep 2026</span></h1>
         <p class="subtitle">APK, APKM, DEX, AXML, ARSC inspection in the browser</p>
       </div>
     </div>
@@ -59,6 +59,10 @@
         <button type="button" class="btn btn-small" id="btn-compare-with" hidden title="Keep this APK and pick another to diff DEX bytecode">
           <span class="btn-compare-full">Compare with…</span>
           <span class="btn-compare-short">Diff</span>
+        </button>
+        <button type="button" class="btn btn-small" id="btn-repack" hidden title="Decode / edit / rebuild this APK in the Patch tab">
+          <span class="btn-compare-full">Repack…</span>
+          <span class="btn-compare-short">Patch</span>
         </button>
         <input type="file" id="compare-with-file" accept=".apk,.apkm,.dex,application/vnd.android.package-archive,application/octet-stream" hidden>
         <span class="file-name" id="file-name">No file loaded</span>
@@ -133,6 +137,8 @@
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="strings-tab" data-label="Strings" data-label-short="Str" title="Permanent tab">Strings</button>
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="security-tab" data-label="Security" data-label-short="Sec" title="Permanent tab">Security</button>
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="diff-tab" id="diff-tab-btn" data-label="Compare" data-label-short="Diff" title="Compare DEX bytecode in two APKs">Compare</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="patch-tab" id="patch-tab-btn" data-label="Patch" data-label-short="Patch" title="Decode, edit, rebuild and sign APK (apk-patch)">Patch</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="device-tab" id="device-tab-btn" data-label="Device" data-label-short="Dev" title="WebUSB ADB + goauld attach / protocol">Device</button>
           </div>
           <div class="center-tabs-sep" id="center-tabs-sep" hidden aria-hidden="true"></div>
           <div class="center-tabs-group center-tabs-files" id="center-tabs-files-group" hidden>
@@ -719,6 +725,243 @@
             </div>
           </div>
         </div>
+        <div class="tab-content" id="patch-tab">
+          <div class="patch-panel" id="patch-panel">
+            <p class="muted patch-intro">Decode an APK to an editable project (dex-txt / manifest / res / <code>apkpatch.yml</code>), edit with syntax highlighting, rebuild and sign in the browser. dex-txt is assembled from scratch. Host <code>aapt2</code> is unavailable — keep original <code>resources.arsc</code> or enable pure-Rust rebuild. Use the <strong>Device</strong> tab to install and debug on a phone.</p>
+            <div class="patch-toolbar">
+              <button type="button" class="btn btn-primary" id="patch-decode-btn" title="Decode the currently loaded APK">Decode loaded APK</button>
+              <button type="button" class="btn btn-small" id="patch-decode-upload-btn">Decode file…</button>
+              <input type="file" id="patch-decode-file" accept=".apk,.apkm,.xapk,application/vnd.android.package-archive,application/octet-stream" hidden>
+              <button type="button" class="btn btn-primary" id="patch-build-btn" disabled>Build &amp; download APK</button>
+              <button type="button" class="btn btn-small" id="patch-persist-btn" disabled title="Save project files to IndexedDB">Save to browser</button>
+              <button type="button" class="btn btn-small" id="patch-clear-btn" disabled>Clear session</button>
+              <span class="muted" id="patch-status">No project loaded</span>
+            </div>
+            <div class="patch-options-grid">
+              <fieldset class="patch-fieldset">
+                <legend>Decode</legend>
+                <label class="patch-check"><input type="checkbox" id="patch-opt-force" checked> Force overwrite</label>
+                <label class="patch-check"><input type="checkbox" id="patch-opt-no-src"> No src (skip dex-txt)</label>
+                <label class="patch-check"><input type="checkbox" id="patch-opt-no-res"> No res</label>
+                <label class="patch-check"><input type="checkbox" id="patch-opt-no-assets"> No assets</label>
+                <label class="patch-check"><input type="checkbox" id="patch-opt-all-src"> All src</label>
+                <label class="patch-check"><input type="checkbox" id="patch-opt-only-manifest"> Only manifest</label>
+                <label class="patch-check"><input type="checkbox" id="patch-opt-keep-broken"> Keep broken res</label>
+                <label class="patch-check"><input type="checkbox" id="patch-opt-no-debug"> No debug info</label>
+                <label class="patch-check"><input type="checkbox" id="patch-opt-ignore-raw"> Ignore raw values</label>
+                <label class="patch-check">Res resolve
+                  <select id="patch-opt-res-mode">
+                    <option value="default">default</option>
+                    <option value="greedy">greedy</option>
+                    <option value="lazy">lazy</option>
+                  </select>
+                </label>
+                <label class="patch-check">Frame tag <input type="text" id="patch-opt-frame-tag" placeholder="optional" class="patch-text-input"></label>
+              </fieldset>
+              <fieldset class="patch-fieldset">
+                <legend>Build / sign</legend>
+                <label class="patch-check"><input type="checkbox" id="patch-opt-sign" checked> Sign</label>
+                <label class="patch-check"><input type="checkbox" id="patch-opt-v1"> v1</label>
+                <label class="patch-check"><input type="checkbox" id="patch-opt-v2" checked> v2</label>
+                <label class="patch-check"><input type="checkbox" id="patch-opt-v3" checked> v3</label>
+                <label class="patch-check"><input type="checkbox" id="patch-opt-debuggable"> Debuggable</label>
+                <label class="patch-check"><input type="checkbox" id="patch-opt-netsec"> Network security config</label>
+                <label class="patch-check"><input type="checkbox" id="patch-opt-copy-original"> Copy original</label>
+                <label class="patch-check"><input type="checkbox" id="patch-opt-rebuild-res"> Rebuild resources (pure Rust)</label>
+                <label class="patch-check" title="aapt2 cannot run in the browser"><input type="checkbox" id="patch-opt-use-aapt2" disabled> Use aapt2 (unavailable)</label>
+                <label class="patch-check"><input type="checkbox" id="patch-opt-no-apk"> No APK (intermediates only)</label>
+              </fieldset>
+              <fieldset class="patch-fieldset">
+                <legend>Goauld (APK inject)</legend>
+                <p class="muted">Pack <code>libgoauld_agent.so</code> + loader provider. Bundled arm64 agent is used if no file is chosen.</p>
+                <input type="file" id="patch-goauld-so" accept=".so,application/octet-stream">
+                <div class="patch-goauld-actions">
+                  <button type="button" class="btn btn-small" id="patch-goauld-session-btn" disabled title="Inject into current decoded session">Inject into session</button>
+                  <button type="button" class="btn btn-small" id="patch-goauld-btn" disabled>Inject &amp; download</button>
+                </div>
+              </fieldset>
+            </div>
+
+            <div class="patch-workspace">
+              <div class="patch-file-tree-wrap">
+                <div class="patch-file-tree-head">Project files</div>
+                <ul class="patch-file-tree" id="patch-file-tree"></ul>
+              </div>
+              <div class="patch-editor-wrap">
+                <div class="patch-editor-head">
+                  <span id="patch-editor-path" class="muted">Select a text file</span>
+                  <div class="patch-editor-actions">
+                    <span class="muted patch-editor-hint" id="patch-editor-hint" hidden>dex-txt · edit then Build</span>
+                    <button type="button" class="btn btn-small" id="patch-editor-save" disabled>Apply edit</button>
+                  </div>
+                </div>
+                <div class="patch-editor-stack" id="patch-editor-stack">
+                  <pre class="patch-editor-highlight" id="patch-editor-highlight" aria-hidden="true"></pre>
+                  <textarea id="patch-editor" class="patch-editor" spellcheck="false" disabled placeholder="Decoded project files appear here — open a .dex.txt to edit bytecode…"></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="patch-saved">
+              <div class="patch-file-tree-head">Saved projects (IndexedDB)</div>
+              <ul id="patch-saved-list" class="patch-saved-list"></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="device-tab">
+          <div class="device-panel" id="device-panel">
+            <header class="device-topbar">
+              <div class="device-topbar-actions">
+                <button type="button" class="btn btn-primary" id="device-connect">Connect phone…</button>
+                <button type="button" class="btn btn-small" id="device-disconnect" disabled>Disconnect</button>
+                <button type="button" class="btn btn-small" id="device-refresh-apps" disabled>Refresh apps</button>
+                <label class="patch-check device-topbar-check"><input type="checkbox" id="device-third-party"> Third-party only</label>
+              </div>
+              <div class="device-link-status" id="device-link-status" aria-live="polite">
+                <span class="device-link-chip" id="device-phone-chip" data-state="off">Phone · disconnected</span>
+                <span class="device-link-chip" id="device-agent-chip" data-state="off">Agent · not attached</span>
+              </div>
+              <div class="device-status-pill" id="device-status" role="status">Not connected</div>
+            </header>
+            <ol class="device-flow" id="device-flow" aria-label="Device workflow">
+              <li class="device-flow-step is-current" data-step="connect"><span class="device-flow-num">1</span> Connect</li>
+              <li class="device-flow-step" data-step="target"><span class="device-flow-num">2</span> Pick app</li>
+              <li class="device-flow-step" data-step="attach"><span class="device-flow-num">3</span> Attach</li>
+              <li class="device-flow-step" data-step="act"><span class="device-flow-num">4</span> Script / trace</li>
+            </ol>
+            <p class="muted device-intro">WebUSB ADB · Chrome/Edge · quit host <code>adb</code> first. Flow: connect → select package → <strong>Attach agent</strong> → ScriptLoad / Rpc / Post. Quick Java trace can auto-attach. Syscall trace needs root (detaches agent).</p>
+            <div class="device-workspace">
+              <div class="device-apps-wrap">
+                <div class="patch-file-tree-head">Apps
+                  <input type="search" id="device-app-filter" class="patch-text-input device-filter" placeholder="Filter…" spellcheck="false">
+                </div>
+                <ul class="device-app-list" id="device-app-list"></ul>
+              </div>
+              <div class="device-actions-wrap">
+                <section class="device-card" id="device-card-target">
+                  <div class="device-card-head">
+                    <h3 class="device-card-title">Target</h3>
+                    <span class="device-attach-chip" id="device-attach-chip">Not attached</span>
+                  </div>
+                  <p class="muted device-card-hint" id="device-analyzed-hint" hidden></p>
+                  <p class="muted device-card-hint">If the APK already embeds the goauld agent: connect → (install/launch) → <strong>Attach agent</strong>. No live inject / root needed.</p>
+                  <div class="device-selected">
+                    <label class="device-field">Package
+                      <input type="text" id="device-package" class="patch-text-input" spellcheck="false" placeholder="com.example.app">
+                    </label>
+                    <label class="device-field device-field-pid">PID
+                      <input type="text" id="device-pid" class="patch-text-input device-pid" spellcheck="false" placeholder="auto">
+                    </label>
+                  </div>
+                  <div class="device-action-row">
+                    <button type="button" class="btn btn-small" id="device-install-apk" disabled title="Install the APK currently open in the analyzer">Install analyzed APK</button>
+                    <button type="button" class="btn btn-small" id="device-launch" disabled>Launch</button>
+                    <button type="button" class="btn btn-small" id="device-stop" disabled>Force-stop</button>
+                    <button type="button" class="btn btn-primary device-btn-attach" id="device-attach" disabled title="Open localabstract:goauld-agent-&lt;pid&gt;">Attach agent</button>
+                    <button type="button" class="btn btn-small device-btn-detach" id="device-detach" disabled>Detach</button>
+                  </div>
+                  <div class="device-attach-opts">
+                    <label class="patch-check"><input type="checkbox" id="device-install-launch" checked> Launch after install</label>
+                    <label class="patch-check"><input type="checkbox" id="device-attach-launch" checked> Launch before attach</label>
+                    <label class="patch-check"><input type="checkbox" id="device-attach-retry" checked> Retry until agent listens</label>
+                  </div>
+                </section>
+
+                <section class="device-card device-trace-section">
+                  <h3 class="device-card-title">Quick trace</h3>
+                  <p class="muted device-card-hint">For apps that already include the goauld agent. Interact with the app on the phone while tracing.</p>
+                  <div class="device-trace-grid">
+                    <div class="device-trace-card" data-trace="java">
+                      <div class="device-trace-card-head">
+                        <span class="device-trace-card-name">Java / Android API</span>
+                        <span class="device-trace-badge">agent · no root</span>
+                      </div>
+                      <p class="muted device-trace-blurb">Auto-attach → ART invoke stubs → collect <code>android-api</code> events.</p>
+                      <div class="device-trace-fields">
+                        <label class="device-field">Events
+                          <input type="number" id="device-trace-max-events" class="patch-text-input device-num" value="40" min="1" max="500" title="Frames to collect">
+                        </label>
+                      </div>
+                      <label class="device-field">Class filter
+                        <input type="text" id="device-trace-api-filter" class="patch-text-input" value="android.,androidx.,java.,javax.,com.android.,dalvik." spellcheck="false">
+                      </label>
+                      <button type="button" class="btn btn-primary device-trace-btn" id="device-trace-java" disabled title="ScriptLoad ART Android/Java API tracer, then collect Send events">Trace Java / Android API</button>
+                    </div>
+                    <div class="device-trace-card" data-trace="syscalls">
+                      <div class="device-trace-card-head">
+                        <span class="device-trace-card-name">Syscalls</span>
+                        <span class="device-trace-badge device-trace-badge-root">injector · root</span>
+                      </div>
+                      <p class="muted device-trace-blurb">Detaches agent stream, pushes injector, runs <code>PTRACE_SYSCALL</code> (Magisk/su).</p>
+                      <div class="device-trace-fields">
+                        <label class="device-field">Seconds
+                          <input type="number" id="device-trace-secs" class="patch-text-input device-num" value="15" min="3" max="120" title="Trace duration">
+                        </label>
+                        <label class="device-field">Max events
+                          <input type="number" id="device-trace-sys-max" class="patch-text-input device-num" value="400" min="1" max="5000" title="Stop after N syscall enters">
+                        </label>
+                      </div>
+                      <label class="device-field">Name filter <span class="muted">(optional)</span>
+                        <input type="text" id="device-trace-sys-filter" class="patch-text-input" value="openat,connect,read,write" spellcheck="false" placeholder="openat,connect,read,write">
+                      </label>
+                      <label class="patch-check device-trace-enter"><input type="checkbox" id="device-trace-enter-only"> Enter only</label>
+                      <button type="button" class="btn btn-small device-trace-btn" id="device-trace-syscalls" disabled title="goauld-injector PTRACE_SYSCALL (root)">Trace syscalls</button>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="device-card device-card-script" id="device-card-script">
+                  <div class="device-card-head">
+                    <h3 class="device-card-title">Script &amp; protocol</h3>
+                    <span class="device-gate-hint" id="device-script-gate">Attach agent first</span>
+                  </div>
+                  <label class="device-script-label">Script
+                    <div class="device-script-tabs" id="device-script-tabs" role="tablist" aria-label="Script presets"></div>
+                    <div class="device-script-stack" id="device-script-stack">
+                      <pre class="device-script-highlight" id="device-script-highlight" aria-hidden="true"></pre>
+                      <textarea id="device-script" class="device-script" spellcheck="false" rows="8"></textarea>
+                    </div>
+                  </label>
+                  <div class="device-script-actions">
+                    <button type="button" class="btn btn-small device-btn-proto" id="device-script-load" disabled title="Requires an active agent attach">ScriptLoad</button>
+                    <button type="button" class="btn btn-small device-btn-proto" id="device-script-load-run" disabled title="Requires an active agent attach">Load &amp; watch</button>
+                  </div>
+                  <div class="device-rpc-row">
+                    <input type="text" id="device-rpc-fn" class="patch-text-input" value="ping" spellcheck="false" title="rpc.exports name">
+                    <input type="text" id="device-rpc-args" class="patch-text-input" value="[]" spellcheck="false" title="JSON args array">
+                    <button type="button" class="btn btn-small device-btn-proto" id="device-rpc-call" disabled title="Requires an active agent attach">RpcCall</button>
+                  </div>
+                  <div class="device-rpc-row">
+                    <input type="text" id="device-post-json" class="patch-text-input device-post" value='{"type":"ping"}' spellcheck="false">
+                    <button type="button" class="btn btn-small device-btn-proto" id="device-post" disabled title="Requires an active agent attach">Post</button>
+                  </div>
+                </section>
+
+                <details class="device-card device-advanced">
+                  <summary class="device-card-title">Live inject <span class="muted">(root · no embedded agent)</span></summary>
+                  <p class="muted device-bin-hint" id="device-bin-hint">Bundled arm64 goauld binaries are used by default. Optional overrides:</p>
+                  <label class="patch-file-label">injector <input type="file" id="device-injector-file"></label>
+                  <label class="patch-file-label">agent .so <input type="file" id="device-agent-file" accept=".so,application/octet-stream"></label>
+                  <button type="button" class="btn btn-small" id="device-inject" disabled>Deploy + inject</button>
+                </details>
+              </div>
+              <div class="device-console-wrap">
+                <div class="patch-file-tree-head">
+                  <span>Console <span class="device-console-count" id="device-console-count">0</span></span>
+                  <div class="device-console-tools">
+                    <label class="patch-check device-console-autoscroll" title="Keep scrolling to newest lines">
+                      <input type="checkbox" id="device-console-autoscroll" checked> Follow
+                    </label>
+                    <button type="button" class="btn btn-small" id="device-console-clear">Clear</button>
+                  </div>
+                </div>
+                <div class="device-console-empty" id="device-console-empty">Connect a phone, pick an app, then Attach — events and protocol traffic show here.</div>
+                <div class="device-console" id="device-console" aria-live="polite" hidden></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </section>
     </div>
   </main>
@@ -743,6 +986,10 @@
         <section class="settings-section">
           <h4 class="settings-section-title">Compare (DEX)</h4>
           <p class="settings-hint muted">With an APK or DEX already open, click <strong>Compare with…</strong> in the header (or <strong>Choose other APK…</strong> on the Compare tab) and pick the other build. Side A is the file you already loaded; only Dalvik bytecode is matched. Identical classes are omitted. Click a changed method for a line-aligned source diff — nothing is sent to the cloud.</p>
+        </section>
+        <section class="settings-section">
+          <h4 class="settings-section-title">Patch / Repack</h4>
+          <p class="settings-hint muted">The <strong>Patch</strong> tab runs apk-patch in WASM. The <strong>Device</strong> tab uses WebUSB ADB (webadb-rs) to list apps, inject/attach arm_goauld, and speak the goauld protocol over <code>localabstract:goauld-agent-&lt;pid&gt;</code>. Host <code>aapt2</code> is unavailable in-browser. APKM/XAPK base APK only for Patch rebuild.</p>
         </section>
         <section class="settings-section">
           <h4 class="settings-section-title">Contact</h4>
@@ -838,6 +1085,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
   <script type="module" src="main.js"></script>
 </body>

@@ -20,7 +20,7 @@
     <div class="header-content">
       <img src="logo.png" alt="" class="app-logo" width="28" height="28">
       <div class="header-title-block">
-        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.16</span> <span class="app-date" id="app-date" title="Release date">5 Sep 2026</span></h1>
+        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.19</span> <span class="app-date" id="app-date" title="Release date">14 Sep 2026</span></h1>
         <p class="subtitle">APK, APKM, DEX, AXML, ARSC inspection in the browser</p>
       </div>
     </div>
@@ -87,6 +87,7 @@
           <h2 id="left-panel-title">Contents</h2>
           <div class="left-panel-modes" id="left-panel-modes" hidden>
             <button type="button" class="btn btn-small left-mode-btn" id="apk-mode-classes" data-apk-mode="classes">Classes</button>
+            <button type="button" class="btn btn-small left-mode-btn" id="apk-mode-native" data-apk-mode="native">Native</button>
             <button type="button" class="btn btn-small left-mode-btn" id="apk-mode-files" data-apk-mode="files">Files</button>
           </div>
           <button type="button" class="btn btn-small mobile-nav-close" id="mobile-nav-close" aria-label="Close contents" title="Close">×</button>
@@ -129,12 +130,14 @@
           <div class="center-tabs-group center-tabs-permanent" role="tablist" aria-label="Permanent workspace tabs">
             <span class="center-tabs-group-label" title="Always available">Workspace</span>
             <button type="button" class="tab-btn tab-btn-permanent active" data-tab="bytecode-tab" data-label="Code" title="Permanent tab">Code</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="native-tab" id="native-tab-btn" data-label="Native" data-label-short="ARM" title="ARM64 ELF (.so) assembly / CFG / decompilation">Native</button>
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="manifest-tab" data-label="Manifest" data-label-short="AXML" title="Permanent tab">Manifest</button>
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="permissions-tab" id="permissions-tab-btn" data-label="Permissions" data-label-short="Perms" hidden title="Requested permissions and code usages">Permissions</button>
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="components-tab" id="components-tab-btn" data-label="Components" data-label-short="Comps" hidden title="Activities, services, receivers, and providers">Components</button>
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="raw-tab" data-label="Raw" title="Permanent tab">Raw</button>
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="info-tab" data-label="Info" title="Permanent tab">Info</button>
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="strings-tab" data-label="Strings" data-label-short="Str" title="Permanent tab">Strings</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="find-tab" id="find-tab-btn" data-label="Find" data-label-short="Find" title="ASC findrefs / getclass — on-demand string, type, method, field search">Find</button>
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="security-tab" data-label="Security" data-label-short="Sec" title="Permanent tab">Security</button>
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="diff-tab" id="diff-tab-btn" data-label="Compare" data-label-short="Diff" title="Compare DEX bytecode in two APKs">Compare</button>
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="patch-tab" id="patch-tab-btn" data-label="Patch" data-label-short="Patch" title="Decode, edit, rebuild and sign APK (apk-patch)">Patch</button>
@@ -177,6 +180,10 @@
                 </select>
                 <button type="button" class="btn btn-small code-back-to-class" id="code-back-to-class" title="Back to class (all methods)" hidden>← Class</button>
               </div>
+            </div>
+            <div class="jni-link-bar" id="code-jni-bar" hidden>
+              <span class="jni-link-label muted">Native</span>
+              <div class="jni-link-chips" id="code-jni-chips"></div>
             </div>
             <div class="code-toolbar-actions">
               <details class="decomp-details" id="decomp-details">
@@ -456,6 +463,123 @@
             </section>
           </div>
         </div>
+        <div class="tab-content" id="native-tab">
+          <div class="code-view-toolbar" id="native-view-toolbar">
+            <div class="code-nav">
+              <div class="method-selector-wrap" id="native-lib-wrap">
+                <label class="method-selector-label" for="native-lib-select">Library</label>
+                <select id="native-lib-select" class="method-select" aria-label="Select native library">
+                  <option value="">Select .so…</option>
+                </select>
+              </div>
+              <span class="code-nav-sep">›</span>
+              <div class="method-selector-wrap">
+                <label class="method-selector-label" for="native-func-select">Function</label>
+                <input type="search" id="native-func-search" class="class-search-input method-search-input" placeholder="Filter…" aria-label="Filter functions" autocomplete="off">
+                <select id="native-func-select" class="method-select" aria-label="Select function">
+                  <option value="">Select function…</option>
+                </select>
+              </div>
+            </div>
+            <div class="code-toolbar-actions">
+              <details class="decomp-details" id="native-decomp-details">
+                <summary class="decomp-details-summary btn btn-small">Decomp</summary>
+                <div class="decompiler-options" title="arm_decompiler options">
+                  <label class="decomp-opt">
+                    <span class="decomp-opt-label">Mode</span>
+                    <select id="native-decompile-mode" class="decomp-mode-select" aria-label="Native decompilation mode">
+                      <option value="restructure">Restructure</option>
+                      <option value="simple">Simple</option>
+                      <option value="fallback">Fallback</option>
+                    </select>
+                  </label>
+                </div>
+              </details>
+              <span class="pane-meta muted" id="native-status-meta"></span>
+            </div>
+          </div>
+          <div class="jni-link-bar" id="native-jni-bar" hidden>
+            <span class="jni-link-label muted">DEX</span>
+            <div class="jni-link-chips" id="native-jni-chips"></div>
+          </div>
+          <div class="jni-xref-panel method-callers-xrefs" id="native-jni-xrefs" hidden></div>
+          <div class="code-workspace" id="native-workspace">
+            <div class="code-main-row" id="native-main-row">
+              <section class="dock-panel bytecode-dock bytecode-main" id="native-asm-pane" data-collapsed="false">
+                <header class="dock-header">
+                  <button type="button" class="dock-toggle" id="native-asm-collapse-btn" aria-expanded="true" title="Show / hide assembly">
+                    <span class="dock-chevron" aria-hidden="true"></span>
+                    <span class="dock-title">Assembly</span>
+                    <span class="pane-meta muted" id="native-asm-meta"></span>
+                  </button>
+                  <div class="dock-header-actions">
+                    <label class="pane-toggle" title="Show instruction bytes">
+                      <input type="checkbox" id="native-hex-toggle" checked>
+                      <span>Hex</span>
+                    </label>
+                  </div>
+                </header>
+                <div class="dock-body">
+                  <div class="bytecode-listing-wrap">
+                    <div class="bytecode-col-header" id="native-asm-col-header" aria-hidden="false">
+                      <span class="bc-offset">Offset</span>
+                      <span class="bc-hex">Hex</span>
+                      <span class="bc-mnemonic">Opcode</span>
+                      <span class="bc-operands">Operands</span>
+                    </div>
+                    <div class="bytecode-listing" id="native-asm-listing">
+                      <div class="code-empty">
+                        <div class="code-empty-title">No assembly</div>
+                        <div class="code-empty-hint muted">Open an ARM64 <code>.so</code> from Native or Files</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+              <section class="dock-panel cfg-dock" id="native-cfg-pane" data-collapsed="false">
+                <header class="dock-header">
+                  <button type="button" class="dock-toggle" id="native-cfg-collapse-btn" aria-expanded="true" title="Show / hide CFG">
+                    <span class="dock-chevron" aria-hidden="true"></span>
+                    <span class="dock-title">CFG</span>
+                    <span class="pane-meta muted" id="native-cfg-meta"></span>
+                  </button>
+                  <div class="dock-header-actions">
+                    <button type="button" class="btn btn-small" id="native-cfg-fit-btn" title="Fit graph">Fit</button>
+                  </div>
+                </header>
+                <div class="dock-body cfg-dock-body">
+                  <div class="cfg-legend" id="native-cfg-legend" hidden aria-hidden="true"></div>
+                  <div class="cfg-graph-wrap">
+                    <div class="cfg-graph-container" id="native-cfg-graph" aria-label="Native function CFG"></div>
+                    <div class="cfg-graph-empty" id="native-cfg-empty">
+                      <div class="code-empty">
+                        <div class="code-empty-title">No CFG</div>
+                        <div class="code-empty-hint muted">Select a function</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+            <section class="dock-panel source-dock" id="native-source-pane" data-collapsed="false">
+              <header class="dock-header">
+                <button type="button" class="dock-toggle" id="native-source-collapse-btn" aria-expanded="true" title="Show / hide decompiled source">
+                  <span class="dock-chevron" aria-hidden="true"></span>
+                  <span class="dock-title">Source</span>
+                  <span class="pane-meta muted" id="native-source-meta"></span>
+                </button>
+                <div class="dock-header-actions">
+                  <button type="button" class="btn btn-small" id="native-source-copy-btn" title="Copy decompiled source" disabled>Copy</button>
+                </div>
+              </header>
+              <div class="dock-body source-dock-body">
+                <div class="source-code-wrap">
+                  <pre class="source-code" id="native-source-code"><div class="code-empty"><div class="code-empty-title">No source yet</div><div class="code-empty-hint muted">Select an ARM64 function to decompile</div></div></pre>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
         <div class="tab-content" id="manifest-tab">
           <div class="res-viewer" id="manifest-viewer">
             <div class="res-viewer-toolbar" id="manifest-toolbar" hidden></div>
@@ -586,6 +710,43 @@
                 <div class="strings-detail-usages-body muted" id="strings-detail-usages-body">Select a string</div>
               </div>
             </aside>
+          </div>
+        </div>
+        <div class="tab-content" id="find-tab">
+          <div class="find-panel" id="find-panel">
+            <div class="find-toolbar">
+              <label class="find-opt">
+                <span class="muted">Kind</span>
+                <select id="find-kind" class="find-kind-select" aria-label="Findrefs kind">
+                  <option value="string">string</option>
+                  <option value="type">type</option>
+                  <option value="method">method</option>
+                  <option value="field">field</option>
+                </select>
+              </label>
+              <input type="search" id="find-value" class="find-value-input" placeholder="Needle (token / name)…" aria-label="Findrefs value" autocomplete="off">
+              <input type="search" id="find-class" class="find-class-input" placeholder="Class (optional)" aria-label="Optional class filter" autocomplete="off" title="Restrict method/field findrefs to this class">
+              <label class="find-opt" title="Treat class filter as exact Dalvik/Java name (uncheck = substring)">
+                <input type="checkbox" id="find-exact-class" checked>
+                <span>Exact class</span>
+              </label>
+              <button type="button" class="btn btn-primary" id="find-refs-btn" title="ASC findrefs across DEX / APK">Find refs</button>
+              <button type="button" class="btn btn-small" id="find-getclass-btn" title="ASC getclass — slice + decompile one class">Get class</button>
+              <span class="find-status muted" id="find-status">Load a DEX or APK</span>
+            </div>
+            <div class="find-body">
+              <div class="find-results" id="find-results">
+                <div class="muted center-text">On-demand ASC findrefs / getclass — no full xref index</div>
+              </div>
+              <aside class="find-source" id="find-source" hidden>
+                <div class="find-source-header">
+                  <span class="find-source-meta muted" id="find-source-meta"></span>
+                  <button type="button" class="btn btn-small" id="find-source-open" title="Open class in Code view" hidden>Open</button>
+                  <button type="button" class="btn btn-small" id="find-source-copy" title="Copy source" hidden>Copy</button>
+                </div>
+                <pre class="find-source-code src-has-highlight" id="find-source-code"></pre>
+              </aside>
+            </div>
           </div>
         </div>
         <div class="tab-content" id="security-tab">
@@ -1000,9 +1161,20 @@
         </section>
         <section class="settings-section">
           <h4 class="settings-section-title">Androguard</h4>
-          <p class="settings-hint muted">droid2web is part of the Androguard ecosystem for Android reverse engineering.</p>
+          <p class="settings-hint muted">droid2web is part of the Androguard ecosystem for Android reverse engineering. Open-source crates used here:</p>
+          <ul class="help-repo-list">
+            <li><a href="https://github.com/androguard/androguard" target="_blank" rel="noopener noreferrer">androguard</a> <span class="muted">— classic Python toolkit</span></li>
+            <li><a href="https://github.com/androguard/apk-parser" target="_blank" rel="noopener noreferrer">apk-parser</a> <span class="muted">— lenient APK / ZIP / APKM</span></li>
+            <li><a href="https://github.com/androguard/dex-parser" target="_blank" rel="noopener noreferrer">dex-parser</a> <span class="muted">— DEX structure + ASC fastref</span></li>
+            <li><a href="https://github.com/androguard/dex-bytecode" target="_blank" rel="noopener noreferrer">dex-bytecode</a> <span class="muted">— Dalvik disassembly</span></li>
+            <li><a href="https://github.com/androguard/dex-decompiler" target="_blank" rel="noopener noreferrer">dex-decompiler</a> <span class="muted">— Java decompile, xrefs, scans</span></li>
+            <li><a href="https://github.com/androguard/axml-parser" target="_blank" rel="noopener noreferrer">axml-parser</a> <span class="muted">— AXML / ARSC</span></li>
+            <li><a href="https://github.com/androguard/arm_disassembler" target="_blank" rel="noopener noreferrer">arm_disassembler</a> <span class="muted">— AArch64 decode</span></li>
+            <li><a href="https://github.com/androguard/arm_decompiler" target="_blank" rel="noopener noreferrer">arm_decompiler</a> <span class="muted">— ARM64 CFG / C-like</span></li>
+            <li><a href="https://github.com/androguard/goauld" target="_blank" rel="noopener noreferrer">goauld</a> <span class="muted">— Device inject / protocol</span></li>
+          </ul>
           <p class="help-contact">
-            <a href="https://github.com/androguard/androguard" target="_blank" rel="noopener noreferrer">github.com/androguard/androguard</a>
+            <a href="https://github.com/orgs/androguard/repositories" target="_blank" rel="noopener noreferrer">All androguard repositories →</a>
           </p>
         </section>
       </div>

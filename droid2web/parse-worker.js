@@ -11,13 +11,19 @@ import initWasm, {
   find_permission_usages,
   find_string_usages,
   find_method_callers,
+  find_method_callers_by_name,
   find_method_callees,
   find_method_call_traces,
   find_field_xrefs,
+  find_refs,
+  getclass_java,
   index_dex_classes_bytes,
   get_dex_strings,
   get_dex_method,
   decompile_dex_class,
+  parse_elf_bytes,
+  get_elf_function,
+  get_elf_function_at,
   scan_semgrep,
   scan_semgrep_xml,
   scan_vulns,
@@ -36,6 +42,7 @@ const TRANSFER_JSON_OPS = new Set([
   'index_dex_classes',
   'get_dex_strings',
   'diff_dex',
+  'parse_elf',
 ]);
 
 function toU8(bytes) {
@@ -132,6 +139,13 @@ function handleJob(job) {
         Number(job.classIdx) >>> 0,
         Number(job.methodIdx) >>> 0
       );
+    } else if (op === 'find_method_callers_by_name') {
+      const u8 = toU8(job.bytes);
+      raw = find_method_callers_by_name(
+        u8,
+        String(job.className || ''),
+        String(job.methodName || '')
+      );
     } else if (op === 'find_method_call_traces') {
       const u8 = toU8(job.bytes);
       raw = find_method_call_traces(
@@ -149,6 +163,24 @@ function handleJob(job) {
     } else if (op === 'find_field_xrefs') {
       const u8 = toU8(job.bytes);
       raw = find_field_xrefs(u8, Number(job.fieldIdx) >>> 0);
+    } else if (op === 'find_refs') {
+      const u8 = toU8(job.bytes);
+      raw = find_refs(
+        u8,
+        String(job.kind || 'string'),
+        String(job.value || ''),
+        job.classFilter != null && String(job.classFilter).trim()
+          ? String(job.classFilter)
+          : undefined,
+        job.exactClass !== false
+      );
+    } else if (op === 'getclass_java') {
+      const u8 = toU8(job.bytes);
+      raw = getclass_java(
+        u8,
+        String(job.className || ''),
+        job.options || undefined
+      );
     } else if (op === 'get_dex_method') {
       const u8 = toU8(job.bytes);
       raw = get_dex_method(
@@ -157,6 +189,23 @@ function handleJob(job) {
         Number(job.methodIdx) >>> 0,
         job.options || undefined
       );
+    } else if (op === 'parse_elf') {
+      const u8 = toU8(job.bytes);
+      raw = parse_elf_bytes(u8);
+    } else if (op === 'get_elf_function') {
+      const u8 = toU8(job.bytes);
+      raw = get_elf_function(
+        u8,
+        Number(job.funcIdx) >>> 0,
+        job.options || undefined
+      );
+    } else if (op === 'get_elf_function_at') {
+      const u8 = toU8(job.bytes);
+      // wasm-bindgen maps Rust u64 → JS BigInt; Numbers throw "Cannot convert N to a BigInt".
+      const vaddr = typeof job.vaddr === 'bigint'
+        ? job.vaddr
+        : BigInt(Math.trunc(Number(job.vaddr)) || 0);
+      raw = get_elf_function_at(u8, vaddr, job.options || undefined);
     } else if (op === 'decompile_dex_class') {
       const u8 = toU8(job.bytes);
       raw = decompile_dex_class(

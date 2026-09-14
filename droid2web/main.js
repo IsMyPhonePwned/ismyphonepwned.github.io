@@ -11,6 +11,25 @@ import { findSourceCallSites, findSourceFieldSites } from './java-source-sites.j
 import { initDexDiff } from './dex-diff.js';
 import { initPatchUi, openPatchTabWithLoadedApk } from './patch-ui.js';
 import { initDeviceUi, openDeviceTab } from './device-ui.js';
+import {
+  initNativeUi,
+  loadElf,
+  renderNativeLibTree,
+  navigateToNativeSymbol,
+  getCurrentNativePath,
+} from './native-ui.js';
+import { initFindRefsUi } from './findrefs-ui.js';
+import {
+  buildJniLinkIndex,
+  clearJniLinkIndex,
+  getJniLinkIndex,
+  hitsForDexMethod,
+  hitsForLib,
+  hitsForSymbol,
+  renderJniLinkChips,
+  mangleJavaNative,
+  demangleJavaNative,
+} from './jni-links.js';
 
 const LOG = '[droid2web]';
 function formatAppDateLabel(iso) {
@@ -213,6 +232,339 @@ function abortAllParseWorkerJobs(reason = 'Aborted') {
   }
 }
 
+/** Run parse_elf in worker; returns Promise<object> ({ok,data,error}). */
+function parseElfInWorker(bytes) {
+  const copy = bytes instanceof Uint8Array ? bytes.slice() : new Uint8Array(bytes).slice();
+  return runInParseWorker(
+    'parse_elf',
+    { bytes: copy.buffer },
+    { timeoutMs: PARSE_WORKER_TIMEOUT_MS, transfer: [copy.buffer] }
+  );
+}
+
+function getNativeLibBadge(libPath) {
+  const hits = hitsForLib(libPath);
+  if (!hits.length) return '';
+  const n = new Set(hits.map((h) => `${h.className}#${h.methodName}`)).size;
+  return n ? `${n} JNI` : '';
+}
+
+function renderNativeLibTreeWithBadges(files) {
+  renderNativeLibTree(
+    files,
+    (name) => {
+      showApkFile(name).catch((e) => warn('[native] open failed', e));
+    },
+    getNativeLibBadge
+  );
+}
+
+async function ensureJniLinkIndex() {
+  if (currentType !== 'apk' || !currentApkBytes?.length) return null;
+  try {
+    return await buildJniLinkIndex({
+      getApkFiles: () => currentData?.files || [],
+      listDexNames: () => listApkDexNames(),
+      getApkFileContent: (name) => {
+        try {
+          const b = get_apk_file_content(currentApkBytes, name);
+          return b?.length ? new Uint8Array(b) : null;
+        } catch (_) {
+          return null;
+        }
+      },
+      parseFileInWorker,
+      parseElfInWorker,
+      getCachedDexBrowse: (dexName) => {
+        const c = apkFileCache?.[dexName];
+        return c?.kind === 'dex' ? c.data : null;
+      },
+    });
+  } catch (e) {
+    warn('[jni] index build failed', e);
+    return null;
+  }
+}
+
+function updateCodeJniBar() {
+  const bar = document.getElementById('code-jni-bar');
+  const chips = document.getElementById('code-jni-chips');
+  if (!bar || !chips) return;
+  const ctx = getCodeViewContext?.();
+  if (!ctx || codeViewMethodIdx == null) {
+    bar.hidden = true;
+    chips.innerHTML = '';
+    return;
+  }
+  const cls = ctx.classes?.[codeViewClassIdx];
+  const method = cls?.methods?.[codeViewMethodIdx];
+  if (!method) {
+    bar.hidden = true;
+    chips.innerHTML = '';
+    return;
+  }
+  const className = cls?.name || '';
+  const methodName = method.dex_name || method.dexName || method.name || '';
+  const isNative = !!(method.is_native || method.isNative);
+  const dexFile =
+    currentType === 'apk' && apkExtractedFile?.kind === 'dex' ? apkExtractedFile.name : '';
+  const hits = hitsForDexMethod(className, methodName, dexFile);
+  if (hits.length) {
+    chips.innerHTML = renderJniLinkChips(hits, { direction: 'to-native' });
+    bar.hidden = false;
+    return;
+  }
+  if (!isNative) {
+    bar.hidden = true;
+    chips.innerHTML = '';
+    return;
+  }
+  const mangled = mangleJavaNative(className, methodName);
+  if (!getJniLinkIndex()) {
+    chips.innerHTML = mangled
+      ? `<span class="jni-link-empty muted">native · looking for <code>${escapeHtml(mangled)}</code>…</span>`
+      : `<span class="jni-link-empty muted">native method</span>`;
+    bar.hidden = false;
+    ensureJniLinkIndex().then(() => {
+      if (codeViewMethodIdx == null) return;
+      updateCodeJniBar();
+    });
+    return;
+  }
+  chips.innerHTML = mangled
+    ? `<span class="jni-link-empty muted">native · no .so match for <code>${escapeHtml(mangled)}</code></span>`
+    : `<span class="jni-link-empty muted">native method (no .so match)</span>`;
+  bar.hidden = false;
+}
+
+function updateNativeJniBar(symbolName, libPath) {
+  const bar = document.getElementById('native-jni-bar');
+  const chips = document.getElementById('native-jni-chips');
+  const xrefPanel = document.getElementById('native-jni-xrefs');
+  if (!bar || !chips) return;
+  const path = libPath || getCurrentNativePath() || '';
+  const isJavaSym = !!(symbolName && String(symbolName).startsWith('Java_'));
+  let hits = [];
+  if (isJavaSym) {
+    hits = hitsForSymbol(symbolName).filter((h) => h.className);
+  } else if (path) {
+    hits = hitsForLib(path);
+  }
+
+  if (isJavaSym) {
+    let xrefHits = hits.filter((h) => h.className && h.methodName);
+    if (!xrefHits.length) {
+      const dm = demangleJavaNative(symbolName);
+      if (dm?.className && dm?.methodName) {
+        xrefHits = [{ className: dm.className, methodName: dm.methodName }];
+      }
+    }
+    if (hits.length) {
+      chips.innerHTML = renderJniLinkChips(hits, { direction: 'to-dex' });
+    } else if (xrefHits.length) {
+      const h = xrefHits[0];
+      chips.innerHTML = `<span class="jni-link-empty muted">DEX · <code>${escapeHtml(h.className)}.${escapeHtml(h.methodName)}</code></span>`;
+    } else {
+      chips.innerHTML = `<span class="jni-link-empty muted">no DEX native method linked</span>`;
+    }
+    bar.hidden = false;
+    if (xrefHits.length) loadNativeJniCallerXrefs(xrefHits, symbolName);
+    else if (xrefPanel) {
+      xrefPanel.hidden = true;
+      xrefPanel.innerHTML = '';
+    }
+    return;
+  }
+
+  if (!hits.length) {
+    bar.hidden = true;
+    chips.innerHTML = '';
+    if (xrefPanel) {
+      xrefPanel.hidden = true;
+      xrefPanel.innerHTML = '';
+    }
+    return;
+  }
+  chips.innerHTML = renderJniLinkChips(hits, { direction: 'to-dex' });
+  bar.hidden = false;
+  if (xrefPanel) {
+    xrefPanel.hidden = true;
+    xrefPanel.innerHTML = '';
+  }
+}
+
+let nativeJniXrefReqId = 0;
+
+function renderJniCallerXrefsHtml(callers, { truncated = false } = {}) {
+  if (!callers.length) {
+    return `<span class="bc-xref-label">; XREF callers[0]:</span> <span class="muted">none in DEX</span>`;
+  }
+  const maxShow = 16;
+  const refs = callers.slice(0, maxShow).map((c) => {
+    const className = c.class_name || c.className || '';
+    const methodName = c.method_name || c.methodName || '';
+    const simple = className.split('.').pop() || className || '?';
+    const kind = c.invoke_kind || c.invokeKind || 'invoke';
+    const off = c.offset;
+    const ci = c.class_idx ?? c.classIdx;
+    const mi = c.method_idx_in_class ?? c.methodIdxInClass;
+    const dexFile = c.dexFile || c.dex_file || '';
+    const dexShort = dexFile ? String(dexFile).split('/').pop() : '';
+    const label = `${simple}.${methodName || '?'}`;
+    const hex = formatSecHexOffset(off);
+    const dexHint = dexShort
+      ? ` <span class="jni-caller-dex muted">${escapeHtml(dexShort)}</span>`
+      : '';
+    return `<span class="bc-xref-ref jni-caller-ref method-caller-ref" role="link" tabindex="0" data-class="${escapeAttr(className)}" data-method="${escapeAttr(methodName)}" data-dex="${escapeAttr(dexFile)}" data-class-idx="${ci ?? ''}" data-method-idx="${mi ?? ''}" data-offset="${off ?? ''}" title="${escapeAttr(`${kind} @ ${hex}${dexFile ? ' · ' + dexFile : ''}`)}">${escapeHtml(label)}</span>${dexHint}`;
+  }).join(' ');
+  const more = callers.length > maxShow
+    ? ` <span class="bc-xref-more">+${callers.length - maxShow} more</span>`
+    : (truncated ? ` <span class="bc-xref-more">…truncated</span>` : '');
+  return `<span class="bc-xref-label">; XREF callers[${callers.length}${truncated ? '+' : ''}]:</span> ${refs}${more}`;
+}
+
+async function loadNativeJniCallerXrefs(hits, symbolName) {
+  const panel = document.getElementById('native-jni-xrefs');
+  if (!panel) return;
+  const hit = (hits || []).find((h) => h.className && h.methodName);
+  if (!hit) {
+    panel.hidden = true;
+    panel.innerHTML = '';
+    return;
+  }
+  const className = hit.className;
+  const methodName = hit.methodName;
+  const reqId = ++nativeJniXrefReqId;
+  panel.hidden = false;
+  panel.innerHTML = `<span class="bc-xref-label">; XREF:</span> <span class="muted">finding DEX callers of ${escapeHtml(className.split('.').pop() || className)}.${escapeHtml(methodName)}…</span>`;
+
+  const dexNames =
+    currentType === 'apk'
+      ? listApkDexNames().slice(0, 8)
+      : currentType === 'dex' && currentDexBytes
+        ? [currentFilename || 'classes.dex']
+        : [];
+
+  if (!dexNames.length && currentType === 'dex' && currentDexBytes?.length) {
+    // Standalone DEX — scan current bytes only.
+    try {
+      const raw = await findMethodCallersByNameInWorker(currentDexBytes, className, methodName);
+      if (reqId !== nativeJniXrefReqId) return;
+      const result = typeof normalizeWasmResult === 'function' ? normalizeWasmResult(raw) : raw;
+      const info = result?.ok
+        ? (typeof normalizeWasmResult === 'function'
+            ? normalizeWasmResult(result.data) || result.data
+            : result.data)
+        : null;
+      const callers = Array.isArray(info?.callers) ? info.callers : [];
+      panel.innerHTML = renderJniCallerXrefsHtml(callers, { truncated: !!(info?.truncated) });
+    } catch (e) {
+      if (reqId !== nativeJniXrefReqId) return;
+      panel.innerHTML = `<span class="bc-xref-label">; XREF:</span> <span class="muted">${escapeHtml(e?.message || String(e))}</span>`;
+    }
+    return;
+  }
+
+  if (!dexNames.length || !currentApkBytes?.length) {
+    panel.innerHTML = `<span class="bc-xref-label">; XREF:</span> <span class="muted">open an APK to find DEX callers</span>`;
+    return;
+  }
+
+  await ensureMainWasm();
+  const allCallers = [];
+  let truncated = false;
+  try {
+    for (const dexName of dexNames) {
+      if (reqId !== nativeJniXrefReqId) return;
+      let bytes = null;
+      try {
+        const b = get_apk_file_content(currentApkBytes, dexName);
+        bytes = b?.length ? new Uint8Array(b) : null;
+      } catch (_) {
+        bytes = null;
+      }
+      if (!bytes?.length) continue;
+      const raw = await findMethodCallersByNameInWorker(bytes, className, methodName);
+      if (reqId !== nativeJniXrefReqId) return;
+      const result = typeof normalizeWasmResult === 'function' ? normalizeWasmResult(raw) : raw;
+      if (!result?.ok) continue;
+      let info = result.data;
+      if (typeof normalizeWasmResult === 'function') info = normalizeWasmResult(info) || info;
+      const callers = Array.isArray(info?.callers) ? info.callers : [];
+      for (const c of callers) {
+        allCallers.push({ ...c, dexFile: dexName });
+      }
+      if (info?.truncated) truncated = true;
+      if (allCallers.length >= 200) {
+        truncated = true;
+        break;
+      }
+    }
+    if (reqId !== nativeJniXrefReqId) return;
+    panel.innerHTML =
+      `<span class="muted" style="display:block;margin-bottom:0.2rem">JNI <code>${escapeHtml(symbolName || '')}</code> ← DEX</span>` +
+      renderJniCallerXrefsHtml(allCallers, { truncated });
+  } catch (e) {
+    if (reqId !== nativeJniXrefReqId) return;
+    panel.innerHTML = `<span class="bc-xref-label">; XREF:</span> <span class="muted">${escapeHtml(e?.message || String(e))}</span>`;
+  }
+}
+
+async function handleJniChipClick(e) {
+  const btn = e.target.closest?.('.jni-link-chip');
+  if (!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const dir = btn.getAttribute('data-jni-nav');
+  if (dir === 'native') {
+    const lib = btn.getAttribute('data-lib') || '';
+    const symbol = btn.getAttribute('data-symbol') || '';
+    const funcIdxRaw = btn.getAttribute('data-func-idx');
+    const funcIdx = funcIdxRaw === '' || funcIdxRaw == null ? undefined : Number(funcIdxRaw);
+    await ensureMainWasm();
+    await navigateToNativeSymbol(lib, { symbol, funcIdx });
+    return;
+  }
+  if (dir === 'dex') {
+    const className = btn.getAttribute('data-class') || '';
+    const methodName = btn.getAttribute('data-method') || '';
+    const dexFile = btn.getAttribute('data-dex') || '';
+    const classIdxRaw = btn.getAttribute('data-class-idx');
+    const methodIdxRaw = btn.getAttribute('data-method-idx');
+    const classIdx = classIdxRaw === '' || classIdxRaw == null ? undefined : Number(classIdxRaw);
+    const methodIdx = methodIdxRaw === '' || methodIdxRaw == null ? undefined : Number(methodIdxRaw);
+    await navigateToSecurityFinding(className, methodName, dexFile, {
+      hint: 'jni',
+      classIdx,
+      methodIdx,
+    });
+  }
+}
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest?.('.jni-link-chip')) handleJniChipClick(e);
+  const xref = e.target.closest?.('.jni-caller-ref');
+  if (xref) {
+    e.preventDefault();
+    e.stopPropagation();
+    const className = xref.getAttribute('data-class') || '';
+    const methodName = xref.getAttribute('data-method') || '';
+    const dexFile = xref.getAttribute('data-dex') || '';
+    const classIdxRaw = xref.getAttribute('data-class-idx');
+    const methodIdxRaw = xref.getAttribute('data-method-idx');
+    const classIdx = classIdxRaw === '' || classIdxRaw == null ? undefined : Number(classIdxRaw);
+    const methodIdx = methodIdxRaw === '' || methodIdxRaw == null ? undefined : Number(methodIdxRaw);
+    const offsetRaw = xref.getAttribute('data-offset');
+    const offset = offsetRaw !== '' && offsetRaw != null ? Number(offsetRaw) : null;
+    navigateToSecurityFinding(className, methodName, dexFile, {
+      hint: 'jni-xref',
+      offset: Number.isFinite(offset) ? offset : null,
+      classIdx,
+      methodIdx,
+    });
+  }
+});
+
 /** Run parse_file in worker; returns Promise<object> ({ok,data,error}) after transferable decode. */
 function parseFileInWorker(bytes, filename) {
   const copy = bytes.slice();
@@ -253,6 +605,20 @@ function findMethodCallersInWorker(bytes, classIdx, methodIdx) {
       bytes: copy.buffer,
       classIdx: Number(classIdx) >>> 0,
       methodIdx: Number(methodIdx) >>> 0,
+    },
+    { timeoutMs: PARSE_WORKER_TIMEOUT_MS, transfer: [copy.buffer] }
+  );
+}
+
+/** Find invoke sites by class + method name (any overload; works across DEXes). */
+function findMethodCallersByNameInWorker(bytes, className, methodName) {
+  const copy = bytes instanceof Uint8Array ? bytes.slice() : new Uint8Array(bytes).slice();
+  return runInParseWorker(
+    'find_method_callers_by_name',
+    {
+      bytes: copy.buffer,
+      className: String(className || ''),
+      methodName: String(methodName || ''),
     },
     { timeoutMs: PARSE_WORKER_TIMEOUT_MS, transfer: [copy.buffer] }
   );
@@ -327,6 +693,23 @@ function getDexMethodInWorker(bytes, classIdx, methodIdx) {
     },
     { timeoutMs: DECOMPILE_WORKER_TIMEOUT_MS, transfer: [copy.buffer] }
   );
+}
+
+/**
+ * Browse stubs omit `bytecode`. After get_dex_method, bytecode is always an array
+ * (possibly empty for ACC_NATIVE). Without that check, native methods re-fetch forever.
+ */
+function dexMethodNeedsBodyFetch(method) {
+  if (!method) return true;
+  if (method._bodyLoaded) return false;
+  return !Array.isArray(method.bytecode);
+}
+
+function markDexMethodBodyLoaded(method) {
+  if (!method || typeof method !== 'object') return method;
+  method._bodyLoaded = true;
+  if (!Array.isArray(method.bytecode)) method.bytecode = [];
+  return method;
 }
 
 /** Compact DEX class index in worker (names + method counts only — keeps UI responsive). */
@@ -562,7 +945,7 @@ debug(`main.js loaded (${APP_RELEASE_LABEL})`);
     dateEl.textContent = APP_DATE_LABEL;
     dateEl.title = `Released ${APP_DATE}`;
   }
-  try { document.title = `droid2web ${APP_RELEASE_LABEL} — APK, APKM, DEX, AXML, ARSC Inspector`; } catch (_) {}
+  try { document.title = `droid2web ${APP_RELEASE_LABEL} — APK, APKM, DEX, ELF, AXML, ARSC Inspector`; } catch (_) {}
 }
 // Warm main-thread WASM in the background so the first APK/DEX open is not blocked on fetch.
 ensureMainWasm()
@@ -5446,6 +5829,7 @@ const centerTabsMenu = document.getElementById('center-tabs-menu');
 
 const PERMANENT_CENTER_TABS = [
   { id: 'bytecode-tab', label: 'Code' },
+  { id: 'native-tab', label: 'Native' },
   { id: 'manifest-tab', label: 'Manifest' },
   { id: 'permissions-tab', label: 'Permissions' },
   { id: 'components-tab', label: 'Components' },
@@ -5882,7 +6266,7 @@ document.getElementById('left-panel-modes')?.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-apk-mode]');
   if (!btn || currentType !== 'apk') return;
   const mode = btn.getAttribute('data-apk-mode');
-  if (mode !== 'files' && mode !== 'classes') return;
+  if (mode !== 'files' && mode !== 'classes' && mode !== 'native') return;
   setApkLeftMode(mode);
 });
 if (sourceSearchInput) {
@@ -6632,6 +7016,7 @@ if (showAndroidClassesCb) {
   showAndroidClassesCb.checked = !!showAndroidFrameworkClasses;
   showAndroidClassesCb.addEventListener('change', () => {
     showAndroidFrameworkClasses = !!showAndroidClassesCb.checked;
+    if (showAndroidFrameworkClasses) pinnedCodeViewClassName = null;
     try {
       localStorage.setItem(SHOW_ANDROID_CLASSES_KEY, showAndroidFrameworkClasses ? '1' : '0');
     } catch (_) {}
@@ -7791,6 +8176,10 @@ async function processFile(file) {
       apkPermissionUsagePromise = null;
       apkPermissionUsageStatus = '';
       apkDexStats = { dexFiles: 0, classes: 0, methods: 0, ready: false, totalDex: 0, current: 0, currentName: '' };
+      clearJniLinkIndex();
+      pinnedCodeViewClassName = null;
+      updateCodeJniBar();
+      updateNativeJniBar('', '');
       clearAllUiActivity();
       closeAllApkFileTabs();
       if (currentType === 'dex' && currentData != null) {
@@ -7846,6 +8235,16 @@ async function processFile(file) {
       render();
       t('render done (total load)');
       step('render done');
+      if (currentType === 'apk') {
+        // Background: match ACC_NATIVE methods ↔ Java_* in .so
+        ensureJniLinkIndex().then((idx) => {
+          if (!idx) return;
+          updateCodeJniBar();
+          if (apkLeftMode === 'native') renderNativeLibTreeWithBadges(currentData?.files || []);
+        });
+        // Open launcher / MAIN activity when present.
+        openApkMainEntry().catch((e) => warn('[apk] open main activity failed', e));
+      }
     } else {
       currentData = null;
       currentType = null;
@@ -7887,10 +8286,12 @@ function detectType(bytes, name) {
   const n = name.toLowerCase();
   if (bytes.length >= 4 && bytes[0] === 0x64 && bytes[1] === 0x65 && bytes[2] === 0x78) return 'dex';
   if (bytes.length >= 2 && bytes[0] === 0x50 && bytes[1] === 0x4b) return 'apk';
+  if (bytes.length >= 4 && bytes[0] === 0x7f && bytes[1] === 0x45 && bytes[2] === 0x4c && bytes[3] === 0x46) return 'elf';
   if (bytes.length >= 4 && bytes[0] === 0x03 && bytes[1] === 0x00 && bytes[2] === 0x08) return 'axml';
   if (bytes.length >= 4 && bytes[0] === 0x02 && bytes[1] === 0x00 && bytes[2] === 0x0c) return 'arsc';
   if (n.endsWith('.dex')) return 'dex';
   if (n.endsWith('.apk') || n.endsWith('.apkm') || n.endsWith('.jar') || n.endsWith('.zip')) return 'apk';
+  if (n.endsWith('.so') || n.endsWith('.elf')) return 'elf';
   if (n.endsWith('.xml') || n.endsWith('.axml')) return 'axml';
   if (n.endsWith('.arsc')) return 'arsc';
   return 'unknown';
@@ -8951,6 +9352,16 @@ function render() {
       renderAxml();
     } else if (currentType === 'arsc') {
       renderArsc();
+    } else if (currentType === 'elf') {
+      debug('[render] loadElf standalone…');
+      const elfBytes = currentFileBytes?.length ? currentFileBytes : null;
+      const browse =
+        currentData && Array.isArray(currentData.functions) ? currentData : null;
+      if (elfBytes) {
+        loadElf(currentFilename || 'lib.so', elfBytes, browse).catch((e) =>
+          warn('[render] loadElf failed', e)
+        );
+      }
     } else {
       warn('render: unknown type', currentType);
     }
@@ -9209,7 +9620,7 @@ function selectDexMethod(classIdx, methodIdx) {
   codeViewClassIdx = classIdx;
   codeViewMethodIdx = methodIdx;
   const method = currentData.classes[classIdx]?.methods?.[methodIdx];
-  const needFetch = !method || !Array.isArray(method.bytecode) || method.bytecode.length === 0;
+  const needFetch = dexMethodNeedsBodyFetch(method);
   if (needFetch && currentDexBytes && currentDexBytes.length > 0) {
     debug('selectDexMethod', 'fetching classIdx=', classIdx, 'methodIdx=', methodIdx, 'bytes=', currentDexBytes.length);
     bytecodeListing.innerHTML = '<div class="muted">Loading…</div>';
@@ -9232,11 +9643,15 @@ function selectDexMethod(classIdx, methodIdx) {
           const data = typeof normalizeWasmResult === 'function'
             ? (normalizeWasmResult(result.data) || result.data)
             : result.data;
-          currentData.classes[wantClass].methods[wantMethod] = data;
+          currentData.classes[wantClass].methods[wantMethod] = markDexMethodBodyLoaded(data);
           if (codeViewClassIdx === wantClass && codeViewMethodIdx === wantMethod) {
             selectDexMethod(wantClass, wantMethod);
           }
         } else {
+          // Avoid infinite refetch for empty native bodies / failed decomp.
+          if (currentData?.classes?.[wantClass]?.methods?.[wantMethod]) {
+            markDexMethodBodyLoaded(currentData.classes[wantClass].methods[wantMethod]);
+          }
           if (codeViewClassIdx === wantClass && codeViewMethodIdx === wantMethod) {
             setBytecodeListingHtml(bytecodeEmptyHtml('Failed to load method', result?.error || 'Unknown error'), { empty: true });
             setSourceContent(sourceCode, result?.error || 'Error');
@@ -9244,6 +9659,9 @@ function selectDexMethod(classIdx, methodIdx) {
           }
         }
       } catch (e) {
+        try {
+          markDexMethodBodyLoaded(currentData?.classes?.[wantClass]?.methods?.[wantMethod]);
+        } catch (_) {}
         if (codeViewClassIdx === wantClass && codeViewMethodIdx === wantMethod) {
           setBytecodeListingHtml(bytecodeEmptyHtml('Error loading method', String(e?.message || e)), { empty: true });
           setSourceContent(sourceCode, String(e?.message || e));
@@ -9275,7 +9693,13 @@ function selectDexMethod(classIdx, methodIdx) {
   // Bytecode (offset, hex, mnemonic, operands) — data-offset for emulator step sync
   const rows = method.bytecode || [];
   const displayMethodName = getDisplayMethodName(className, method.name);
-  const bytecodeHtml = wrapSingleMethodBytecodeHtml(renderBytecodeLines(rows), {
+  const isNative = !!(method.is_native || method.isNative);
+  const bytecodeInner = rows.length
+    ? renderBytecodeLines(rows)
+    : (isNative
+      ? `<div class="muted bytecode-empty-method">native method — no Dalvik bytecode (see Native / JNI links)</div>`
+      : '');
+  const bytecodeHtml = wrapSingleMethodBytecodeHtml(bytecodeInner, {
     classIdx,
     methodIdx,
     displayName: displayMethodName,
@@ -9289,7 +9713,8 @@ function selectDexMethod(classIdx, methodIdx) {
   requestAnimationFrame(() => renderCfgGraph(method));
 
   // Source (decompiled) with syntax highlighting; apply method rename so decompiled text matches bytecode
-  const decompilation = method.decompilation || '(no body)';
+  const decompilation = method.decompilation
+    || (isNative ? '// native method — no Dalvik body (implementation lives in a .so)\n' : '(no body)');
   currentSourceMethodMeta = { classIdx, methodIdx, name: displayMethodName };
   setSourceContent(sourceCode, applyMethodRenameToDecompilation(decompilation, method.name, displayMethodName) || decompilation);
 
@@ -9298,6 +9723,7 @@ function selectDexMethod(classIdx, methodIdx) {
   syncBackToClassButton();
   updateAnnotationPanel();
   loadAndShowMethodCallers(classIdx, methodIdx);
+  updateCodeJniBar();
 }
 
 /** Get current code view context (classes, bytes, class index) for DEX or APK DEX. */
@@ -9379,6 +9805,7 @@ function selectCodeViewMethod(classIdx, methodIdx, opts = {}) {
   const ctx = getCodeViewContext();
   const className = ctx?.classes?.[ci]?.name;
   if (className) codeViewPackage = getPackageFromClassName(className);
+  pinCodeViewClassIfHidden(className || '');
   if (currentType === 'apk' && apkExtractedFile?.kind === 'dex') {
     apkExtractedDexSelection = { classIdx: ci, methodIdx: codeViewMethodIdx ?? 0 };
   } else if (currentType === 'dex') {
@@ -9444,13 +9871,37 @@ function shouldShowClassInUi(className) {
   return showAndroidFrameworkClasses || !isAndroidOrAndroidxClass(className);
 }
 
+/**
+ * Deep links (JNI chips, Security, Manifest) may target android/androidx classes
+ * while the framework filter is off. Pin the selected class so updateCodeView
+ * does not redirect away.
+ * @type {string|null}
+ */
+let pinnedCodeViewClassName = null;
+
+function isPinnedCodeViewClass(className) {
+  return !!(pinnedCodeViewClassName && classNamesEquivalent(className, pinnedCodeViewClassName));
+}
+
+function isClassAllowedInCodeView(className) {
+  return shouldShowClassInUi(className) || isPinnedCodeViewClass(className);
+}
+
+function pinCodeViewClassIfHidden(className) {
+  if (className && isAndroidOrAndroidxClass(className) && !showAndroidFrameworkClasses) {
+    pinnedCodeViewClassName = className;
+  } else {
+    pinnedCodeViewClassName = null;
+  }
+}
+
 /** Return array of class indices that belong to the given package. */
 function getClassesInPackage(classes, packageName) {
   if (!Array.isArray(classes) || !packageName) return [];
   const out = [];
   for (let i = 0; i < classes.length; i++) {
     const name = classes[i]?.name;
-    if (!shouldShowClassInUi(name)) continue;
+    if (!isClassAllowedInCodeView(name)) continue;
     if (getPackageFromClassName(name) === packageName) out.push(i);
   }
   return out;
@@ -9547,7 +9998,7 @@ async function loadAllMethodsForClass(bytes, classIdx, methods, classesRef, { fo
   for (let methodIdx = 0; methodIdx < methods.length; methodIdx++) {
     if (!stillCurrent()) return;
     const m = methods[methodIdx];
-    const needFetch = !Array.isArray(m.bytecode) || m.bytecode.length === 0;
+    const needFetch = dexMethodNeedsBodyFetch(m);
     if (needFetch) {
       try {
         setUiActivity('decomp', 'Decompiling class', `${methodIdx + 1}/${methods.length}`);
@@ -9565,7 +10016,7 @@ async function loadAllMethodsForClass(bytes, classIdx, methods, classesRef, { fo
           const data = typeof normalizeWasmResult === 'function'
             ? (normalizeWasmResult(result.data) || result.data)
             : result.data;
-          classesRef[classIdx].methods[methodIdx] = data;
+          classesRef[classIdx].methods[methodIdx] = markDexMethodBodyLoaded(data);
         }
       } catch (e) {
         warn('[loadAllMethodsForClass]', classIdx, methodIdx, e);
@@ -9613,18 +10064,19 @@ function updateCodeView() {
   const pkgClassCounts = countClassesByPackage(classes);
   for (let i = 0; i < classes.length; i++) {
     const name = classes[i]?.name;
-    if (!shouldShowClassInUi(name)) continue;
+    if (!isClassAllowedInCodeView(name)) continue;
     const pkg = getPackageFromClassName(name);
     if (!seen.has(pkg)) { seen.add(pkg); packages.push(pkg); }
   }
   packages.sort();
-  // If current selection is a hidden android/androidx class, drop package so user picks again.
+  // If current selection is a hidden android/androidx class (and not pinned), drop it.
   if (codeViewPackage && !packages.includes(codeViewPackage)) {
     codeViewPackage = '';
   }
-  if (classes[codeViewClassIdx] && !shouldShowClassInUi(classes[codeViewClassIdx]?.name)) {
+  if (classes[codeViewClassIdx] && !isClassAllowedInCodeView(classes[codeViewClassIdx]?.name)) {
     codeViewClassIdx = packages.length ? (getClassesInPackage(classes, packages[0])[0] ?? 0) : 0;
     codeViewMethodIdx = null;
+    pinnedCodeViewClassName = null;
   }
   const showPackageClassToolbar = classes.length > 0;
   if (codePackageWrap) codePackageWrap.style.display = showPackageClassToolbar ? '' : 'none';
@@ -9645,7 +10097,7 @@ function updateCodeView() {
     // Prefer following the selected class over clobbering it with the first class in the old package.
     if (
       classes[codeViewClassIdx]?.name &&
-      shouldShowClassInUi(classes[codeViewClassIdx].name)
+      isClassAllowedInCodeView(classes[codeViewClassIdx].name)
     ) {
       const pkgOfClass = getPackageFromClassName(classes[codeViewClassIdx].name);
       if (pkgOfClass && pkgOfClass !== codeViewPackage) {
@@ -9665,6 +10117,7 @@ function updateCodeView() {
         setBytecodeListingHtml(bytecodeEmptyHtml('Select a package', 'Choose a package above to browse classes'), { empty: true, sourceMeta: '' });
         setSourceContent(sourceCode, '');
         clearCfgGraph();
+        updateCodeJniBar();
         methodSelect.innerHTML = '<option value="all">All methods</option>';
         updateAnnotationPanel();
         return;
@@ -9677,6 +10130,7 @@ function updateCodeView() {
       setBytecodeListingHtml(bytecodeEmptyHtml('Empty package', `No classes in “${codeViewPackage}”`), { empty: true, sourceMeta: '' });
       setSourceContent(sourceCode, '');
       clearCfgGraph();
+      updateCodeJniBar();
       methodSelect.innerHTML = '<option value="all">All methods</option>';
       updateAnnotationPanel();
       return;
@@ -9719,6 +10173,7 @@ function updateCodeView() {
     currentSourceMethodMeta = null;
     setSourceContent(sourceCode, '');
     clearCfgGraph();
+    updateCodeJniBar();
     if (bytecodeMeta) bytecodeMeta.textContent = 'Loading…';
     const classesRef = isApk ? apkExtractedFile.data.classes : currentData.classes;
     const loadingClassIdx = classIdx;
@@ -9730,7 +10185,7 @@ function updateCodeView() {
     if (isApk) {
       apkExtractedDexSelection.methodIdx = codeViewMethodIdx;
       let method = classes[classIdx].methods[codeViewMethodIdx];
-      const needFetch = !method || !Array.isArray(method.bytecode) || method.bytecode.length === 0;
+      const needFetch = dexMethodNeedsBodyFetch(method);
       if (needFetch && apkExtractedFile?.bytes) {
         const bytes = apkExtractedFile.bytes;
         const wantClass = classIdx;
@@ -9750,9 +10205,16 @@ function updateCodeView() {
               const data = typeof normalizeWasmResult === 'function'
                 ? (normalizeWasmResult(result.data) || result.data)
                 : result.data;
-              apkExtractedFile.data.classes[wantClass].methods[wantMethod] = data;
+              apkExtractedFile.data.classes[wantClass].methods[wantMethod] = markDexMethodBodyLoaded(data);
+            } else if (apkExtractedFile?.data?.classes?.[wantClass]?.methods?.[wantMethod]) {
+              // Mark resolved even on empty native bodies so we do not loop.
+              markDexMethodBodyLoaded(apkExtractedFile.data.classes[wantClass].methods[wantMethod]);
             }
-          } catch (_) {}
+          } catch (_) {
+            try {
+              markDexMethodBodyLoaded(apkExtractedFile?.data?.classes?.[wantClass]?.methods?.[wantMethod]);
+            } catch (_) {}
+          }
           finally {
             clearUiActivity('decomp');
           }
@@ -9766,10 +10228,27 @@ function updateCodeView() {
       const rows = Array.isArray(m?.bytecode) ? m.bytecode : [];
       const bytecodeHtml = renderBytecodeLines(rows);
       const className = classes[classIdx]?.name ?? '';
-      const decompilation = m?.decompilation || '(no body)';
+      const isNative = !!(m?.is_native || m?.isNative);
+      const decompilation = m?.decompilation
+        || (isNative
+          ? '// native method — no Dalvik body (implementation lives in a .so)\n'
+          : '(no body)');
       const displayMethodName = getDisplayMethodName(className, m?.name);
       const sourceToShow = applyMethodRenameToDecompilation(decompilation, m?.name, displayMethodName) || decompilation;
-      if (needFetch && rows.length === 0) {
+      if (rows.length === 0 && isNative) {
+        setBytecodeListingHtml(
+          wrapSingleMethodBytecodeHtml(
+            `<div class="muted bytecode-empty-method">native method — no Dalvik bytecode (see Native / JNI links)</div>`,
+            { classIdx, methodIdx: codeViewMethodIdx, displayName: displayMethodName }
+          ),
+          { empty: true, insnCount: 0, sourceMeta: displayMethodName || '' }
+        );
+        currentSourceMethodMeta = { classIdx, methodIdx: codeViewMethodIdx, name: displayMethodName };
+        setSourceContent(sourceCode, sourceToShow);
+        clearCfgGraph();
+        updateCodeJniBar();
+        loadAndShowMethodCallers(classIdx, codeViewMethodIdx);
+      } else if (needFetch && rows.length === 0) {
         setBytecodeListingHtml(bytecodeEmptyHtml('Failed to load method', 'Try selecting again or check the console'), {
           empty: true,
           sourceMeta: displayMethodName || '',
@@ -9777,6 +10256,7 @@ function updateCodeView() {
         currentSourceMethodMeta = { classIdx, methodIdx: codeViewMethodIdx, name: displayMethodName };
         setSourceContent(sourceCode, sourceToShow);
         clearCfgGraph();
+        updateCodeJniBar();
       } else {
         const wrappedBc = wrapSingleMethodBytecodeHtml(bytecodeHtml, {
           classIdx,
@@ -9793,9 +10273,11 @@ function updateCodeView() {
         requestAnimationFrame(() => renderCfgGraph(m));
         ensureCfgPaneExpanded();
         loadAndShowMethodCallers(classIdx, codeViewMethodIdx);
+        updateCodeJniBar();
       }
     } else {
       selectDexMethod(classIdx, codeViewMethodIdx);
+      updateCodeJniBar();
     }
   }
   updateAnnotationPanel();
@@ -14671,7 +15153,7 @@ function updateApkDexFileSelector() {
 }
 
 async function setApkLeftMode(mode) {
-  if (mode !== 'files' && mode !== 'classes') return;
+  if (mode !== 'files' && mode !== 'classes' && mode !== 'native') return;
   apkLeftMode = mode;
   updateApkLeftModeButtons();
   if (mode === 'classes') {
@@ -14696,6 +15178,22 @@ async function setApkLeftMode(mode) {
       }
       renderApkClassTree();
     }
+  } else if (mode === 'native') {
+    leftPanelTitle.textContent = 'Native';
+    leftPanelTitle.title = 'ARM64 shared libraries';
+    if (listSearchWrap) listSearchWrap.style.display = 'flex';
+    if (dexPackageWrap) dexPackageWrap.style.display = 'none';
+    if (dexFileWrap) dexFileWrap.style.display = 'none';
+    const files = currentData?.files || [];
+    const q = (searchQuery || '').trim().toLowerCase();
+    const filtered = q
+      ? files.filter((f) => String(f?.name || '').toLowerCase().includes(q))
+      : files;
+    renderNativeLibTreeWithBadges(filtered);
+    ensureJniLinkIndex().then(() => {
+      if (apkLeftMode === 'native') renderNativeLibTreeWithBadges(currentData?.files || []);
+    });
+    switchToCenterTab('native-tab');
   } else {
     renderApkFileTree();
   }
@@ -16589,6 +17087,22 @@ function renderApk() {
 
   if (apkLeftMode === 'classes' && apkExtractedFile?.kind === 'dex') {
     renderApkClassTree();
+  } else if (apkLeftMode === 'native') {
+    leftPanelTitle.textContent = 'Native';
+    leftPanelTitle.title = 'ARM64 shared libraries';
+    treePlaceholder.style.display = 'none';
+    treeContent.style.display = 'block';
+    if (listSearchWrap) listSearchWrap.style.display = 'flex';
+    if (dexPackageWrap) dexPackageWrap.style.display = 'none';
+    if (dexFileWrap) dexFileWrap.style.display = 'none';
+    const q = (searchQuery || '').trim().toLowerCase();
+    const filtered = q
+      ? files.filter((f) => String(f?.name || '').toLowerCase().includes(q))
+      : files;
+    renderNativeLibTreeWithBadges(filtered);
+    ensureJniLinkIndex().then(() => {
+      if (apkLeftMode === 'native') renderNativeLibTreeWithBadges(currentData?.files || []);
+    });
   } else {
     if (apkLeftMode === 'classes' && !primaryDex) apkLeftMode = 'files';
     renderApkFileTree();
@@ -16687,7 +17201,7 @@ async function showApkFile(name) {
     try {
       // Large DEXes (Facebook) must not run on the main thread or Info clicks freeze.
       // Browse parse omits string pool; method bodies stay on-demand via get_dex_method.
-      if (name.toLowerCase().endsWith('.dex') || bytes.length > 2 * 1024 * 1024) {
+      if (name.toLowerCase().endsWith('.dex') || name.toLowerCase().endsWith('.so') || bytes.length > 2 * 1024 * 1024) {
         result = await parseFileInWorker(u8, name);
       } else {
         const resultRaw = parse_file(u8, name);
@@ -16723,11 +17237,29 @@ async function showApkFile(name) {
         apkExtractedFile = { name, kind: 'axml', data: result.data, bytes };
       } else if (name.endsWith('.arsc')) {
         apkExtractedFile = { name, kind: 'arsc', data: result.data, bytes };
+      } else if (
+        name.toLowerCase().endsWith('.so') ||
+        name.toLowerCase().endsWith('.elf') ||
+        (bytes.length >= 4 && bytes[0] === 0x7f && bytes[1] === 0x45 && bytes[2] === 0x4c && bytes[3] === 0x46)
+      ) {
+        apkExtractedFile = { name, kind: 'elf', data: result.data, bytes };
       } else if (isImage) {
         apkExtractedFile = { name, kind: 'png', data: null, bytes };
       } else {
         apkExtractedFile = { name, kind: 'binary', data: null, bytes };
       }
+    } else if (
+      name.toLowerCase().endsWith('.so') ||
+      (bytes.length >= 4 && bytes[0] === 0x7f && bytes[1] === 0x45 && bytes[2] === 0x4c && bytes[3] === 0x46)
+    ) {
+      // Parse failed (e.g. non-arm64) — still mark as elf so Native tab can show the error.
+      apkExtractedFile = {
+        name,
+        kind: 'elf',
+        data: null,
+        bytes,
+        error: result?.error || 'ELF parse failed',
+      };
     } else {
       apkExtractedFile = { name, kind: 'binary', data: null, bytes };
     }
@@ -17014,6 +17546,26 @@ function renderApkExtractedContent() {
     apkExtractedDexSelection = { classIdx, methodIdx: 0 };
     updateCodeView();
     setRawTabHex(ef);
+    if (apkManifestXml != null) showApkManifestInViewer();
+    return;
+  }
+  if (ef.kind === 'elf') {
+    setRawTabHex(ef);
+    if (ef.error && !ef.data) {
+      switchToCenterTab('native-tab');
+      const listing = document.getElementById('native-asm-listing');
+      if (listing) {
+        listing.innerHTML = `<div class="muted">${escapeHtml(ef.error)}</div>`;
+      }
+      const meta = document.getElementById('native-status-meta');
+      if (meta) meta.textContent = ef.error;
+    } else if (ef.bytes) {
+      if (apkLeftMode === 'native') {
+        renderNativeLibTreeWithBadges(currentData?.files || []);
+      }
+      loadElf(ef.name, ef.bytes, ef.data).catch((e) => warn('[native] loadElf failed', e));
+      ensureJniLinkIndex().then(() => updateNativeJniBar('', ef.name));
+    }
     if (apkManifestXml != null) showApkManifestInViewer();
     return;
   }
@@ -19176,8 +19728,17 @@ function findMethodIndexInClass(methods, methodName, hintText = '') {
   const want = String(methodName);
   const matches = [];
   for (let i = 0; i < methods.length; i++) {
-    const n = methods[i]?.name || '';
-    if (n === want || (want === '<init>' && n === 'constructor')) matches.push(i);
+    const m = methods[i];
+    const n = m?.dex_name || m?.dexName || m?.name || '';
+    const display = m?.name || '';
+    if (
+      n === want ||
+      display === want ||
+      (want === '<init>' && (n === '<init>' || display === 'constructor')) ||
+      (want === 'constructor' && n === '<init>')
+    ) {
+      matches.push(i);
+    }
   }
   if (!matches.length) return -1;
   if (matches.length === 1) return matches[0];
@@ -19480,9 +20041,29 @@ function renderSecurityPanel() {
   updateStatusBar();
 }
 
+/** After APK load: jump to launcher MAIN activity (prefer onCreate). */
+async function openApkMainEntry() {
+  if (currentType !== 'apk' || !currentData) return;
+  const m = currentData.manifest || {};
+  const pkg = m.package || currentData.package || '';
+  const mains = Array.isArray(m.main_activities) ? m.main_activities.filter(Boolean) : [];
+  let raw = mains[0] || '';
+  if (!raw) {
+    const launcher = (Array.isArray(m.activities) ? m.activities : []).find((a) => a?.is_launcher);
+    raw = launcher?.name || '';
+  }
+  if (!raw) return;
+  const className = resolveManifestClass(raw, pkg);
+  if (!className) return;
+  setSecurityStatus(`Opening main activity ${className}…`);
+  await navigateToSecurityFinding(className, 'onCreate', '', { hint: 'main-activity' });
+}
+
 async function navigateToSecurityFinding(className, methodName, dexFile, navOpts = {}) {
   const offset = navOpts.offset != null ? Number(navOpts.offset) : null;
   const hint = navOpts.hint || '';
+  const preferClassIdx = navOpts.classIdx != null ? Number(navOpts.classIdx) : NaN;
+  const preferMethodIdx = navOpts.methodIdx != null ? Number(navOpts.methodIdx) : NaN;
 
   if (isXmlSecurityFinding(className, methodName)) {
     navigateToXmlSecurityFinding(className);
@@ -19499,13 +20080,11 @@ async function navigateToSecurityFinding(className, methodName, dexFile, navOpts
 
   if (currentType === 'apk') {
     await ensureApkClassIndex();
-    let file = dexFile;
-    let classIdx = null;
+    // Prefer the DEX that owns this class; fall back to chip/xref dex path.
+    let file = '';
     const hit = lookupApkClass(className, apkClassToDex);
-    if (hit) {
-      file = hit.file;
-      classIdx = hit.classIdx;
-    }
+    if (hit?.file) file = hit.file;
+    if (!file && dexFile) file = dexFile;
     if (!file) {
       setSecurityStatus('Class not found in APK index: ' + className);
       return;
@@ -19514,21 +20093,32 @@ async function navigateToSecurityFinding(className, methodName, dexFile, navOpts
     if (apkLeftMode !== 'classes') {
       apkLeftMode = 'classes';
       updateApkLeftModeButtons();
+      // Leave Native/Files tree so Code selection is visible.
+      try { renderApkClassTree(); } catch (_) {}
     }
-    if (classIdx == null) {
-      const classes = apkExtractedFile?.data?.classes || [];
-      classIdx = findClassIndexInDex(classes, className);
+    const classes = apkExtractedFile?.data?.classes || [];
+    // Always resolve by name against the loaded browse DEX — light-index classIdx
+    // can disagree with browse ordering.
+    let classIdx = findClassIndexInDex(classes, className);
+    if (classIdx < 0 && Number.isFinite(preferClassIdx) && classes[preferClassIdx]
+      && classNamesEquivalent(classes[preferClassIdx]?.name, className)) {
+      classIdx = preferClassIdx;
     }
     if (classIdx < 0) {
       setSecurityStatus('Class not in DEX: ' + className);
       return;
     }
-    const methods = apkExtractedFile?.data?.classes?.[classIdx]?.methods || [];
+    const methods = classes[classIdx]?.methods || [];
     let methodIdx = methodName ? findMethodIndexInClass(methods, methodName, hint) : -1;
+    if (methodIdx < 0 && Number.isFinite(preferMethodIdx) && methods[preferMethodIdx]) {
+      const pm = methods[preferMethodIdx];
+      const pn = pm?.dex_name || pm?.dexName || pm?.name || '';
+      if (!methodName || pn === methodName || pm?.name === methodName) methodIdx = preferMethodIdx;
+    }
     if (methodIdx < 0) methodIdx = null;
     // Use selectCodeViewMethod so package/toolbar stay aligned with the jump target.
     selectCodeViewMethod(classIdx, methodIdx, { expandCfg: methodIdx != null });
-    renderApkClassTree();
+    try { renderApkClassTree(); } catch (_) {}
     if (methodIdx == null && methodName) {
       setSecurityStatus(`Opened class ${className} — method "${methodName}" not found`);
     } else if (methodIdx == null) {
@@ -19569,12 +20159,20 @@ async function navigateToSecurityFinding(className, methodName, dexFile, navOpts
         }
       }
     }
+    if (classIdx < 0 && Number.isFinite(preferClassIdx)
+      && currentData.classes[preferClassIdx]
+      && classNamesEquivalent(currentData.classes[preferClassIdx]?.name, className)) {
+      classIdx = preferClassIdx;
+    }
     if (classIdx < 0) {
       setSecurityStatus('Class not found: ' + className);
       return;
     }
     const methods = currentData.classes[classIdx]?.methods || [];
     let methodIdx = methodName ? findMethodIndexInClass(methods, methodName, hint) : -1;
+    if (methodIdx < 0 && Number.isFinite(preferMethodIdx) && methods[preferMethodIdx]) {
+      methodIdx = preferMethodIdx;
+    }
     if (methodIdx < 0) methodIdx = null;
     selectCodeViewMethod(classIdx, methodIdx, { expandCfg: methodIdx != null });
     if (methodIdx == null && methodName) {
@@ -21329,4 +21927,46 @@ try {
   });
 } catch (e) {
   console.warn('[droid2web] device ui init', e);
+}
+
+try {
+  initNativeUi({
+    runInParseWorker,
+    switchToCenterTab,
+    normalizeWasmResult,
+    timeoutMs: Math.max(PARSE_WORKER_TIMEOUT_MS, 180000),
+    onSelectLib: (path) => {
+      showApkFile(path).catch((e) => warn('[native] select lib failed', e));
+    },
+    onFunctionSelected: ({ path, name }) => {
+      ensureJniLinkIndex().then(() => updateNativeJniBar(name || '', path || ''));
+      updateNativeJniBar(name || '', path || '');
+    },
+  });
+} catch (e) {
+  console.warn('[droid2web] native ui init', e);
+}
+
+try {
+  initFindRefsUi({
+    runInParseWorker,
+    switchToCenterTab,
+    normalizeWasmResult,
+    timeoutMs: Math.max(PARSE_WORKER_TIMEOUT_MS, 180000),
+    escapeHtml,
+    escapeAttr,
+    formatHexOffset: formatSecHexOffset,
+    highlightJava,
+    getDecompileOptions: () => getDexRenamesObject(),
+    getFindBytes: () => {
+      if (currentApkBytes?.length) return currentApkBytes;
+      if (currentType === 'dex' && currentDexBytes?.length) return currentDexBytes;
+      return null;
+    },
+    navigateToRef: (el) => {
+      if (typeof navigateToMethodCaller === 'function') navigateToMethodCaller(el);
+    },
+  });
+} catch (e) {
+  console.warn('[droid2web] findrefs ui init', e);
 }

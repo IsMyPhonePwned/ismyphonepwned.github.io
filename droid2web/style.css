@@ -602,7 +602,7 @@ header {
   line-height: 1.4;
 }
 .help-modal-dialog {
-  max-width: 28rem;
+  max-width: 34rem;
 }
 .help-contact {
   margin: 0;
@@ -616,6 +616,28 @@ header {
 }
 .help-contact a:hover {
   color: var(--accent-hover);
+}
+.help-repo-list {
+  margin: 0 0 0.75rem;
+  padding-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+.help-repo-list a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-family: var(--mono, Consolas, monospace);
+  font-size: 0.86rem;
+}
+.help-repo-list a:hover {
+  color: var(--accent-hover);
+}
+.help-repo-list .muted {
+  font-size: 0.8rem;
 }
 .settings-theme-grid {
   display: grid;
@@ -3607,6 +3629,17 @@ body.cfg-fullscreen #cfg-graph-wrap {
   color: color-mix(in srgb, var(--yellow) 80%, var(--text-muted));
   border-bottom-style: dashed;
   cursor: help;
+}
+a.native-fn-link.src-call {
+  color: color-mix(in srgb, var(--syn-invoke, var(--accent)) 80%, var(--text));
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px dotted color-mix(in srgb, var(--accent) 55%, transparent);
+  cursor: pointer;
+}
+a.native-fn-link.src-call:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
 }
 .bytecode-xref-line {
   display: flex;
@@ -8415,7 +8448,147 @@ footer.app-statusbar {
   gap: 0.3rem;
 }
 
-/* Device tab — WebUSB ADB + goauld */
+#native-workspace {
+  min-height: 0;
+  flex: 1;
+}
+#native-tab {
+  display: none;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+#native-tab.active {
+  display: flex;
+}
+#native-cfg-graph {
+  width: 100%;
+  height: 100%;
+  min-height: 12rem;
+}
+
+/* Native asm: 4 columns (no Jump) so hex never runs into the mnemonic */
+#native-workspace .bytecode-col-header,
+#native-workspace .bytecode-line {
+  grid-template-columns: 5.5rem minmax(8.5rem, 11rem) minmax(5.5rem, 8rem) minmax(0, 1fr);
+  column-gap: 1rem;
+}
+#native-workspace.hide-hex .bytecode-col-header,
+#native-workspace.hide-hex .bytecode-line {
+  grid-template-columns: 5.5rem minmax(5.5rem, 8rem) minmax(0, 1fr);
+}
+#native-workspace .bc-hex {
+  letter-spacing: 0.04em;
+  padding-right: 0.35rem;
+  border-right: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+#native-workspace.hide-hex .bc-hex {
+  display: none;
+  border-right: none;
+  padding-right: 0;
+}
+#native-workspace .bc-mnemonic {
+  font-weight: 600;
+  padding-left: 0.15rem;
+}
+#native-workspace .bc-operands {
+  color: var(--text);
+  opacity: 0.92;
+}
+#native-workspace .bc-mnemonic.bc-op-branch { color: var(--syn-name); }
+#native-workspace .bc-mnemonic.bc-op-return { color: var(--orange); }
+#native-workspace .bc-mnemonic.bc-op-invoke { color: var(--syn-keyword); }
+#native-workspace .bc-mnemonic.bc-op-const { color: var(--syn-num); }
+#native-workspace .bc-mnemonic.bc-op-move { color: var(--syn-data); }
+
+#native-source-code.src-has-highlight {
+  white-space: pre;
+  tab-size: 4;
+}
+#native-source-code .src-label {
+  color: var(--syn-name);
+  font-weight: 500;
+}
+#native-source-code .src-number { color: var(--syn-num); }
+#native-source-code .src-type { color: var(--syn-data); }
+
+.jni-link-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  padding: 0.3rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 92%, var(--accent) 6%);
+  flex-shrink: 0;
+}
+.jni-link-bar[hidden] { display: none !important; }
+.jni-link-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.jni-link-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+}
+.jni-link-chip {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  max-width: 28rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jni-link-empty {
+  font-size: 0.72rem;
+}
+.jni-xref-panel {
+  padding: 0.35rem 0.75rem 0.45rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 94%, var(--syn-xref) 4%);
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  max-height: 7.5rem;
+  overflow: auto;
+}
+.jni-xref-panel[hidden] { display: none !important; }
+.jni-xref-panel .method-caller-ref,
+.jni-xref-panel .jni-caller-ref {
+  cursor: pointer;
+}
+.jni-xref-panel .jni-caller-dex {
+  opacity: 0.65;
+  font-size: 0.65rem;
+}
+
+.native-lib-tree .native-abi-head {
+  cursor: pointer;
+  font-weight: 600;
+  user-select: none;
+}
+.native-lib-tree .native-lib {
+  cursor: pointer;
+  padding-left: 0.35rem;
+}
+.native-lib-tree .native-lib:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.native-lib-tree .native-lib.selected {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.native-lib-tree .jni-badge {
+  margin-left: 0.35rem;
+  font-size: 0.65rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .device-panel {
   display: flex;
   flex-direction: column;
@@ -9009,4 +9182,122 @@ footer.app-statusbar {
   flex-wrap: wrap;
   gap: 0.35rem;
   margin-top: 0.15rem;
+}
+
+/* Find tab (ASC findrefs / getclass) */
+.find-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.find-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--surface);
+}
+.find-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+.find-kind-select,
+.find-value-input,
+.find-class-input {
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+.find-value-input { flex: 1; min-width: 140px; max-width: 280px; }
+.find-class-input { min-width: 120px; max-width: 220px; }
+.find-status { font-size: 0.85rem; margin-left: auto; }
+.find-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.find-results {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 0.75rem;
+}
+.find-results-meta { margin-bottom: 0.5rem; font-size: 0.85rem; }
+.find-hit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.find-hit {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+.find-hit:hover {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border-color: var(--border);
+}
+.find-hit-loc { font-family: var(--mono, Consolas, monospace); font-size: 0.9rem; }
+.find-hit-meta { font-size: 0.8rem; white-space: nowrap; }
+.find-source {
+  width: min(46%, 520px);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--bg);
+}
+.find-source-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.65rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.find-source-meta {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.find-source-code {
+  margin: 0;
+  padding: 0.75rem;
+  overflow: auto;
+  flex: 1;
+  font-family: var(--mono, Consolas, monospace);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  white-space: pre;
+}
+@media (max-width: 900px) {
+  .find-body { flex-direction: column; }
+  .find-source {
+    width: 100%;
+    max-height: 45%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
 }

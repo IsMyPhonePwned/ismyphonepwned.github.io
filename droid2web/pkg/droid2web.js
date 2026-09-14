@@ -92,6 +92,24 @@ export function find_method_callers(bytes, class_idx, method_idx) {
 }
 
 /**
+ * Find invoke sites calling className#methodName (any overload) — for JNI / multidex xrefs.
+ * @param {Uint8Array} bytes
+ * @param {string} class_name
+ * @param {string} method_name
+ * @returns {any}
+ */
+export function find_method_callers_by_name(bytes, class_name, method_name) {
+    const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(class_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passStringToWasm0(method_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.find_method_callers_by_name(ptr0, len0, ptr1, len1, ptr2, len2);
+    return ret;
+}
+
+/**
  * Find `const-string` sites that load the given permission names. `permissions` is a JS string array.
  * @param {Uint8Array} bytes
  * @param {any} permissions
@@ -101,6 +119,28 @@ export function find_permission_usages(bytes, permissions) {
     const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
     const ret = wasm.find_permission_usages(ptr0, len0, permissions);
+    return ret;
+}
+
+/**
+ * ASC findrefs: `kind` = string | type | method | field. Works on DEX or APK bytes.
+ * @param {Uint8Array} bytes
+ * @param {string} kind
+ * @param {string} value
+ * @param {string | null} [class_filter]
+ * @param {boolean | null} [exact_class]
+ * @returns {any}
+ */
+export function find_refs(bytes, kind, value, class_filter, exact_class) {
+    const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(kind, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len2 = WASM_VECTOR_LEN;
+    var ptr3 = isLikeNone(class_filter) ? 0 : passStringToWasm0(class_filter, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    var len3 = WASM_VECTOR_LEN;
+    const ret = wasm.find_refs(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, isLikeNone(exact_class) ? 0xFFFFFF : exact_class ? 1 : 0);
     return ret;
 }
 
@@ -167,11 +207,56 @@ export function get_dex_strings(bytes) {
 }
 
 /**
+ * Disassemble + CFG + decompile one ELF function by index.
+ * Optional 3rd arg: `{ mode?: "restructure"|"simple"|"fallback" }`.
+ * @param {Uint8Array} bytes
+ * @param {number} func_idx
+ * @param {any | null} [options]
+ * @returns {any}
+ */
+export function get_elf_function(bytes, func_idx, options) {
+    const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.get_elf_function(ptr0, len0, func_idx, isLikeNone(options) ? 0 : addToExternrefTable0(options));
+    return ret;
+}
+
+/**
+ * Disassemble + CFG + decompile at a raw vaddr (for local `sub_*` callees not in the FUNC list).
+ * @param {Uint8Array} bytes
+ * @param {bigint} vaddr
+ * @param {any | null} [options]
+ * @returns {any}
+ */
+export function get_elf_function_at(bytes, vaddr, options) {
+    const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.get_elf_function_at(ptr0, len0, vaddr, isLikeNone(options) ? 0 : addToExternrefTable0(options));
+    return ret;
+}
+
+/**
  * Return built-in MobHunt Semgrep rules YAML + parsed rule summaries.
  * @returns {any}
  */
 export function get_semgrep_builtin_rules() {
     const ret = wasm.get_semgrep_builtin_rules();
+    return ret;
+}
+
+/**
+ * ASC getclass: early-exit locate + slice + decompile one class from DEX/APK bytes.
+ * @param {Uint8Array} bytes
+ * @param {string} class_name
+ * @param {any | null} [options]
+ * @returns {any}
+ */
+export function getclass_java(bytes, class_name, options) {
+    const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(class_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.getclass_java(ptr0, len0, ptr1, len1, isLikeNone(options) ? 0 : addToExternrefTable0(options));
     return ret;
 }
 
@@ -292,6 +377,30 @@ export function parse_dex(bytes) {
     const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
     const ret = wasm.parse_dex(ptr0, len0);
+    return ret;
+}
+
+/**
+ * Parse an AArch64 ELF (.so). Returns `{ ok, data?: ElfBrowseInfo, error? }`.
+ * @param {Uint8Array} bytes
+ * @returns {any}
+ */
+export function parse_elf(bytes) {
+    const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.parse_elf(ptr0, len0);
+    return ret;
+}
+
+/**
+ * Same as [`parse_elf_js`] but returns UTF-8 JSON as `Uint8Array`.
+ * @param {Uint8Array} bytes
+ * @returns {Uint8Array}
+ */
+export function parse_elf_bytes(bytes) {
+    const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.parse_elf_bytes(ptr0, len0);
     return ret;
 }
 

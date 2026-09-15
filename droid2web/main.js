@@ -17,8 +17,10 @@ import {
   renderNativeLibTree,
   navigateToNativeSymbol,
   getCurrentNativePath,
+  applyArmDecompileOptionsFromStorage,
 } from './native-ui.js';
 import { initFindRefsUi } from './findrefs-ui.js';
+import { renderMastgKnowledgeHtml } from './mastg-know.js';
 import {
   buildJniLinkIndex,
   clearJniLinkIndex,
@@ -17822,6 +17824,7 @@ function renderArsc() {
 const SECURITY_CACHE_KEY = 'droid2web-security-cache-v1';
 const SECURITY_VERDICTS_KEY = 'droid2web-security-verdicts-v1';
 const SECURITY_RULES_KEY = 'droid2web-semgrep-rules-yaml';
+const SECURITY_SCANNERS_KEY = 'droid2web-security-scanners-v1';
 const SECURITY_CACHE_MAX_ENTRIES = 8;
 const SECURITY_CACHE_MAX_CHARS = 4_500_000;
 const SECURITY_VERDICTS_MAX_ENTRIES = 24;
@@ -17839,7 +17842,105 @@ let securityVerdictFilter = '';
 /** findingId → 'tp' | 'fp' for the current file fingerprint */
 let securityVerdictsMap = {};
 let securityScansRun = { vuln: false, semgrep: false, mt: false };
+/** Which scanners run when the user clicks Scan (persisted). */
+let securityScannersEnabled = { vuln: true, semgrep: true, mt: true };
 let securityFromCache = false;
+
+function countEnabledSecurityScanners() {
+  const e = securityScannersEnabled;
+  return (e.vuln ? 1 : 0) + (e.semgrep ? 1 : 0) + (e.mt ? 1 : 0);
+}
+
+function loadSecurityScannersEnabled() {
+  try {
+    const raw = localStorage.getItem(SECURITY_SCANNERS_KEY);
+    if (!raw) return;
+    const o = JSON.parse(raw);
+    if (!o || typeof o !== 'object') return;
+    securityScannersEnabled = {
+      vuln: o.vuln !== false,
+      semgrep: o.semgrep !== false,
+      mt: o.mt !== false,
+    };
+  } catch (_) { /* ignore */ }
+}
+
+function saveSecurityScannersEnabled() {
+  try {
+    localStorage.setItem(SECURITY_SCANNERS_KEY, JSON.stringify(securityScannersEnabled));
+  } catch (_) { /* ignore */ }
+}
+
+function updateSecurityScanButtonForScanners() {
+  const btn = document.getElementById('security-scan');
+  if (!btn) return;
+  const names = [];
+  if (securityScannersEnabled.vuln) names.push('Vuln');
+  if (securityScannersEnabled.semgrep) names.push('Semgrep');
+  if (securityScannersEnabled.mt) names.push('MT taint');
+  const n = names.length;
+  if (!securityScanBusy) btn.disabled = n === 0;
+  btn.title = n === 0
+    ? 'Enable at least one scanner'
+    : `Run selected scanners: ${names.join(', ')}`;
+  const group = document.getElementById('security-scanner-toggles');
+  if (group) group.dataset.count = String(n);
+}
+
+function syncSecurityScannerTogglesUi() {
+  const map = {
+    'security-enable-vuln': 'vuln',
+    'security-enable-semgrep': 'semgrep',
+    'security-enable-mt': 'mt',
+  };
+  for (const [id, key] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (el) el.checked = !!securityScannersEnabled[key];
+  }
+  updateSecurityScanButtonForScanners();
+}
+
+function readSecurityScannerTogglesFromUi() {
+  const vulnEl = document.getElementById('security-enable-vuln');
+  const sgEl = document.getElementById('security-enable-semgrep');
+  const mtEl = document.getElementById('security-enable-mt');
+  securityScannersEnabled = {
+    vuln: vulnEl ? !!vulnEl.checked : true,
+    semgrep: sgEl ? !!sgEl.checked : true,
+    mt: mtEl ? !!mtEl.checked : true,
+  };
+  saveSecurityScannersEnabled();
+  updateSecurityScanButtonForScanners();
+}
+
+function initialPhasesForEnabledScanners() {
+  return {
+    vuln: securityScannersEnabled.vuln ? 'pending' : 'skipped',
+    semgrep: securityScannersEnabled.semgrep ? 'pending' : 'skipped',
+    mt: securityScannersEnabled.mt ? 'pending' : 'skipped',
+  };
+}
+
+function allocateScanPhaseSpans(enabled) {
+  const keys = ['vuln', 'semgrep', 'mt'].filter((k) => enabled[k]);
+  const n = Math.max(1, keys.length);
+  const span = 100 / n;
+  const out = { vuln: null, semgrep: null, mt: null };
+  let base = 0;
+  for (const k of keys) {
+    out[k] = { phaseBase: base, phaseSpan: span };
+    base += span;
+  }
+  return out;
+}
+
+function securityScannerPipelineLabel(enabled) {
+  const parts = [];
+  if (enabled.vuln) parts.push('Vuln');
+  if (enabled.semgrep) parts.push('Semgrep');
+  if (enabled.mt) parts.push('MT');
+  return parts.join(' → ') || 'none';
+}
 let securityCacheSavedAt = 0;
 const securityGroupCollapseState = new Map(); // groupKey → collapsed?
 
@@ -17946,6 +18047,10 @@ function setSecurityStatus(msg) {
 
 function setSecurityScanButtonsDisabled(disabled) {
   for (const id of SECURITY_SCAN_BTNS) {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !!disabled;
+  }
+  for (const id of ['security-enable-vuln', 'security-enable-semgrep', 'security-enable-mt']) {
     const el = document.getElementById(id);
     if (el) el.disabled = !!disabled;
   }
@@ -18484,12 +18589,14 @@ function analysisExportKeyList() {
     SECURITY_CACHE_KEY,
     SECURITY_VERDICTS_KEY,
     SECURITY_RULES_KEY,
+    SECURITY_SCANNERS_KEY,
     RENAMES_STORAGE_KEY,
     ANNOTATIONS_STORAGE_KEY,
     BOOKMARKS_STORAGE_KEY,
     CFG_STATE_KEY,
     SOURCE_COMMENTS_KEY,
     'droid2web-decompile-options',
+    'droid2web-arm-decompile-options',
     THEME_STORAGE_KEY,
     UI_SETTINGS_KEY,
     SHOW_ANDROID_CLASSES_KEY,
@@ -18619,6 +18726,9 @@ function mergeAnalysisEntriesJson(localRaw, importedRaw, mapField = null) {
 
 function applyImportedAnalysisState() {
   loadSecurityVerdictsForCurrent();
+  loadSecurityScannersEnabled();
+  syncSecurityScannerTogglesUi();
+  try { applyArmDecompileOptionsFromStorage(); } catch (_) {}
   try { loadDexRenamesFromStorage(); } catch (_) {}
   try { loadDexAnnotationsFromStorage(); } catch (_) {}
   try { loadDexBookmarksFromStorage(); } catch (_) {}
@@ -19944,6 +20054,12 @@ function renderVulnFindingCard(f, opts = {}) {
   if (message && problem && message !== problem) {
     detailLines.push(`<div class="security-finding-detail muted"><span class="security-finding-k">Details</span> ${escapeHtml(message)}</div>`);
   }
+  detailLines.push(
+    renderMastgKnowledgeHtml(
+      { category: cat, title, message: `${problem} ${message} ${recommendation}`, vulnClass: cat },
+      { escapeHtml, escapeAttr }
+    )
+  );
   const verdictCls = verdict ? ` verdict-${verdict}` : '';
   return `<div class="security-finding ${sev}${verdictCls}" role="button" tabindex="0" data-kind="vuln" data-scanner="vuln" data-finding-id="${escapeAttr(findingId)}" data-class="${escapeAttr(f.class_name || '')}" data-method="${escapeAttr(f.method_name || '')}" data-dex="${escapeAttr(f.dex_file || '')}"${sinkOff != null ? ` data-offset="${sinkOff}"` : ''} data-hint="${escapeAttr(hint)}" title="${escapeAttr(tip)}">
     <div class="security-finding-top">${renderScannerTag('vuln')}<span class="security-badge ${sev}">${escapeHtml(securitySeverityLabel(sev))}</span><span class="security-badge cat-${escapeAttr(catCls)}">${escapeHtml(title)}</span>${cwe ? `<span class="security-badge muted">${escapeHtml(cwe)}</span>` : ''}${dexHint}<span class="security-finding-loc">${escapeHtml(loc)}${sinkHex ? ` @ ${escapeHtml(sinkHex)}` : ''}</span>${renderFindingVerdictControls(findingId)}</div>
@@ -20020,6 +20136,17 @@ function renderSemgrepFindingCard(f, opts = {}) {
   if (meta.length) {
     detailLines.push(`<div class="security-finding-detail muted">${escapeHtml(meta.join(' · '))}</div>`);
   }
+  detailLines.push(
+    renderMastgKnowledgeHtml(
+      {
+        ruleId: f.rule_id,
+        message: f.message,
+        title: f.rule_id,
+        vulnClass: f.vuln_class,
+      },
+      { escapeHtml, escapeAttr }
+    )
+  );
   const navAttrs = isXml
     ? `data-kind="semgrep-xml" data-scanner="semgrep" data-class="${escapeAttr(f.class_name || f.dex_file || '')}" data-method="(xml)"`
     : `data-kind="semgrep" data-scanner="semgrep" data-class="${escapeAttr(f.class_name || '')}" data-method="${escapeAttr(f.method_name || '')}" data-dex="${escapeAttr(f.dex_file || '')}"${sinkOff != null ? ` data-offset="${sinkOff}"` : ''} data-hint="${escapeAttr(hint)}"`;
@@ -21356,51 +21483,79 @@ async function runSecuritySemgrepScan(opts = {}) {
 
 async function runSecurityScan() {
   if (securityScanBusy) return;
+  if (countEnabledSecurityScanners() === 0) {
+    setSecurityStatus('Enable at least one scanner (Vuln, Semgrep, or MT)');
+    return;
+  }
   const targets = await collectDexScanTargets();
   if (!targets.length) {
     setSecurityStatus('No DEX loaded — open a DEX or APK first');
     return;
   }
+  const enabled = { ...securityScannersEnabled };
+  const spans = allocateScanPhaseSpans(enabled);
+  const pipeline = securityScannerPipelineLabel(enabled);
   beginSecurityScan('Security scan — starting…', {
-    phases: { vuln: 'pending', semgrep: 'pending', mt: 'pending' },
+    phases: initialPhasesForEnabledScanners(),
   });
-  securityVulnFindings = [];
-  securitySemgrepFindings = [];
-  securityMtReport = null;
+  // Only clear results for scanners that will run; keep prior findings for skipped ones.
+  if (enabled.vuln) securityVulnFindings = [];
+  if (enabled.semgrep) securitySemgrepFindings = [];
+  if (enabled.mt) securityMtReport = null;
   securityFromCache = false;
-  securityScansRun = { vuln: false, semgrep: false, mt: false };
+  securityScansRun = {
+    vuln: enabled.vuln ? false : securityScansRun.vuln,
+    semgrep: enabled.semgrep ? false : securityScansRun.semgrep,
+    mt: enabled.mt ? false : securityScansRun.mt,
+  };
   refreshSecurityFindingsLive();
   const scanT0 = performance.now();
   let aborted = false;
+  const phaseDone = (key) => {
+    if (!enabled[key]) return 'skipped';
+    return securityScansRun[key] ? 'done' : 'error';
+  };
   try {
-    showSecurityProgress('Security scan — Vuln', {
-      indeterminate: false,
-      pct: 0,
-      detail: `Pipeline: Vuln → Semgrep → MT · ${targets.length} DEX`,
-      extra: targets.map((t) => t.name).slice(0, 4).join(', ') + (targets.length > 4 ? ` (+${targets.length - 4} more)` : ''),
-      stats: [`${targets.length} DEX`, ...securityFindingsSoFarChips()],
-      phases: { vuln: 'active', semgrep: 'pending', mt: 'pending' },
-    });
-    await runSecurityVulnScan({ embedded: true, phaseBase: 0, phaseSpan: 33 });
-    throwIfSecurityScanAborted();
-    try {
-      await runSecuritySemgrepScan({ embedded: true, phaseBase: 33, phaseSpan: 34 });
-    } catch (sgErr) {
-      if (isSecurityScanAbortError(sgErr)) throw sgErr;
-      warn('security_scan semgrep', sgErr);
-      setSecurityScanPhases({ semgrep: 'error' });
-      setSecurityStatus('Semgrep failed — continuing with MT taint… (' + (sgErr?.message || sgErr) + ')');
-      await yieldToUi();
+    if (enabled.vuln) {
+      showSecurityProgress('Security scan — Vuln', {
+        indeterminate: false,
+        pct: spans.vuln.phaseBase,
+        detail: `Pipeline: ${pipeline} · ${targets.length} DEX`,
+        extra: targets.map((t) => t.name).slice(0, 4).join(', ') + (targets.length > 4 ? ` (+${targets.length - 4} more)` : ''),
+        stats: [`${targets.length} DEX`, ...securityFindingsSoFarChips()],
+        phases: { vuln: 'active', semgrep: enabled.semgrep ? 'pending' : 'skipped', mt: enabled.mt ? 'pending' : 'skipped' },
+      });
+      await runSecurityVulnScan({ embedded: true, phaseBase: spans.vuln.phaseBase, phaseSpan: spans.vuln.phaseSpan });
+      throwIfSecurityScanAborted();
+    } else {
+      setSecurityScanPhases({ vuln: 'skipped' });
     }
-    throwIfSecurityScanAborted();
-    try {
-      await runSecurityTaintSolve({ embedded: true, phaseBase: 67, phaseSpan: 33 });
-    } catch (mtErr) {
-      if (isSecurityScanAbortError(mtErr)) throw mtErr;
-      warn('security_scan mt', mtErr);
-      setSecurityScanPhases({ mt: 'error' });
-      setSecurityStatus('MT taint failed — keeping prior results… (' + (mtErr?.message || mtErr) + ')');
-      await yieldToUi();
+    if (enabled.semgrep) {
+      try {
+        await runSecuritySemgrepScan({ embedded: true, phaseBase: spans.semgrep.phaseBase, phaseSpan: spans.semgrep.phaseSpan });
+      } catch (sgErr) {
+        if (isSecurityScanAbortError(sgErr)) throw sgErr;
+        warn('security_scan semgrep', sgErr);
+        setSecurityScanPhases({ semgrep: 'error' });
+        setSecurityStatus('Semgrep failed' + (enabled.mt ? ' — continuing with MT taint…' : '…') + ' (' + (sgErr?.message || sgErr) + ')');
+        await yieldToUi();
+      }
+      throwIfSecurityScanAborted();
+    } else {
+      setSecurityScanPhases({ semgrep: 'skipped' });
+    }
+    if (enabled.mt) {
+      try {
+        await runSecurityTaintSolve({ embedded: true, phaseBase: spans.mt.phaseBase, phaseSpan: spans.mt.phaseSpan });
+      } catch (mtErr) {
+        if (isSecurityScanAbortError(mtErr)) throw mtErr;
+        warn('security_scan mt', mtErr);
+        setSecurityScanPhases({ mt: 'error' });
+        setSecurityStatus('MT taint failed — keeping prior results… (' + (mtErr?.message || mtErr) + ')');
+        await yieldToUi();
+      }
+    } else {
+      setSecurityScanPhases({ mt: 'skipped' });
     }
     const cached = saveSecurityCache();
     const total = securityVulnFindings.length + securitySemgrepFindings.length +
@@ -21409,7 +21564,7 @@ async function runSecurityScan() {
       indeterminate: false,
       pct: 100,
       detail: `${total} finding(s) · Vuln ${securityVulnFindings.length} · Semgrep ${securitySemgrepFindings.length} · MT ${securityMtReport?.issues?.length || 0}`,
-      extra: `Finished in ${formatScanElapsed(performance.now() - scanT0)}`,
+      extra: `Finished in ${formatScanElapsed(performance.now() - scanT0)} · ${pipeline}`,
       stats: [
         `<strong>${total}</strong> total`,
         `${securityVulnFindings.length} vuln`,
@@ -21418,14 +21573,14 @@ async function runSecurityScan() {
         formatScanElapsed(performance.now() - scanT0),
       ],
       phases: {
-        vuln: securityScansRun.vuln ? 'done' : 'error',
-        semgrep: securityScansRun.semgrep ? 'done' : 'error',
-        mt: securityScansRun.mt ? 'done' : 'error',
+        vuln: phaseDone('vuln'),
+        semgrep: phaseDone('semgrep'),
+        mt: phaseDone('mt'),
       },
       stoppable: false,
     });
     setSecurityStatus(
-      `Security scan done — ${total} finding(s) · ${formatScanElapsed(performance.now() - scanT0)}` +
+      `Security scan done — ${total} finding(s) · ${pipeline} · ${formatScanElapsed(performance.now() - scanT0)}` +
       (cached ? ' · saved to localStorage' : '')
     );
     renderSecurityPanel();
@@ -21442,9 +21597,9 @@ async function runSecurityScan() {
         extra: 'Click Scan to run again from the start',
         stats: securityFindingsSoFarChips().concat([formatScanElapsed(performance.now() - scanT0)]),
         phases: {
-          vuln: securityScansRun.vuln ? 'done' : (securityScanPhaseState.vuln === 'active' ? 'error' : securityScanPhaseState.vuln),
-          semgrep: securityScansRun.semgrep ? 'done' : (securityScanPhaseState.semgrep === 'active' ? 'error' : securityScanPhaseState.semgrep),
-          mt: securityScansRun.mt ? 'done' : (securityScanPhaseState.mt === 'active' ? 'error' : securityScanPhaseState.mt),
+          vuln: !enabled.vuln ? 'skipped' : (securityScansRun.vuln ? 'done' : (securityScanPhaseState.vuln === 'active' ? 'error' : securityScanPhaseState.vuln)),
+          semgrep: !enabled.semgrep ? 'skipped' : (securityScansRun.semgrep ? 'done' : (securityScanPhaseState.semgrep === 'active' ? 'error' : securityScanPhaseState.semgrep)),
+          mt: !enabled.mt ? 'skipped' : (securityScansRun.mt ? 'done' : (securityScanPhaseState.mt === 'active' ? 'error' : securityScanPhaseState.mt)),
         },
         stoppable: false,
       });
@@ -21457,6 +21612,7 @@ async function runSecurityScan() {
     }
   } finally {
     endSecurityScan({ aborted, keepProgressMs: aborted ? 0 : 2200 });
+    updateSecurityScanButtonForScanners();
   }
 }
 
@@ -21486,11 +21642,16 @@ function renderSemgrepRulesList(rules) {
   securityRulesList.innerHTML = securitySemgrepRuleInfos.map((r) => {
     const langs = (r.languages || []).join(', ') || 'java';
     const meta = [r.severity, langs, r.has_native ? 'native' : '', r.vuln_class || ''].filter(Boolean).join(' · ');
-    return `<button type="button" class="security-rule-item" data-rule-id="${escapeAttr(r.id)}">
+    const mastg = renderMastgKnowledgeHtml(
+      { ruleId: r.id, message: r.message, title: r.id, vulnClass: r.vuln_class },
+      { escapeHtml, escapeAttr }
+    );
+    return `<div class="security-rule-item" data-rule-id="${escapeAttr(r.id)}" role="button" tabindex="0">
       <div class="security-rule-id">${escapeHtml(r.id)}</div>
       <div class="muted">${escapeHtml(meta)}</div>
       <div class="security-rule-msg">${escapeHtml(r.message || r.pattern_preview || '')}</div>
-    </button>`;
+      ${mastg}
+    </div>`;
   }).join('');
 }
 
@@ -21661,6 +21822,11 @@ function toggleSecurityRulesPanel() {
 }
 
 document.getElementById('security-scan')?.addEventListener('click', () => runSecurityScan());
+document.getElementById('security-enable-vuln')?.addEventListener('change', () => readSecurityScannerTogglesFromUi());
+document.getElementById('security-enable-semgrep')?.addEventListener('change', () => readSecurityScannerTogglesFromUi());
+document.getElementById('security-enable-mt')?.addEventListener('change', () => readSecurityScannerTogglesFromUi());
+loadSecurityScannersEnabled();
+syncSecurityScannerTogglesUi();
 document.getElementById('security-progress-stop')?.addEventListener('click', () => requestSecurityScanStop());
 document.getElementById('security-clear-cache')?.addEventListener('click', () => clearSecurityCacheForCurrent());
 document.getElementById('security-export-storage')?.addEventListener('click', () => downloadAnalysisLocalStorageExport());
@@ -21785,6 +21951,7 @@ document.getElementById('security-panel')?.addEventListener('click', (e) => {
   }
   const ruleRow = e.target.closest('.security-rule-item');
   if (ruleRow) {
+    if (e.target.closest('a.mastg-know-link') || e.target.closest('.security-finding-mastg')) return;
     const id = ruleRow.getAttribute('data-rule-id') || '';
     if (id && securityRulesEditor) {
       const text = securityRulesEditor.value || '';
@@ -21815,7 +21982,7 @@ document.getElementById('security-panel')?.addEventListener('click', (e) => {
   }
   const btn = e.target.closest('.security-finding');
   if (!btn) return;
-  if (e.target.closest('.security-trace-toggle') || e.target.closest('.security-trace') || e.target.closest('.security-finding-verdict')) return;
+  if (e.target.closest('.security-trace-toggle') || e.target.closest('.security-trace') || e.target.closest('.security-finding-verdict') || e.target.closest('.security-finding-mastg') || e.target.closest('a.mastg-know-link')) return;
   const nav = readSecurityFindingNav(btn);
   if (nav.kind === 'semgrep-xml' || isXmlSecurityFinding(nav.className, nav.methodName)) {
     navigateToXmlSecurityFinding(nav.className);

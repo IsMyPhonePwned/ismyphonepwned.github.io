@@ -1,4 +1,4 @@
-droid2web v0.3.19 (14 Sep 2026) — static website release
+droid2web v0.3.21 (15 Sep 2026) — static website release
 
 Contents are ready to deploy as-is (HTML + JS + CSS + WASM + rules).
 

@@ -208,7 +208,7 @@ export function get_dex_strings(bytes) {
 
 /**
  * Disassemble + CFG + decompile one ELF function by index.
- * Optional 3rd arg: `{ mode?: "restructure"|"simple"|"fallback" }`.
+ * Optional 3rd arg: `{ mode?: "restructure"|"simple"|"fallback", engine?: "legacy"|"micro" }`.
  * @param {Uint8Array} bytes
  * @param {number} func_idx
  * @param {any | null} [options]

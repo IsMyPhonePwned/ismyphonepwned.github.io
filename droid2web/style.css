@@ -688,6 +688,13 @@ header {
   gap: 0.65rem;
   align-items: center;
 }
+.settings-row-select {
+  grid-template-columns: minmax(7rem, 11rem) minmax(8rem, 14rem);
+}
+.settings-row-select .decomp-mode-select {
+  width: 100%;
+  max-width: 14rem;
+}
 .settings-row-label {
   font-size: 0.82rem;
   color: var(--text);
@@ -4060,6 +4067,46 @@ a.bc-api-doc:hover {
   flex-shrink: 0;
 }
 .security-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.security-scanner-toggles {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.2rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 70%, var(--surface));
+}
+.security-scanner-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  margin: 0;
+  padding: 0.22rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-family: var(--mono);
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+.security-scanner-toggle:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.security-scanner-toggle:has(input:checked) {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.security-scanner-toggle input {
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.security-scanner-toggle:has(input:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 .security-toolbar .pane-search-input { min-width: 10rem; flex: 1 1 12rem; max-width: 22rem; }
 .security-status { font-size: 0.78rem; }
 .security-progress {
@@ -8504,6 +8551,16 @@ footer.app-statusbar {
 #native-source-code.src-has-highlight {
   white-space: pre;
   tab-size: 4;
+  padding: 0.55rem 0.75rem 1rem;
+}
+#native-source-code .src-line {
+  display: block;
+  min-height: 1.35em;
+  line-height: 1.45;
+}
+#native-source-code .src-line-code {
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 #native-source-code .src-label {
   color: var(--syn-name);
@@ -8511,6 +8568,65 @@ footer.app-statusbar {
 }
 #native-source-code .src-number { color: var(--syn-num); }
 #native-source-code .src-type { color: var(--syn-data); }
+#native-source-code .src-keyword { color: var(--syn-keyword); font-weight: 500; }
+#native-source-code .src-call { color: var(--syn-name); }
+#native-source-code .src-string { color: var(--syn-str); }
+#native-source-code .src-comment { color: var(--syn-cmt); font-style: italic; }
+#native-source-code .src-intrinsic {
+  color: var(--syn-keyword);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+#native-source-code .src-local { color: var(--syn-var, var(--text)); }
+#native-source-code .src-reg {
+  font-weight: 500;
+}
+#native-source-code .src-ident {
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 60ms ease, box-shadow 60ms ease, outline-color 60ms ease;
+}
+#native-source-code .src-ident:hover {
+  background: color-mix(in srgb, var(--yellow) 18%, transparent);
+}
+#native-source-code .src-ident.is-hl {
+  background: color-mix(in srgb, var(--yellow) 38%, transparent);
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--yellow) 75%, transparent);
+  color: inherit;
+}
+#native-source-code .src-ident.is-hl-primary {
+  background: color-mix(in srgb, var(--yellow) 55%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--yellow) 85%, var(--accent));
+  box-shadow: inset 0 -2px 0 var(--yellow);
+}
+#native-source-code a.src-ident.src-call {
+  text-decoration: none;
+}
+#native-source-code a.src-ident.src-call:hover {
+  text-decoration: underline;
+}
+
+#native-cfg-html-layer .cfg-block.is-selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  z-index: 3;
+}
+#native-asm-listing .bytecode-line.is-cfg-focus {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+#native-cfg-pane .cfg-graph-wrap {
+  position: relative;
+  min-height: 12rem;
+}
+#native-cfg-html-layer .cfg-block {
+  /* Reuse DEX CFG chrome; keep native blocks readable without action buttons */
+  pointer-events: auto;
+}
+#native-cfg-html-layer .cfg-block-body {
+  pointer-events: auto;
+}
 
 .jni-link-bar {
   display: flex;
@@ -9300,4 +9416,55 @@ footer.app-statusbar {
     border-left: none;
     border-top: 1px solid var(--border);
   }
+}
+
+.security-finding-mastg {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px dashed var(--border);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.security-finding-mastg .mastg-know-links {
+  margin-top: 0.25rem;
+}
+.mastg-know-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-family: var(--mono, Consolas, monospace);
+  font-size: 0.8rem;
+}
+.mastg-know-link:hover { color: var(--accent-hover); }
+.security-badge.mastg-masvs {
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  color: var(--text);
+  margin-right: 0.25rem;
+}
+.mastg-know-index { margin-top: 0.2rem; }
+.security-rule-item .security-finding-mastg {
+  text-align: left;
+  pointer-events: auto;
+}
+.settings-hint a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.security-rules-hint a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+a.btn.btn-small#security-mastg-know {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: var(--text);
+}
+a.btn.btn-small#security-mastg-know:hover {
+  color: var(--accent);
+  border-color: var(--accent);
 }

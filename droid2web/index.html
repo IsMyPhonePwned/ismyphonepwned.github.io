@@ -20,7 +20,7 @@
     <div class="header-content">
       <img src="logo.png" alt="" class="app-logo" width="28" height="28">
       <div class="header-title-block">
-        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.19</span> <span class="app-date" id="app-date" title="Release date">14 Sep 2026</span></h1>
+        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.21</span> <span class="app-date" id="app-date" title="Release date">15 Sep 2026</span></h1>
         <p class="subtitle">APK, APKM, DEX, AXML, ARSC inspection in the browser</p>
       </div>
     </div>
@@ -493,6 +493,13 @@
                       <option value="fallback">Fallback</option>
                     </select>
                   </label>
+                  <label class="decomp-opt">
+                    <span class="decomp-opt-label">Engine</span>
+                    <select id="native-decompile-engine" class="decomp-mode-select" aria-label="ARM decompiler engine">
+                      <option value="legacy">Legacy</option>
+                      <option value="micro">Micro</option>
+                    </select>
+                  </label>
                 </div>
               </details>
               <span class="pane-meta muted" id="native-status-meta"></span>
@@ -544,13 +551,19 @@
                     <span class="pane-meta muted" id="native-cfg-meta"></span>
                   </button>
                   <div class="dock-header-actions">
+                    <label class="pane-toggle" title="Compact CFG blocks (last insn only)">
+                      <input type="checkbox" id="native-cfg-compact">
+                      <span>Compact</span>
+                    </label>
                     <button type="button" class="btn btn-small" id="native-cfg-fit-btn" title="Fit graph">Fit</button>
+                    <button type="button" class="btn btn-small" id="native-cfg-reset-layout-btn" title="Reset block positions to auto layout">Reset</button>
                   </div>
                 </header>
                 <div class="dock-body cfg-dock-body">
                   <div class="cfg-legend" id="native-cfg-legend" hidden aria-hidden="true"></div>
-                  <div class="cfg-graph-wrap">
+                  <div class="cfg-graph-wrap" id="native-cfg-graph-wrap">
                     <div class="cfg-graph-container" id="native-cfg-graph" aria-label="Native function CFG"></div>
+                    <div class="cfg-html-layer" id="native-cfg-html-layer" hidden aria-hidden="true"></div>
                     <div class="cfg-graph-empty" id="native-cfg-empty">
                       <div class="code-empty">
                         <div class="code-empty-title">No CFG</div>
@@ -753,12 +766,27 @@
           <div class="security-panel" id="security-panel">
             <div class="security-toolbar">
               <div class="security-actions">
-                <button type="button" class="btn btn-primary" id="security-scan" title="Run vulnerability detectors (PendingIntent, ZipSlip, Custom Tabs, broadcasts, SSL, WebView, crypto…), Semgrep, and MT taint analysis">Scan</button>
+                <button type="button" class="btn btn-primary" id="security-scan" title="Run selected scanners">Scan</button>
                 <button type="button" class="btn btn-small" id="security-rules-toggle" title="View, edit, or create Semgrep rules">Rules</button>
+                <a class="btn btn-small" id="security-mastg-know" href="https://mas.owasp.org/MASTG/knowledge/" target="_blank" rel="noopener noreferrer" title="OWASP MASTG Knowledge Base">MASTG Know</a>
                 <button type="button" class="btn btn-small" id="security-clear-cache" title="Clear cached results for this file">Clear cache</button>
                 <button type="button" class="btn btn-small" id="security-export-storage" title="Download analysis localStorage (scans, TP/FP, rules, renames, notes)">Export</button>
                 <button type="button" class="btn btn-small" id="security-import-storage" title="Import analysis localStorage from a previous export">Import…</button>
                 <input type="file" id="security-import-storage-file" accept=".json,application/json,text/json" hidden>
+              </div>
+              <div class="security-scanner-toggles" id="security-scanner-toggles" role="group" aria-label="Enable scanners">
+                <label class="security-scanner-toggle" title="Native vulnerability detectors (IPC, PendingIntent, WebView, SSL, …)">
+                  <input type="checkbox" id="security-enable-vuln" checked>
+                  <span>Vuln</span>
+                </label>
+                <label class="security-scanner-toggle" title="Semgrep-style rules (starter + OWASP MASTG)">
+                  <input type="checkbox" id="security-enable-semgrep" checked>
+                  <span>Semgrep</span>
+                </label>
+                <label class="security-scanner-toggle" title="Mariana Trench–style taint solver">
+                  <input type="checkbox" id="security-enable-mt" checked>
+                  <span>MT taint</span>
+                </label>
               </div>
               <input type="search" id="security-filter" class="pane-search-input" placeholder="Filter findings…" aria-label="Filter security findings" autocomplete="off">
               <span class="security-status muted" id="security-status">Load a DEX or APK, then click Scan</span>
@@ -800,7 +828,7 @@
                   <button type="button" class="btn btn-small" id="security-rules-new" title="Insert a new empty rule template">New rule</button>
                 </div>
               </header>
-              <p class="security-rules-hint muted">Edit Semgrep-style YAML below (Java/XML patterns + optional <code>native:</code> SSA hints). Default builtin is <strong>All</strong> (starter + MASTG). Applied rules are included in Scan and stored in localStorage.</p>
+              <p class="security-rules-hint muted">Edit Semgrep-style YAML below (Java/XML patterns + optional <code>native:</code> SSA hints). Default builtin is <strong>All</strong> (starter + <a href="https://mas.owasp.org/MASTG/knowledge/" target="_blank" rel="noopener noreferrer">OWASP MASTG</a>). Findings link to matching <strong>MASTG-KNOW</strong> articles. Applied rules are included in Scan and stored in localStorage.</p>
               <div class="security-rules-split">
                 <div class="security-rules-list-wrap">
                   <div class="security-rules-list-header muted" id="security-rules-count">0 rules</div>
@@ -1142,7 +1170,8 @@
         </section>
         <section class="settings-section">
           <h4 class="settings-section-title">Security scans</h4>
-          <p class="settings-hint muted">Scan runs three local engines from dex-decompiler: vulnerability detectors (IPC, PendingIntent/PITracker, ZipSlip, Custom Tabs, nested Intent redirect, broadcasts, WebView, SSL, crypto, storage, trackers, …), Semgrep-style rules (starter + OWASP MASTG), and Mariana Trench–style taint solving (including field/extra breadcrumbs on traces).</p>
+          <p class="settings-hint muted">Scan runs local engines from dex-decompiler: vulnerability detectors (IPC, PendingIntent/PITracker, ZipSlip, Custom Tabs, nested Intent redirect, broadcasts, WebView, SSL, crypto, storage, trackers, …), Semgrep-style rules (starter + OWASP MASTG), and Mariana Trench–style taint solving (including field/extra breadcrumbs on traces). Use the <strong>Vuln / Semgrep / MT taint</strong> checkboxes in the Security toolbar to enable or disable each scanner before clicking Scan.</p>
+          <p class="settings-hint muted">Findings that match OWASP MASTG topics show <strong>MASTG-KNOW</strong> links into the <a href="https://mas.owasp.org/MASTG/knowledge/" target="_blank" rel="noopener noreferrer">Mobile Application Security Knowledge Base</a> (biometrics, WebViews, IPC, Keystore, backups, …).</p>
         </section>
         <section class="settings-section">
           <h4 class="settings-section-title">Compare (DEX)</h4>
@@ -1192,6 +1221,19 @@
         <button type="button" class="btn btn-small" id="settings-close" aria-label="Close settings">Close</button>
       </div>
       <div class="settings-modal-body" id="settings-modal-body">
+        <section class="settings-section">
+          <h4 class="settings-section-title">ARM decompiler</h4>
+          <p class="settings-hint muted">Backend for Native (.so) C-like output from <code>arm_decompiler</code>. Legacy is the mnemonic lifter (default). Micro is the p-code-style microcode pipeline.</p>
+          <div class="settings-rows">
+            <div class="settings-row settings-row-select">
+              <label class="settings-row-label" for="settings-arm-engine">Engine</label>
+              <select id="settings-arm-engine" class="decomp-mode-select" aria-label="ARM decompiler engine">
+                <option value="legacy">Legacy</option>
+                <option value="micro">Micro</option>
+              </select>
+            </div>
+          </div>
+        </section>
         <section class="settings-section">
           <h4 class="settings-section-title">Theme</h4>
           <p class="settings-hint muted">Preset look for chrome, syntax, and CFG. Custom colors below override the preset.</p>

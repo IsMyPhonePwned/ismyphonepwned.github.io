@@ -2,6 +2,66 @@
  * Native tab — ARM64 ELF (.so) assembly / CFG / decompilation.
  */
 
+const ARM_DECOMPILE_OPTIONS_KEY = 'droid2web-arm-decompile-options';
+
+/** @type {{ engine: 'legacy' | 'micro' }} */
+let armDecompileOptions = { engine: 'legacy' };
+
+function loadArmDecompileOptionsFromStorage() {
+  try {
+    const raw = localStorage.getItem(ARM_DECOMPILE_OPTIONS_KEY);
+    if (!raw) return;
+    const o = JSON.parse(raw);
+    if (o && (o.engine === 'legacy' || o.engine === 'micro')) {
+      armDecompileOptions.engine = o.engine;
+    }
+  } catch (_) { /* ignore */ }
+}
+
+function saveArmDecompileOptionsToStorage() {
+  try {
+    localStorage.setItem(ARM_DECOMPILE_OPTIONS_KEY, JSON.stringify(armDecompileOptions));
+  } catch (_) { /* ignore */ }
+}
+
+function syncArmDecompileOptionsUi() {
+  const engine = armDecompileOptions.engine === 'micro' ? 'micro' : 'legacy';
+  const nativeEl = $('native-decompile-engine');
+  const settingsEl = $('settings-arm-engine');
+  if (nativeEl) nativeEl.value = engine;
+  if (settingsEl) settingsEl.value = engine;
+}
+
+function setArmDecompileEngine(engine, { reload = true } = {}) {
+  const next = engine === 'micro' ? 'micro' : 'legacy';
+  const changed = armDecompileOptions.engine !== next;
+  armDecompileOptions.engine = next;
+  saveArmDecompileOptionsToStorage();
+  syncArmDecompileOptionsUi();
+  if (changed && reload) reloadCurrentNativeDecompilation();
+}
+
+function getArmDecompileEngine() {
+  return armDecompileOptions.engine === 'micro' ? 'micro' : 'legacy';
+}
+
+function nativeDecompileOptionsPayload() {
+  return {
+    mode: $('native-decompile-mode')?.value || 'restructure',
+    engine: getArmDecompileEngine(),
+  };
+}
+
+function reloadCurrentNativeDecompilation() {
+  if (selectedFuncIdx >= 0) {
+    loadFunction(selectedFuncIdx);
+    return;
+  }
+  if (currentFn?.vaddr != null) {
+    loadFunctionAtVaddr(Number(currentFn.vaddr));
+  }
+}
+
 function $(id) {
   return document.getElementById(id);
 }
@@ -94,6 +154,20 @@ function resolveNativeCalleeVaddr(token) {
   return parseNativeAddrToken(token);
 }
 
+function escapeAttr(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/** Syntax + usage token: always carries data-ident for hover/pin find-usages. */
+function paintIdentToken(id, extraClass = '') {
+  const cls = ['src-ident', extraClass].filter(Boolean).join(' ');
+  return `<span class="${cls}" data-ident="${escapeAttr(id)}">${escapeHtml(id)}</span>`;
+}
+
 function nativeCalleeLinkHtml(label, token) {
   const idx = resolveNativeCalleeIndex(token);
   const vaddr = resolveNativeCalleeVaddr(token);
@@ -109,7 +183,8 @@ function nativeCalleeLinkHtml(label, token) {
       : tipName;
   const attrs = [
     'href="#"',
-    'class="native-fn-link bc-addr-link"',
+    'class="native-fn-link bc-addr-link src-ident src-call"',
+    `data-ident="${escapeAttr(label)}"`,
     idx >= 0 ? `data-func-idx="${idx}"` : 'data-func-idx=""',
     vaddr != null ? `data-vaddr="${Number(vaddr) >>> 0}"` : '',
     `title="${escapeHtml(tip)}"`,
@@ -124,14 +199,33 @@ const C_KEYWORDS = new Set([
   'else', 'enum', 'extern', 'float', 'for', 'goto', 'if', 'inline', 'int', 'long',
   'register', 'restrict', 'return', 'short', 'signed', 'sizeof', 'static', 'struct',
   'switch', 'typedef', 'union', 'unsigned', 'void', 'volatile', 'while',
-  '_Bool', '_Complex', '_Imaginary', 'true', 'false', 'NULL',
+  '_Bool', '_Complex', '_Imaginary', 'true', 'false', 'NULL', 'nullptr',
 ]);
 
 const C_TYPES = new Set([
   'uint8_t', 'uint16_t', 'uint32_t', 'uint64_t', 'int8_t', 'int16_t', 'int32_t',
   'int64_t', 'size_t', 'ssize_t', 'ptrdiff_t', 'uintptr_t', 'intptr_t', 'bool',
   'u8', 'u16', 'u32', 'u64', 'i8', 'i16', 'i32', 'i64', 'usize',
+  'undefined', 'undefined1', 'undefined2', 'undefined4', 'undefined8',
+  'byte', 'word', 'dword', 'qword', 'uchar', 'ushort', 'uint', 'ulong',
+  'JNIEnv', 'jobject', 'jclass', 'jmethodID', 'jfieldID', 'jstring', 'jarray',
+  'jint', 'jlong', 'jboolean', 'jbyte', 'jchar', 'jshort', 'jfloat', 'jdouble',
+  'jsize', 'jvalue', 'jthrowable', 'JavaVM',
 ]);
+
+/** Micro/Legacy IR intrinsics that should read as ops, not plain idents. */
+const C_INTRINSICS = new Set([
+  'LOAD', 'STORE', 'INT_ADD', 'INT_SUB', 'INT_MULT', 'INT_DIV', 'INT_REM',
+  'INT_AND', 'INT_OR', 'INT_XOR', 'INT_LEFT', 'INT_RIGHT', 'INT_SRIGHT',
+  'INT_NEGATE', 'INT_NOTEQUAL', 'INT_EQUAL', 'INT_LESS', 'INT_LESSEQUAL',
+  'INT_SLESS', 'INT_SLESSEQUAL', 'INT_ZEXT', 'INT_SEXT', 'INT_CARRY',
+  'BOOL_NEGATE', 'BOOL_AND', 'BOOL_OR', 'BOOL_XOR',
+  'FLOAT_ADD', 'FLOAT_SUB', 'FLOAT_MULT', 'FLOAT_DIV', 'FLOAT_NEG',
+  'COPY', 'PIECE', 'SUBPIECE', 'MULTIEQUAL', 'INDIRECT', 'PTRADD', 'PTRSUB',
+  'CAST', 'CALL', 'CALLIND', 'RETURN', 'BRANCH', 'CBRANCH', 'BRANCHIND',
+]);
+
+const ARM_REG_RE = /^(?:[xwvsdqbp]\d+|sp|lr|fp|xzr|wzr|nzcv|wsp|pc)$/i;
 
 /** ARM mnemonic → DEX-style opcode class for listing tint. */
 function armOpcodeClass(mnemonic) {
@@ -595,12 +689,19 @@ function highlightArmOperands(operands) {
   });
 }
 
-/** Lightweight C-like highlighter for arm_decompiler output. */
+/** C-like highlighter for arm_decompiler output (Legacy + Micro IR soup). */
 function highlightCLike(source) {
   if (!source || typeof source !== 'string') return '';
   let html = '';
   let i = 0;
   const n = source.length;
+
+  const paintReg = (id) => {
+    const num = (id.match(/\d+/) || ['0'])[0];
+    const hue = Number(num) % 12;
+    return paintIdentToken(id, `src-reg bc-reg bc-reg-h${hue}`);
+  };
+
   while (i < n) {
     if (source.slice(i, i + 2) === '/*') {
       let end = source.indexOf('*/', i + 2);
@@ -637,27 +738,33 @@ function highlightCLike(source) {
     // Labels like L_9e820:
     if (/^[A-Za-z_][\w]*:/.test(source.slice(i))) {
       const m = source.slice(i).match(/^([A-Za-z_][\w]*):/);
-      html += `<span class="src-label">${escapeHtml(m[1])}</span>:`;
+      html += `${paintIdentToken(m[1], 'src-label')}:`;
       i += m[0].length;
       continue;
     }
-    if (/[0-9]/.test(source[i]) || (source[i] === '0' && (source[i + 1] === 'x' || source[i + 1] === 'X'))) {
-      const m = source.slice(i).match(/^(0[xX][0-9a-fA-F]+|\d+\.\d*([eE][+-]?\d+)?|\d+)/);
+    // #imm / #0x… / bare hex / decimals
+    if (source[i] === '#' || /[0-9]/.test(source[i])) {
+      const m = source.slice(i).match(/^#?(0[xX][0-9a-fA-F]+|\d+\.\d*(?:[eE][+-]?\d+)?|\d+)/);
       if (m) {
         html += `<span class="src-number">${escapeHtml(m[0])}</span>`;
         i += m[0].length;
         continue;
       }
     }
-    if (/[A-Za-z_]/.test(source[i])) {
-      const m = source.slice(i).match(/^[A-Za-z_][\w]*/);
+    if (/^[A-Za-z_]/.test(source[i])) {
+      const m = source.slice(i).match(/^[A-Za-z_][\w$]*/);
       const id = m[0];
       if (C_KEYWORDS.has(id)) {
         html += `<span class="src-keyword">${escapeHtml(id)}</span>`;
       } else if (C_TYPES.has(id)) {
-        html += `<span class="src-type">${escapeHtml(id)}</span>`;
+        html += paintIdentToken(id, 'src-type');
+      } else if (C_INTRINSICS.has(id)) {
+        html += paintIdentToken(id, 'src-intrinsic');
+      } else if (ARM_REG_RE.test(id)) {
+        html += paintReg(id);
+      } else if (/^local_\w+$/i.test(id) || /^param_\w+$/i.test(id) || /^uVar\d+$/i.test(id) || /^iVar\d+$/i.test(id) || /^stack$/i.test(id)) {
+        html += paintIdentToken(id, 'src-local');
       } else {
-        // Heuristic: call if followed by (
         let k = i + id.length;
         while (k < n && /\s/.test(source[k])) k++;
         const isCall = source[k] === '(';
@@ -665,12 +772,12 @@ function highlightCLike(source) {
         if ((isCall || isSub || id.startsWith('Java_')) && (isSub || resolveNativeCalleeIndex(id) >= 0 || resolveNativeCalleeVaddr(id) != null)) {
           const linked = nativeCalleeLinkHtml(id, id);
           html += linked.includes('<a ')
-            ? linked.replace('class="native-fn-link bc-addr-link"', 'class="native-fn-link src-call"')
-            : (isCall ? `<span class="src-call">${escapeHtml(id)}</span>` : `<span class="src-ident">${escapeHtml(id)}</span>`);
+            ? linked
+            : paintIdentToken(id, isCall ? 'src-call' : '');
         } else if (isCall) {
-          html += `<span class="src-call">${escapeHtml(id)}</span>`;
+          html += paintIdentToken(id, 'src-call');
         } else {
-          html += `<span class="src-ident">${escapeHtml(id)}</span>`;
+          html += paintIdentToken(id);
         }
       }
       i += id.length;
@@ -680,6 +787,89 @@ function highlightCLike(source) {
     i++;
   }
   return html;
+}
+
+function cfgBlockKindLabel(kind) {
+  switch (kind) {
+    case 'entry': return 'entry';
+    case 'exit': return 'exit';
+    case 'branch': return 'branch';
+    case 'invoke': return 'call';
+    case 'loop': return 'loop';
+    case 'empty': return 'empty';
+    default: return '';
+  }
+}
+
+function buildArmCfgInsnHtml(row, { isTerm = false } = {}) {
+  const opCls = armOpcodeClass(row.mnemonic);
+  const lineKind = armInsnLineKind(row.mnemonic);
+  const opRaw = String(row.operands || '').trim();
+  const operands = opRaw
+    ? `<span class="bc-operands">${highlightArmOperands(opRaw)}</span>`
+    : '';
+  const termCls = isTerm ? ' cfg-insn-term' : '';
+  return `<div class="bytecode-line cfg-insn-line${lineKind ? ' cfg-insn-' + lineKind : ''}${termCls}" data-off="${Number(row.offset) >>> 0}" data-vaddr="">` +
+    `<span class="bc-offset">${formatOff(row.offset)}</span>` +
+    `<span class="bc-mnemonic${opCls ? ' ' + opCls : ''}">${escapeHtml(row.mnemonic || '')}</span>` +
+    operands +
+    `</div>`;
+}
+
+function buildArmCfgSuccessorTags(fromId, toIds, nodeById, blockKind) {
+  if (!toIds?.length) return [];
+  return toIds.map((toId, idx) => {
+    const n = nodeById.get(toId);
+    const loc = n?.label || formatOff(n?.start_offset ?? n?.startOffset ?? toId);
+    if (blockKind === 'branch' && toIds.length === 2) {
+      return { text: `→ ${loc}`, cls: idx === 0 ? 'cfg-succ-t' : 'cfg-succ-f', toId };
+    }
+    if (toIds.length === 1) return { text: `→ ${loc}`, cls: 'cfg-succ-flow', toId };
+    return { text: `→ ${loc}`, cls: 'cfg-succ-multi', toId };
+  });
+}
+
+function buildArmCfgBlockHtml(node, insns, blockKind, succTags, compact) {
+  const start = node.start_offset ?? node.startOffset ?? 0;
+  const end = node.end_offset ?? node.endOffset ?? start;
+  const endStr = end === 0 || end === 0xffffffff ? '…' : formatOff(end);
+  const kindLabel = cfgBlockKindLabel(blockKind);
+  let body = '';
+  if (!insns.length) {
+    body = `<div class="cfg-insn-empty"><span class="bc-offset">${formatOff(start)}</span> (empty)</div>`;
+  } else if (compact) {
+    body = buildArmCfgInsnHtml(insns[insns.length - 1], { isTerm: true });
+  } else {
+    const maxShow = 24;
+    const shown = insns.slice(0, maxShow);
+    body = shown.map((r, i) => buildArmCfgInsnHtml(r, { isTerm: i === shown.length - 1 })).join('');
+    if (insns.length > maxShow) {
+      body += `<div class="cfg-insn-empty">… +${insns.length - maxShow} more</div>`;
+    }
+  }
+  const rangeComment = kindLabel
+    ? `<span class="cfg-block-comment">; ${kindLabel}${compact ? '' : ` · ${formatOff(start)}–${endStr}`}</span>`
+    : (compact ? '' : `<span class="cfg-block-comment">; ${formatOff(start)}–${endStr}</span>`);
+  const foot = succTags?.length
+    ? `<div class="cfg-block-foot">${succTags.map((s) =>
+        `<button type="button" class="cfg-succ ${s.cls}" data-cfg-to="${s.toId}" title="Go to ${escapeHtml(s.text)}">${escapeHtml(s.text)}</button>`
+      ).join('')}</div>`
+    : '';
+  const cls = [
+    'cfg-block',
+    `cfg-block-${blockKind}`,
+    'cfg-no-hex',
+    compact ? 'cfg-compact' : '',
+  ].filter(Boolean).join(' ');
+  const loc = node.label || formatOff(start);
+  return `<div class="${cls}" data-node-id="${node.id}" data-start-offset="${start}">` +
+    `<div class="cfg-block-head" title="Drag header to reposition">` +
+    `<span class="cfg-block-drag" title="Drag to reposition" aria-hidden="true">⋮⋮</span>` +
+    `<span class="cfg-block-loc">${escapeHtml(loc)}</span>${rangeComment}` +
+    `</div>` +
+    `<div class="cfg-block-body">${body}</div>` +
+    foot +
+    `</div>`;
 }
 
 /** @type {{ runInParseWorker: Function, switchToCenterTab: Function, setStatus?: Function, timeoutMs?: number, onSelectLib?: Function } | null} */
@@ -701,22 +891,79 @@ let cfgNetwork = null;
 let cfgOrthoEdgeState = null;
 /** @type {((ctx: CanvasRenderingContext2D) => void) | null} */
 let cfgNetworkDrawHandler = null;
+/** @type {boolean} */
+let nativeCfgCompact = false;
+/** Manual block positions for the current function: nodeId → {x,y} */
+let nativeCfgBlockPositions = new Map();
+/** @type {{ id: string, el: Element, originX: number, originY: number, startClientX: number, startClientY: number, scale: number, moved: boolean, pointerId: number } | null} */
+let nativeCfgBlockDragSession = null;
 /** @type {string[]} */
 let apkLibPaths = [];
 
-function setMeta(msg) {
-  const el = $('native-status-meta');
-  if (el) el.textContent = msg || '';
+const NATIVE_CFG_MIN_W = 168;
+const NATIVE_CFG_MAX_W = 520;
+const NATIVE_CFG_MAX_H = 420;
+const NATIVE_CFG_COMPACT_KEY = 'droid2web-native-cfg-compact';
+
+function loadNativeCfgCompactPref() {
+  try {
+    nativeCfgCompact = localStorage.getItem(NATIVE_CFG_COMPACT_KEY) === '1';
+  } catch (_) {
+    nativeCfgCompact = false;
+  }
+  const el = $('native-cfg-compact');
+  if (el) el.checked = nativeCfgCompact;
 }
 
-function setDockCollapsed(pane, collapsed) {
-  if (!pane) return;
-  pane.dataset.collapsed = collapsed ? 'true' : 'false';
-  const btn = pane.querySelector('.dock-toggle');
-  if (btn) btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+function saveNativeCfgCompactPref() {
+  try {
+    localStorage.setItem(NATIVE_CFG_COMPACT_KEY, nativeCfgCompact ? '1' : '0');
+  } catch (_) { /* ignore */ }
+}
+
+function clearNativeCfgHtmlLayer() {
+  const layer = $('native-cfg-html-layer');
+  if (!layer) return;
+  layer.innerHTML = '';
+  layer.hidden = true;
+  layer.setAttribute('aria-hidden', 'true');
+  layer.style.removeProperty('--cfg-z');
+}
+
+function endNativeCfgBlockDragSession() {
+  if (!nativeCfgBlockDragSession) return;
+  const { el, id, moved } = nativeCfgBlockDragSession;
+  el?.classList.remove('cfg-block-dragging');
+  $('native-cfg-graph-wrap')?.classList.remove('cfg-block-dragging-view');
+  if (moved && cfgNetwork && id != null) {
+    try {
+      const pos = cfgNetwork.getPositions([id])[id];
+      if (pos) nativeCfgBlockPositions.set(String(id), { x: pos.x, y: pos.y });
+    } catch (_) {}
+  }
+  nativeCfgBlockDragSession = null;
+}
+
+function applyNativeCfgBlockPositions() {
+  if (!cfgNetwork || !nativeCfgBlockPositions.size) return;
+  try {
+    for (const [id, pos] of nativeCfgBlockPositions) {
+      if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
+        cfgNetwork.moveNode(id, Math.round(pos.x), Math.round(pos.y));
+      }
+    }
+  } catch (_) {}
+  syncNativeCfgHtmlOverlay();
+}
+
+function resetNativeCfgLayout() {
+  nativeCfgBlockPositions.clear();
+  endNativeCfgBlockDragSession();
+  if (currentFn) renderCfg(currentFn);
 }
 
 function destroyCfg() {
+  endNativeCfgBlockDragSession();
   if (cfgNetwork) {
     try {
       if (cfgNetworkDrawHandler) {
@@ -728,6 +975,7 @@ function destroyCfg() {
   }
   cfgNetworkDrawHandler = null;
   cfgOrthoEdgeState = null;
+  clearNativeCfgHtmlLayer();
   const g = $('native-cfg-graph');
   if (g) g.innerHTML = '';
 }
@@ -735,8 +983,237 @@ function destroyCfg() {
 function showCfgEmpty(show) {
   const empty = $('native-cfg-empty');
   const graph = $('native-cfg-graph');
+  const layer = $('native-cfg-html-layer');
   if (empty) empty.hidden = !show;
   if (graph) graph.style.display = show ? 'none' : '';
+  if (layer && show) {
+    layer.hidden = true;
+    layer.setAttribute('aria-hidden', 'true');
+  }
+}
+
+function measureNativeCfgBlockSizes() {
+  const sizes = {};
+  const layer = $('native-cfg-html-layer');
+  if (!layer) return sizes;
+  const maxW = nativeCfgCompact ? 360 : NATIVE_CFG_MAX_W;
+  layer.style.setProperty('--cfg-z', '1');
+  for (const el of layer.querySelectorAll('.cfg-block')) {
+    const id = el.getAttribute('data-node-id');
+    if (id == null) continue;
+    el.style.height = '';
+    el.style.minWidth = '';
+    el.style.transform = '';
+    el.style.maxWidth = `${maxW}px`;
+    el.style.width = '';
+    const rawW = Math.max(NATIVE_CFG_MIN_W, Math.ceil(el.offsetWidth));
+    const width = Math.min(maxW, rawW);
+    el.style.width = `${width}px`;
+    const rawH = Math.max(40, Math.ceil(el.offsetHeight));
+    const height = Math.min(NATIVE_CFG_MAX_H, rawH);
+    el.style.height = `${height}px`;
+    sizes[id] = { width, height };
+    el.dataset.layoutW = String(width);
+    el.dataset.layoutH = String(height);
+  }
+  return sizes;
+}
+
+function syncNativeCfgHtmlOverlay() {
+  if (!cfgNetwork) return;
+  const layer = $('native-cfg-html-layer');
+  const graph = $('native-cfg-graph');
+  if (!layer || layer.hidden) return;
+  const positions = cfgNetwork.getPositions();
+  const scale = cfgNetwork.getScale();
+  if (!Number.isFinite(scale) || scale <= 0) return;
+  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+  layer.style.setProperty('--cfg-z', String(scale));
+  if (graph) {
+    const grid = Math.max(10, Math.round(20 * scale));
+    graph.style.backgroundSize = `${grid}px ${grid}px`;
+  }
+  for (const el of layer.querySelectorAll('.cfg-block')) {
+    const id = el.getAttribute('data-node-id');
+    const pos = positions[id];
+    if (!pos) continue;
+    const dom = cfgNetwork.canvasToDOM({ x: pos.x, y: pos.y });
+    const baseW = Number(el.dataset.layoutW) || Math.max(168, el.offsetWidth) || 200;
+    const baseH = Number(el.dataset.layoutH) || Math.max(32, el.offsetHeight) || 64;
+    const w = baseW * scale;
+    const h = baseH * scale;
+    const left = Math.round((dom.x - w / 2) * dpr) / dpr;
+    const top = Math.round((dom.y - h / 2) * dpr) / dpr;
+    el.style.width = `${w}px`;
+    el.style.height = `${h}px`;
+    el.style.maxWidth = 'none';
+    el.style.minWidth = '0';
+    el.style.transformOrigin = '0 0';
+    el.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+  }
+}
+
+function setNativeCfgBlockSelected(nodeId) {
+  const layer = $('native-cfg-html-layer');
+  if (!layer) return;
+  layer.querySelectorAll('.cfg-block.is-selected').forEach((el) => el.classList.remove('is-selected'));
+  if (nodeId == null) return;
+  const el = layer.querySelector(`.cfg-block[data-node-id="${CSS.escape(String(nodeId))}"]`);
+  if (el) el.classList.add('is-selected');
+}
+
+function scrollAsmToOffset(offset) {
+  const listing = $('native-asm-listing');
+  if (!listing) return;
+  const off = Number(offset) >>> 0;
+  const line = listing.querySelector(`.bytecode-line[data-offset="${off}"]`);
+  if (!line) return;
+  listing.querySelectorAll('.bytecode-line.is-cfg-focus').forEach((el) => el.classList.remove('is-cfg-focus'));
+  line.classList.add('is-cfg-focus');
+  line.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+function focusNativeCfgNode(nodeId) {
+  if (!cfgNetwork || nodeId == null) return;
+  try {
+    cfgNetwork.selectNodes([nodeId]);
+    cfgNetwork.focus(nodeId, { scale: Math.max(cfgNetwork.getScale(), 0.85), animation: true });
+  } catch (_) {}
+  setNativeCfgBlockSelected(nodeId);
+  const layer = $('native-cfg-html-layer');
+  const el = layer?.querySelector(`.cfg-block[data-node-id="${CSS.escape(String(nodeId))}"]`);
+  const start = el?.getAttribute('data-start-offset');
+  if (start != null) scrollAsmToOffset(start);
+}
+
+function bindNativeCfgHtmlInteractions() {
+  const layer = $('native-cfg-html-layer');
+  if (!layer || layer.dataset.cfgInteractBound === '1') return;
+  layer.dataset.cfgInteractBound = '1';
+  const wrap = () => $('native-cfg-graph-wrap');
+
+  layer.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || !cfgNetwork) return;
+    if (e.target.closest?.('.cfg-block-body') || e.target.closest?.('.cfg-succ') || e.target.closest?.('.cfg-insn-line')) {
+      return;
+    }
+    const head = e.target.closest?.('.cfg-block-head, .cfg-block-drag');
+    if (!head) return;
+    const block = e.target.closest?.('.cfg-block');
+    if (!block || !layer.contains(block)) return;
+    const id = block.getAttribute('data-node-id');
+    let pos;
+    let scale;
+    try {
+      pos = cfgNetwork.getPositions([id])[id];
+      scale = cfgNetwork.getScale();
+    } catch (_) {
+      return;
+    }
+    if (!pos || !Number.isFinite(scale) || scale <= 0) return;
+    endNativeCfgBlockDragSession();
+    nativeCfgBlockDragSession = {
+      id,
+      el: block,
+      originX: pos.x,
+      originY: pos.y,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      scale,
+      moved: false,
+      pointerId: e.pointerId,
+    };
+    block.classList.add('cfg-block-dragging');
+    wrap()?.classList.add('cfg-block-dragging-view');
+    try { block.setPointerCapture(e.pointerId); } catch (_) {}
+    e.preventDefault();
+    e.stopPropagation();
+    setNativeCfgBlockSelected(id);
+  });
+
+  layer.addEventListener('pointermove', (e) => {
+    if (!nativeCfgBlockDragSession || !cfgNetwork) return;
+    if (nativeCfgBlockDragSession.pointerId != null && e.pointerId !== nativeCfgBlockDragSession.pointerId) return;
+    const dx = (e.clientX - nativeCfgBlockDragSession.startClientX) / nativeCfgBlockDragSession.scale;
+    const dy = (e.clientY - nativeCfgBlockDragSession.startClientY) / nativeCfgBlockDragSession.scale;
+    if (!nativeCfgBlockDragSession.moved && Math.hypot(dx, dy) < 2) return;
+    nativeCfgBlockDragSession.moved = true;
+    const x = Math.round(nativeCfgBlockDragSession.originX + dx);
+    const y = Math.round(nativeCfgBlockDragSession.originY + dy);
+    try {
+      cfgNetwork.moveNode(nativeCfgBlockDragSession.id, x, y);
+      syncNativeCfgHtmlOverlay();
+    } catch (_) {}
+    e.preventDefault();
+  });
+
+  const endDrag = (e) => {
+    if (!nativeCfgBlockDragSession) return;
+    if (e && nativeCfgBlockDragSession.pointerId != null && e.pointerId !== nativeCfgBlockDragSession.pointerId) return;
+    const moved = nativeCfgBlockDragSession.moved;
+    endNativeCfgBlockDragSession();
+    // Suppress the following click after a real drag so we don't re-focus/animate.
+    if (moved) {
+      layer.dataset.suppressClick = '1';
+      setTimeout(() => { delete layer.dataset.suppressClick; }, 0);
+    }
+  };
+  layer.addEventListener('pointerup', endDrag);
+  layer.addEventListener('pointercancel', endDrag);
+
+  layer.addEventListener('click', (e) => {
+    if (layer.dataset.suppressClick === '1') {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    const succ = e.target.closest?.('.cfg-succ');
+    if (succ && layer.contains(succ)) {
+      e.preventDefault();
+      e.stopPropagation();
+      const toId = Number(succ.getAttribute('data-cfg-to'));
+      if (Number.isFinite(toId)) focusNativeCfgNode(toId);
+      return;
+    }
+    const line = e.target.closest?.('.cfg-insn-line');
+    if (line && layer.contains(line)) {
+      const off = line.getAttribute('data-off');
+      if (off != null) scrollAsmToOffset(off);
+      const block = line.closest('.cfg-block');
+      const id = block?.getAttribute('data-node-id');
+      if (id != null) setNativeCfgBlockSelected(id);
+      return;
+    }
+    // Header click (without drag) selects; don't animate-focus from body-less head clicks.
+    const head = e.target.closest?.('.cfg-block-head');
+    if (head) {
+      const block = head.closest('.cfg-block');
+      const id = block?.getAttribute('data-node-id');
+      if (id != null) {
+        setNativeCfgBlockSelected(id);
+        const start = block.getAttribute('data-start-offset');
+        if (start != null) scrollAsmToOffset(start);
+      }
+      return;
+    }
+    const block = e.target.closest?.('.cfg-block');
+    if (block && layer.contains(block)) {
+      const id = Number(block.getAttribute('data-node-id'));
+      if (Number.isFinite(id)) focusNativeCfgNode(id);
+    }
+  });
+}
+
+function setMeta(msg) {
+  const el = $('native-status-meta');
+  if (el) el.textContent = msg || '';
+}
+
+function setDockCollapsed(pane, collapsed) {
+  if (!pane) return;
+  pane.dataset.collapsed = collapsed ? 'true' : 'false';
+  const btn = pane.querySelector('.dock-toggle');
+  if (btn) btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
 }
 
 function renderAsmListing(fn) {
@@ -778,17 +1255,158 @@ function renderSource(fn) {
   const meta = $('native-source-meta');
   const copyBtn = $('native-source-copy-btn');
   const src = typeof fn?.decompilation === 'string' ? fn.decompilation : '';
+  nativeIdentHighlight = null;
+  nativeIdentPinned = null;
   if (meta) meta.textContent = src ? `${src.split('\n').length} lines` : '';
   if (copyBtn) copyBtn.disabled = !src;
   if (!pre) return;
   if (!src) {
     pre.classList.remove('src-has-highlight');
+    delete pre.dataset.hlIdent;
     pre.innerHTML =
       '<div class="code-empty"><div class="code-empty-title">No source</div><div class="code-empty-hint muted">Decompilation unavailable</div></div>';
     return;
   }
   pre.classList.add('src-has-highlight');
-  pre.innerHTML = highlightCLike(src);
+  delete pre.dataset.hlIdent;
+  // Line-wrap so theme syntax colors + selection stay readable like the DEX source pane.
+  const lines = src.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  const body = lines.map((line, idx) => {
+    const code = highlightCLike(line.length ? line : ' ');
+    return `<div class="src-line" data-line="${idx + 1}"><span class="src-line-code">${code}</span></div>`;
+  }).join('');
+  pre.innerHTML = body;
+}
+
+/** Hover / click find-usages for ARM decompiled source (mirrors DEX source pane). */
+let nativeIdentHighlight = null;
+let nativeIdentPinned = null;
+let nativeIdentHoverRaf = 0;
+
+function clearNativeIdentHighlights(root) {
+  if (!root) return;
+  root.querySelectorAll('.src-ident.is-hl, .src-ident.is-hl-primary').forEach((el) => {
+    el.classList.remove('is-hl', 'is-hl-primary');
+  });
+  delete root.dataset.hlIdent;
+}
+
+function nativeIdentSelector(ident) {
+  try {
+    return `.src-ident[data-ident="${CSS.escape(ident)}"]`;
+  } catch (_) {
+    return `.src-ident[data-ident="${String(ident).replace(/"/g, '\\"')}"]`;
+  }
+}
+
+function updateNativeIdentMeta(ident, count) {
+  const meta = $('native-source-meta');
+  if (!meta || !currentFn?.decompilation) return;
+  const lines = String(currentFn.decompilation).split('\n').length;
+  if (!ident) {
+    meta.textContent = `${lines} lines`;
+    return;
+  }
+  const pin = nativeIdentPinned === ident ? ' · pinned' : '';
+  meta.textContent = `${lines} lines · ${count}× ${ident}${pin}`;
+}
+
+function setNativeIdentHover(ident, scope, primaryEl = null) {
+  if (!scope) return;
+  if (nativeIdentPinned && ident && ident !== nativeIdentPinned) return;
+  if (nativeIdentPinned && !ident) return;
+  if (nativeIdentHighlight === ident && scope.dataset.hlIdent === ident) {
+    scope.querySelectorAll('.src-ident.is-hl-primary').forEach((el) => el.classList.remove('is-hl-primary'));
+    primaryEl?.classList.add('is-hl-primary');
+    return;
+  }
+  clearNativeIdentHighlights(scope);
+  nativeIdentHighlight = ident || null;
+  if (!ident) {
+    updateNativeIdentMeta(null, 0);
+    return;
+  }
+  scope.dataset.hlIdent = ident;
+  const hits = scope.querySelectorAll(nativeIdentSelector(ident));
+  hits.forEach((el) => el.classList.add('is-hl'));
+  primaryEl?.classList.add('is-hl-primary');
+  updateNativeIdentMeta(ident, hits.length);
+}
+
+function pinNativeIdent(ident, scope, primaryEl = null) {
+  if (!scope || !ident) return;
+  if (nativeIdentPinned === ident) {
+    nativeIdentPinned = null;
+    clearNativeIdentHighlights(scope);
+    nativeIdentHighlight = null;
+    updateNativeIdentMeta(null, 0);
+    return;
+  }
+  nativeIdentPinned = ident;
+  setNativeIdentHover(ident, scope, primaryEl);
+}
+
+function clearPinnedNativeIdent() {
+  const root = $('native-source-code');
+  nativeIdentPinned = null;
+  nativeIdentHighlight = null;
+  clearNativeIdentHighlights(root);
+  updateNativeIdentMeta(null, 0);
+}
+
+function wireNativeSourceIdentHighlight() {
+  const root = $('native-source-code');
+  if (!root || root.dataset.identHlBound === '1') return;
+  root.dataset.identHlBound = '1';
+
+  root.addEventListener('mousemove', (e) => {
+    if (nativeIdentHoverRaf) cancelAnimationFrame(nativeIdentHoverRaf);
+    nativeIdentHoverRaf = requestAnimationFrame(() => {
+      nativeIdentHoverRaf = 0;
+      if (!root.contains(e.target)) return;
+      const identEl = e.target.closest?.('.src-ident[data-ident]');
+      if (identEl && root.contains(identEl) && identEl.dataset.ident) {
+        setNativeIdentHover(identEl.dataset.ident, root, identEl);
+        return;
+      }
+      if (nativeIdentHighlight && !nativeIdentPinned) {
+        clearNativeIdentHighlights(root);
+        nativeIdentHighlight = null;
+        updateNativeIdentMeta(null, 0);
+      }
+    });
+  });
+
+  root.addEventListener('mouseleave', () => {
+    if (nativeIdentHoverRaf) cancelAnimationFrame(nativeIdentHoverRaf);
+    nativeIdentHoverRaf = 0;
+    if (nativeIdentPinned) return;
+    clearNativeIdentHighlights(root);
+    nativeIdentHighlight = null;
+    updateNativeIdentMeta(null, 0);
+  });
+
+  root.addEventListener('click', (e) => {
+    // Function links navigate; still allow Alt/Meta+click to pin usages.
+    const link = e.target.closest?.('a.native-fn-link');
+    if (link && !(e.altKey || e.metaKey)) return;
+    const identEl = e.target.closest?.('.src-ident[data-ident]');
+    if (identEl && root.contains(identEl) && identEl.dataset.ident) {
+      e.preventDefault();
+      e.stopPropagation();
+      pinNativeIdent(identEl.dataset.ident, root, identEl);
+      return;
+    }
+    if (nativeIdentPinned && !e.target.closest?.('.src-ident')) {
+      clearPinnedNativeIdent();
+    }
+  }, true);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && nativeIdentPinned && !e.target.closest?.('input, textarea, select')) {
+      clearPinnedNativeIdent();
+    }
+  });
 }
 
 function renderCfgLegend(show) {
@@ -841,62 +1459,87 @@ function renderCfg(fn) {
   showCfgEmpty(false);
   renderCfgLegend(true);
   if (meta) {
-    meta.textContent = `${nodesRaw.length} blocks · ${edgesRaw.length} edges`;
+    meta.textContent = `${nodesRaw.length} blocks · ${edgesRaw.length} edges · ${bytecode.length} insn`;
   }
 
   const theme = cfgThemeColors();
   const levelMap = computeCfgLevels(nodesRaw, edgesRaw, 0);
   const loopHeaders = computeLoopHeaders(edgesRaw, levelMap);
   const outCount = {};
+  const outEdges = {};
   for (const e of edgesRaw) {
     const from = e.from_id ?? e.fromId;
+    const to = e.to_id ?? e.toId;
     outCount[from] = (outCount[from] || 0) + 1;
+    if (!outEdges[from]) outEdges[from] = [];
+    outEdges[from].push(to);
   }
   const outIdx = {};
   const blockKinds = new Map();
   const blockInsns = new Map();
-  const blockSizes = {};
+  const nodeById = new Map();
 
-  const visNodes = nodesRaw.map((n) => {
+  for (const n of nodesRaw) {
     const start = n.start_offset ?? n.startOffset ?? 0;
     const end = n.end_offset ?? n.endOffset ?? start;
-    const endBound = end === 0 && start !== 0 ? Infinity : end || Infinity;
+    const endBound = end === 0 && start !== 0 ? Infinity : (end || Infinity);
     const insns = bytecode.filter((r) => r.offset >= start && r.offset < endBound);
     const kind = classifyArmCfgBlock(n.id, insns, loopHeaders);
     blockKinds.set(n.id, kind);
     blockInsns.set(n.id, insns);
-    const kindTag = kind !== 'normal' && kind !== 'empty' ? ` · ${kind}` : '';
-    const lines = insns.slice(0, 10).map((r) => {
-      const op = (r.operands || '').trim();
-      return `${formatOff(r.offset)}  ${r.mnemonic || ''}${op ? '  ' + op : ''}`;
-    });
-    if (insns.length > 10) lines.push(`… +${insns.length - 10} more`);
-    const label = `${n.label || formatOff(start)}${kindTag}\n` + (lines.join('\n') || '(empty)');
-    const size = estimateCfgNodeSize(label);
-    blockSizes[n.id] = size;
-    const colors = blockKindColors(kind, theme);
+    nodeById.set(n.id, n);
+  }
+
+  const layer = $('native-cfg-html-layer');
+  const blockHtmlById = new Map();
+  for (const n of nodesRaw) {
+    const kind = blockKinds.get(n.id) || 'normal';
+    const insns = blockInsns.get(n.id) || [];
+    const succTags = buildArmCfgSuccessorTags(n.id, outEdges[n.id] || [], nodeById, kind);
+    blockHtmlById.set(n.id, buildArmCfgBlockHtml(n, insns, kind, succTags, nativeCfgCompact));
+  }
+  if (layer) {
+    layer.innerHTML = [...blockHtmlById.values()].join('');
+    layer.hidden = false;
+    layer.setAttribute('aria-hidden', 'false');
+    bindNativeCfgHtmlInteractions();
+  }
+
+  const blockSizes = measureNativeCfgBlockSizes();
+  const heightVals = Object.values(blockSizes).map((s) => s.height);
+  const widthVals = Object.values(blockSizes).map((s) => s.width);
+  const maxBlockH = heightVals.length ? Math.max(...heightVals) : 80;
+  const maxBlockW = widthVals.length ? Math.max(...widthVals) : 220;
+  const avgBlockH = heightVals.length
+    ? heightVals.reduce((a, b) => a + b, 0) / heightVals.length
+    : 80;
+  const levelSep = Math.round(Math.max(maxBlockH + (nativeCfgCompact ? 56 : 40), avgBlockH + (nativeCfgCompact ? 72 : 48), nativeCfgCompact ? 160 : 130));
+  const nodeSpace = Math.round(Math.max(maxBlockW * (nativeCfgCompact ? 0.62 : 0.52) + 48, nativeCfgCompact ? 220 : 200));
+  const treeSpace = Math.round(Math.max(maxBlockW * (nativeCfgCompact ? 0.88 : 0.72) + 64, nativeCfgCompact ? 300 : 250));
+
+  const visNodes = nodesRaw.map((n) => {
+    const size = blockSizes[n.id] || { width: 220, height: 64 };
     return {
       id: n.id,
-      label,
       shape: 'box',
+      label: '',
       level: levelMap[n.id],
-      font: {
-        multi: true,
-        face: 'monospace',
-        size: 11,
-        align: 'left',
-        color: theme.text,
-      },
-      margin: 10,
-      borderWidth: 2,
-      color: colors,
-      shapeProperties: { borderRadius: 4 },
+      margin: 8,
+      borderWidth: 0,
       widthConstraint: { minimum: size.width, maximum: size.width },
       heightConstraint: { minimum: size.height, maximum: size.height },
+      color: {
+        border: 'transparent',
+        background: 'transparent',
+        highlight: { border: 'transparent', background: 'rgba(99, 179, 237, 0.06)' },
+        hover: { border: 'transparent', background: 'rgba(99, 179, 237, 0.04)' },
+      },
+      shapeProperties: { borderRadius: 0 },
+      chosen: false,
     };
   });
 
-  const visEdges = edgesRaw.map((e, i) => {
+  const visEdges = edgesRaw.map((e) => {
     const from = e.from_id ?? e.fromId;
     const to = e.to_id ?? e.toId;
     const outs = outCount[from] || 1;
@@ -959,14 +1602,18 @@ function renderCfg(fn) {
     container,
     { nodes, edges },
     {
+      autoResize: true,
       layout: {
         hierarchical: {
           enabled: true,
           direction: 'UD',
           sortMethod: 'directed',
-          levelSeparation: 130,
-          nodeSpacing: 180,
-          treeSpacing: 220,
+          levelSeparation: levelSep,
+          nodeSpacing: nodeSpace,
+          treeSpacing: treeSpace,
+          blockShifting: true,
+          edgeMinimization: true,
+          parentCentralization: true,
         },
       },
       physics: false,
@@ -976,34 +1623,69 @@ function renderCfg(fn) {
         keyboard: false,
         tooltipDelay: 80,
         selectConnectedEdges: true,
+        zoomView: true,
+        dragView: true,
+        dragNodes: false,
       },
-      nodes: { shadow: false },
+      nodes: {
+        borderWidth: 0,
+        shapeProperties: { borderRadius: 0 },
+        shadow: false,
+      },
       edges: {
         width: 0,
         selectionWidth: 0,
         hoverWidth: 0,
         smooth: false,
+        color: { opacity: 0 },
       },
     }
   );
 
   cfgNetworkDrawHandler = (ctx) => {
-    // Refresh sizes from vis bounding boxes when available.
     try {
       for (const n of visNodes) {
         const bb = cfgNetwork.getBoundingBox(n.id);
-        if (bb) {
-          blockSizes[n.id] = {
+        if (bb && cfgOrthoEdgeState) {
+          cfgOrthoEdgeState.sizes[n.id] = {
             width: Math.max(40, bb.right - bb.left),
             height: Math.max(24, bb.bottom - bb.top),
           };
         }
       }
-      if (cfgOrthoEdgeState) cfgOrthoEdgeState.sizes = blockSizes;
     } catch (_) {}
     drawCfgOrthogonalEdges(ctx);
+    syncNativeCfgHtmlOverlay();
   };
   cfgNetwork.on('afterDrawing', cfgNetworkDrawHandler);
+  cfgNetwork.on('zoom', () => syncNativeCfgHtmlOverlay());
+  cfgNetwork.on('dragging', () => syncNativeCfgHtmlOverlay());
+  cfgNetwork.on('dragEnd', () => syncNativeCfgHtmlOverlay());
+  cfgNetwork.on('click', (params) => {
+    if (params.nodes?.length) {
+      focusNativeCfgNode(params.nodes[0]);
+      return;
+    }
+    setNativeCfgBlockSelected(null);
+  });
+
+  // Pixel-snap centers for crisp orthogonal edges, then restore manual moves.
+  try {
+    const pos = cfgNetwork.getPositions();
+    for (const [id, p] of Object.entries(pos)) {
+      cfgNetwork.moveNode(id, Math.round(p.x), Math.round(p.y));
+    }
+  } catch (_) {}
+  const hadManual = nativeCfgBlockPositions.size > 0;
+  applyNativeCfgBlockPositions();
+  syncNativeCfgHtmlOverlay();
+  requestAnimationFrame(() => {
+    // Don't fit after a re-layout if the user already moved blocks (compact toggle, etc.).
+    if (!hadManual) {
+      try { cfgNetwork?.fit({ animation: false }); } catch (_) {}
+    }
+    syncNativeCfgHtmlOverlay();
+  });
 }
 
 function fillFuncSelect(filter = '') {
@@ -1066,13 +1748,13 @@ async function loadFunction(idx) {
   setMeta('Disassembling…');
   try {
     const copy = currentBytes.slice();
-    const mode = $('native-decompile-mode')?.value || 'restructure';
+    const options = nativeDecompileOptionsPayload();
     const raw = await api.runInParseWorker(
       'get_elf_function',
       {
         bytes: copy.buffer,
         funcIdx: idx >>> 0,
-        options: { mode },
+        options,
       },
       {
         timeoutMs: api.timeoutMs || 120000,
@@ -1109,13 +1791,13 @@ async function loadFunctionAtVaddr(vaddr) {
   setMeta(`Disassembling sub_${addr.toString(16)}…`);
   try {
     const copy = currentBytes.slice();
-    const mode = $('native-decompile-mode')?.value || 'restructure';
+    const options = nativeDecompileOptionsPayload();
     const raw = await api.runInParseWorker(
       'get_elf_function_at',
       {
         bytes: copy.buffer,
         vaddr: addr,
-        options: { mode },
+        options,
       },
       {
         timeoutMs: api.timeoutMs || 120000,
@@ -1138,6 +1820,8 @@ async function applyLoadedNativeFunction(raw, funcIdx) {
     throw new Error(result?.error || 'get_elf_function failed');
   }
   currentFn = result.data;
+  nativeCfgBlockPositions.clear();
+  endNativeCfgBlockDragSession();
   // Keep synthetic locals discoverable in the dropdown for this session.
   if (
     funcIdx < 0 &&
@@ -1375,6 +2059,10 @@ export function clearNativeView() {
  */
 export function initNativeUi(opts) {
   api = opts || {};
+  loadArmDecompileOptionsFromStorage();
+  syncArmDecompileOptionsUi();
+  loadNativeCfgCompactPref();
+  wireNativeSourceIdentHighlight();
 
   $('native-func-select')?.addEventListener('change', () => {
     const idx = Number($('native-func-select').value);
@@ -1384,7 +2072,18 @@ export function initNativeUi(opts) {
     fillFuncSelect($('native-func-search').value);
   });
   $('native-decompile-mode')?.addEventListener('change', () => {
-    if (selectedFuncIdx >= 0) loadFunction(selectedFuncIdx);
+    reloadCurrentNativeDecompilation();
+  });
+  $('native-decompile-engine')?.addEventListener('change', (e) => {
+    setArmDecompileEngine(e.target?.value);
+  });
+  $('settings-arm-engine')?.addEventListener('change', (e) => {
+    setArmDecompileEngine(e.target?.value);
+  });
+  $('native-cfg-compact')?.addEventListener('change', (e) => {
+    nativeCfgCompact = !!e.target?.checked;
+    saveNativeCfgCompactPref();
+    if (currentFn) renderCfg(currentFn);
   });
   $('native-hex-toggle')?.addEventListener('change', () => {
     if (currentFn) renderAsmListing(currentFn);
@@ -1392,7 +2091,11 @@ export function initNativeUi(opts) {
   $('native-cfg-fit-btn')?.addEventListener('click', () => {
     try {
       cfgNetwork?.fit({ animation: true });
+      syncNativeCfgHtmlOverlay();
     } catch (_) {}
+  });
+  $('native-cfg-reset-layout-btn')?.addEventListener('click', () => {
+    resetNativeCfgLayout();
   });
   $('native-source-copy-btn')?.addEventListener('click', async () => {
     const text = currentFn?.decompilation || '';
@@ -1453,6 +2156,15 @@ export function initNativeUi(opts) {
 
 export function getCurrentNativePath() {
   return currentPath;
+}
+
+export function getArmDecompileEngineOption() {
+  return getArmDecompileEngine();
+}
+
+export function applyArmDecompileOptionsFromStorage() {
+  loadArmDecompileOptionsFromStorage();
+  syncArmDecompileOptionsUi();
 }
 
 export function getCurrentNativeBrowse() {

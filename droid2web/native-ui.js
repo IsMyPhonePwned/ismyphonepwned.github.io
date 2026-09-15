@@ -5,7 +5,7 @@
 const ARM_DECOMPILE_OPTIONS_KEY = 'droid2web-arm-decompile-options';
 
 /** @type {{ engine: 'legacy' | 'micro' }} */
-let armDecompileOptions = { engine: 'legacy' };
+let armDecompileOptions = { engine: 'micro' };
 
 function loadArmDecompileOptionsFromStorage() {
   try {
@@ -25,7 +25,7 @@ function saveArmDecompileOptionsToStorage() {
 }
 
 function syncArmDecompileOptionsUi() {
-  const engine = armDecompileOptions.engine === 'micro' ? 'micro' : 'legacy';
+  const engine = armDecompileOptions.engine === 'legacy' ? 'legacy' : 'micro';
   const nativeEl = $('native-decompile-engine');
   const settingsEl = $('settings-arm-engine');
   if (nativeEl) nativeEl.value = engine;
@@ -33,7 +33,7 @@ function syncArmDecompileOptionsUi() {
 }
 
 function setArmDecompileEngine(engine, { reload = true } = {}) {
-  const next = engine === 'micro' ? 'micro' : 'legacy';
+  const next = engine === 'legacy' ? 'legacy' : 'micro';
   const changed = armDecompileOptions.engine !== next;
   armDecompileOptions.engine = next;
   saveArmDecompileOptionsToStorage();
@@ -42,7 +42,7 @@ function setArmDecompileEngine(engine, { reload = true } = {}) {
 }
 
 function getArmDecompileEngine() {
-  return armDecompileOptions.engine === 'micro' ? 'micro' : 'legacy';
+  return armDecompileOptions.engine === 'legacy' ? 'legacy' : 'micro';
 }
 
 function nativeDecompileOptionsPayload() {

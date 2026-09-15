@@ -496,8 +496,8 @@
                   <label class="decomp-opt">
                     <span class="decomp-opt-label">Engine</span>
                     <select id="native-decompile-engine" class="decomp-mode-select" aria-label="ARM decompiler engine">
+                      <option value="micro" selected>Micro</option>
                       <option value="legacy">Legacy</option>
-                      <option value="micro">Micro</option>
                     </select>
                   </label>
                 </div>
@@ -1223,13 +1223,13 @@
       <div class="settings-modal-body" id="settings-modal-body">
         <section class="settings-section">
           <h4 class="settings-section-title">ARM decompiler</h4>
-          <p class="settings-hint muted">Backend for Native (.so) C-like output from <code>arm_decompiler</code>. Legacy is the mnemonic lifter (default). Micro is the p-code-style microcode pipeline.</p>
+          <p class="settings-hint muted">Backend for Native (.so) C-like output from <code>arm_decompiler</code>. Micro is the p-code-style microcode pipeline (default). Legacy is the older mnemonic lifter.</p>
           <div class="settings-rows">
             <div class="settings-row settings-row-select">
               <label class="settings-row-label" for="settings-arm-engine">Engine</label>
               <select id="settings-arm-engine" class="decomp-mode-select" aria-label="ARM decompiler engine">
+                <option value="micro" selected>Micro</option>
                 <option value="legacy">Legacy</option>
-                <option value="micro">Micro</option>
               </select>
             </div>
           </div>

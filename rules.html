@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>IsMyPhonePwned · Rules &amp; IOCs</title>
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="stylesheet" href="assets/site.css">
+    <script src="assets/sigma-rules-urls.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-container">
+                <img src="logo.png" alt="IsMyPhonePwned Logo" class="logo" onerror="this.style.display='none';">
+                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <h1 class="logo-text">IsMyPhonePwned ?</h1>
+                    <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400;" data-i18n="pageSubtitle">Sigma rules · IoC catalog</span>
+                    <span class="page-version">
+                        <span data-i18n="pageVersion">v0.7.0-beta • Updated 21 September 2026</span>
+                        <span class="page-version-edition" title="DEF CON edition">
+                            <img class="page-version-edition-logo" src="assets/defcon31-logo.png" alt="" width="18" height="18" decoding="async">
+                            <span>defcon edition</span>
+                        </span>
+                    </span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="header-toolbar" role="toolbar" aria-label="Language and theme">
+                    <div class="lang-switcher" role="group" aria-label="Language">
+                        <button type="button" data-lang="en" class="active" onclick="window.setLang('en')">EN</button>
+                        <button type="button" data-lang="fr" onclick="window.setLang('fr')">FR</button>
+                        <button type="button" data-lang="zh" onclick="window.setLang('zh')">ZH</button>
+                    </div>
+                    <span class="header-toolbar__sep" aria-hidden="true"></span>
+                    <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" title="Theme">
+                        <span id="theme-icon" aria-hidden="true">🌙</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <nav class="page-nav" aria-label="Pages">
+            <a href="index.html" data-i18n="navHome">Home</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="android.html" data-i18n="navAndroidPage">Android (bugreport)</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="iphone.html" data-i18n="navIphonePage">iPhone (sysdiagnose)</a>
+            <span aria-hidden="true" style="color: var(--text-secondary);">·</span>
+            <a href="bugreport-status.html" data-i18n="navStatus">Rules &amp; parsers</a>
+        </nav>
+
+        <section class="ioc-catalog" id="ioc-catalog">
+            <h2 data-i18n="iocTitle">Rules &amp; IOCs</h2>
+            <p class="ioc-catalog-lead" data-i18n="iocLead">Every Sigma rule loaded by the Android and iPhone analyzers. Packs under amnesty/ credit Amnesty International Tech Security Lab; mvt/ packs are adapted from mvt-project/mvt-indicators.</p>
+            <p class="ioc-catalog-credit">
+                <a href="https://github.com/AmnestyTech/investigations" target="_blank" rel="noopener noreferrer">AmnestyTech/investigations</a>
+                ·
+                <a href="https://github.com/mvt-project/mvt-indicators" target="_blank" rel="noopener noreferrer">mvt-project/mvt-indicators</a>
+            </p>
+
+            <div class="ioc-catalog-toolbar">
+                <label class="ioc-catalog-search">
+                    <span class="visually-hidden" data-i18n="iocSearch">Search</span>
+                    <input id="ioc-search" type="search" autocomplete="off" spellcheck="false" data-i18n-placeholder="iocSearchPlaceholder" placeholder="Filter by title, id, file, or category…">
+                </label>
+                <div class="ioc-catalog-filters" id="ioc-filters" role="group" aria-label="Category"></div>
+            </div>
+            <p class="ioc-catalog-status" id="ioc-status" role="status"></p>
+            <div id="ioc-list" class="ioc-catalog-list"></div>
+        </section>
+
+        <footer style="text-align: center; padding: 1.5rem 0; color: var(--text-secondary); font-size: 0.813rem;">
+            <p style="margin-top: 0.5rem; font-size: 0.8rem;">
+                <a href="https://github.com/IsMyPhonePwned/" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;" data-i18n="navGitHub">GitHub</a>
+            </p>
+            <div class="bmc-footer">
+                <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="ping2a" data-color="#FFDD00" data-emoji="☕" data-font="Cookie" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#ffffff"></script>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        window.IOC_I18N = {
+            en: {
+                pageSubtitle: 'Sigma rules · IoC catalog',
+                pageVersion: 'v0.7.0-beta • Updated 21 September 2026',
+                themeDark: 'Dark',
+                themeLight: 'Light',
+                navHome: 'Home',
+                navAndroidPage: 'Android (bugreport)',
+                navIphonePage: 'iPhone (sysdiagnose)',
+                navStatus: 'Rules & parsers',
+                navGitHub: 'GitHub',
+                iocTitle: 'Rules & IOCs',
+                iocLead: 'Every Sigma rule loaded by the Android and iPhone analyzers. Packs under amnesty/ credit Amnesty International Tech Security Lab; mvt/ packs are adapted from mvt-project/mvt-indicators.',
+                iocSearch: 'Search',
+                iocSearchPlaceholder: 'Filter by title, id, file, or category…',
+                iocLoading: 'Loading {n} rule files…',
+                iocReady: '{shown} of {total} rules · {files} files',
+                iocFailed: 'Failed to load {n} file(s).',
+                iocEmpty: 'No rules match this filter.',
+                iocAll: 'All',
+                iocShow: 'Show content',
+                iocHide: 'Hide content',
+                catAmnesty: 'amnesty',
+                catAndroid: 'android',
+                catIos: 'ios',
+                catSpyware: 'spyware',
+                catMvt: 'mvt',
+                catOther: 'other'
+            },
+            fr: {
+                pageSubtitle: 'Règles Sigma · catalogue d’IoC',
+                pageVersion: 'v0.7.0-beta • Mis à jour le 21 septembre 2026',
+                themeDark: 'Sombre',
+                themeLight: 'Clair',
+                navHome: 'Accueil',
+                navAndroidPage: 'Android (bugreport)',
+                navIphonePage: 'iPhone (sysdiagnose)',
+                navStatus: 'Règles & parseurs',
+                navGitHub: 'GitHub',
+                iocTitle: 'Règles & IoC',
+                iocLead: 'Toutes les règles Sigma chargées par les analyseurs Android et iPhone. Les packs amnesty/ sont crédités à Amnesty International Tech Security Lab ; les packs mvt/ viennent de mvt-project/mvt-indicators.',
+                iocSearch: 'Rechercher',
+                iocSearchPlaceholder: 'Filtrer par titre, id, fichier ou catégorie…',
+                iocLoading: 'Chargement de {n} fichiers…',
+                iocReady: '{shown} sur {total} règles · {files} fichiers',
+                iocFailed: 'Échec pour {n} fichier(s).',
+                iocEmpty: 'Aucune règle ne correspond.',
+                iocAll: 'Toutes',
+                iocShow: 'Afficher',
+                iocHide: 'Masquer',
+                catAmnesty: 'amnesty',
+                catAndroid: 'android',
+                catIos: 'ios',
+                catSpyware: 'spyware',
+                catMvt: 'mvt',
+                catOther: 'autre'
+            },
+            zh: {
+                pageSubtitle: 'Sigma 规则 · IoC 目录',
+                pageVersion: 'v0.7.0-beta • 更新于 2026年9月21日',
+                themeDark: '深色',
+                themeLight: '浅色',
+                navHome: '首页',
+                navAndroidPage: 'Android（bugreport）',
+                navIphonePage: 'iPhone（sysdiagnose）',
+                navStatus: '规则与解析器',
+                navGitHub: 'GitHub',
+                iocTitle: '规则与 IoC',
+                iocLead: 'Android / iPhone 分析器加载的全部 Sigma 规则。amnesty/ 归功于 Amnesty International Tech Security Lab；mvt/ 改编自 mvt-project/mvt-indicators。',
+                iocSearch: '搜索',
+                iocSearchPlaceholder: '按标题、id、文件或分类筛选…',
+                iocLoading: '正在加载 {n} 个规则文件…',
+                iocReady: '{shown} / {total} 条规则 · {files} 个文件',
+                iocFailed: '{n} 个文件加载失败。',
+                iocEmpty: '没有匹配的规则。',
+                iocAll: '全部',
+                iocShow: '显示内容',
+                iocHide: '隐藏内容',
+                catAmnesty: 'amnesty',
+                catAndroid: 'android',
+                catIos: 'ios',
+                catSpyware: 'spyware',
+                catMvt: 'mvt',
+                catOther: '其他'
+            }
+        };
+
+        let currentLang = localStorage.getItem('lang') || 'en';
+        let allRules = [];
+        let activeCategory = 'all';
+        let searchQuery = '';
+
+        function t(key, fallback) {
+            const pack = window.IOC_I18N[currentLang] || window.IOC_I18N.en;
+            return pack[key] != null ? pack[key] : (fallback != null ? fallback : key);
+        }
+
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function categoryOf(url) {
+            if (url.indexOf('/amnesty/') >= 0) return 'amnesty';
+            if (url.indexOf('/android/') >= 0) return 'android';
+            if (url.indexOf('/ios/') >= 0) return 'ios';
+            if (url.indexOf('/spyware/') >= 0) return 'spyware';
+            if (url.indexOf('/mvt/') >= 0) return 'mvt';
+            return 'other';
+        }
+
+        function parseRuleYaml(text, source, url) {
+            const rules = [];
+            const blocks = text.split(/\n---\s*\n/);
+            for (let i = 0; i < blocks.length; i++) {
+                const block = blocks[i].trim();
+                if (!block) continue;
+                let title = '';
+                let id = '';
+                let level = '';
+                let author = '';
+                const lines = block.split('\n');
+                for (let j = 0; j < lines.length; j++) {
+                    const line = lines[j];
+                    let m = line.match(/^\s*title\s*:\s*(.+)$/i);
+                    if (m) { title = m[1].replace(/^["']|["']$/g, '').trim(); continue; }
+                    m = line.match(/^\s*id\s*:\s*(.+)$/i);
+                    if (m) { id = m[1].replace(/^["']|["']$/g, '').trim(); continue; }
+                    m = line.match(/^\s*level\s*:\s*(.+)$/i);
+                    if (m) { level = m[1].replace(/^["']|["']$/g, '').trim(); continue; }
+                    m = line.match(/^\s*author\s*:\s*(.+)$/i);
+                    if (m) { author = m[1].replace(/^["']|["']$/g, '').trim(); continue; }
+                }
+                rules.push({
+                    title: title || source,
+                    id: id || source,
+                    level: level || '',
+                    author: author || '',
+                    source: source,
+                    url: url,
+                    category: categoryOf(url),
+                    content: block
+                });
+            }
+            if (!rules.length && text.trim()) {
+                rules.push({
+                    title: source,
+                    id: source,
+                    level: '',
+                    author: '',
+                    source: source,
+                    url: url,
+                    category: categoryOf(url),
+                    content: text.trim()
+                });
+            }
+            return rules;
+        }
+
+        function levelClass(level) {
+            const x = String(level || '').toLowerCase();
+            if (x === 'critical') return 'badge-critical';
+            if (x === 'high') return 'badge-high';
+            if (x === 'medium') return 'badge-medium';
+            if (x === 'low') return 'badge-low';
+            return 'badge-info';
+        }
+
+        function filteredRules() {
+            const q = searchQuery.trim().toLowerCase();
+            return allRules.filter(function (r) {
+                if (activeCategory !== 'all' && r.category !== activeCategory) return false;
+                if (!q) return true;
+                return (
+                    r.title.toLowerCase().indexOf(q) >= 0 ||
+                    r.id.toLowerCase().indexOf(q) >= 0 ||
+                    r.source.toLowerCase().indexOf(q) >= 0 ||
+                    r.category.toLowerCase().indexOf(q) >= 0 ||
+                    (r.author && r.author.toLowerCase().indexOf(q) >= 0)
+                );
+            });
+        }
+
+        function renderFilters() {
+            const host = document.getElementById('ioc-filters');
+            if (!host) return;
+            const cats = ['all', 'amnesty', 'android', 'ios', 'spyware', 'mvt'];
+            const labels = {
+                all: t('iocAll', 'All'),
+                amnesty: t('catAmnesty', 'amnesty'),
+                android: t('catAndroid', 'android'),
+                ios: t('catIos', 'ios'),
+                spyware: t('catSpyware', 'spyware'),
+                mvt: t('catMvt', 'mvt')
+            };
+            host.innerHTML = cats.map(function (c) {
+                const count = c === 'all'
+                    ? allRules.length
+                    : allRules.filter(function (r) { return r.category === c; }).length;
+                const active = activeCategory === c ? ' is-active' : '';
+                return '<button type="button" class="ioc-filter-btn' + active + '" data-cat="' + c + '">' +
+                    escapeHtml(labels[c]) + ' <span class="ioc-filter-count">' + count + '</span></button>';
+            }).join('');
+            host.querySelectorAll('.ioc-filter-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    activeCategory = btn.getAttribute('data-cat') || 'all';
+                    renderFilters();
+                    renderList();
+                });
+            });
+        }
+
+        function renderList() {
+            const list = document.getElementById('ioc-list');
+            const status = document.getElementById('ioc-status');
+            const rules = filteredRules();
+            const urls = window.SIGMA_RULE_URLS || [];
+            if (status) {
+                status.textContent = t('iocReady', '{shown} of {total} rules · {files} files')
+                    .replace('{shown}', String(rules.length))
+                    .replace('{total}', String(allRules.length))
+                    .replace('{files}', String(urls.length));
+            }
+            if (!list) return;
+            if (!rules.length) {
+                list.innerHTML = '<p class="ioc-catalog-empty">' + escapeHtml(t('iocEmpty', 'No rules match this filter.')) + '</p>';
+                return;
+            }
+            let html = '';
+            rules.forEach(function (r, idx) {
+                const contentHtml = typeof window.highlightSigmaYamlHtml === 'function'
+                    ? window.highlightSigmaYamlHtml(r.content)
+                    : escapeHtml(r.content);
+                html += '<article class="ioc-rule">';
+                html += '<div class="ioc-rule-head">';
+                html += '<div class="ioc-rule-main">';
+                html += '<h3 class="ioc-rule-title">' + escapeHtml(r.title) + '</h3>';
+                html += '<p class="ioc-rule-meta">';
+                html += '<code>' + escapeHtml(r.id) + '</code>';
+                if (r.level) html += ' <span class="badge ' + levelClass(r.level) + '">' + escapeHtml(r.level) + '</span>';
+                html += ' <span class="ioc-rule-cat">' + escapeHtml(r.category) + '</span>';
+                html += ' <a class="ioc-rule-file" href="' + escapeHtml(r.url) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(r.source) + '</a>';
+                if (r.author) html += ' <span class="ioc-rule-author">' + escapeHtml(r.author) + '</span>';
+                html += '</p></div>';
+                html += '<button type="button" class="secondary ioc-rule-toggle" data-idx="' + idx + '">' + escapeHtml(t('iocShow', 'Show content')) + '</button>';
+                html += '</div>';
+                html += '<div class="ioc-rule-body" id="ioc-body-' + idx + '" hidden><pre class="sigma-rule-content__pre">' + contentHtml + '</pre></div>';
+                html += '</article>';
+            });
+            list.innerHTML = html;
+            list.querySelectorAll('.ioc-rule-toggle').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const idx = btn.getAttribute('data-idx');
+                    const body = document.getElementById('ioc-body-' + idx);
+                    if (!body) return;
+                    const open = body.hasAttribute('hidden');
+                    if (open) body.removeAttribute('hidden');
+                    else body.setAttribute('hidden', '');
+                    btn.textContent = open ? t('iocHide', 'Hide content') : t('iocShow', 'Show content');
+                });
+            });
+        }
+
+        async function loadRules() {
+            const urls = window.SIGMA_RULE_URLS || [];
+            const status = document.getElementById('ioc-status');
+            if (status) status.textContent = t('iocLoading', 'Loading {n} rule files…').replace('{n}', String(urls.length));
+            allRules = [];
+            let failed = 0;
+            for (let i = 0; i < urls.length; i++) {
+                const url = urls[i];
+                try {
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error(String(res.status));
+                    const text = await res.text();
+                    const name = url.replace(/^.*\//, '');
+                    parseRuleYaml(text, name, url).forEach(function (r) { allRules.push(r); });
+                } catch (e) {
+                    failed += 1;
+                }
+            }
+            renderFilters();
+            renderList();
+            if (failed && status) {
+                status.textContent += ' · ' + t('iocFailed', 'Failed to load {n} file(s).').replace('{n}', String(failed));
+            }
+        }
+
+        function applyLang(lang) {
+            currentLang = lang;
+            localStorage.setItem('lang', lang);
+            document.documentElement.lang = lang === 'zh' ? 'zh' : lang === 'fr' ? 'fr' : 'en';
+            document.querySelectorAll('.lang-switcher button').forEach(function (btn) {
+                btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
+            });
+            const pack = window.IOC_I18N[lang] || window.IOC_I18N.en;
+            document.querySelectorAll('[data-i18n]').forEach(function (el) {
+                const key = el.getAttribute('data-i18n');
+                if (pack[key] != null) el.textContent = pack[key];
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (pack[key] != null) el.setAttribute('placeholder', pack[key]);
+            });
+            const themeBtn = document.querySelector('.theme-toggle');
+            if (themeBtn) {
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                themeBtn.title = isDark ? t('themeLight', 'Light') : t('themeDark', 'Dark');
+            }
+            renderFilters();
+            renderList();
+        }
+
+        window.setLang = function (lang) { applyLang(lang); };
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            const icon = document.getElementById('theme-icon');
+            if (icon) icon.textContent = next === 'dark' ? '☀️' : '🌙';
+            applyLang(currentLang);
+        }
+
+        (function init() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            const icon = document.getElementById('theme-icon');
+            if (icon) icon.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+            const search = document.getElementById('ioc-search');
+            if (search) {
+                search.addEventListener('input', function () {
+                    searchQuery = search.value || '';
+                    renderList();
+                });
+            }
+            applyLang(currentLang);
+            loadRules();
+        })();
+    </script>
+</body>
+</html>

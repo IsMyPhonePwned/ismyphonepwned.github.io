@@ -1,5 +1,147 @@
 /* @ts-self-types="./droid2web.d.ts" */
 
+export class MirrorClient {
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        MirrorClientFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_mirrorclient_free(ptr, 0);
+    }
+    /**
+     * @returns {number}
+     */
+    caps() {
+        const ret = wasm.mirrorclient_caps(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    height() {
+        const ret = wasm.mirrorclient_height(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @param {number} action
+     * @param {number} keycode
+     * @param {number} meta
+     * @returns {Uint8Array}
+     */
+    key(action, keycode, meta) {
+        const ret = wasm.mirrorclient_key(this.__wbg_ptr, action, keycode, meta);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * @param {number} keycode
+     * @param {number} action
+     * @returns {Uint8Array}
+     */
+    nav(keycode, action) {
+        const ret = wasm.mirrorclient_nav(this.__wbg_ptr, keycode, action);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    constructor() {
+        const ret = wasm.mirrorclient_new();
+        this.__wbg_ptr = ret >>> 0;
+        MirrorClientFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @param {Uint8Array} buf
+     * @returns {any}
+     */
+    on_bytes(buf) {
+        const ptr0 = passArray8ToWasm0(buf, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.mirrorclient_on_bytes(this.__wbg_ptr, ptr0, len0);
+        return ret;
+    }
+    /**
+     * @param {boolean} on
+     * @returns {Uint8Array}
+     */
+    pause(on) {
+        const ret = wasm.mirrorclient_pause(this.__wbg_ptr, on);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    request_keyframe_skip() {
+        wasm.mirrorclient_request_keyframe_skip(this.__wbg_ptr);
+    }
+    /**
+     * @param {number} css_x
+     * @param {number} css_y
+     * @param {number} view_w
+     * @param {number} view_h
+     * @param {number} hscroll
+     * @param {number} vscroll
+     * @returns {Uint8Array}
+     */
+    scroll(css_x, css_y, view_w, view_h, hscroll, vscroll) {
+        const ret = wasm.mirrorclient_scroll(this.__wbg_ptr, css_x, css_y, view_w, view_h, hscroll, vscroll);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * @param {number} bitrate
+     * @param {number} max_fps
+     * @param {number} max_size
+     * @returns {Uint8Array}
+     */
+    set_encoding(bitrate, max_fps, max_size) {
+        const ret = wasm.mirrorclient_set_encoding(this.__wbg_ptr, bitrate, max_fps, max_size);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * @param {string} s
+     * @returns {Uint8Array}
+     */
+    text(s) {
+        const ptr0 = passStringToWasm0(s, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.mirrorclient_text(this.__wbg_ptr, ptr0, len0);
+        var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v2;
+    }
+    /**
+     * @param {number} action
+     * @param {number} id
+     * @param {number} css_x
+     * @param {number} css_y
+     * @param {number} view_w
+     * @param {number} view_h
+     * @param {number} pressure
+     * @returns {Uint8Array}
+     */
+    touch(action, id, css_x, css_y, view_w, view_h, pressure) {
+        const ret = wasm.mirrorclient_touch(this.__wbg_ptr, action, id, css_x, css_y, view_w, view_h, pressure);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * @returns {number}
+     */
+    width() {
+        const ret = wasm.mirrorclient_width(this.__wbg_ptr);
+        return ret;
+    }
+}
+if (Symbol.dispose) MirrorClient.prototype[Symbol.dispose] = MirrorClient.prototype.free;
+
 /**
  * Decompile an entire class to Java source. Returns `{ ok, data?: { name, relative_path, source }, error? }`.
  * @param {Uint8Array} bytes
@@ -1072,6 +1214,10 @@ function __wbg_get_imports() {
         "./droid2web_bg.js": import0,
     };
 }
+
+const MirrorClientFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_mirrorclient_free(ptr >>> 0, 1));
 
 function addToExternrefTable0(obj) {
     const idx = wasm.__externref_table_alloc();

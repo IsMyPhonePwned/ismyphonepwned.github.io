@@ -10,16 +10,19 @@ import { APP_VERSION, APP_DATE } from './version.js';
 import { findSourceCallSites, findSourceFieldSites } from './java-source-sites.js';
 import { initDexDiff } from './dex-diff.js';
 import { initPatchUi, openPatchTabWithLoadedApk } from './patch-ui.js';
-import { initDeviceUi, openDeviceTab } from './device-ui.js';
+import { initDeviceUi, openDeviceTab, syncDeviceContents } from './device-ui.js';
+import { initMirrorUi } from './mirror-ui.js';
 import {
   initNativeUi,
   loadElf,
   renderNativeLibTree,
   navigateToNativeSymbol,
   getCurrentNativePath,
+  getCurrentNativeBrowse,
   applyArmDecompileOptionsFromStorage,
 } from './native-ui.js';
 import { initFindRefsUi } from './findrefs-ui.js';
+import { initPythonConsole } from './python-console.js';
 import { renderMastgKnowledgeHtml } from './mastg-know.js';
 import {
   buildJniLinkIndex,
@@ -5953,6 +5956,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       renderComponentsTab();
     }
     if (tab === 'diff-tab') dexDiffApi?.syncLoadedUi?.();
+    syncDeviceContents(tab === 'device-tab');
   });
 });
 
@@ -17334,6 +17338,8 @@ function switchToCenterTab(tabId) {
     renderComponentsTab();
   }
   if (tabId === 'diff-tab') dexDiffApi?.syncLoadedUi?.();
+  if (tabId === 'python-tab') window.droid2webEnsurePython?.();
+  syncDeviceContents(tabId === 'device-tab');
 }
 
 /** Revoke and clear all blob URLs for file tabs, remove DOM, clear state. */
@@ -22097,6 +22103,12 @@ try {
 }
 
 try {
+  initMirrorUi();
+} catch (e) {
+  console.warn('[droid2web] mirror ui init', e);
+}
+
+try {
   initNativeUi({
     runInParseWorker,
     switchToCenterTab,
@@ -22131,9 +22143,156 @@ try {
       return null;
     },
     navigateToRef: (el) => {
-      if (typeof navigateToMethodCaller === 'function') navigateToMethodCaller(el);
+      if (!el) return;
+      const className = el.getAttribute('data-class') || '';
+      const methodName = el.getAttribute('data-method') || '';
+      const dexFile = el.getAttribute('data-dex') || '';
+      const offsetRaw = el.getAttribute('data-offset');
+      const offset = offsetRaw !== '' && offsetRaw != null ? parseInt(offsetRaw, 10) : NaN;
+      if (!className) return;
+      // Resolve by name + DEX path (not find_refs indices): those indices belong to the
+      // scanned blob and can disagree with the currently browsed DEX. Always leave Find.
+      void navigateToSecurityFinding(className, methodName, dexFile, {
+        offset: Number.isFinite(offset) ? offset : undefined,
+        hint: '',
+      });
     },
   });
 } catch (e) {
   console.warn('[droid2web] findrefs ui init', e);
+}
+
+function pythonCap(n, fallback, max) {
+  const v = Number(n);
+  const lim = Number.isFinite(v) ? v : fallback;
+  return Math.max(1, Math.min(max, lim));
+}
+
+function pythonClasses(query, limit) {
+  const q = String(query || '').trim().toLowerCase();
+  const lim = pythonCap(limit, 200, 2000);
+  const out = [];
+  const ctx = getCurrentDexContext();
+  const list = ctx?.classes || (currentType === 'dex' ? currentData?.classes : null);
+  if (Array.isArray(list)) {
+    for (const c of list) {
+      const name = String(c?.name || '');
+      if (q && !name.toLowerCase().includes(q)) continue;
+      out.push({
+        name,
+        methods: Array.isArray(c?.methods) ? c.methods.length : 0,
+      });
+      if (out.length >= lim) break;
+    }
+    return out;
+  }
+  if (apkClassToDex && typeof apkClassToDex === 'object') {
+    for (const name in apkClassToDex) {
+      if (!Object.prototype.hasOwnProperty.call(apkClassToDex, name)) continue;
+      if (q && !String(name).toLowerCase().includes(q)) continue;
+      const entry = apkClassToDex[name];
+      out.push({
+        name: String(name),
+        dex: entry?.file || entry?.dex || '',
+      });
+      if (out.length >= lim) break;
+    }
+  }
+  return out;
+}
+
+function pythonMethods(className) {
+  const want = String(className || '').trim();
+  const ctx = getCurrentDexContext();
+  const list = ctx?.classes || (currentType === 'dex' ? currentData?.classes : null);
+  const cls = Array.isArray(list)
+    ? list.find((c) => c?.name === want || String(c?.name || '').endsWith(want))
+    : null;
+  const methods = Array.isArray(cls?.methods) ? cls.methods : [];
+  return methods.slice(0, 500).map((m) => ({
+    name: m?.name || '',
+    descriptor: m?.descriptor || '',
+  }));
+}
+
+function pythonFindings() {
+  const pack = (list, source) => (Array.isArray(list) ? list : []).slice(0, 500).map((f) => ({
+    source,
+    id: f?.id || f?.rule_id || f?.check || f?.kind || '',
+    title: f?.title || f?.message || f?.rule || f?.name || f?.issue || '',
+    severity: f?.severity || f?.level || f?.confidence || '',
+    class: f?.class_name || f?.className || f?.class || '',
+    method: f?.method_name || f?.method || f?.methodName || '',
+    detail: String(f?.detail || f?.description || f?.sink || f?.message || '').slice(0, 500),
+  }));
+  const mt = Array.isArray(securityMtReport?.issues) ? securityMtReport.issues : [];
+  return [
+    ...pack(securityVulnFindings, 'vuln'),
+    ...pack(securitySemgrepFindings, 'semgrep'),
+    ...pack(mt, 'mt'),
+  ];
+}
+
+function pythonStrings(query, limit) {
+  const q = String(query || '').trim().toLowerCase();
+  const lim = pythonCap(limit, 100, 1000);
+  const pool = Array.isArray(currentStringsArray) && currentStringsArray.length
+    ? currentStringsArray
+    : (Array.isArray(currentData?.strings) ? currentData.strings : []);
+  const out = [];
+  for (const s of pool) {
+    const text = typeof s === 'string' ? s : String(s?.value || s?.string || '');
+    if (q && !text.toLowerCase().includes(q)) continue;
+    out.push(text.slice(0, 500));
+    if (out.length >= lim) break;
+  }
+  return out;
+}
+
+function pythonSnapshot() {
+  const ctx = getCurrentDexContext();
+  const classes = ctx?.classes || (currentType === 'dex' ? currentData?.classes : null);
+  let methodCount = 0;
+  if (Array.isArray(classes)) {
+    for (const c of classes) methodCount += Array.isArray(c?.methods) ? c.methods.length : 0;
+  }
+  const native = typeof getCurrentNativeBrowse === 'function' ? getCurrentNativeBrowse() : null;
+  return {
+    version: APP_VERSION,
+    file: currentFilename || '',
+    type: currentType || '',
+    dex: loadedDexFiles.map((d) => d?.name).filter(Boolean),
+    classCount: Array.isArray(classes) ? classes.length : (apkDexStats?.classes || 0),
+    methodCount,
+    selectedClass: classes?.[ctx?.classIdx]?.name || '',
+    stringsLoaded: Array.isArray(currentStringsArray) ? currentStringsArray.length : 0,
+    findings: {
+      vuln: securityVulnFindings.length,
+      semgrep: securitySemgrepFindings.length,
+      mt: Array.isArray(securityMtReport?.issues) ? securityMtReport.issues.length : 0,
+    },
+    native: native ? {
+      path: getCurrentNativePath() || '',
+      arch: native.arch || '',
+      functions: Array.isArray(native.functions) ? native.functions.length : 0,
+    } : null,
+  };
+}
+
+function droidPythonVars() {
+  return {
+    snapshot: () => JSON.stringify(pythonSnapshot()),
+    classes: (query, limit) => JSON.stringify(pythonClasses(query, limit)),
+    methods: (className) => JSON.stringify(pythonMethods(className)),
+    findings: () => JSON.stringify(pythonFindings()),
+    strings: (query, limit) => JSON.stringify(pythonStrings(query, limit)),
+    manifest: () => (typeof apkManifestXml === 'string' ? apkManifestXml : ''),
+    source: () => String(currentSourceRaw || '').slice(0, 200000),
+  };
+}
+
+try {
+  initPythonConsole({ getVars: droidPythonVars });
+} catch (e) {
+  console.warn('[droid2web] python console init', e);
 }

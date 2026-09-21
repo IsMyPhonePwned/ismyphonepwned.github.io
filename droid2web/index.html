@@ -92,6 +92,21 @@
           </div>
           <button type="button" class="btn btn-small mobile-nav-close" id="mobile-nav-close" aria-label="Close contents" title="Close">×</button>
         </div>
+        <div id="device-mirror-slot" class="device-mirror-slot" hidden>
+          <div class="device-mirror-bar">
+            <span id="device-mirror-status">Click to mirror</span>
+            <button type="button" class="btn btn-small" id="device-mirror-stop" disabled>Stop</button>
+          </div>
+          <div class="device-mirror-stage">
+            <button type="button" class="device-mirror-start" id="device-mirror-start">Click to mirror the phone</button>
+            <canvas id="device-mirror-canvas" tabindex="0" aria-label="Phone screen"></canvas>
+          </div>
+          <div class="device-mirror-nav">
+            <button type="button" class="btn btn-small" data-device-mirror-nav="back">Back</button>
+            <button type="button" class="btn btn-small" data-device-mirror-nav="home">Home</button>
+            <button type="button" class="btn btn-small" data-device-mirror-nav="recents">Recents</button>
+          </div>
+        </div>
         <div class="dex-file-wrap" id="dex-file-wrap" style="display:none">
           <label class="dex-package-label" for="dex-file-select">DEX</label>
           <select id="dex-file-select" class="dex-package-select" aria-label="Filter by DEX file or show all">
@@ -142,6 +157,8 @@
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="diff-tab" id="diff-tab-btn" data-label="Compare" data-label-short="Diff" title="Compare DEX bytecode in two APKs">Compare</button>
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="patch-tab" id="patch-tab-btn" data-label="Patch" data-label-short="Patch" title="Decode, edit, rebuild and sign APK (apk-patch)">Patch</button>
             <button type="button" class="tab-btn tab-btn-permanent" data-tab="device-tab" id="device-tab-btn" data-label="Device" data-label-short="Dev" title="WebUSB ADB + goauld attach / protocol">Device</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="mirror-tab" id="mirror-tab-btn" data-label="Mirror" data-label-short="Mir" title="Live screen via droidmirror">Mirror</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="python-tab" id="python-tab-btn" data-label="Python" data-label-short="Py" title="RustPython shell over the current analysis">Python</button>
           </div>
           <div class="center-tabs-sep" id="center-tabs-sep" hidden aria-hidden="true"></div>
           <div class="center-tabs-group center-tabs-files" id="center-tabs-files-group" hidden>
@@ -726,38 +743,57 @@
           </div>
         </div>
         <div class="tab-content" id="find-tab">
-          <div class="find-panel" id="find-panel">
+          <div class="find-panel" id="find-panel" data-kind="string">
             <div class="find-toolbar">
-              <label class="find-opt">
-                <span class="muted">Kind</span>
-                <select id="find-kind" class="find-kind-select" aria-label="Findrefs kind">
-                  <option value="string">string</option>
-                  <option value="type">type</option>
-                  <option value="method">method</option>
-                  <option value="field">field</option>
-                </select>
-              </label>
-              <input type="search" id="find-value" class="find-value-input" placeholder="Needle (token / name)…" aria-label="Findrefs value" autocomplete="off">
-              <input type="search" id="find-class" class="find-class-input" placeholder="Class (optional)" aria-label="Optional class filter" autocomplete="off" title="Restrict method/field findrefs to this class">
-              <label class="find-opt" title="Treat class filter as exact Dalvik/Java name (uncheck = substring)">
-                <input type="checkbox" id="find-exact-class" checked>
-                <span>Exact class</span>
-              </label>
-              <button type="button" class="btn btn-primary" id="find-refs-btn" title="ASC findrefs across DEX / APK">Find refs</button>
-              <button type="button" class="btn btn-small" id="find-getclass-btn" title="ASC getclass — slice + decompile one class">Get class</button>
-              <span class="find-status muted" id="find-status">Load a DEX or APK</span>
+              <div class="find-kind-seg" role="radiogroup" aria-label="Reference kind">
+                <label class="find-kind-opt"><input type="radio" name="find-kind-ui" value="string" checked>String</label>
+                <label class="find-kind-opt"><input type="radio" name="find-kind-ui" value="type">Type</label>
+                <label class="find-kind-opt"><input type="radio" name="find-kind-ui" value="method">Method</label>
+                <label class="find-kind-opt"><input type="radio" name="find-kind-ui" value="field">Field</label>
+              </div>
+              <select id="find-kind" class="find-kind-select" aria-label="Findrefs kind" hidden>
+                <option value="string">string</option>
+                <option value="type">type</option>
+                <option value="method">method</option>
+                <option value="field">field</option>
+              </select>
+              <div class="find-query">
+                <input type="search" id="find-value" class="find-value-input" placeholder="Text used by const-string…" aria-label="Findrefs value" autocomplete="off" spellcheck="false">
+                <div class="find-scope">
+                  <input type="search" id="find-class" class="find-class-input" placeholder="Declaring class" aria-label="Declaring class" autocomplete="off" spellcheck="false" title="Limit method or field references to this class">
+                  <label class="find-exact" title="Exact class name. Uncheck to match a substring.">
+                    <input type="checkbox" id="find-exact-class" checked>
+                    <span>Exact</span>
+                  </label>
+                </div>
+                <div class="find-actions">
+                  <button type="button" class="btn btn-primary" id="find-refs-btn" title="Search references across every DEX in the file">Find references</button>
+                  <button type="button" class="btn btn-small" id="find-getclass-btn" title="Decompile one class into the preview">Decompile class</button>
+                </div>
+              </div>
+              <p class="find-hint" id="find-hint">String references: every const-string and encoded use of this text. <kbd>Enter</kbd> searches. <kbd>↑</kbd><kbd>↓</kbd> move. <kbd>Enter</kbd> on a hit opens it.</p>
+              <div class="find-recent" id="find-recent" hidden></div>
             </div>
             <div class="find-body">
-              <div class="find-results" id="find-results">
-                <div class="muted center-text">On-demand ASC findrefs / getclass — no full xref index</div>
-              </div>
-              <aside class="find-source" id="find-source" hidden>
-                <div class="find-source-header">
-                  <span class="find-source-meta muted" id="find-source-meta"></span>
-                  <button type="button" class="btn btn-small" id="find-source-open" title="Open class in Code view" hidden>Open</button>
-                  <button type="button" class="btn btn-small" id="find-source-copy" title="Copy source" hidden>Copy</button>
+              <div class="find-results-col">
+                <div class="find-results-bar">
+                  <span class="find-status muted" id="find-status">Load a DEX or APK</span>
+                  <input type="search" id="find-filter" class="find-filter-input" placeholder="Filter these results…" aria-label="Filter results" autocomplete="off" hidden>
                 </div>
-                <pre class="find-source-code src-has-highlight" id="find-source-code"></pre>
+                <div class="find-results" id="find-results" tabindex="0"></div>
+              </div>
+              <aside class="find-source" id="find-source">
+                <div class="find-source-header">
+                  <span class="find-source-meta muted" id="find-source-meta">No selection</span>
+                  <button type="button" class="btn btn-small" id="find-source-open" title="Open this method in Code" hidden>Open</button>
+                  <button type="button" class="btn btn-small" id="find-source-copy" title="Copy class, method, and offset" hidden>Copy</button>
+                </div>
+                <div class="find-inspector-empty" id="find-inspector-empty">
+                  <p>Select a usage to inspect it here.</p>
+                  <p class="muted">Open jumps to that method in Code. Decompile class shows Java in this pane.</p>
+                </div>
+                <dl class="find-inspector-fields" id="find-inspector-fields" hidden></dl>
+                <pre class="find-source-code src-has-highlight" id="find-source-code" hidden></pre>
               </aside>
             </div>
           </div>
@@ -1018,10 +1054,12 @@
               <li class="device-flow-step" data-step="attach"><span class="device-flow-num">3</span> Attach</li>
               <li class="device-flow-step" data-step="act"><span class="device-flow-num">4</span> Script / trace</li>
             </ol>
-            <p class="muted device-intro">WebUSB ADB · Chrome/Edge · quit host <code>adb</code> first. Flow: connect → select package → <strong>Attach agent</strong> → ScriptLoad / Rpc / Post. Quick Java trace can auto-attach. Syscall trace needs root (detaches agent).</p>
+            <p class="muted device-intro">WebUSB ADB · Chrome/Edge · quit host <code>adb</code> first. Flow: connect → select package → <strong>Attach agent</strong> → ScriptLoad / Rpc / Post. The Contents panel on the left mirrors the phone while the console stays live — click it to start. Syscall trace needs root (detaches the agent).</p>
             <div class="device-workspace">
               <div class="device-apps-wrap">
-                <div class="patch-file-tree-head">Apps
+                <div class="patch-file-tree-head">
+                  <span>Apps</span>
+                  <span class="device-app-count muted" id="device-app-count"></span>
                   <input type="search" id="device-app-filter" class="patch-text-input device-filter" placeholder="Filter…" spellcheck="false">
                 </div>
                 <ul class="device-app-list" id="device-app-list"></ul>
@@ -1033,7 +1071,7 @@
                     <span class="device-attach-chip" id="device-attach-chip">Not attached</span>
                   </div>
                   <p class="muted device-card-hint" id="device-analyzed-hint" hidden></p>
-                  <p class="muted device-card-hint">If the APK already embeds the goauld agent: connect → (install/launch) → <strong>Attach agent</strong>. No live inject / root needed.</p>
+                  <p class="muted device-card-hint">If the APK already embeds the goauld agent: connect → (install/launch) → <strong>Attach agent</strong>. Stock apps need <strong>Live inject</strong> (root) first.</p>
                   <div class="device-selected">
                     <label class="device-field">Package
                       <input type="text" id="device-package" class="patch-text-input" spellcheck="false" placeholder="com.example.app">
@@ -1048,6 +1086,22 @@
                     <button type="button" class="btn btn-small" id="device-stop" disabled>Force-stop</button>
                     <button type="button" class="btn btn-primary device-btn-attach" id="device-attach" disabled title="Open localabstract:goauld-agent-&lt;pid&gt;">Attach agent</button>
                     <button type="button" class="btn btn-small device-btn-detach" id="device-detach" disabled>Detach</button>
+                  </div>
+                  <div class="device-live-inject" id="device-live-inject">
+                    <div class="device-live-inject-head">
+                      <strong>Live inject</strong>
+                      <span class="device-trace-badge device-trace-badge-root">root</span>
+                    </div>
+                    <p class="muted device-card-hint">Stock apps without an embedded agent (Calculator, …): inject first, then Attach. Needs Magisk/su.</p>
+                    <div class="device-action-row">
+                      <button type="button" class="btn btn-small" id="device-inject" disabled title="Ptrace-inject libgoauld_agent.so into the selected package (root)">Live inject</button>
+                    </div>
+                    <details class="device-live-inject-bins">
+                      <summary class="muted">Binary overrides <span class="muted">(optional)</span></summary>
+                      <p class="muted device-bin-hint" id="device-bin-hint">Bundled arm64 goauld binaries are used by default.</p>
+                      <label class="patch-file-label">injector <input type="file" id="device-injector-file"></label>
+                      <label class="patch-file-label">agent .so <input type="file" id="device-agent-file" accept=".so,application/octet-stream"></label>
+                    </details>
                   </div>
                   <div class="device-attach-opts">
                     <label class="patch-check"><input type="checkbox" id="device-install-launch" checked> Launch after install</label>
@@ -1126,28 +1180,79 @@
                   </div>
                 </section>
 
-                <details class="device-card device-advanced">
-                  <summary class="device-card-title">Live inject <span class="muted">(root · no embedded agent)</span></summary>
-                  <p class="muted device-bin-hint" id="device-bin-hint">Bundled arm64 goauld binaries are used by default. Optional overrides:</p>
-                  <label class="patch-file-label">injector <input type="file" id="device-injector-file"></label>
-                  <label class="patch-file-label">agent .so <input type="file" id="device-agent-file" accept=".so,application/octet-stream"></label>
-                  <button type="button" class="btn btn-small" id="device-inject" disabled>Deploy + inject</button>
-                </details>
               </div>
               <div class="device-console-wrap">
                 <div class="patch-file-tree-head">
                   <span>Console <span class="device-console-count" id="device-console-count">0</span></span>
                   <div class="device-console-tools">
+                    <div class="device-console-filters" id="device-console-filters" role="tablist" aria-label="Filter console">
+                      <button type="button" class="device-console-filter is-on" data-filter="all">All</button>
+                      <button type="button" class="device-console-filter" data-filter="api">API</button>
+                      <button type="button" class="device-console-filter" data-filter="sys">Sys</button>
+                      <button type="button" class="device-console-filter" data-filter="ok">Ok</button>
+                      <button type="button" class="device-console-filter" data-filter="err">Err</button>
+                    </div>
                     <label class="patch-check device-console-autoscroll" title="Keep scrolling to newest lines">
                       <input type="checkbox" id="device-console-autoscroll" checked> Follow
                     </label>
                     <button type="button" class="btn btn-small" id="device-console-clear">Clear</button>
                   </div>
                 </div>
-                <div class="device-console-empty" id="device-console-empty">Connect a phone, pick an app, then Attach — events and protocol traffic show here.</div>
+                <div class="device-console-empty" id="device-console-empty">Connect a phone, pick an app, then Attach — events and protocol traffic show here. Java API and syscall traces expand into structured rows.</div>
                 <div class="device-console" id="device-console" aria-live="polite" hidden></div>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="mirror-tab">
+          <div class="mirror-panel" id="mirror-panel">
+            <header class="mirror-toolbar">
+              <button type="button" class="btn btn-small" id="mirror-connect">Connect phone…</button>
+              <button type="button" class="btn btn-primary" id="mirror-start">Start mirror</button>
+              <button type="button" class="btn btn-small" id="mirror-stop" disabled>Stop</button>
+              <label class="mirror-field">Bitrate
+                <input type="number" id="mirror-bitrate" class="patch-text-input" value="8000000" min="100000" step="100000">
+              </label>
+              <label class="mirror-field">Max side
+                <input type="number" id="mirror-max-size" class="patch-text-input" value="0" min="0" step="1" title="0 keeps the device size">
+              </label>
+              <span class="device-status-pill" id="mirror-status" role="status">Not started</span>
+            </header>
+            <div class="mirror-stage">
+              <canvas id="mirror-canvas" tabindex="0" aria-label="Phone screen"></canvas>
+            </div>
+            <div class="mirror-nav">
+              <button type="button" class="btn btn-small" data-mirror-nav="back">Back</button>
+              <button type="button" class="btn btn-small" data-mirror-nav="home">Home</button>
+              <button type="button" class="btn btn-small" data-mirror-nav="recents">Recents</button>
+              <button type="button" class="btn btn-small" data-mirror-nav="power">Power</button>
+              <button type="button" class="btn btn-small" data-mirror-nav="volDown">Vol−</button>
+              <button type="button" class="btn btn-small" data-mirror-nav="volUp">Vol+</button>
+              <input type="text" id="mirror-text" class="patch-text-input mirror-text" placeholder="Type and Enter to send text" spellcheck="false" autocomplete="off">
+            </div>
+            <p class="muted mirror-hint">Same WebUSB session as the Device tab. Quit host <code>adb</code> first. Detach the goauld agent before Start — one ADB stream at a time. Click the picture to type; Ctrl-V pastes. Server log: <code>/data/local/tmp/droidmirror/server.log</code>.</p>
+          </div>
+        </div>
+
+        <div class="tab-content" id="python-tab">
+          <div class="python-panel" id="python-panel">
+            <div class="python-toolbar">
+              <span class="python-brand">RustPython</span>
+              <span class="muted python-hint">Tab completes · <code>help()</code> lists every command · also <code>droid.*</code></span>
+              <span class="python-status muted" id="python-status">Not loaded</span>
+              <button type="button" class="btn btn-small" id="python-clear">Clear</button>
+            </div>
+            <pre class="python-log" id="python-log" aria-live="polite"></pre>
+            <form class="python-form" id="python-form">
+              <label class="python-prompt" for="python-input">&gt;&gt;&gt;</label>
+              <div class="python-input-stack">
+                <pre class="python-input-hl" id="python-input-hl" aria-hidden="true"></pre>
+                <textarea id="python-input" class="python-input" rows="3" spellcheck="false" placeholder="droid.info()  ·  Tab completes" autocomplete="off"></textarea>
+                <ul class="python-complete" id="python-complete" role="listbox" hidden></ul>
+              </div>
+              <button type="submit" class="btn btn-primary" id="python-run">Run</button>
+            </form>
           </div>
         </div>
 
@@ -1174,12 +1279,16 @@
           <p class="settings-hint muted">Findings that match OWASP MASTG topics show <strong>MASTG-KNOW</strong> links into the <a href="https://mas.owasp.org/MASTG/knowledge/" target="_blank" rel="noopener noreferrer">Mobile Application Security Knowledge Base</a> (biometrics, WebViews, IPC, Keystore, backups, …).</p>
         </section>
         <section class="settings-section">
+          <h4 class="settings-section-title">Python shell</h4>
+          <p class="settings-hint muted">The <strong>Python</strong> tab runs <a href="https://github.com/RustPython/RustPython" target="_blank" rel="noopener noreferrer">RustPython</a> in WASM (nothing leaves the browser). Every analysis command is exported on <code>droid</code> and as a top-level name: <code>info()</code>, <code>classes()</code>, <code>methods()</code>, <code>findings()</code>, <code>strings()</code>, <code>manifest()</code>, <code>source()</code>. <code>help()</code> prints them. Tab completes names. Ctrl+Enter runs the input.</p>
+        </section>
+        <section class="settings-section">
           <h4 class="settings-section-title">Compare (DEX)</h4>
           <p class="settings-hint muted">With an APK or DEX already open, click <strong>Compare with…</strong> in the header (or <strong>Choose other APK…</strong> on the Compare tab) and pick the other build. Side A is the file you already loaded; only Dalvik bytecode is matched. Identical classes are omitted. Click a changed method for a line-aligned source diff — nothing is sent to the cloud.</p>
         </section>
         <section class="settings-section">
           <h4 class="settings-section-title">Patch / Repack</h4>
-          <p class="settings-hint muted">The <strong>Patch</strong> tab runs apk-patch in WASM. The <strong>Device</strong> tab uses WebUSB ADB (webadb-rs) to list apps, inject/attach arm_goauld, and speak the goauld protocol over <code>localabstract:goauld-agent-&lt;pid&gt;</code>. Host <code>aapt2</code> is unavailable in-browser. APKM/XAPK base APK only for Patch rebuild.</p>
+          <p class="settings-hint muted">The <strong>Patch</strong> tab runs apk-patch in WASM. The <strong>Device</strong> tab uses WebUSB ADB (webadb-rs) to list apps, inject/attach arm_goauld, and speak the goauld protocol over <code>localabstract:goauld-agent-&lt;pid&gt;</code>. The <strong>Mirror</strong> tab (droidmirror) shows the phone screen on a canvas and sends touch and keys back; connect the phone first, and detach the goauld agent before starting — one ADB stream at a time. Host <code>aapt2</code> is unavailable in-browser. APKM/XAPK base APK only for Patch rebuild.</p>
         </section>
         <section class="settings-section">
           <h4 class="settings-section-title">Contact</h4>

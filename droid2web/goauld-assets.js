@@ -10,7 +10,7 @@ let metaPromise = null;
 
 async function fetchBytes(name) {
   const url = new URL(name, BASE).href;
-  const res = await fetch(url);
+  const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error(`Failed to load ${name}: HTTP ${res.status}`);
   return new Uint8Array(await res.arrayBuffer());
 }

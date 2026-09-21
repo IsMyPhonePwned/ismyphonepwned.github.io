@@ -1,6 +1,12 @@
 /**
  * WebUSB ADB (webadb-rs) helper for the Device tab (goauld attach / inject).
- * Single-flight op queue — the transport is not concurrency-safe.
+ * One USB link, many ADB streams. A single reader demuxes packets so the
+ * mirror and the goauld agent can stay open together. Calls are still
+ * serialized: the transport is not concurrency-safe.
+ *
+ * Never call into the Wasm `Adb` object outside `enqueue` while a stream op
+ * may be in flight — wasm-bindgen's `&mut self` lock yields
+ * "recursive use of an object". Connection state is cached in JS.
  */
 
 const ADB_USB_FILTERS = Object.freeze([
@@ -16,20 +22,23 @@ let wasmReady = null;
 let AdbCtor = null;
 let adb = null;
 let deviceInfo = null;
+/** Cached so UI never calls `adb.is_connected()` during a stream op. */
+let phoneConnected = false;
 
 let queue = Promise.resolve();
-/** When a goauld abstract stream is open, shell/sync ops wait. */
-let streamExclusive = false;
+/** @type {Map<number, { queue: Uint8Array[], waiters: Array<(b: Uint8Array) => void>, closed: boolean }>} */
+const lanes = new Map();
+let pumpQueued = false;
+/** Control / shell / push waiting — demux yields so they are not starved by video. */
+let controlWaiters = 0;
 /** True while any long device op is running (syscall trace, inject, …). */
 let deviceBusy = false;
 
-/** Clear exclusive lock (e.g. after a failed attach that never got a session.close). */
-export function releaseStreamExclusive() {
-  streamExclusive = false;
-}
+/** Kept so older callers can clear a stuck session. Streams are no longer exclusive. */
+export function releaseStreamExclusive() {}
 
 export function isStreamExclusive() {
-  return streamExclusive;
+  return false;
 }
 
 export function isDeviceBusy() {
@@ -44,13 +53,8 @@ export function setDeviceBusy(on) {
  * Serialize ALL Adb WASM calls. The transport is not concurrency-safe:
  * overlapping `&mut self` across `.await` → "recursive use of an object".
  */
-function enqueue(label, fn, { ignoreExclusive = false } = {}) {
+function enqueue(label, fn) {
   const run = queue.then(async () => {
-    if (!ignoreExclusive) {
-      while (streamExclusive) {
-        await new Promise((r) => setTimeout(r, 40));
-      }
-    }
     try {
       return await fn();
     } catch (e) {
@@ -63,12 +67,88 @@ function enqueue(label, fn, { ignoreExclusive = false } = {}) {
   return run;
 }
 
+function deliverLane(id, bytes, closed) {
+  const lane = lanes.get(id);
+  if (!lane) return;
+  if (closed) {
+    lane.closed = true;
+    const waiter = lane.waiters.shift();
+    if (waiter) waiter(new Uint8Array(0));
+    else lane.queue.push(new Uint8Array(0));
+    return;
+  }
+  const data = bytes instanceof Uint8Array ? new Uint8Array(bytes) : new Uint8Array(bytes || []);
+  const waiter = lane.waiters.shift();
+  if (waiter) waiter(data);
+  else lane.queue.push(data);
+}
+
+function failLanes(err) {
+  for (const lane of lanes.values()) {
+    lane.closed = true;
+    while (lane.waiters.length) lane.waiters.shift()(new Uint8Array(0));
+  }
+  if (err) console.error('adb demux', err);
+}
+
+function hasLaneWaiters() {
+  for (const lane of lanes.values()) {
+    if (lane.waiters.length) return true;
+  }
+  return false;
+}
+
+/**
+ * One in-flight USB read, shared by every open stream.
+ * Only runs while someone is blocked on `transport.read()` — never leave a
+ * read pending on a quiet goauld socket or ScriptLoad / shell stall forever.
+ */
+function ensurePump() {
+  if (
+    pumpQueued ||
+    !hasLaneWaiters() ||
+    controlWaiters > 0 ||
+    typeof adb?.readAny !== 'function'
+  ) {
+    return;
+  }
+  pumpQueued = true;
+  enqueue('adb read', async () => {
+    if (!hasLaneWaiters() || controlWaiters > 0) return null;
+    return adb.readAny();
+  }).then(
+    (ev) => {
+      pumpQueued = false;
+      if (ev) {
+        const id = Number(ev.id);
+        if (ev.closed) deliverLane(id, null, true);
+        else deliverLane(id, ev.data, false);
+      }
+      queueMicrotask(() => ensurePump());
+    },
+    (err) => {
+      pumpQueued = false;
+      failLanes(err);
+    },
+  );
+}
+
+/** Serialize shell/push/write ahead of the demux reader. */
+function enqueueControl(label, fn) {
+  controlWaiters++;
+  return enqueue(label, fn).finally(() => {
+    controlWaiters--;
+    queueMicrotask(() => ensurePump());
+  });
+}
+
 export function isWebUsbAvailable() {
   return typeof navigator !== 'undefined' && !!navigator.usb;
 }
 
 export function isAdbConnected() {
-  return !!(adb && adb.is_connected && adb.is_connected());
+  // Do NOT call into Wasm here — it races with in-flight stream ops.
+  return phoneConnected && !!adb;
 }
 
 export function getDeviceInfo() {
@@ -99,28 +179,41 @@ export async function connectAdb() {
   await ensureWasm();
   const usbDevice = await requestAdbUsbDevice();
   if (!adb) adb = new AdbCtor();
-  if (adb.is_connected()) {
-    try {
-      await adb.disconnect();
-    } catch {
-      /* ignore */
+  await enqueue('connect', async () => {
+    if (phoneConnected) {
+      try {
+        await adb.disconnect();
+      } catch {
+        /* ignore */
+      }
+      phoneConnected = false;
     }
-  }
-  deviceInfo = await adb.connectWithUsbDevice(usbDevice);
+    deviceInfo = await adb.connectWithUsbDevice(usbDevice);
+    phoneConnected = true;
+  });
   return deviceInfo;
 }
 
 export async function disconnectAdb() {
   if (!adb) return;
   await enqueue('disconnect', async () => {
-    await adb.disconnect();
-    deviceInfo = null;
+    try {
+      await adb.disconnect();
+    } finally {
+      phoneConnected = false;
+      deviceInfo = null;
+      for (const lane of lanes.values()) {
+        lane.closed = true;
+        while (lane.waiters.length) lane.waiters.shift()(new Uint8Array(0));
+      }
+      lanes.clear();
+    }
   });
 }
 
 export async function adbShell(cmd, timeoutMs = 60000) {
   if (!isAdbConnected()) throw new Error('ADB not connected');
-  return enqueue(`shell ${cmd}`, async () => {
+  return enqueueControl(`shell ${cmd}`, async () => {
     if (typeof adb.shell_with_timeout === 'function') {
       return adb.shell_with_timeout(cmd, timeoutMs);
     }
@@ -131,7 +224,7 @@ export async function adbShell(cmd, timeoutMs = 60000) {
 export async function adbPush(bytes, remotePath) {
   if (!isAdbConnected()) throw new Error('ADB not connected');
   const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-  return enqueue(`push ${remotePath}`, () => adb.push_file(data, remotePath));
+  return enqueueControl(`push ${remotePath}`, () => adb.push_file(data, remotePath));
 }
 
 export async function adbLogcat(lines = 200) {
@@ -203,20 +296,20 @@ export async function deployGoauld(injectorBytes, agentBytes) {
 
 /**
  * Ptrace-inject agent into a running package (needs root / su on device).
+ * @param {{ packageName?: string, pid?: number|string, stageIntoApp?: boolean, via?: string }} [opts]
  */
-export async function injectGoauldLive({ packageName, pid, stageIntoApp = false } = {}) {
+export async function injectGoauldLive({ packageName, pid, stageIntoApp = false, via = '' } = {}) {
   let remote = `${DEVICE_INJECTOR} inject --so ${DEVICE_AGENT}`;
-  if (pid != null && pid !== '') {
-    remote += ` --pid ${Number(pid)}`;
-  } else if (packageName) {
-    remote += ` --package ${String(packageName).trim()}`;
-  } else {
+  const pkg = String(packageName || '').trim();
+  if (pkg) remote += ` --package ${pkg}`;
+  if (pid != null && pid !== '') remote += ` --pid ${Number(pid)}`;
+  if (!pkg && (pid == null || pid === '')) {
     throw new Error('pass packageName or pid');
   }
   if (stageIntoApp) remote += ' --stage-into-app';
 
-  const { out, via } = await runAsRoot(remote, 120000);
-  return `via ${via}\n${out}`;
+  const { out, via: used } = await runAsRoot(remote, 120000, { via });
+  return `via ${used}\n${out}`;
 }
 
 export async function listPackages(filter = '') {
@@ -231,42 +324,41 @@ export async function listPackages(filter = '') {
 }
 
 /**
- * List installed packages with best-effort PIDs from `ps -A`.
- * @returns {Promise<Array<{ package: string, pid: number|null, running: boolean }>>}
+ * List installed packages with process rows from `ps`.
+ * @returns {Promise<Array<{ package: string, pid: number|null, running: boolean, user: string, processes: Array<{pid:number, ppid:number|null, user:string, state:string, name:string}> }>>}
  */
 export async function listAppsWithPids({ thirdPartyOnly = false } = {}) {
   const cmd = thirdPartyOnly ? 'pm list packages -3' : 'pm list packages';
   // Sequential — never Promise.all two Adb ops (aliasing / take races).
   const pkgOut = await adbShell(cmd, 90000);
-  const psOut = await adbShell('ps -A', 60000).catch(() => '');
+  let psOut = await adbShell('ps -A -o PID,PPID,USER,S,NAME', 60000).catch(() => '');
+  if (!/\bPID\b/.test(psOut) || !/\bNAME\b/.test(psOut)) {
+    psOut = await adbShell('ps -A', 60000).catch(() => '');
+  }
   const packages = String(pkgOut || '')
     .split('\n')
     .map((l) => l.replace(/^package:/, '').trim())
     .filter(Boolean);
-
-  /** @type {Map<string, number>} */
-  const pidByName = new Map();
-  for (const line of String(psOut || '').split('\n')) {
-    const parts = line.trim().split(/\s+/);
-    if (parts.length < 2) continue;
-    // Formats vary: USER PID … NAME  OR  PID … NAME
-    let pid = null;
-    let name = parts[parts.length - 1];
-    if (/^\d+$/.test(parts[1])) {
-      pid = Number(parts[1]);
-    } else if (/^\d+$/.test(parts[0])) {
-      pid = Number(parts[0]);
-    }
-    if (pid && name && name !== 'NAME' && name !== 'CMD') {
-      // Prefer first pid for a name (main process).
-      if (!pidByName.has(name)) pidByName.set(name, pid);
-    }
-  }
+  const procs = parsePs(psOut);
 
   return packages
     .map((pkg) => {
-      const pid = pidByName.get(pkg) ?? null;
-      return { package: pkg, pid, running: pid != null };
+      const processes = procs
+        .filter((p) => p.name === pkg || p.name.startsWith(`${pkg}:`))
+        .sort((a, b) => {
+          const am = a.name === pkg ? 0 : 1;
+          const bm = b.name === pkg ? 0 : 1;
+          if (am !== bm) return am - bm;
+          return a.pid - b.pid;
+        });
+      const main = processes[0] || null;
+      return {
+        package: pkg,
+        pid: main ? main.pid : null,
+        user: main?.user || '',
+        running: !!main,
+        processes,
+      };
     })
     .sort((a, b) => {
       if (a.running !== b.running) return a.running ? -1 : 1;
@@ -274,45 +366,199 @@ export async function listAppsWithPids({ thirdPartyOnly = false } = {}) {
     });
 }
 
+function parsePs(text) {
+  const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean);
+  if (!lines.length) return [];
+  const header = lines[0].split(/\s+/);
+  const col = (name) => header.findIndex((h) => h.toUpperCase() === name);
+  const iPid = col('PID');
+  const iName = col('NAME');
+  if (iPid >= 0 && iName >= 0) {
+    const iPpid = col('PPID');
+    const iUser = col('USER');
+    const iState = header.findIndex((h) => h === 'S' || h.toUpperCase() === 'STAT');
+    const rows = [];
+    for (const line of lines.slice(1)) {
+      const parts = line.split(/\s+/);
+      const pid = Number(parts[iPid]);
+      if (!pid) continue;
+      rows.push({
+        pid,
+        ppid: iPpid >= 0 ? Number(parts[iPpid]) || null : null,
+        user: iUser >= 0 ? parts[iUser] || '' : '',
+        state: iState >= 0 ? parts[iState] || '' : '',
+        name: parts.slice(iName).join(' '),
+      });
+    }
+    return rows;
+  }
+  const rows = [];
+  for (const line of lines) {
+    const parts = line.trim().split(/\s+/);
+    if (parts.length < 2) continue;
+    let pid = null;
+    const name = parts[parts.length - 1];
+    if (/^\d+$/.test(parts[1])) pid = Number(parts[1]);
+    else if (/^\d+$/.test(parts[0])) pid = Number(parts[0]);
+    if (pid && name && name !== 'NAME' && name !== 'CMD') {
+      rows.push({ pid, ppid: null, user: /^\d+$/.test(parts[0]) ? '' : parts[0], state: '', name });
+    }
+  }
+  return rows;
+}
+
 /**
- * Open `localabstract:<name>` for goauld protocol I/O.
- * Holds exclusive ADB access until `close()` — do not shell/push while attached.
+ * Open `localabstract:<name>` (goauld agent or droidmirror).
+ * Several of these can stay open: one reader fans packets out by stream id.
  *
  * @returns {Promise<{ id: number, socket: string, write: Function, read: Function, close: Function }>}
  */
-export async function openAbstractStream(socketName) {
+async function openAdbStream(destination) {
   if (!isAdbConnected()) throw new Error('ADB not connected');
   if (typeof adb.openStream !== 'function') {
     throw new Error('webadb openStream missing — rebuild pkg-webadb');
   }
-  const name = String(socketName || '').replace(/^localabstract:/, '');
-  const dest = `localabstract:${name}`;
-
+  const dest = String(destination || '');
   const id = await enqueue(`open ${dest}`, () => adb.openStream(dest));
-  streamExclusive = true;
+  if (typeof adb.readAny !== 'function') {
+    try { await enqueue(`close ${dest}`, () => adb.closeStream(id)); } catch { /* ignore */ }
+    throw new Error('webadb readAny missing — hard-reload so the new pkg-webadb is loaded');
+  }
+  const lane = { queue: [], waiters: [], closed: false };
+  lanes.set(id, lane);
+  // Do not start the demux pump here — only when someone calls read().
 
   const transport = {
     id,
-    socket: name,
+    socket: dest,
     async write(data) {
       const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
-      // ignoreExclusive: stream owns the Adb slot while attached.
-      return enqueue(`write ${dest}`, () => adb.writeStream(id, bytes), { ignoreExclusive: true });
+      return enqueueControl(`write ${dest}`, () => adb.writeStream(id, bytes));
     },
     async read() {
-      return enqueue(`read ${dest}`, () => adb.readStream(id), { ignoreExclusive: true });
+      if (lane.queue.length) return lane.queue.shift();
+      if (lane.closed) return new Uint8Array(0);
+      return new Promise((resolve) => {
+        lane.waiters.push(resolve);
+        ensurePump();
+      });
     },
     async close() {
+      lane.closed = true;
+      lanes.delete(id);
+      while (lane.waiters.length) lane.waiters.shift()(new Uint8Array(0));
       try {
-        await enqueue(`close ${dest}`, () => adb.closeStream(id), { ignoreExclusive: true });
+        await enqueueControl(`close ${dest}`, () => adb.closeStream(id));
       } catch {
         /* ignore */
       } finally {
-        streamExclusive = false;
+        queueMicrotask(() => ensurePump());
       }
     },
   };
   return transport;
+}
+
+/**
+ * Open `localabstract:<name>` (goauld agent or droidmirror).
+ * Several of these can stay open: one reader fans packets out by stream id.
+ */
+export async function openAbstractStream(socketName) {
+  const name = String(socketName || '').replace(/^localabstract:/, '');
+  return openAdbStream(`localabstract:${name}`);
+}
+
+function appendBytes(buf, chunk) {
+  const next = new Uint8Array(buf.length + chunk.length);
+  next.set(buf);
+  next.set(chunk, buf.length);
+  return next;
+}
+
+/**
+ * ADB shell v2 frames: [u8 id][u32 le len][payload].
+ * id 1 = stdout, 2 = stderr, 3 = exit. A PTY makes injector stdout line-buffered.
+ * Returns null if this buffer is not v2 (caller should treat bytes as raw text).
+ */
+function pullShellV2(state, chunk, onText) {
+  state.buf = appendBytes(state.buf, chunk);
+  if (!state.mode) {
+    if (state.buf.length < 5) return;
+    const id = state.buf[0];
+    const len = new DataView(state.buf.buffer, state.buf.byteOffset, state.buf.byteLength).getUint32(1, true);
+    state.mode = id <= 5 && len <= 1024 * 1024 ? 'v2' : 'raw';
+    if (state.mode === 'raw') {
+      onText(new TextDecoder().decode(state.buf));
+      state.buf = new Uint8Array(0);
+      return;
+    }
+  }
+  if (state.mode === 'raw') {
+    onText(new TextDecoder().decode(chunk));
+    state.buf = new Uint8Array(0);
+    return;
+  }
+  const decoder = new TextDecoder();
+  while (state.buf.length >= 5) {
+    const id = state.buf[0];
+    const len = new DataView(state.buf.buffer, state.buf.byteOffset, state.buf.byteLength).getUint32(1, true);
+    if (len > 1024 * 1024 || state.buf.length < 5 + len) break;
+    const payload = state.buf.subarray(5, 5 + len);
+    state.buf = state.buf.slice(5 + len);
+    if ((id === 1 || id === 2) && payload.length) onText(decoder.decode(payload, { stream: true }));
+  }
+}
+
+/**
+ * Run a shell command and invoke `onLine` as soon as each line arrives.
+ * Uses `shell,v2` (a PTY) so a block-buffered injector still flushes each line.
+ */
+export async function shellStream(command, { onLine, timeoutMs = 120000 } = {}) {
+  const cmd = String(command || '');
+  let transport;
+  try {
+    transport = await openAdbStream(`shell,v2:${cmd}`);
+  } catch {
+    transport = await openAdbStream(`shell:${cmd}`);
+  }
+  const decoder = new TextDecoder();
+  let pending = '';
+  let out = '';
+  const v2 = { buf: new Uint8Array(0), mode: '' };
+  const emit = (text) => {
+    if (!text) return;
+    out += text;
+    if (!onLine) return;
+    pending += text;
+    const lines = pending.split(/\r?\n/);
+    pending = lines.pop() ?? '';
+    for (const line of lines) onLine(line);
+  };
+  const timer = setTimeout(() => {
+    transport.close().catch(() => {});
+  }, timeoutMs);
+  try {
+    while (true) {
+      const chunk = await transport.read();
+      if (!chunk || !chunk.length) break;
+      pullShellV2(v2, chunk, emit);
+    }
+    const tail = decoder.decode();
+    if (tail) emit(tail);
+    if (onLine && pending) onLine(pending);
+  } finally {
+    clearTimeout(timer);
+    try { await transport.close(); } catch { /* already closed */ }
+  }
+  return out;
+}
+
+function wrapRoot(via, inner) {
+  const quoted = shSingleQuote(inner);
+  if (via === 'su -c') return `su -c ${quoted}`;
+  if (via === 'su root') return `su root sh -c ${quoted}`;
+  if (via === 'id' || via === 'sh' || via === 'sh (no su)') return `sh -c ${quoted}`;
+  return `su 0 sh -c ${quoted}`;
 }
 
 /**
@@ -414,23 +660,47 @@ export async function probeRoot() {
  * Wraps with `timeout` when available so a hung ptrace cannot block forever
  * (webadb shell_with_timeout only checks between reads).
  *
+ * @param {string} command
+ * @param {number} [timeoutMs]
+ * @param {{ via?: string }} [opts] Prefer a known-good root path from probeRoot().
  * @returns {Promise<{ out: string, via: string }>}
  */
-export async function runAsRoot(command, timeoutMs = 60000) {
+export async function runAsRoot(command, timeoutMs = 60000, opts = {}) {
   const cmd = String(command || '').trim();
   if (!cmd) throw new Error('empty command');
   const budgetSec = Math.max(5, Math.ceil(timeoutMs / 1000) + 5);
   const inner = `${cmd}; echo __GOAULD_EXIT:$?`;
-  const quoted = shSingleQuote(inner);
+  const preferred = String(opts.via || '').trim();
 
-  const variants = [
-    { via: 'su 0 + timeout', cmd: `timeout ${budgetSec} su 0 sh -c ${quoted}` },
-    { via: 'su 0', cmd: `su 0 sh -c ${quoted}` },
-    { via: 'su -c + timeout', cmd: `timeout ${budgetSec} su -c ${quoted}` },
-    { via: 'su -c', cmd: `su -c ${quoted}` },
-    { via: 'timeout (no su)', cmd: `timeout ${budgetSec} sh -c ${quoted}` },
-    { via: 'sh (no su)', cmd: `sh -c ${quoted}` },
-  ];
+  /** Prefer the probeRoot path first so a later failure (e.g. staging EACCES)
+   * is not mistaken for "su failed" and retried without root. */
+  const variants = [];
+  const push = (via, shellCmd) => {
+    if (!variants.some((v) => v.via === via)) variants.push({ via, cmd: shellCmd });
+  };
+  if (preferred === 'su 0' || preferred === 'su 0 + timeout' || !preferred) {
+    push('su 0 + timeout', `timeout ${budgetSec} su 0 sh -c ${shSingleQuote(inner)}`);
+    push('su 0', wrapRoot('su 0', inner));
+  }
+  if (preferred === 'su -c' || preferred === 'su -c + timeout' || !preferred) {
+    push('su -c + timeout', `timeout ${budgetSec} su -c ${shSingleQuote(inner)}`);
+    push('su -c', wrapRoot('su -c', inner));
+  }
+  if (preferred === 'su root' || !preferred) {
+    push('su root', wrapRoot('su root', inner));
+  }
+  if (preferred === 'id' || preferred === 'sh' || preferred === 'sh (no su)') {
+    push(preferred || 'sh (no su)', wrapRoot('sh', inner));
+  } else if (!preferred) {
+    push('timeout (no su)', `timeout ${budgetSec} sh -c ${shSingleQuote(inner)}`);
+    push('sh (no su)', wrapRoot('sh', inner));
+  }
+
+  // If prefer was set, still keep a single fallback of the same family only —
+  // never silently drop to non-root after a successful probeRoot.
+  if (preferred && !/^(id|sh)/.test(preferred)) {
+    // already pushed preferred family above
+  }
 
   let lastOut = '';
   let lastVia = '';
@@ -443,12 +713,13 @@ export async function runAsRoot(command, timeoutMs = 60000) {
       if (/timeout:\s*not found|No such file.*timeout/i.test(out) && /timeout/.test(v.via)) {
         continue;
       }
-      // Skip failed su / no-root attempts when we still have other variants.
+      // Only skip when *su itself* failed to elevate — not when the command
+      // printed Permission denied (e.g. staging into the app mount namespace).
       if (
-        /(?:^|\n)\s*(?:\/system\/bin\/)?su:\s|Permission denied|not allowed to su|Can't get|No su|su: invalid/i.test(
+        /(?:^|\n)\s*(?:\/system\/bin\/)?su:\s|not allowed to su|Can't get|No su|su: invalid|su: failed/i.test(
           out,
         ) &&
-        v.via !== 'sh (no su)'
+        !/__GOAULD_EXIT:/.test(out)
       ) {
         continue;
       }
@@ -473,6 +744,8 @@ export async function traceSyscalls({
   maxEvents = 400,
   filter = '',
   enterOnly = false,
+  via = 'su 0',
+  onLine = null,
 } = {}) {
   const secs = Number(durationSecs) || 15;
   const max = Number(maxEvents) || 400;
@@ -493,8 +766,12 @@ export async function traceSyscalls({
   if (filt) remote += ` --filter ${filt}`;
   if (enterOnly) remote += ' --enter-only';
 
-  const timeoutMs = Math.max(90000, secs * 1000 + 45000);
-  const { out, via } = await runAsRoot(remote, timeoutMs);
+  const inner = `${remote}; echo __GOAULD_EXIT:$?`;
+  const cmd = wrapRoot(via, inner);
+  const out = await shellStream(cmd, {
+    timeoutMs: Math.max(30000, secs * 1000 + 25000),
+    onLine,
+  });
   return { out, via, command: remote };
 }
 

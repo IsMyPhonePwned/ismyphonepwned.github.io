@@ -1,3 +1,4 @@
 pkg=0.1.6
-git=b17a9d3
-built=2026-09-04T11:35:13Z
+git=59dcb42
+built=2026-09-21T09:53:10Z
+js=quickjs

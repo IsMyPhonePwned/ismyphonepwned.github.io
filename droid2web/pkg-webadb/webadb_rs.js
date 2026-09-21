@@ -23,41 +23,6 @@ export class Adb {
         return ret >>> 0;
     }
     /**
-     * Run on-device `backup:` and stream an Android Backup (`.ab`) archive.
-     *
-     * `args` is the flag/package list after `backup:` (same as platform `adb backup` without `-f`),
-     * e.g. `"-nocompress com.android.providers.telephony"` or `"-nocompress -apk -all"`.
-     * Confirm the backup UI on the phone. Can take a long time; result is buffered in memory.
-     *
-     * For large / full-device backups prefer [`Self::backup_stream`], which writes chunks via a
-     * JS callback (e.g. File System Access API) without holding the whole archive in WASM.
-     * @param {string} args
-     * @returns {Promise<Uint8Array>}
-     */
-    backup(args) {
-        const ptr0 = passStringToWasm0(args, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.adb_backup(this.__wbg_ptr, ptr0, len0);
-        return ret;
-    }
-    /**
-     * Stream `backup:` chunks to a JS callback instead of buffering the whole `.ab` in WASM.
-     *
-     * `on_chunk` is called with each `Uint8Array` payload. It may return a `Promise` (awaited)
-     * — use that to `writable.write(chunk)` via the File System Access API.
-     *
-     * Returns total bytes streamed. Confirm the backup UI on the phone.
-     * @param {string} args
-     * @param {Function} on_chunk
-     * @returns {Promise<number>}
-     */
-    backupStream(args, on_chunk) {
-        const ptr0 = passStringToWasm0(args, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.adb_backupStream(this.__wbg_ptr, ptr0, len0, on_chunk);
-        return ret;
-    }
-    /**
      * Generate a full bugreport (can take several minutes)
      * Returns the bugreport as a Uint8Array
      * @returns {Promise<Uint8Array>}
@@ -229,10 +194,7 @@ export class Adb {
     }
     /**
      * Open an arbitrary ADB stream (e.g. `localabstract:goauld-agent-1234`).
-     * Returns the local stream id used with `write_stream` / `read_stream` / `close_stream`.
-     *
-     * Takes the inner client across `.await` so wasm-bindgen does not hold `&mut self`
-     * for the whole USB wait (avoids "recursive use of an object" on overlapping calls).
+     * Returns the local stream id used with `writeStream` / `readStream` / `closeStream`.
      * @param {string} destination
      * @returns {Promise<number>}
      */
@@ -266,6 +228,15 @@ export class Adb {
         const ptr1 = passStringToWasm0(remote_path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len1 = WASM_VECTOR_LEN;
         const ret = wasm.adb_push_file(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+        return ret;
+    }
+    /**
+     * Next payload on any open stream: `{ id, data }` or `{ id, closed: true }`.
+     * One reader demuxes the mirror and the goauld agent on the same USB link.
+     * @returns {Promise<any>}
+     */
+    readAny() {
+        const ret = wasm.adb_readAny(this.__wbg_ptr);
         return ret;
     }
     /**
@@ -584,16 +555,6 @@ function __wbg_get_imports() {
         __wbg_info_d2226ca1698bd09c: function(arg0) {
             console.info(arg0);
         },
-        __wbg_instanceof_Promise_09012cfa9708520a: function(arg0) {
-            let result;
-            try {
-                result = arg0 instanceof Promise;
-            } catch (_) {
-                result = false;
-            }
-            const ret = result;
-            return ret;
-        },
         __wbg_instanceof_UsbAlternateInterface_6ad6a252b017916f: function(arg0) {
             let result;
             try {
@@ -849,6 +810,10 @@ function __wbg_get_imports() {
         __wbg_set_78ea6a19f4818587: function(arg0, arg1, arg2) {
             arg0[arg1 >>> 0] = arg2;
         },
+        __wbg_set_a0e911be3da02782: function() { return handleError(function (arg0, arg1, arg2) {
+            const ret = Reflect.set(arg0, arg1, arg2);
+            return ret;
+        }, arguments); },
         __wbg_set_class_code_163e2d9117ad7bd0: function(arg0, arg1) {
             arg0.classCode = arg1;
         },
@@ -932,7 +897,7 @@ function __wbg_get_imports() {
             console.warn(arg0);
         },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 289, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 279, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm_bindgen_a35db4cae15c1709___convert__closures_____invoke___wasm_bindgen_a35db4cae15c1709___JsValue__core_9b3796e30d99ddb7___result__Result_____wasm_bindgen_a35db4cae15c1709___JsError___true_);
             return ret;
         },

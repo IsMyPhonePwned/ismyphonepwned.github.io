@@ -143,10 +143,9 @@ export function decodeMessage(type, payload) {
  *
  * transport: { write(Uint8Array), read()→Uint8Array, close() }
  *
- * IMPORTANT: WebADB's `Adb` methods take `&mut self`. A background read loop plus a
- * concurrent write (ScriptLoad / RpcCall) triggers:
- *   "recursive use of an object detected which would lead to unsafe aliasing in rust"
- * So all I/O is strictly serialized: never read and write overlapping.
+ * Do not keep a permanent USB read after Hello — that deadlocks ScriptLoad and
+ * mirror push on a quiet agent (read waits forever; writes sit behind it).
+ * All I/O is serialized: write, then read replies when needed.
  */
 export class GoauldSession {
   constructor(transport, { onMessage, onClose } = {}) {
@@ -204,8 +203,7 @@ export class GoauldSession {
   }
 
   /**
-   * Read frames after ScriptLoad. Stops after the first Send/Log by default so we
-   * do not block forever waiting for a second frame on a quiet stream.
+   * Read frames after ScriptLoad. Stops after the first Send/Log by default.
    */
   async drain({ maxMessages = 8, untilAgentMessage = true } = {}) {
     return this.#exclusive(async () => {
@@ -233,8 +231,7 @@ export class GoauldSession {
   }
 
   /**
-   * Collect up to maxMessages frames (for live traces). Does not stop on first Send.
-   * Blocks until each frame arrives — use while exercising the app.
+   * Collect up to maxMessages frames (for live traces).
    */
   async collectMessages({ maxMessages = 40, onFrame = null } = {}) {
     return this.#exclusive(async () => {
@@ -257,7 +254,7 @@ export class GoauldSession {
   }
 
   /**
-   * Write RpcCall, then read until matching RpcReply (Send/Log → onMessage).
+   * Write RpcCall, then read until matching RpcReply.
    */
   async rpcCall(fnName, args = [], { scriptId = 1, timeoutMs = 30000 } = {}) {
     const callId = this.nextCallId++;

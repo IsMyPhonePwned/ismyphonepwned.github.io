@@ -1698,7 +1698,8 @@
 }
 .hub-card {
     display: block;
-    padding: 1.5rem;
+    position: relative;
+    padding: 1.35rem 1.35rem 3.5rem;
     border: 1px solid var(--border);
     border-radius: 10px;
     background: var(--bg-card);
@@ -1710,6 +1711,17 @@
 .hub-card:hover {
     border-color: var(--accent);
     box-shadow: 0 4px 12px var(--shadow);
+}
+.hub-card-logo {
+    position: absolute;
+    right: 0.85rem;
+    bottom: 0.7rem;
+    width: 5.25rem;
+    height: 2.7rem;
+    object-fit: contain;
+    object-position: right center;
+    pointer-events: none;
+    background: none;
 }
 .hub-card h2 {
     margin: 0 0 0.5rem 0;
@@ -3915,4 +3927,166 @@
 .bmc-footer img {
     width: auto !important;
     max-width: 100%;
+}
+
+/* fakeMustache anonymizer */
+.hub-anon {
+    margin: 0 0 2rem;
+    padding: 1.25rem 1.35rem 1.4rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-card);
+    box-shadow: 0 2px 4px var(--shadow);
+}
+.hub-anon.is-restore .hub-anon-policy,
+.hub-anon.is-restore #fm-policy,
+.hub-anon.is-restore #fm-explain {
+    opacity: 0.45;
+    pointer-events: none;
+}
+.hub-anon h2 {
+    margin: 0 0 0.35rem;
+    font-size: 1.25rem;
+}
+.hub-anon-lead,
+.hub-anon-note {
+    margin: 0.35rem 0 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+.hub-anon-warn {
+    margin: 0.75rem 0 0;
+    padding: 0.65rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--error, #c2410c) 35%, var(--border));
+    background: color-mix(in srgb, var(--error, #c2410c) 8%, var(--bg-secondary));
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    line-height: 1.45;
+}
+.hub-anon-drop {
+    margin-top: 1rem;
+    padding: 1.1rem 1rem;
+    border: 1.5px dashed color-mix(in srgb, var(--border) 70%, var(--accent) 30%);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--accent) 4%, var(--bg-card));
+    text-align: center;
+    cursor: pointer;
+}
+.hub-anon-drop.is-drag {
+    border-color: var(--accent);
+}
+.hub-anon-file {
+    margin: 0.45rem 0 0;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+.hub-anon-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem 1rem;
+    margin: 1rem 0 0.75rem;
+}
+.hub-anon-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    font-weight: 650;
+    color: var(--text-secondary);
+}
+.hub-anon-field input,
+.hub-anon-field select,
+.hub-anon-entity select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.45rem 0.6rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 450;
+}
+.hub-anon-field input[type="file"] {
+    display: block;
+    padding: 0.4rem 0;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+}
+.hub-anon-checks {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 0.45rem 1rem;
+    margin: 0.25rem 0 0.85rem;
+}
+.hub-anon-checks label {
+    display: flex;
+    gap: 0.45rem;
+    align-items: flex-start;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+.hub-anon-groups {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.35rem 0 0.85rem;
+}
+.hub-anon-groups button,
+.hub-anon-actions button {
+    width: auto !important;
+    min-width: 0;
+    padding: 0.45rem 0.85rem !important;
+    font-size: 0.8rem !important;
+}
+.hub-anon-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.85rem;
+}
+.hub-anon details {
+    margin-top: 0.35rem;
+}
+.hub-anon summary {
+    cursor: pointer;
+    font-weight: 650;
+    color: var(--accent);
+}
+.fm-entities {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 0.5rem 0.75rem;
+    margin-top: 0.75rem;
+}
+.hub-anon-entity {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 650;
+    color: var(--text-secondary);
+}
+.hub-anon-status {
+    margin: 0.75rem 0 0;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+.hub-anon-out {
+    margin: 0.75rem 0 0;
+    max-height: 18rem;
+    overflow: auto;
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.72rem;
+    white-space: pre-wrap;
+    word-break: break-word;
 }

@@ -3,6 +3,7 @@
  */
 
 import * as adbDevice from './adb-device.js';
+import { startMirror, NAV } from './mirror-ui.js';
 import {
   getBundledGoauldMeta,
   resolveGoauldBinary,
@@ -17,6 +18,8 @@ import { highlightGoauldScript } from './goauld-script-highlight.js';
 import { SCRIPT_PRESETS, presetById, buildJavaApiTraceScript } from './goauld-script-presets.js';
 
 let session = null;
+let apiTraceArmed = false;
+let noisyApiNoted = false;
 let selectedPkg = null;
 let apps = [];
 let filterText = '';
@@ -32,13 +35,14 @@ let consoleLineCount = 0;
 let phoneLinked = false;
 let phoneLabel = '';
 let attachInFlight = false;
+let consoleFilter = 'all';
 
 function $(id) {
   return document.getElementById(id);
 }
 
 function isPhoneConnected() {
-  return phoneLinked || adbDevice.isAdbConnected();
+  return phoneLinked;
 }
 
 function isAttached() {
@@ -105,7 +109,7 @@ function logKindFromClass(cls) {
   if (!cls) return 'info';
   if (cls.includes('device-log-ok')) return 'ok';
   if (cls.includes('device-log-err')) return 'err';
-  if (cls.includes('device-log-muted')) return 'sys';
+  if (cls.includes('device-log-muted') || cls.includes('device-log-sys')) return 'sys';
   if (cls.includes('device-log-msg')) return 'msg';
   if (cls.includes('device-log-api')) return 'api';
   return 'info';
@@ -124,14 +128,37 @@ function updateConsoleChrome() {
   const has = consoleLineCount > 0;
   if (empty) empty.hidden = has;
   if (consoleEl) consoleEl.hidden = !has;
+  applyConsoleFilter();
+}
+
+function applyConsoleFilter() {
+  const el = $('device-console');
+  if (!el) return;
+  el.querySelectorAll('.device-log').forEach((row) => {
+    const kind = row.dataset.kind || 'info';
+    const show =
+      consoleFilter === 'all' ||
+      kind === consoleFilter ||
+      (consoleFilter === 'sys' && (kind === 'sys' || kind === 'syscall'));
+    row.hidden = !show;
+  });
+}
+
+function appendConsoleRow(row) {
+  const el = $('device-console');
+  if (!el) return;
+  el.appendChild(row);
+  consoleLineCount += 1;
+  updateConsoleChrome();
+  const follow = $('device-console-autoscroll')?.checked !== false;
+  if (follow) el.scrollTop = el.scrollHeight;
 }
 
 function log(msg, cls = '') {
-  const el = $('device-console');
-  if (!el) return;
   const kind = logKindFromClass(cls);
   const row = document.createElement('div');
   row.className = `device-log device-log-${kind}${cls ? ` ${cls}` : ''}`;
+  row.dataset.kind = kind === 'info' && cls.includes('device-log-sys') ? 'sys' : kind;
 
   const time = document.createElement('span');
   time.className = 'device-log-time';
@@ -143,15 +170,90 @@ function log(msg, cls = '') {
 
   const body = document.createElement('span');
   body.className = 'device-log-body';
-  body.textContent = typeof msg === 'string' ? msg : JSON.stringify(msg);
+  body.textContent = typeof msg === 'string' ? msg : JSON.stringify(msg, null, 2);
 
   row.append(time, tag, body);
-  el.appendChild(row);
-  consoleLineCount += 1;
-  updateConsoleChrome();
+  appendConsoleRow(row);
+}
 
-  const follow = $('device-console-autoscroll')?.checked !== false;
-  if (follow) el.scrollTop = el.scrollHeight;
+/**
+ * Structured trace / protocol event with full fields visible.
+ * @param {{ kind?: string, tag?: string, title: string, subtitle?: string, fields?: Record<string, unknown>, raw?: unknown }} ev
+ */
+function logEvent(ev) {
+  const kind = ev.kind || 'msg';
+  const row = document.createElement('div');
+  row.className = `device-log device-log-event device-log-${kind}`;
+  row.dataset.kind = kind;
+
+  const time = document.createElement('span');
+  time.className = 'device-log-time';
+  time.textContent = formatLogTime();
+
+  const tag = document.createElement('span');
+  tag.className = 'device-log-tag';
+  tag.textContent = ev.tag || kind;
+
+  const body = document.createElement('div');
+  body.className = 'device-log-body device-evt';
+
+  const head = document.createElement('div');
+  head.className = 'device-evt-head';
+  const title = document.createElement('div');
+  title.className = 'device-evt-title';
+  title.textContent = ev.title;
+  head.appendChild(title);
+  if (ev.subtitle) {
+    const sub = document.createElement('div');
+    sub.className = 'device-evt-sub';
+    sub.textContent = ev.subtitle;
+    head.appendChild(sub);
+  }
+  body.appendChild(head);
+
+  const fields = ev.fields && typeof ev.fields === 'object' ? ev.fields : null;
+  const raw = ev.raw;
+  const hasDetails = (fields && Object.keys(fields).length) || raw != null;
+  if (hasDetails) {
+    const details = document.createElement('details');
+    details.className = 'device-evt-details';
+    details.open = kind === 'api' || kind === 'syscall';
+    const summary = document.createElement('summary');
+    summary.textContent = 'Full event';
+    details.appendChild(summary);
+
+    if (fields) {
+      const dl = document.createElement('dl');
+      dl.className = 'device-evt-fields';
+      for (const [key, value] of Object.entries(fields)) {
+        if (value == null || value === '') continue;
+        const dt = document.createElement('dt');
+        dt.textContent = key;
+        const dd = document.createElement('dd');
+        if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+          dd.textContent = String(value);
+        } else {
+          const pre = document.createElement('pre');
+          pre.className = 'device-evt-json';
+          pre.textContent = JSON.stringify(value, null, 2);
+          dd.appendChild(pre);
+        }
+        dl.append(dt, dd);
+      }
+      details.appendChild(dl);
+    }
+
+    if (raw != null) {
+      const pre = document.createElement('pre');
+      pre.className = 'device-evt-json';
+      pre.textContent = typeof raw === 'string' ? raw : JSON.stringify(raw, null, 2);
+      details.appendChild(pre);
+    }
+    body.appendChild(details);
+  }
+
+  row.append(time, tag, body);
+  appendConsoleRow(row);
 }
 
 function clearConsole() {
@@ -159,6 +261,309 @@ function clearConsole() {
   if (el) el.replaceChildren();
   consoleLineCount = 0;
   updateConsoleChrome();
+}
+
+function prettyJson(value, maxLen = 4000) {
+  try {
+    const s = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+    if (s.length > maxLen) return `${s.slice(0, maxLen)}\n… (${s.length} chars)`;
+    return s;
+  } catch {
+    return String(value);
+  }
+}
+
+function splitPrettyMethod(method) {
+  let head = String(method || '');
+  const paren = head.indexOf('(');
+  const sig = paren >= 0 ? head.slice(paren) : '';
+  head = paren >= 0 ? head.slice(0, paren) : head;
+  // ART PrettyMethod sometimes prefixes a return type: "void android.foo.Bar.baz"
+  const typed = head.match(/^(?:void|boolean|byte|char|short|int|long|float|double)\s+(.+)$/);
+  if (typed) head = typed[1];
+  const dot = head.lastIndexOf('.');
+  if (dot > 0) {
+    return { className: head.slice(0, dot), methodName: head.slice(dot + 1), signature: sig, full: method };
+  }
+  return { className: '', methodName: head, signature: sig, full: method };
+}
+
+function formatApiArg(a) {
+  if (a == null) return 'null';
+  if (typeof a === 'object' && ('t' in a || 'v' in a)) {
+    const v = a.v;
+    const shown = typeof v === 'string' && v.length > 64 ? `${v.slice(0, 64)}…` : String(v);
+    return a.t != null && a.t !== '' ? `${a.t}=${shown}` : shown;
+  }
+  if (typeof a === 'string') return JSON.stringify(a.length > 80 ? `${a.slice(0, 80)}…` : a);
+  if (typeof a === 'object') return JSON.stringify(a);
+  return String(a);
+}
+
+function isNoisyAndroidApi(method) {
+  const parts = splitPrettyMethod(method || '');
+  const cn = parts.className || '';
+  const noise = [
+    'android.view.DisplayEventReceiver',
+    'android.view.Choreographer',
+    'android.view.ViewRootImpl',
+    'android.view.ThreadedRenderer',
+    'android.view.SurfaceControl',
+    'android.view.InsetsController',
+    'android.view.SyncRtSurfaceTransactionApplier',
+    'android.graphics.HardwareRenderer',
+    'android.animation.AnimationHandler',
+  ];
+  return noise.some((p) => cn === p || cn.startsWith(`${p}$`) || cn.startsWith(`${p}.`));
+}
+
+function formatAndroidApiEvent(parsed) {
+  const parts = splitPrettyMethod(parsed.method || '');
+  const n = parsed.n != null ? `#${parsed.n}` : '';
+  const title = parts.className
+    ? `${parts.className}.${parts.methodName}${parts.signature || ''}`
+    : parts.full || 'android-api';
+  const argsPreview = parsed.args != null
+    ? (Array.isArray(parsed.args)
+      ? parsed.args.map(formatApiArg).join(', ')
+      : prettyJson(parsed.args, 200))
+    : '';
+  return {
+    kind: 'api',
+    tag: 'api',
+    title: `${n ? n + ' ' : ''}${title}`,
+    subtitle: [
+      parsed.static ? 'static' : 'instance',
+      parsed.shorty ? `shorty ${parsed.shorty}` : '',
+      argsPreview ? `(${argsPreview})` : '',
+    ].filter(Boolean).join(' · '),
+    fields: {
+      n: parsed.n,
+      method: parsed.method,
+      class: parts.className || undefined,
+      name: parts.methodName || undefined,
+      signature: parts.signature || undefined,
+      shorty: parsed.shorty,
+      static: parsed.static,
+      args: parsed.args,
+    },
+    raw: parsed,
+  };
+}
+
+/** Parse goauld-injector syscall trace stdout into structured rows. */
+function logSyscallLine(line) {
+  const trimmed = String(line || '').trim();
+  if (!trimmed) return 'blank';
+  if (/^OK traced\b/i.test(trimmed) || /^tracing syscalls\b/i.test(trimmed)) {
+    log(trimmed, 'device-log-ok');
+    return 'status';
+  }
+  if (/__GOAULD_EXIT:/.test(trimmed)) {
+    log(trimmed, 'device-log-muted');
+    return 'status';
+  }
+  // [tid] name(args) = 0xret   OR   [tid] → name(args)
+  const re = /^\[(\d+)\]\s+(→\s+)?([a-zA-Z0-9_]+)\((.*)\)(?:\s*=\s*(.+))?$/;
+  const m = trimmed.match(re);
+  if (m) {
+    const tid = m[1];
+    const enter = !!m[2];
+    const name = m[3];
+    const args = m[4];
+    const ret = m[5];
+    logEvent({
+      kind: 'syscall',
+      tag: enter ? 'enter' : 'sys',
+      title: enter ? `→ ${name}(${args})` : `${name}(${args}) = ${ret}`,
+      subtitle: `tid ${tid}${ret != null ? ` · ret ${ret}` : ''}`,
+      fields: {
+        tid: Number(tid),
+        name,
+        direction: enter ? 'enter' : 'exit',
+        args,
+        retval: ret,
+        line: trimmed,
+      },
+    });
+    return 'event';
+  }
+  log(trimmed, /error|denied|fail/i.test(trimmed) ? 'device-log-err' : 'device-log-muted');
+  return 'other';
+}
+
+function logSyscallTraceOutput(out) {
+  const text = String(out || '');
+  const lines = text.split(/\r?\n/);
+  let events = 0;
+  let other = 0;
+  for (const line of lines) {
+    const kind = logSyscallLine(line);
+    if (kind === 'event') events += 1;
+    else if (kind === 'other') other += 1;
+  }
+  if (events) {
+    log(`Parsed ${events} syscall event(s)${other ? ` · ${other} other line(s)` : ''}`, 'device-log-ok');
+  } else if (!text.trim()) {
+    log('(empty syscall trace output)', 'device-log-muted');
+  }
+}
+
+/** payload_json is often JSON-encoded twice (`send()` stringifies a string). */
+function unwrapJson(value) {
+  let v = value;
+  for (let i = 0; i < 4 && typeof v === 'string'; i++) {
+    const t = v.trim();
+    if (!t) return v;
+    const c = t[0];
+    if (c !== '{' && c !== '[' && c !== '"') return v;
+    try {
+      v = JSON.parse(t);
+    } catch {
+      return v;
+    }
+  }
+  return v;
+}
+
+function usablePackage(name) {
+  const s = String(name || '').trim();
+  if (!s || /^(unknown|agent|\?)$/i.test(s)) return '';
+  return s;
+}
+
+/** `0.1.6 (git:59dcb42 built:…) js=quickjs` → `0.1.6 · 59dcb42 · quickjs`. */
+function shortGoauldVersion(version) {
+  const v = String(version || '').trim();
+  if (!v) return '';
+  const pkg = (v.match(/(\d+\.\d+\.\d+)/) || [])[1] || v.split(/\s+/)[0];
+  const git = (v.match(/git:([0-9a-f]+)/i) || [])[1];
+  const js = (v.match(/\bjs=([^\s)]+)/) || [])[1];
+  return [pkg, git ? git.slice(0, 7) : '', js].filter(Boolean).join(' · ');
+}
+
+function attachedPackage(hello, fallback) {
+  return usablePackage(session?.displayPackage) || usablePackage(hello?.package) || usablePackage(fallback);
+}
+
+function attachedGoauldVersion(hello) {
+  return shortGoauldVersion(hello?.version || session?.goauldVersion || '');
+}
+
+function formatMsg(msg) {
+  if (msg.type === MsgType.Hello) {
+    return {
+      mode: 'text',
+      text: `Hello pid=${msg.json?.pid} pkg=${msg.json?.package} abi=${msg.json?.abi} sdk=${msg.json?.sdk_int} goauld=${msg.json?.version || '?'}`,
+      cls: 'device-log-ok',
+    };
+  }
+  if (msg.type === MsgType.Log) {
+    return {
+      mode: 'text',
+      text: `Log[${msg.json?.level || '?'}] ${msg.json?.message || ''}`,
+      cls: 'device-log-muted',
+    };
+  }
+  if (msg.type === MsgType.Send) {
+    const payload = msg.payload_json;
+    const parsed = unwrapJson(payload);
+    if (parsed && typeof parsed === 'object') {
+        if (parsed.type === 'api-trace-stopped') {
+          return { mode: 'skip' };
+        }
+        if (parsed.type === 'android-api') {
+          if (isNoisyAndroidApi(parsed.method)) {
+            if (!noisyApiNoted) {
+              noisyApiNoted = true;
+              log(
+                'Hiding frame-pump calls (vsync, Choreographer, ViewRootImpl). They are not the API your script called.',
+                'device-log-muted',
+              );
+            }
+            return { mode: 'skip' };
+          }
+          return { mode: 'event', event: formatAndroidApiEvent(parsed) };
+        }
+        if (parsed.type === 'android-api-err' || parsed.type === 'java-api-err') {
+          return {
+            mode: 'event',
+            event: {
+              kind: 'err',
+              tag: 'err',
+              title: parsed.type,
+              subtitle: parsed.err || '',
+              fields: parsed,
+              raw: parsed,
+            },
+          };
+        }
+        if (parsed.type === 'trace-java-ready') {
+          return {
+            mode: 'event',
+            event: {
+              kind: 'ok',
+              tag: 'ok',
+              title: 'Java / Android API trace ready',
+              subtitle: `hook=${parsed.art_invoke_hook} · filter=${parsed.filter}`,
+              fields: parsed,
+              raw: parsed,
+            },
+          };
+        }
+        return {
+          mode: 'event',
+          event: {
+            kind: 'msg',
+            tag: parsed.type || 'send',
+            title: parsed.type || 'Send',
+            subtitle: Object.keys(parsed)
+              .filter((k) => k !== 'type')
+              .slice(0, 4)
+              .map((k) => `${k}=${typeof parsed[k] === 'object' ? '…' : parsed[k]}`)
+              .join(' · '),
+            fields: parsed,
+            raw: parsed,
+          },
+        };
+    }
+    return {
+      mode: 'text',
+      text: `Send script=${msg.script_id} ${typeof payload === 'string' ? payload : JSON.stringify(payload)}`,
+      cls: 'device-log-msg',
+    };
+  }
+  if (msg.type === MsgType.RpcReply) {
+    const err = msg.json?.error;
+    return {
+      mode: 'event',
+      event: {
+        kind: err ? 'err' : 'ok',
+        tag: 'rpc',
+        title: err ? `RpcReply error · id=${msg.json?.call_id}` : `RpcReply id=${msg.json?.call_id}`,
+        subtitle: err || String(msg.json?.result_json ?? ''),
+        fields: msg.json,
+        raw: msg.json,
+      },
+    };
+  }
+  return {
+    mode: 'event',
+    event: {
+      kind: 'msg',
+      tag: msg.name || 'msg',
+      title: String(msg.name || 'message'),
+      fields: msg.json ?? msg,
+      raw: msg.json ?? msg,
+    },
+  };
+}
+
+function logProtocolMsg(msg) {
+  const formatted = formatMsg(msg);
+  if (!formatted || formatted.mode === 'skip') return;
+  if (formatted.mode === 'event') logEvent(formatted.event);
+  else log(formatted.text, formatted.cls);
 }
 
 function syncWorkflowUi() {
@@ -189,7 +594,12 @@ function syncWorkflowUi() {
   if (gate) {
     if (attached) {
       const hello = session?.hello;
-      gate.textContent = `Live · pid ${hello?.pid || pid || '?'}`;
+      const name = attachedPackage(hello, pkg);
+      const ver = attachedGoauldVersion(hello);
+      const bits = ['Live', name, `pid ${hello?.pid || pid || '?'}`];
+      if (ver) bits.push(`goauld ${ver}`);
+      gate.textContent = bits.filter(Boolean).join(' · ');
+      gate.title = hello?.version || session?.goauldVersion || '';
       gate.className = 'device-gate-hint is-live';
     } else if (connected) {
       gate.textContent = 'Attach agent first';
@@ -204,7 +614,12 @@ function syncWorkflowUi() {
   if (chip) {
     if (attached) {
       const hello = session?.hello;
-      chip.textContent = `Attached · ${hello?.package || pkg || 'agent'} · pid ${hello?.pid || pid || '?'}`;
+      const name = attachedPackage(hello, pkg) || 'app';
+      const ver = attachedGoauldVersion(hello);
+      const bits = ['Attached', name, `pid ${hello?.pid || pid || '?'}`];
+      if (ver) bits.push(`goauld ${ver}`);
+      chip.textContent = bits.join(' · ');
+      chip.title = hello?.version || session?.goauldVersion || 'goauld version not reported by this agent';
       chip.className = 'device-attach-chip is-on';
     } else if (connected && hasTarget) {
       chip.textContent = 'Ready to attach (embedded agent)';
@@ -314,80 +729,50 @@ function setConnectedUi(on) {
   syncWorkflowUi();
 }
 
-function formatMsg(msg) {
-  if (msg.type === MsgType.Hello) {
-    return {
-      text: `Hello pid=${msg.json?.pid} pkg=${msg.json?.package} abi=${msg.json?.abi} sdk=${msg.json?.sdk_int}`,
-      cls: 'device-log-ok',
-    };
-  }
-  if (msg.type === MsgType.Log) {
-    return {
-      text: `Log[${msg.json?.level || '?'}] ${msg.json?.message || ''}`,
-      cls: 'device-log-muted',
-    };
-  }
-  if (msg.type === MsgType.Send) {
-    let payload = msg.payload_json;
-    try {
-      const parsed = typeof payload === 'string' ? JSON.parse(payload) : payload;
-      if (parsed && typeof parsed === 'object') {
-        if (parsed.type === 'android-api') {
-          const cls = parsed.class || parsed.declaring_class || '';
-          const method = parsed.method || parsed.name || '';
-          const args = parsed.args != null ? JSON.stringify(parsed.args) : '';
-          return {
-            text: `${cls}.${method}${args ? ' ' + args : ''}`,
-            cls: 'device-log-api',
-          };
-        }
-        if (parsed.type === 'android-api-err' || parsed.type === 'java-api-err') {
-          return {
-            text: `${parsed.type}: ${parsed.err || JSON.stringify(parsed)}`,
-            cls: 'device-log-err',
-          };
-        }
-        if (parsed.type === 'trace-java-ready') {
-          return {
-            text: `trace-java-ready hook=${parsed.art_invoke_hook} filter=${parsed.filter}`,
-            cls: 'device-log-ok',
-          };
-        }
-        return { text: `Send ${JSON.stringify(parsed)}`, cls: 'device-log-msg' };
-      }
-    } catch {
-      /* plain string payload */
-    }
-    return { text: `Send script=${msg.script_id} ${payload}`, cls: 'device-log-msg' };
-  }
-  if (msg.type === MsgType.RpcReply) {
-    const err = msg.json?.error;
-    return {
-      text: `RpcReply id=${msg.json?.call_id} ${err ? 'ERR ' + err : msg.json?.result_json}`,
-      cls: err ? 'device-log-err' : 'device-log-ok',
-    };
-  }
-  return { text: `${msg.name}: ${JSON.stringify(msg.json ?? msg)}`, cls: 'device-log-msg' };
-}
-
-function logProtocolMsg(msg) {
-  const formatted = formatMsg(msg);
-  log(formatted.text, formatted.cls);
-}
-
 function renderApps() {
   const ul = $('device-app-list');
   if (!ul) return;
+  const count = $('device-app-count');
+  const runningN = apps.filter((a) => a.running).length;
+  if (count) count.textContent = apps.length ? `${runningN} running` : '';
   ul.innerHTML = '';
   const f = filterText.toLowerCase();
-  const list = apps.filter((a) => !f || a.package.toLowerCase().includes(f));
+  const list = apps.filter((a) => !f || a.package.toLowerCase().includes(f) || (a.user || '').toLowerCase().includes(f));
+  const typedPid = ($('device-pid')?.value || '').trim();
+  const selected = currentPackage();
   for (const app of list) {
     const li = document.createElement('li');
-    li.className = 'device-app-item' + (selectedPkg === app.package ? ' active' : '');
+    const procs = Array.isArray(app.processes) ? app.processes : [];
+    const liveIds = new Set(procs.map((p) => String(p.pid)));
+    if (app.pid != null) liveIds.add(String(app.pid));
+    const stale = selected === app.package && typedPid && !liveIds.has(typedPid);
+    li.className = 'device-app-item'
+      + (selected === app.package ? ' active' : '')
+      + (app.running ? ' is-running' : '');
     li.dataset.package = app.package;
+    const procLabel = procs.length > 1 ? `${procs.length} processes` : (procs.length === 1 ? '1 process' : '');
+    const metaBits = [];
+    if (app.running) {
+      if (app.user) metaBits.push(app.user);
+      metaBits.push(`pid ${app.pid}`);
+      if (procLabel) metaBits.push(procLabel);
+    }
+    const showProcs = selected === app.package && procs.length > 0;
+    const procHtml = showProcs
+      ? `<ul class="device-app-procs">${procs.map((p) => {
+          const role = p.name === app.package ? 'main' : p.name.slice(app.package.length);
+          const bits = [p.user, p.state && p.state !== '?' ? p.state : '', p.ppid ? `ppid ${p.ppid}` : ''].filter(Boolean);
+          return `<li><span class="device-app-pid">${p.pid}</span> ${escapeHtml(role)} <span class="muted">${escapeHtml(bits.join(' · '))}</span></li>`;
+        }).join('')}</ul>`
+      : '';
     li.innerHTML =
-      `<span class="device-app-name">${escapeHtml(app.package)}</span>` +
-      `<span class="device-app-meta">${app.running ? `pid ${app.pid}` : 'stopped'}</span>`;
+      `<div class="device-app-row">` +
+        `<span class="device-app-name">${escapeHtml(app.package)}</span>` +
+        `<span class="device-app-badge${app.running ? ' is-on' : ''}">${app.running ? 'running' : 'stopped'}</span>` +
+      `</div>` +
+      `<span class="device-app-meta">${app.running ? escapeHtml(metaBits.join(' · ')) : 'not running'}</span>` +
+      (stale ? `<span class="device-app-stale">pid field ${escapeHtml(typedPid)} is not this app</span>` : '') +
+      procHtml;
     li.addEventListener('click', () => {
       selectedPkg = app.package;
       const pkgInput = $('device-package');
@@ -396,7 +781,11 @@ function renderApps() {
       if (pidInput) pidInput.value = app.pid != null ? String(app.pid) : '';
       renderApps();
       syncWorkflowUi();
-      setStatus(`${app.package}${app.pid != null ? ` · pid ${app.pid}` : ''}`, 'ok');
+      const extra = app.user ? ` · ${app.user}` : '';
+      setStatus(
+        app.pid != null ? `${app.package} · pid ${app.pid}${extra}` : `${app.package} · stopped`,
+        'ok',
+      );
     });
     ul.appendChild(li);
   }
@@ -489,6 +878,33 @@ function currentPid() {
   return app?.pid ?? null;
 }
 
+/** pidof the package and replace a stale PID field. Returns the live pid or null. */
+async function refreshLivePid(pkg, { quiet = false } = {}) {
+  if (!pkg) return currentPid();
+  const liveRaw = await adbDevice.pidOf(pkg).catch(() => null);
+  const live = liveRaw ? Number(String(liveRaw).trim()) : null;
+  const typed = currentPid();
+  const input = $('device-pid');
+  if (live && typed && typed !== live) {
+    log(`pid ${typed} is not running — ${pkg} is pid ${live}`, 'device-log-muted');
+  } else if (!live && typed && !quiet) {
+    log(`pid ${typed} is not running — ${pkg} has no process`, 'device-log-muted');
+  }
+  if (input) input.value = live ? String(live) : '';
+  const app = apps.find((a) => a.package === pkg);
+  if (app) {
+    app.running = !!live;
+    app.pid = live;
+    if (!live) app.processes = [];
+    else if (!Array.isArray(app.processes) || !app.processes.some((p) => p.pid === live)) {
+      const rest = (app.processes || []).filter((p) => p.name !== pkg);
+      app.processes = [{ pid: live, ppid: null, user: app.user || '', state: '', name: pkg }, ...rest];
+    }
+  }
+  renderApps();
+  return live;
+}
+
 async function launchSelected() {
   const pkg = currentPackage();
   if (!pkg) return setStatus('Select a package');
@@ -524,8 +940,14 @@ function applyPackageHint({ force = false } = {}) {
   if (pkg && apps.length) {
     const app = apps.find((a) => a.package === pkg);
     const pidInput = $('device-pid');
-    if (app?.pid != null && pidInput && (!pidInput.value.trim() || force)) {
-      pidInput.value = String(app.pid);
+    if (app && pidInput) {
+      const typed = pidInput.value.trim();
+      const liveIds = new Set((app.processes || []).map((p) => String(p.pid)));
+      if (app.pid != null) liveIds.add(String(app.pid));
+      const stale = typed && !liveIds.has(typed);
+      if (!typed || stale || force) {
+        pidInput.value = app.pid != null ? String(app.pid) : '';
+      }
     }
   }
   return hint || currentPackage();
@@ -594,6 +1016,12 @@ function scheduleScriptHighlight() {
   });
 }
 
+function clipInjectLog(out) {
+  const text = String(out || '');
+  if (text.length <= 8000) return text;
+  return `${text.slice(0, 2500)}\n…\n${text.slice(-5000)}`;
+}
+
 async function injectSelected() {
   const pkg = currentPackage();
   if (!pkg) return setStatus('Select a package', 'err');
@@ -631,12 +1059,46 @@ async function injectSelected() {
     setStatus('Deploying binaries…', 'busy');
     await adbDevice.deployGoauld(inj, agent);
     setStatus(`Injecting into ${pkg}…`, 'busy');
-    const out = await adbDevice.injectGoauldLive({ packageName: pkg, stageIntoApp: true });
-    log(String(out || '').slice(0, 8000), 'device-log-ok');
-    await new Promise((r) => setTimeout(r, 1200));
+    const live = await refreshLivePid(pkg);
+    if (!live) {
+      setStatus(`${pkg} is not running — Launch it, then Live inject`, 'err');
+      return;
+    }
+    const out = String(
+      await adbDevice.injectGoauldLive({
+        packageName: pkg,
+        pid: live,
+        stageIntoApp: true,
+        via: root.via,
+      }) || '',
+    );
+    const exit = out.match(/__GOAULD_EXIT:(\d+)/);
+    const failed =
+      (exit && exit[1] !== '0') ||
+      /goauld-injector error:|dlopen failed/i.test(out) ||
+      !/OK handle=/i.test(out);
+    log(clipInjectLog(out), failed ? 'device-log-err' : 'device-log-ok');
+    if (failed) {
+      setStatus('Live inject failed — the agent was not loaded', 'err');
+      log(
+        'Attach only works after inject prints OK handle=. A stock app does not listen until that succeeds. If the pid changed, the process restarted without the agent.',
+        'device-log-muted',
+      );
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 800));
+    const injectedPid = out.match(/into pid=(\d+)/);
     const pid = await adbDevice.pidOf(pkg);
     if (pid) {
       if ($('device-pid')) $('device-pid').value = pid;
+      if (injectedPid && injectedPid[1] !== String(pid)) {
+        log(
+          `Injected pid ${injectedPid[1]}, but ${pkg} is pid ${pid}. The agent was loaded into a different process (often the su shell) and is gone.`,
+          'device-log-err',
+        );
+        setStatus('Process restarted after inject — agent is gone', 'err');
+        return;
+      }
       log(`pid ${pid} — agent should be listening; click Attach agent`, 'device-log-ok');
     }
     await refreshApps();
@@ -658,6 +1120,7 @@ async function detachSession() {
   }
   const s = session;
   session = null;
+  apiTraceArmed = false;
   try {
     await s.close();
   } catch {
@@ -696,26 +1159,21 @@ async function attachSelected() {
       return false;
     }
 
-    if (pkg && doLaunch) {
-      const running = pid || (await adbDevice.pidOf(pkg).catch(() => null));
-      if (!running) {
+    if (pkg) {
+      pid = await refreshLivePid(pkg, { quiet: true });
+      if (!pid && doLaunch) {
         setStatus(`Launching ${pkg}…`, 'busy');
         log(`Launch ${pkg} (embedded agent needs a live process)`, 'device-log-muted');
         await adbDevice.launchPackage(pkg);
         setStatus(`Waiting for pid of ${pkg}…`, 'busy');
         pid = await adbDevice.waitForPackagePid(pkg, { timeoutMs: 20000 });
-      } else {
-        pid = running;
-        log(`Process already running (pid ${running})`, 'device-log-muted');
-      }
-      if ($('device-pid')) $('device-pid').value = String(pid);
-    } else if (!pid && pkg) {
-      pid = await adbDevice.pidOf(pkg);
-      if (!pid) {
+        if ($('device-pid') && pid) $('device-pid').value = String(pid);
+      } else if (!pid) {
         setStatus('App not running — enable “Launch before attach” or start it manually', 'err');
         return false;
+      } else {
+        log(`Process already running (pid ${pid})`, 'device-log-muted');
       }
-      if ($('device-pid')) $('device-pid').value = String(pid);
     }
 
     pid = Number(pid);
@@ -742,6 +1200,7 @@ async function attachSelected() {
       onClose: (err) => {
         log(`Session closed: ${err?.message || err || 'ok'}`, 'device-log-muted');
         session = null;
+        apiTraceArmed = false;
         adbDevice.releaseStreamExclusive?.();
         syncWorkflowUi();
         setStatus('Agent session closed — Attach again', 'ok');
@@ -753,10 +1212,31 @@ async function attachSelected() {
     if (!session._alive) session._alive = true;
     if (!session.hello && hello) session.hello = hello;
 
-    if (hello?.package && $('device-package') && !$('device-package').value.trim()) {
-      $('device-package').value = hello.package;
+    const named = usablePackage(hello?.package) || usablePackage(pkg);
+    session.displayPackage = named;
+    session.goauldVersion = String(hello?.version || '').trim();
+    if (!session.displayPackage && pid) {
+      try {
+        const raw = String(await adbDevice.adbShell(`tr '\\0' ' ' < /proc/${pid}/cmdline`) || '');
+        session.displayPackage = usablePackage(raw.trim().split(/\s+/)[0]);
+      } catch {
+        /* package stays blank; chip omits "unknown" */
+      }
     }
-    setStatus(`Agent attached · pid ${hello?.pid || pid} · ${hello?.package || pkg || ''}`, 'attached');
+    if (!session.goauldVersion) {
+      const meta = await getBundledGoauldMeta().catch(() => null);
+      session.goauldVersion = String(meta?.version || '').trim();
+    }
+    const pkgInput = $('device-package');
+    if (session.displayPackage && pkgInput && !usablePackage(pkgInput.value)) {
+      pkgInput.value = session.displayPackage;
+    }
+    const verShort = shortGoauldVersion(session.goauldVersion);
+    const who = session.displayPackage || `pid ${hello?.pid || pid}`;
+    setStatus(
+      `Agent attached · ${who} · pid ${hello?.pid || pid}${verShort ? ` · goauld ${verShort}` : ''}`,
+      'attached',
+    );
     log('Agent Hello OK — ScriptLoad / Rpc / Post unlocked', 'device-log-ok');
     return true;
   } catch (e) {
@@ -782,14 +1262,13 @@ async function attachSelected() {
       );
     } else if (/not listening|open |CLOSED|connection refused/i.test(msg)) {
       log(
-        `${pkg || 'This app'} has no goauld agent listening. Use Live inject (root) below, or install an APK that already embeds the agent and then Attach.`,
+        `${pkg || 'This app'} has no goauld agent listening. Use Live inject (root) on the Target card, or install an APK that already embeds the agent and then Attach.`,
         'device-log-muted',
       );
-      const adv = document.querySelector('.device-advanced');
-      if (adv) adv.open = true;
+      document.getElementById('device-live-inject')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     } else {
       log(
-        'Embedded-agent apps: install/launch → Attach. Apps without the agent (e.g. Calculator): expand Live inject → Deploy + inject (root).',
+        'Embedded-agent apps: install/launch → Attach. Apps without the agent (e.g. Calculator): Live inject on the Target card, then Attach.',
         'device-log-muted',
       );
     }
@@ -815,7 +1294,7 @@ async function traceJavaApi() {
     if (!ok || !session) return;
     syncWorkflowUi();
 
-    const source = buildJavaApiTraceScript({ filter, maxEvents: 0 });
+    const source = buildJavaApiTraceScript({ filter, maxEvents });
     selectPreset('java-api', { force: true });
     const editor = $('device-script');
     if (editor) {
@@ -826,6 +1305,8 @@ async function traceJavaApi() {
     setStatus('Installing Java/Android API tracer…');
     log(`ScriptLoad java-api trace (collect ${maxEvents} events) — use the app on the phone`, 'device-log-ok');
     await session.loadScript(source);
+    apiTraceArmed = true;
+    noisyApiNoted = false;
     await new Promise((r) => setTimeout(r, 300));
     await session.drain({ maxMessages: 4, untilAgentMessage: true });
 
@@ -837,7 +1318,7 @@ async function traceJavaApi() {
         if (msg.type === MsgType.Send) {
           try {
             const p = JSON.parse(msg.payload_json);
-            if (p?.type === 'android-api') apiCount++;
+            if (p?.type === 'android-api' && !isNoisyAndroidApi(p.method)) apiCount++;
           } catch {
             /* ignore */
           }
@@ -876,14 +1357,14 @@ async function traceSyscallsBtn() {
       await detachSession();
       syncWorkflowUi();
     }
+    if (pkg) {
+      pid = await refreshLivePid(pkg, { quiet: true });
+    }
     if (!pid && pkg) {
-      pid = await adbDevice.pidOf(pkg);
-      if (!pid) {
-        log(`Launching ${pkg}…`);
-        await adbDevice.launchPackage(pkg);
-        pid = await adbDevice.waitForPackagePid(pkg);
-      }
-      if ($('device-pid')) $('device-pid').value = String(pid);
+      log(`Launching ${pkg}…`);
+      await adbDevice.launchPackage(pkg);
+      pid = await adbDevice.waitForPackagePid(pkg);
+      if ($('device-pid') && pid) $('device-pid').value = String(pid);
     }
     if (!pid && !pkg) {
       setStatus('Select a package or PID for syscall trace', 'err');
@@ -908,13 +1389,14 @@ async function traceSyscallsBtn() {
     await adbDevice.deployInjectorOnly(inj);
     log(`Pushed injector (${inj.byteLength || inj.length || '?'} bytes)`, 'device-log-muted');
 
-    setStatus(`Tracing syscalls ${secs}s · max ${maxEvents} — use the app…`, 'busy');
+    setStatus(`Tracing syscalls ${secs}s · max ${maxEvents} — events show as they happen`, 'busy');
     log(
       `trace-syscalls --pid ${pid || '(pkg)'} --duration-secs ${secs} --max-events ${maxEvents}` +
         (filter ? ` --filter ${filter}` : '') +
         (enterOnly ? ' --enter-only' : ''),
       'device-log-ok',
     );
+    let events = 0;
     const result = await adbDevice.traceSyscalls({
       pid: pid || undefined,
       packageName: pid ? undefined : pkg,
@@ -922,11 +1404,25 @@ async function traceSyscallsBtn() {
       maxEvents,
       filter,
       enterOnly,
+      via: root.via,
+      onLine(line) {
+        const kind = logSyscallLine(line);
+        if (kind === 'event') {
+          events += 1;
+          if (events === 1 || events % 20 === 0) {
+            setStatus(`Tracing… ${events} syscall event(s)`, 'busy');
+          }
+        }
+      },
     });
     const out = typeof result === 'string' ? result : result?.out || '';
     const via = typeof result === 'object' ? result.via : '';
     if (via) log(`ran via ${via}`, 'device-log-muted');
-    log(String(out || '(empty)').slice(0, 12000));
+    if (events) {
+      log(`${events} syscall event(s)`, 'device-log-ok');
+    } else if (!String(out).trim()) {
+      log('(empty syscall trace output)', 'device-log-muted');
+    }
 
     const exitMatch = String(out).match(/__GOAULD_EXIT:(\d+)/);
     const exitCode = exitMatch ? Number(exitMatch[1]) : null;
@@ -953,6 +1449,22 @@ async function traceSyscallsBtn() {
   }
 }
 
+async function pauseApiTrace() {
+  if (!session || !apiTraceArmed) return;
+  apiTraceArmed = false;
+  const stop = `try { __goauld.stopAndroidApiTrace(); } catch (e) {}
+try { __goauld.traceAndroidApi('__off.', 1); } catch (e) {}
+send({ type: 'api-trace-stopped' });
+`;
+  try {
+    await session.loadScript(stop);
+    await session.drain({ maxMessages: 8, untilAgentMessage: true });
+  } catch {
+    /* older agents ignore the stop; the __off. filter still drops further events */
+  }
+  log('API trace stopped — later scripts are not mixed with framework calls', 'device-log-muted');
+}
+
 async function loadScript() {
   if (!isAttached()) {
     setStatus('Attach agent first — then ScriptLoad', 'err');
@@ -961,6 +1473,7 @@ async function loadScript() {
   }
   const source = $('device-script')?.value || DEFAULT_SMOKE_SCRIPT;
   try {
+    if (apiTraceArmed && !source.includes('traceAndroidApi')) await pauseApiTrace();
     const id = await session.loadScript(source);
     log(`ScriptLoad id=${id} (${activePresetId})`, 'device-log-ok');
     setStatus(`Script ${id} loaded`, 'attached');
@@ -974,11 +1487,9 @@ async function loadScript() {
 async function loadScriptAndWatch() {
   const id = await loadScript();
   if (id == null) return;
-  // Give the agent a moment to run (toast / send) before reading — avoids overlapping ADB ops.
   log('Waiting briefly for agent Send…', 'device-log-muted');
   await new Promise((r) => setTimeout(r, 400));
   try {
-    // Read a handful of frames (toast sends one). Stops after maxMessages.
     const msgs = await session.drain({ maxMessages: 8 });
     if (!msgs.length) log('(no frames yet — try again or check logcat)', 'device-log-muted');
     else setStatus(`Received ${msgs.length} frame(s)`);
@@ -1143,6 +1654,15 @@ export function initDeviceUi(ctx = {}) {
   $('device-rpc-call')?.addEventListener('click', () => rpcCall());
   $('device-post')?.addEventListener('click', () => postMsg());
   $('device-console-clear')?.addEventListener('click', () => clearConsole());
+  $('device-console-filters')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-filter]');
+    if (!btn) return;
+    consoleFilter = btn.getAttribute('data-filter') || 'all';
+    $('device-console-filters')
+      ?.querySelectorAll('.device-console-filter')
+      .forEach((b) => b.classList.toggle('is-on', b === btn));
+    applyConsoleFilter();
+  });
 
   if (!adbDevice.isWebUsbAvailable()) {
     setStatus('WebUSB unavailable', 'err');
@@ -1150,10 +1670,81 @@ export function initDeviceUi(ctx = {}) {
   }
   updateConsoleChrome();
   syncWorkflowUi();
+  bindDeviceMirror();
 }
 
 export function openDeviceTab(switchTab) {
   switchTab?.('device-tab');
+  syncDeviceContents(true);
   applyPackageHint({ force: false });
   syncWorkflowUi();
+}
+
+let deviceMirror = null;
+
+export function syncDeviceContents(on) {
+  const panel = document.getElementById('left-panel');
+  const slot = document.getElementById('device-mirror-slot');
+  const title = document.getElementById('left-panel-title');
+  if (!panel || !slot) return;
+  panel.classList.toggle('is-device-screen', !!on);
+  slot.hidden = !on;
+  if (!title) return;
+  if (on) {
+    if (title.dataset.prevTitle == null) title.dataset.prevTitle = title.textContent || 'Contents';
+    title.textContent = 'Screen';
+    if (panel.getBoundingClientRect().width < 320) panel.style.width = '360px';
+  } else if (title.dataset.prevTitle != null) {
+    title.textContent = title.dataset.prevTitle;
+    delete title.dataset.prevTitle;
+  }
+}
+
+function bindDeviceMirror() {
+  const startBtn = document.getElementById('device-mirror-start');
+  const canvas = document.getElementById('device-mirror-canvas');
+  const stopBtn = document.getElementById('device-mirror-stop');
+  const statusEl = document.getElementById('device-mirror-status');
+  if (!startBtn || !canvas || startBtn.dataset.bound) return;
+  startBtn.dataset.bound = '1';
+  const setStatus = (s) => {
+    if (statusEl) statusEl.textContent = s;
+    if (s === 'stopped') {
+      deviceMirror = null;
+      startBtn.hidden = false;
+      startBtn.disabled = false;
+      if (stopBtn) stopBtn.disabled = true;
+    }
+  };
+  startBtn.addEventListener('click', async () => {
+    startBtn.disabled = true;
+    try {
+      deviceMirror = await startMirror(canvas, { onStatus: setStatus });
+      startBtn.hidden = true;
+      if (stopBtn) stopBtn.disabled = false;
+      canvas.focus();
+    } catch (e) {
+      setStatus(e?.message || String(e));
+      startBtn.disabled = false;
+      if (stopBtn) stopBtn.disabled = true;
+    }
+  });
+  stopBtn?.addEventListener('click', async () => {
+    stopBtn.disabled = true;
+    const current = deviceMirror;
+    deviceMirror = null;
+    try { await current?.stop(); } catch { /* closed */ }
+    startBtn.hidden = false;
+    startBtn.disabled = false;
+    setStatus('Click to mirror');
+  });
+  document.querySelectorAll('[data-device-mirror-nav]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const code = NAV[btn.getAttribute('data-device-mirror-nav')];
+      if (code == null || !deviceMirror?.client) return;
+      canvas.focus();
+      deviceMirror.transport?.write(deviceMirror.client.nav(code, 0));
+      deviceMirror.transport?.write(deviceMirror.client.nav(code, 1));
+    });
+  });
 }

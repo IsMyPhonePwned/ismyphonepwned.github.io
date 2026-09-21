@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>IsMyPhonePwned ?</title>
     <link rel="icon" href="favicon.ico" sizes="any">
-    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
@@ -17,7 +18,7 @@
                     <h1 class="logo-text">IsMyPhonePwned ?</h1>
                     <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400;" data-i18n="pageSubtitle">Local device analysis</span>
                     <span class="page-version">
-                        <span data-i18n="pageVersion">v0.5.0-beta • Updated 9 August 2026</span>
+                        <span data-i18n="pageVersion">v0.6.0-beta • Updated 19 September 2026</span>
                         <span class="page-version-edition" title="DEF CON edition">
                             <img class="page-version-edition-logo" src="assets/defcon31-logo.png" alt="" width="18" height="18" decoding="async">
                             <span>defcon edition</span>
@@ -48,26 +49,37 @@
             <a class="hub-card" href="android.html">
                 <h2 data-i18n="hubAndroidTitle">Android</h2>
                 <p data-i18n="hubAndroidBody">Connect over WebUSB, generate or upload a bugreport, and review parsers, Sigma rules, packages, and more.</p>
+                <img class="hub-card-logo" src="assets/hub/android.png" alt="" width="42" height="42">
             </a>
             <a class="hub-card" href="iphone.html">
                 <h2 data-i18n="hubIphoneTitle">iPhone</h2>
                 <p data-i18n="hubIphoneBody">Connect over WebUSB to pull a sysdiagnose archive, or upload a .tar.gz. Parsed in-browser with sysdiagnose-extractor-library (WASM). Advanced: syslog, pcap, crash reports.</p>
+                <img class="hub-card-logo" src="assets/hub/iphone.png" alt="" width="42" height="42">
             </a>
             <a class="hub-card" href="intrusion-logs.html">
                 <h2 data-i18n="hubIntrusionTitle">Intrusion logs</h2>
                 <p data-i18n="hubIntrusionBody">Upload Android Intrusion Logging (AAPM) NDJSON — .txt, .zip, or AndroidQF folders. Parsed in-browser with il-extractor-library: security tags, timeline, JSON export.</p>
+                <img class="hub-card-logo" src="assets/hub/intrusion.png" alt="" width="42" height="42">
             </a>
             <a class="hub-card" href="backup.html">
                 <h2 data-i18n="hubBackupTitle">Backup</h2>
                 <p data-i18n="hubBackupBody">Decrypt iTunes/Finder iOS backups and Android .ab archives in the browser — or connect over WebUSB to create a fresh backup, then analyze locally.</p>
+                <img class="hub-card-logo" src="assets/hub/backup.png" alt="" width="42" height="42">
+            </a>
+            <a class="hub-card" href="anonymize.html">
+                <h2 data-i18n="hubAnonTitle">Anonymize</h2>
+                <p data-i18n="hubAnonCard">Strip identifiers from a bugreport or sysdiagnose with fakeMustache before you share it. Runs locally, with every policy option.</p>
+                <img class="hub-card-logo" src="assets/hub/anonymize.png" alt="" width="42" height="42">
             </a>
             <a class="hub-card" href="artifact-paths.html">
                 <h2>Artifact paths</h2>
                 <p>Searchable iOS &amp; Android path reference (BFU, backup, sysdiagnose, bugreport-related locations).</p>
+                <img class="hub-card-logo" src="assets/hub/artifacts.png" alt="" width="42" height="42">
             </a>
             <a class="hub-card" href="https://ismyphonepwned.com/droid2web/" target="_blank" rel="noopener noreferrer">
                 <h2 data-i18n="hubDroid2webTitle">droid2web</h2>
                 <p data-i18n="hubDroid2webBody">Analyze Android apps in the browser — APK, DEX, AXML, ARSC: decompile, strings, manifest, security scan.</p>
+                <img class="hub-card-logo" src="assets/hub/droid2web.png" alt="" width="42" height="42">
             </a>
         </div>
 
@@ -80,6 +92,8 @@
                 <a href="https://github.com/IsMyPhonePwned/sysdiagnose-extractor-library" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;">sysdiagnose-extractor-library</a>
                 ·
                 <a href="https://github.com/IsMyPhonePwned/il-extractor-library" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;">il-extractor-library</a>
+                ·
+                <a href="https://github.com/ismyphonepwned/fakeMustache" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;">fakeMustache</a>
             </div>
             <details class="hub-disclaimer">
                 <summary data-i18n="disclaimerSummary">⚠️ Disclaimer (expand)</summary>
@@ -120,7 +134,7 @@
         window.HUB_I18N = {
             en: {
                 pageSubtitle: 'Local device analysis',
-                pageVersion: 'v0.5.0-beta • Updated 9 August 2026',
+                pageVersion: 'v0.6.0-beta • Updated 19 September 2026',
                 themeDark: 'Dark',
                 themeLight: 'Light',
                 themeToggleToDark: 'Switch to dark theme',
@@ -134,6 +148,8 @@
                 hubIntrusionBody: 'Upload Android Intrusion Logging (AAPM) NDJSON — .txt, .zip, or AndroidQF folders. Parsed in-browser with il-extractor-library: security tags, timeline, JSON export.',
                 hubBackupTitle: 'Backup',
                 hubBackupBody: 'Decrypt iTunes/Finder iOS backups and Android .ab archives in the browser — or connect over WebUSB to create a fresh backup, then analyze locally.',
+                hubAnonTitle: 'Anonymize',
+                hubAnonCard: 'Strip identifiers from a bugreport or sysdiagnose with fakeMustache before you share it. Runs locally, with every policy option.',
                 hubDroid2webTitle: 'droid2web',
                 hubDroid2webBody: 'Analyze Android apps in the browser — APK, DEX, AXML, ARSC: decompile, strings, manifest, security scan.',
                 hubDroid2webFooter: 'analyze Android applications (APK)',
@@ -151,7 +167,7 @@
             },
             fr: {
                 pageSubtitle: 'Analyse locale de l’appareil',
-                pageVersion: 'v0.5.0-beta • Mis à jour le 9 août 2026',
+                pageVersion: 'v0.6.0-beta • Mis à jour le 19 septembre 2026',
                 themeDark: 'Sombre',
                 themeLight: 'Clair',
                 themeToggleToDark: 'Passer en thème sombre',
@@ -165,6 +181,8 @@
                 hubIntrusionBody: 'Journaux Intrusion Logging (AAPM) NDJSON — .txt, .zip ou dossier AndroidQF. Analyse locale via il-extractor-library : tags sécurité, chronologie, export JSON.',
                 hubBackupTitle: 'Sauvegarde',
                 hubBackupBody: 'Déchiffrer les sauvegardes iTunes/Finder et Android .ab dans le navigateur — ou connecter en WebUSB pour créer une sauvegarde, puis analyser localement.',
+                hubAnonTitle: 'Anonymiser',
+                hubAnonCard: 'Retirer les identifiants d’un bugreport ou d’un sysdiagnose avec fakeMustache avant de le partager. Tout se fait localement, avec toutes les options.',
                 hubDroid2webTitle: 'droid2web',
                 hubDroid2webBody: 'Analyser des apps Android dans le navigateur — APK, DEX, AXML, ARSC : décompilation, chaînes, manifeste, scan sécurité.',
                 hubDroid2webFooter: 'analyser des applications Android (APK)',
@@ -182,7 +200,7 @@
             },
             zh: {
                 pageSubtitle: '本地设备分析',
-                pageVersion: 'v0.5.0-beta • 更新于 2026年8月9日',
+                pageVersion: 'v0.6.0-beta • 更新于 2026年9月19日',
                 themeDark: '深色',
                 themeLight: '浅色',
                 themeToggleToDark: '切换到深色主题',
@@ -196,6 +214,8 @@
                 hubIntrusionBody: '上传 Android 入侵日志 (AAPM) NDJSON — .txt、.zip 或 AndroidQF 目录。由 il-extractor-library 在浏览器内解析：安全标签、时间线、JSON 导出。',
                 hubBackupTitle: '备份',
                 hubBackupBody: '在浏览器中解密 iTunes/Finder iOS 备份与 Android .ab，或通过 WebUSB 连接创建设备备份后本地分析。',
+                hubAnonTitle: '匿名化',
+                hubAnonCard: '用 fakeMustache 在分享前去掉 bugreport 或 sysdiagnose 中的标识。全部在本地运行，包含全部策略选项。',
                 hubDroid2webTitle: 'droid2web',
                 hubDroid2webBody: '在浏览器中分析 Android 应用 — APK、DEX、AXML、ARSC：反编译、字符串、清单、安全扫描。',
                 hubDroid2webFooter: '分析 Android 应用（APK）',

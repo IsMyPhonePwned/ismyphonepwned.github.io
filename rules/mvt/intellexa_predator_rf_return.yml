@@ -1,0 +1,63 @@
+title: MVT Indicators - Intellexa Predator RF return
+id: mvt-intellexa-predator-rf-return
+status: experimental
+description: |
+  New Predator C2 domains and IPv4 addresses from Recorded Future's
+  "Predator Spyware Infrastructure Returns Following Exposure and Sanctions",
+  pending in mvt-project/mvt-indicators PR #16.
+  Credits: Amnesty International Tech Security Lab / AmnestyTech investigations
+  (https://github.com/AmnestyTech/investigations) identified additional Predator
+  IoCs and authored the Cytrox/Predator investigation packs this rule complements.
+author: AmnestyTech / Recorded Future / MVT (adapted for sigma-zero)
+date: 2024/10/01
+modified: 2026/09/21
+references:
+  - https://github.com/mvt-project/mvt-indicators/pull/16
+  - https://github.com/AmnestyTech/investigations/tree/master/2021-12-16_cytrox
+  - https://github.com/AmnestyTech/investigations
+level: critical
+detection:
+  selection_domain:
+    destination_domain:
+      - 'happytotstoys.com'
+      - 'holidaypriceguide.com'
+      - 'lesautreseux.com'
+      - 'masoloyakati.com'
+      - 'noisyball.com'
+      - 'nyirangongovrai.com'
+      - 'toysfourtots.com'
+      - 'yokananu.net'
+  selection_ip:
+    remote_ip:
+      - '45.86.163.178'
+      - '98.142.253.18'
+      - '169.239.129.76'
+      - '185.123.102.40'
+      - '185.235.137.6'
+      - '185.243.113.169'
+      - '193.29.56.252'
+      - '193.29.59.164'
+  selection_message:
+    message|contains:
+      - 'happytotstoys.com'
+      - 'holidaypriceguide.com'
+      - 'lesautreseux.com'
+      - 'masoloyakati.com'
+      - 'noisyball.com'
+      - 'nyirangongovrai.com'
+      - 'toysfourtots.com'
+      - 'yokananu.net'
+      - '45.86.163.178'
+      - '98.142.253.18'
+      - '169.239.129.76'
+      - '185.123.102.40'
+      - '185.235.137.6'
+      - '185.243.113.169'
+      - '193.29.56.252'
+      - '193.29.59.164'
+  condition: selection_domain or selection_ip or selection_message
+tags:
+  - attack.command_and_control
+  - spyware.predator
+  - amnesty
+  - mvt

@@ -1,12 +1,20 @@
 title: AmnestyTech Investigations - Cytrox Predator (2021-12-16)
 id: amnesty-inv-2021-12-16-cytrox
 status: experimental
-description: Cytrox Predator IoCs – domains, file paths, config profiles. Full list at https://github.com/AmnestyTech/investigations/tree/master/2021-12-16_cytrox
+description: |
+  Cytrox Predator IoCs – domains, file paths, config profiles.
+  Full list at https://github.com/AmnestyTech/investigations/tree/master/2021-12-16_cytrox
+  Credits: Amnesty International Tech Security Lab / AmnestyTech.
+  Later Predator infrastructure returns (Recorded Future / MVT PR #16) are covered in
+  rules/mvt/intellexa_predator_rf_return.yml.
 level: critical
 author: AmnestyTech (adapted for sigma-zero)
 date: 2021/12/16
+modified: 2026/09/21
 references:
   - https://github.com/AmnestyTech/investigations/tree/master/2021-12-16_cytrox
+  - https://github.com/AmnestyTech/investigations
+  - https://github.com/mvt-project/mvt-indicators/pull/16
 
 detection:
   selection_domain:

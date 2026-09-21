@@ -3,9 +3,12 @@ id: darksword-ghostblade-filesystem
 status: experimental
 description: |
   Post-exploitation file artifacts from GHOSTBLADE dataminer (WiFi password dumps,
-  keychain copies, iCloud dump staging). Requires on-device or full filesystem capture.
-author: IsMyPhonePwned (adapted for sigma-zero)
+  keychain copies, iCloud dump staging) plus September 2026 Coruna/DarkSword paths
+  from iVerify / MVT PR #57 (ioslab_*, .ghost_upper, darksword.log, wallet hooks).
+  Credits: AmnestyTech investigations (https://github.com/AmnestyTech/investigations).
+author: IsMyPhonePwned (adapted for sigma-zero; AmnestyTech credit)
 date: 2026/03/01
+modified: 2026/09/15
 logsource:
   product: ios
   category: filesystem
@@ -16,6 +19,7 @@ detection:
       - 'wifi_passwords_securityd.txt'
       - 'icloud_dump'
       - 'keychain_dump.txt'
+      - 'keychain_dump2.txt'
       - '/private/var/tmp/keychain-2.db'
       - 'keychain_copy'
       - 'keybag_copy'
@@ -23,12 +27,28 @@ detection:
       - 'persona_keychains.kb'
       - 'usersession_keychains.kb'
       - 'installed_apps.txt'
+      - 'ioslab_ctl'
+      - 'ioslab_pe_reached'
+      - 'ioslab_pe_stage'
+      - 'ioslab_s5_ok'
+      - '.ghost_device_uuid'
+      - '.ghost_upper'
+      - 'upper_impl.js'
+      - '.lab_device_uuid'
+      - 'darksword.log'
+      - 'keychain_bundle.complete.json'
+      - 'keychain_copied.done'
+      - 'keychain_extractor.host-status.json'
+      - 'wallet_crypto_hooks'
+      - 'wallet_memory_heap'
+      - 'wifi_dump.done'
   selection_message:
     message|contains:
       - 'wifi_passwords'
       - 'wifi_passwords_securityd.txt'
       - 'icloud_dump'
       - 'keychain_dump.txt'
+      - 'keychain_dump2.txt'
       - '/private/var/tmp/keychain-2.db'
       - 'keychain_copy'
       - 'keybag_copy'
@@ -36,7 +56,12 @@ detection:
       - 'persona_keychains.kb'
       - 'usersession_keychains.kb'
       - 'installed_apps.txt'
+      - 'ioslab_ctl'
+      - '.ghost_upper'
+      - 'darksword.log'
+      - 'wallet_crypto_hooks'
   condition: selection_path or selection_message
 level: critical
 tags:
   - attack.collection
+  - amnesty

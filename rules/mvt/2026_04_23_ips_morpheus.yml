@@ -1,0 +1,58 @@
+title: MVT Indicators - Morpheus / IPS (2026-04-23)
+id: mvt-2026-04-23-ips-morpheus
+status: stable
+description: |
+  Morpheus Android spyware IoCs (packages, C2 domains/IPs) from
+  mvt-project/mvt-indicators 2026-04-23_ips_morpheus.
+  Likely developed in Italy by IPS Intelligence; analyzed by Osservatorio Nessuno.
+  Delivery via SMS social engineering impersonating an Italian ISP.
+  Credits: AmnestyTech investigations (https://github.com/AmnestyTech/investigations)
+  are the reference IoC-pack model for this site; this pack is adapted from MVT.
+author: MVT / Osservatorio Nessuno (adapted for sigma-zero; AmnestyTech credit)
+date: 2026/04/23
+references:
+  - https://github.com/mvt-project/mvt-indicators/issues/46
+  - https://github.com/mvt-project/mvt-indicators/tree/main/2026-04-23_ips_morpheus
+  - https://osservatorionessuno.org/blog/2026/04/morpheus-a-new-spyware-linked-to-ips-intelligence
+  - https://github.com/AmnestyTech/investigations
+level: high
+detection:
+  selection_pkg:
+    pkg:
+      - 'com.android.core'
+      - 'com.android.cored'
+      - 'com.android.corew'
+  selection_package_name:
+    package_name:
+      - 'com.android.core'
+      - 'com.android.cored'
+      - 'com.android.corew'
+  selection_process:
+    process_name|contains:
+      - 'com.android.core'
+      - 'com.android.cored'
+      - 'com.android.corew'
+  selection_ip:
+    remote_ip:
+      - '109.239.245.172'
+      - '195.120.31.91'
+      - '212.210.1.211'
+  selection_domain:
+    destination_domain:
+      - 'assistenza-sim.it'
+      - 'gamehosts-621ba.appspot.com'
+  selection_message:
+    message|contains:
+      - '109.239.245.172'
+      - '195.120.31.91'
+      - '212.210.1.211'
+      - 'assistenza-sim.it'
+      - 'gamehosts-621ba.appspot.com'
+      - 'com.android.core'
+  condition: >
+    selection_pkg or selection_package_name or selection_process
+    or selection_ip or selection_domain or selection_message
+tags:
+  - attack.command_and_control
+  - spyware.morpheus
+  - mvt

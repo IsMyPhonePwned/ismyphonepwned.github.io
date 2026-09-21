@@ -1276,12 +1276,17 @@
       <div class="settings-modal-body" id="help-modal-body">
         <section class="settings-section">
           <h4 class="settings-section-title">Privacy</h4>
-          <p class="settings-hint">Nothing is sent to the cloud. Your APKs, APKM split packages, DEX files, and analysis stay local on this machine — parsing, decompiling, and scans all run in your browser (WASM).</p>
+          <p class="settings-hint">Nothing is sent to the cloud. Your APKs, APKM split packages, DEX files, native ELF (<code>.so</code>), and analysis stay local on this machine — parsing, decompiling, and scans all run in your browser (WASM).</p>
           <p class="settings-hint muted">Notes, renames, and scan results are stored only in this browser’s localStorage (or in files you export yourself).</p>
         </section>
         <section class="settings-section">
+          <h4 class="settings-section-title">Native (ARM64)</h4>
+          <p class="settings-hint muted">droid2web also reverse-engineers <strong>AArch64</strong> native code. Open <code>lib/**/*.so</code> from an APK (left <strong>Native</strong> mode, or Files) or drop a standalone ELF. The center <strong>Native</strong> tab shows assembly, a CFG, and C-like decompilation. JNI <code>native</code> DEX methods link to matching <code>Java_*</code> symbols (and back) via the toolbar chips.</p>
+          <p class="settings-hint muted">Disassembly uses <a href="https://github.com/androguard/arm_disassembler" target="_blank" rel="noopener noreferrer">arm_disassembler</a>; CFG and C-like output use <a href="https://github.com/androguard/arm_decompiler" target="_blank" rel="noopener noreferrer">arm_decompiler</a> (Micro engine by default — change it under Settings). Only ARM64 / AArch64 is supported.</p>
+        </section>
+        <section class="settings-section">
           <h4 class="settings-section-title">Security scans</h4>
-          <p class="settings-hint muted">Scan runs local engines from dex-decompiler: vulnerability detectors (IPC, PendingIntent/PITracker, ZipSlip, Custom Tabs, nested Intent redirect, broadcasts, WebView, SSL, crypto, storage, trackers, …), Semgrep-style rules (starter + OWASP MASTG), and Mariana Trench–style taint solving (including field/extra breadcrumbs on traces). Use the <strong>Vuln / Semgrep / MT taint</strong> checkboxes in the Security toolbar to enable or disable each scanner before clicking Scan.</p>
+          <p class="settings-hint muted">Scan runs local engines from <a href="https://github.com/androguard/dex-decompiler" target="_blank" rel="noopener noreferrer">dex-decompiler</a>: vulnerability detectors (IPC, PendingIntent/PITracker, ZipSlip, Custom Tabs, nested Intent redirect, broadcasts, WebView, SSL, crypto, storage, trackers, …), Semgrep-style rules (starter + OWASP MASTG), and Mariana Trench–style taint solving (including field/extra breadcrumbs on traces). Use the <strong>Vuln / Semgrep / MT taint</strong> checkboxes in the Security toolbar to enable or disable each scanner before clicking Scan.</p>
           <p class="settings-hint muted">Findings that match OWASP MASTG topics show <strong>MASTG-KNOW</strong> links into the <a href="https://mas.owasp.org/MASTG/knowledge/" target="_blank" rel="noopener noreferrer">Mobile Application Security Knowledge Base</a> (biometrics, WebViews, IPC, Keystore, backups, …).</p>
         </section>
         <section class="settings-section">
@@ -1294,7 +1299,12 @@
         </section>
         <section class="settings-section">
           <h4 class="settings-section-title">Patch / Repack</h4>
-          <p class="settings-hint muted">The <strong>Patch</strong> tab runs apk-patch in WASM. The <strong>Device</strong> tab uses WebUSB ADB (webadb-rs) to list apps, inject/attach arm_goauld, and speak the goauld protocol over <code>localabstract:goauld-agent-&lt;pid&gt;</code>. The <strong>Mirror</strong> tab (droidmirror) shows the phone screen on a canvas and sends touch and keys back; connect the phone first, and detach the goauld agent before starting — one ADB stream at a time. Host <code>aapt2</code> is unavailable in-browser. APKM/XAPK base APK only for Patch rebuild.</p>
+          <p class="settings-hint muted">The <strong>Patch</strong> tab runs Androguard <code>apk-patch</code> in WASM (smali-style edits, rebuild, resign). Host <code>aapt2</code> is unavailable in-browser. APKM/XAPK: base APK only for Patch rebuild.</p>
+        </section>
+        <section class="settings-section">
+          <h4 class="settings-section-title">Device / Mirror</h4>
+          <p class="settings-hint muted">The <strong>Device</strong> tab uses WebUSB ADB (<a href="https://github.com/IsMyPhonePwned/webadb-rs" target="_blank" rel="noopener noreferrer">webadb-rs</a>) to list apps, live-inject / attach <a href="https://github.com/androguard/goauld" target="_blank" rel="noopener noreferrer">goauld</a> (arm64 injector + agent), and speak the goauld protocol over <code>localabstract:goauld-agent-&lt;pid&gt;</code>. Root (Magisk <code>su</code>) is required for inject.</p>
+          <p class="settings-hint muted">The <strong>Mirror</strong> tab is powered by <a href="https://github.com/androguard/droidmirror" target="_blank" rel="noopener noreferrer">droidmirror</a>: live screen on a canvas, touch and keys back to the phone, plus PNG / GIF / MP4 capture. Connect the phone first, and detach the goauld agent before Start — one ADB stream at a time. Quit host <code>adb</code> so WebUSB can claim the device.</p>
         </section>
         <section class="settings-section">
           <h4 class="settings-section-title">Contact</h4>
@@ -1305,7 +1315,7 @@
         </section>
         <section class="settings-section">
           <h4 class="settings-section-title">Androguard</h4>
-          <p class="settings-hint muted">droid2web is part of the Androguard ecosystem for Android reverse engineering. Open-source crates used here:</p>
+          <p class="settings-hint muted">droid2web is part of the Androguard ecosystem for Android reverse engineering (Dalvik <em>and</em> ARM64 native). Open-source repos used here:</p>
           <ul class="help-repo-list">
             <li><a href="https://github.com/androguard/androguard" target="_blank" rel="noopener noreferrer">androguard</a> <span class="muted">— classic Python toolkit</span></li>
             <li><a href="https://github.com/androguard/apk-parser" target="_blank" rel="noopener noreferrer">apk-parser</a> <span class="muted">— lenient APK / ZIP / APKM</span></li>
@@ -1313,9 +1323,12 @@
             <li><a href="https://github.com/androguard/dex-bytecode" target="_blank" rel="noopener noreferrer">dex-bytecode</a> <span class="muted">— Dalvik disassembly</span></li>
             <li><a href="https://github.com/androguard/dex-decompiler" target="_blank" rel="noopener noreferrer">dex-decompiler</a> <span class="muted">— Java decompile, xrefs, scans</span></li>
             <li><a href="https://github.com/androguard/axml-parser" target="_blank" rel="noopener noreferrer">axml-parser</a> <span class="muted">— AXML / ARSC</span></li>
-            <li><a href="https://github.com/androguard/arm_disassembler" target="_blank" rel="noopener noreferrer">arm_disassembler</a> <span class="muted">— AArch64 decode</span></li>
-            <li><a href="https://github.com/androguard/arm_decompiler" target="_blank" rel="noopener noreferrer">arm_decompiler</a> <span class="muted">— ARM64 CFG / C-like</span></li>
-            <li><a href="https://github.com/androguard/goauld" target="_blank" rel="noopener noreferrer">goauld</a> <span class="muted">— Device inject / protocol</span></li>
+            <li><a href="https://github.com/androguard/arm_disassembler" target="_blank" rel="noopener noreferrer">arm_disassembler</a> <span class="muted">— AArch64 decode (Native tab)</span></li>
+            <li><a href="https://github.com/androguard/arm_decompiler" target="_blank" rel="noopener noreferrer">arm_decompiler</a> <span class="muted">— ARM64 CFG / C-like (Native tab)</span></li>
+            <li><a href="https://github.com/androguard/droidmirror" target="_blank" rel="noopener noreferrer">droidmirror</a> <span class="muted">— live screen mirror + capture</span></li>
+            <li><a href="https://github.com/androguard/goauld" target="_blank" rel="noopener noreferrer">goauld</a> <span class="muted">— arm64 inject / agent protocol (Device tab)</span></li>
+            <li><a href="https://github.com/androguard/apple-re" target="_blank" rel="noopener noreferrer">apple-re</a> <span class="muted">— Mach-O / Apple metadata helpers</span></li>
+            <li><a href="https://github.com/IsMyPhonePwned/webadb-rs" target="_blank" rel="noopener noreferrer">webadb-rs</a> <span class="muted">— WebUSB ADB (Device / Mirror)</span></li>
           </ul>
           <p class="help-contact">
             <a href="https://github.com/orgs/androguard/repositories" target="_blank" rel="noopener noreferrer">All androguard repositories →</a>

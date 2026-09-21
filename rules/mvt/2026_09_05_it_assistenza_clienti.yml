@@ -1,0 +1,45 @@
+title: MVT Indicators - IT Assistenza Clienti (2026-09-05)
+id: mvt-2026-09-05-it-assistenza-clienti
+status: experimental
+description: |
+  IoCs for the "Assistenza Clienti" Android surveillance app
+  (com.itassistenzaclienti): package, C2 domain telecomunicazioni-mobile.com,
+  and C2 IP 93.186.254.171. Observed via decrypted TLS on a test device
+  (Mythos Sentinel / MVT PR #56). Distinct from Spyrtacus (supporto-mobile.it).
+  Credits: AmnestyTech investigations (https://github.com/AmnestyTech/investigations).
+author: MVT / Mythos Sentinel (adapted for sigma-zero; AmnestyTech credit)
+date: 2026/09/05
+references:
+  - https://github.com/mvt-project/mvt-indicators/pull/56
+  - https://mythossentinel.com/en/assistenza-clienti-android-surveillance-app
+  - https://github.com/AmnestyTech/investigations
+level: high
+detection:
+  selection_pkg:
+    pkg:
+      - 'com.itassistenzaclienti'
+  selection_package_name:
+    package_name:
+      - 'com.itassistenzaclienti'
+  selection_process:
+    process_name|contains:
+      - 'com.itassistenzaclienti'
+  selection_ip:
+    remote_ip:
+      - '93.186.254.171'
+  selection_domain:
+    destination_domain:
+      - 'telecomunicazioni-mobile.com'
+  selection_message:
+    message|contains:
+      - '93.186.254.171'
+      - 'telecomunicazioni-mobile.com'
+      - 'com.itassistenzaclienti'
+      - 'mysupport'
+  condition: >
+    selection_pkg or selection_package_name or selection_process
+    or selection_ip or selection_domain or selection_message
+tags:
+  - attack.command_and_control
+  - spyware.assistenza_clienti
+  - mvt

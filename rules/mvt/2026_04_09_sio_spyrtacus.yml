@@ -8,11 +8,13 @@ description: |
   Delivery via SMS social engineering impersonating an Italian ISP.
   PR: https://github.com/mvt-project/mvt-indicators/pull/51
   Report: https://osservatorionessuno.org/blog/2026/04/italian-spyware-maker-sio-still-developing-and-distributing-spyrtacus/
-author: MVT / Osservatorio Nessuno (adapted for sigma-zero)
+author: MVT / Osservatorio Nessuno (adapted for sigma-zero; AmnestyTech credit)
 date: 2026/04/09
 references:
+  - https://github.com/mvt-project/mvt-indicators/issues/48
   - https://github.com/mvt-project/mvt-indicators/tree/main/2026-04-09_sio_spyrtacus
   - https://osservatorionessuno.org/blog/2026/04/italian-spyware-maker-sio-still-developing-and-distributing-spyrtacus/
+  - https://github.com/AmnestyTech/investigations
 level: high
 detection:
   selection_pkg:

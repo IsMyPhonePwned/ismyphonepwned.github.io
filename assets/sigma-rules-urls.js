@@ -1,9 +1,10 @@
 /**
  * Sigma rule files loaded by android.html, iphone.html, and bugreport-status.html.
  * Served from /rules/ — grouped by category (Amnesty IoCs, Android bugreport/CVE, iOS, spyware, MVT).
+ * AmnestyTech investigations: https://github.com/AmnestyTech/investigations
  */
 window.SIGMA_RULE_URLS = [
-    // Amnesty Tech investigations (sigma-zero YAML)
+    // Amnesty Tech investigations (sigma-zero YAML) — credit: AmnestyTech
     '/rules/amnesty/2018_08_01_nso.yml',
     '/rules/amnesty/2018_12_19_best_practice.yml',
     '/rules/amnesty/2019_03_06_egypt_oauth.yml',
@@ -20,12 +21,16 @@ window.SIGMA_RULE_URLS = [
     '/rules/amnesty/2023_03_29_android_campaign.yml',
     '/rules/amnesty/2024_05_02_wintego_helios.yml',
     '/rules/amnesty/2024_12_16_serbia_novispy.yml',
-    // Spyware / vendor-specific
+    // Spyware / vendor-specific (no MVT duplicate — MVT packs live under mvt/)
     '/rules/spyware/cellebrite.yml',
     '/rules/spyware/novispy.yml',
-    '/rules/spyware/spyrtacus.yml',
-    // MVT indicator packs
+    // MVT indicator packs (issues #44/#46/#48, PRs #16/#56/#57, …)
     '/rules/mvt/2026_04_09_sio_spyrtacus.yml',
+    '/rules/mvt/2026_04_23_ips_morpheus.yml',
+    '/rules/mvt/2026_05_26_btmob.yml',
+    '/rules/mvt/2026_09_05_it_assistenza_clienti.yml',
+    '/rules/mvt/2026_09_15_coruna_darksword.yml',
+    '/rules/mvt/intellexa_predator_rf_return.yml',
     // Android bugreport hunts
     '/rules/android/bugreport_anr.yml',
     '/rules/android/bugreport_native_crash.yml',

@@ -3,6 +3,10 @@ id: 5b3d6582-6c45-463a-92f6-8657dc199a0c
 description: Detects NoviSpy Android spyware => https://github.com/AmnestyTech/investigations/tree/master/2024-12-16_serbia_novispy
 status: stable
 level: critical
+author: AmnestyTech (adapted for sigma-zero)
+references:
+  - https://github.com/AmnestyTech/investigations/tree/master/2024-12-16_serbia_novispy
+  - https://github.com/AmnestyTech/investigations
 detection:
   selection_suspicious_package:
     pkg:
@@ -14,3 +18,4 @@ detection:
   condition: selection_suspicious_package
 tags:
   - attack.execution
+  - amnesty

@@ -3,9 +3,12 @@ id: darksword-network-iocs
 status: experimental
 description: |
   Delivery, watering-hole, and exfiltration domains/IPs for the DarkSword iOS exploit chain
-  (GTIG, iVerify, Lookout, MVT). Ref Google GTIG Mar 2026.
-author: IsMyPhonePwned (adapted for sigma-zero)
+  (GTIG, iVerify, Lookout, MVT). Includes September 2026 Coruna/DarkSword proliferation
+  domains from iVerify / MVT PR #57.
+  Credits: AmnestyTech investigations (https://github.com/AmnestyTech/investigations).
+author: IsMyPhonePwned (adapted for sigma-zero; AmnestyTech credit)
 date: 2026/03/01
+modified: 2026/09/15
 logsource:
   product: ios
   category: network
@@ -19,11 +22,22 @@ detection:
       - 'sqwas.shapelie.com'
       - 'novosti.dn.ua'
       - '7aac.gov.ua'
+      - '3z4.xyz'
+      - 'a.buffbuff.cam'
+      - 'darksword.bitbrowserpro.com'
+      - 'dsw.webtest.eu.cc'
+      - 'greatweeeeb.com'
+      - 'noblegood.cc'
+      - 't3ios.com'
+      - 'web3a.cc'
   selection_ip:
     remote_ip:
       - '62.72.21.10'
       - '72.60.98.48'
+      - '47.129.224.84'
+      - '47.80.242.98'
   condition: selection_domain or selection_ip
 level: critical
 tags:
   - attack.command_and_control
+  - amnesty

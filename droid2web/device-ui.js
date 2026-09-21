@@ -3,7 +3,7 @@
  */
 
 import * as adbDevice from './adb-device.js';
-import { startMirror, NAV } from './mirror-ui.js';
+import { startMirror, NAV, bindMirrorCapture } from './mirror-ui.js';
 import {
   getBundledGoauldMeta,
   resolveGoauldBinary,
@@ -1703,10 +1703,15 @@ export function syncDeviceContents(on) {
 function bindDeviceMirror() {
   const startBtn = document.getElementById('device-mirror-start');
   const canvas = document.getElementById('device-mirror-canvas');
-  const stopBtn = document.getElementById('device-mirror-stop');
-  const statusEl = document.getElementById('device-mirror-status');
   if (!startBtn || !canvas || startBtn.dataset.bound) return;
   startBtn.dataset.bound = '1';
+  const stopBtn = document.getElementById('device-mirror-stop');
+  const statusEl = document.getElementById('device-mirror-status');
+  const captureUi = bindMirrorCapture({
+    shot: document.getElementById('device-mirror-shot'),
+    gif: document.getElementById('device-mirror-gif'),
+    mp4: document.getElementById('device-mirror-mp4'),
+  }, () => deviceMirror);
   const setStatus = (s) => {
     if (statusEl) statusEl.textContent = s;
     if (s === 'stopped') {
@@ -1714,6 +1719,7 @@ function bindDeviceMirror() {
       startBtn.hidden = false;
       startBtn.disabled = false;
       if (stopBtn) stopBtn.disabled = true;
+      captureUi.setEnabled(false);
     }
   };
   startBtn.addEventListener('click', async () => {
@@ -1722,17 +1728,20 @@ function bindDeviceMirror() {
       deviceMirror = await startMirror(canvas, { onStatus: setStatus });
       startBtn.hidden = true;
       if (stopBtn) stopBtn.disabled = false;
+      captureUi.setEnabled(true);
       canvas.focus();
     } catch (e) {
       setStatus(e?.message || String(e));
       startBtn.disabled = false;
       if (stopBtn) stopBtn.disabled = true;
+      captureUi.setEnabled(false);
     }
   });
   stopBtn?.addEventListener('click', async () => {
     stopBtn.disabled = true;
     const current = deviceMirror;
     deviceMirror = null;
+    captureUi.setEnabled(false);
     try { await current?.stop(); } catch { /* closed */ }
     startBtn.hidden = false;
     startBtn.disabled = false;

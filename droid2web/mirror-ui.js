@@ -15,6 +15,7 @@ import {
   isAdbConnected,
   openAbstractStream,
 } from './adb-device.js';
+import { encodeGif, quantize } from './mirror-capture.js';
 
 const REMOTE_DIR = '/data/local/tmp/droidmirror';
 const SOCKET = 'droidmirror';
@@ -136,9 +137,11 @@ export async function startMirror(canvas, opts = {}) {
     throw e;
   }
 
+  const shot = document.createElement('canvas');
+  const capture = createCapture(shot, status);
   const decoder = new VideoDecoder({
     output(frame) {
-      paintFrame(ctx, canvas, frame);
+      paintFrame(ctx, canvas, frame, shot);
       frame.close();
     },
     error(e) {
@@ -151,6 +154,7 @@ export async function startMirror(canvas, opts = {}) {
   const stop = async () => {
     if (stopped) return;
     stopped = true;
+    capture.stop();
     running = false;
     try { decoder.close(); } catch { /* already closed */ }
     try { await transport.close(); } catch { /* already closed */ }
@@ -203,7 +207,14 @@ export async function startMirror(canvas, opts = {}) {
     }
   })();
 
-  return { stop, client: mirror, transport };
+  return {
+    stop,
+    client: mirror,
+    transport,
+    screenshot: capture.screenshot,
+    toggleGif: capture.toggleGif,
+    toggleMp4: capture.toggleMp4,
+  };
 }
 
 function wireInput(canvas, mirror, transport) {
@@ -300,7 +311,183 @@ function wireInput(canvas, mirror, transport) {
   }
 }
 
-function paintFrame(ctx, canvas, frame) {
+function createCapture(shot, status) {
+  let gifTimer = null;
+  let gifFrames = [];
+  let gifW = 0;
+  let gifH = 0;
+  let recorder = null;
+
+  function screenshot() {
+    if (!shot.width || !shot.height) {
+      status('screenshot: no frame yet');
+      return;
+    }
+    shot.toBlob((blob) => {
+      if (!blob) return;
+      download(blob, `droidmirror-${stamp()}.png`);
+      status('saved png');
+    }, 'image/png');
+  }
+
+  function toggleGif() {
+    if (gifTimer) {
+      stopGif();
+      return false;
+    }
+    if (!shot.width || !shot.height) {
+      status('gif: no frame yet');
+      return false;
+    }
+    gifFrames = [];
+    const fitted = fitSize(shot.width, shot.height, 480);
+    gifW = fitted.w;
+    gifH = fitted.h;
+    const grab = document.createElement('canvas');
+    grab.width = gifW;
+    grab.height = gifH;
+    const gctx = grab.getContext('2d', { willReadFrequently: true });
+    const take = () => {
+      if (!shot.width) return;
+      gctx.drawImage(shot, 0, 0, gifW, gifH);
+      const pixels = gctx.getImageData(0, 0, gifW, gifH).data;
+      gifFrames.push({ indices: quantize(pixels, gifW, gifH), delayCs: 10 });
+    };
+    take();
+    gifTimer = setInterval(take, 100);
+    status('recording gif');
+    return true;
+  }
+
+  function stopGif() {
+    if (gifTimer) clearInterval(gifTimer);
+    gifTimer = null;
+    const frames = gifFrames;
+    gifFrames = [];
+    if (!frames.length || !gifW) {
+      status('gif: no frames');
+      return;
+    }
+    status('encoding gif…');
+    const bytes = encodeGif(frames, gifW, gifH);
+    download(new Blob([bytes], { type: 'image/gif' }), `droidmirror-${stamp()}.gif`);
+    status('saved gif');
+  }
+
+  function toggleMp4() {
+    if (recorder) {
+      const rec = recorder;
+      recorder = null;
+      if (rec.state !== 'inactive') rec.stop();
+      return false;
+    }
+    if (!shot.width || !shot.height) {
+      status('mp4: no frame yet');
+      return false;
+    }
+    const mime = ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/mp4']
+      .find((t) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t));
+    if (!mime || typeof shot.captureStream !== 'function') {
+      status('this browser cannot record MP4');
+      return false;
+    }
+    const stream = shot.captureStream(30);
+    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4_000_000 });
+    const chunks = [];
+    rec.ondataavailable = (ev) => {
+      if (ev.data && ev.data.size) chunks.push(ev.data);
+    };
+    rec.onstop = () => {
+      stream.getTracks().forEach((t) => t.stop());
+      if (!chunks.length) {
+        status('mp4: no frames');
+        return;
+      }
+      download(new Blob(chunks, { type: mime }), `droidmirror-${stamp()}.mp4`);
+      status('saved mp4');
+    };
+    rec.start();
+    recorder = rec;
+    status('recording mp4');
+    return true;
+  }
+
+  function stop() {
+    if (gifTimer) stopGif();
+    if (recorder && recorder.state !== 'inactive') recorder.stop();
+    recorder = null;
+  }
+
+  return { screenshot, toggleGif, toggleMp4, stop };
+}
+
+function fitSize(width, height, maxEdge) {
+  const long = Math.max(width, height, 1);
+  if (long <= maxEdge) return { w: width, h: height };
+  const scale = maxEdge / long;
+  return {
+    w: Math.max(1, Math.round(width * scale)),
+    h: Math.max(1, Math.round(height * scale)),
+  };
+}
+
+function stamp() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+
+function download(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** PNG / GIF / MP4 buttons. `getSession` returns the live startMirror() handle. */
+export function bindMirrorCapture({ shot, gif, mp4 }, getSession) {
+  const mark = (btn, on, idle) => {
+    if (!btn) return;
+    btn.classList.toggle('is-recording', on);
+    btn.textContent = on ? `Stop ${idle}` : idle;
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  };
+  shot?.addEventListener('click', () => getSession()?.screenshot?.());
+  gif?.addEventListener('click', () => {
+    const on = getSession()?.toggleGif?.();
+    mark(gif, !!on, 'GIF');
+  });
+  mp4?.addEventListener('click', () => {
+    const on = getSession()?.toggleMp4?.();
+    mark(mp4, !!on, 'MP4');
+  });
+  return {
+    setEnabled(on) {
+      for (const btn of [shot, gif, mp4]) {
+        if (btn) btn.disabled = !on;
+      }
+      if (!on) {
+        mark(gif, false, 'GIF');
+        mark(mp4, false, 'MP4');
+      }
+    },
+  };
+}
+
+function paintFrame(ctx, canvas, frame, shot) {
+  if (shot) {
+    const sw = frame.displayWidth || frame.codedWidth;
+    const sh = frame.displayHeight || frame.codedHeight;
+    if (sw && sh && (shot.width !== sw || shot.height !== sh)) {
+      shot.width = sw;
+      shot.height = sh;
+    }
+    if (shot.width && shot.height) {
+      shot.getContext('2d').drawImage(frame, 0, 0, shot.width, shot.height);
+    }
+  }
   const vw = canvas.clientWidth || canvas.width;
   const vh = canvas.clientHeight || canvas.height;
   if (canvas.width !== vw || canvas.height !== vh) {
@@ -418,6 +605,11 @@ export function initMirrorUi() {
   const bitrateEl = document.getElementById('mirror-bitrate');
   const maxSizeEl = document.getElementById('mirror-max-size');
   const textEl = document.getElementById('mirror-text');
+  const captureUi = bindMirrorCapture({
+    shot: document.getElementById('mirror-shot'),
+    gif: document.getElementById('mirror-gif'),
+    mp4: document.getElementById('mirror-mp4'),
+  }, () => session);
   const setStatus = (s) => {
     if (statusEl) statusEl.textContent = s;
   };
@@ -451,11 +643,13 @@ export function initMirrorUi() {
         maxSize: Number(maxSizeEl?.value || 0),
         onStatus: setStatus,
       });
+      captureUi.setEnabled(true);
       canvas.focus();
     } catch (e) {
       setStatus(e?.message || String(e));
       startBtn.disabled = false;
       if (stopBtn) stopBtn.disabled = true;
+      captureUi.setEnabled(false);
     }
   });
 
@@ -463,6 +657,7 @@ export function initMirrorUi() {
     stopBtn.disabled = true;
     const current = session;
     session = null;
+    captureUi.setEnabled(false);
     try { await current?.stop(); } catch { /* closed */ }
     startBtn.disabled = false;
   });

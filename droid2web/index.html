@@ -20,7 +20,7 @@
     <div class="header-content">
       <img src="logo.png" alt="" class="app-logo" width="28" height="28">
       <div class="header-title-block">
-        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.22</span> <span class="app-date" id="app-date" title="Release date">18 Sep 2026</span></h1>
+        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.23</span> <span class="app-date" id="app-date" title="Release date">21 Sep 2026</span></h1>
         <p class="subtitle">APK, APKM, DEX, AXML, ARSC inspection in the browser</p>
       </div>
     </div>
@@ -95,6 +95,9 @@
         <div id="device-mirror-slot" class="device-mirror-slot" hidden>
           <div class="device-mirror-bar">
             <span id="device-mirror-status">Click to mirror</span>
+            <button type="button" class="btn btn-small" id="device-mirror-shot" disabled title="Save a PNG of the current frame">PNG</button>
+            <button type="button" class="btn btn-small" id="device-mirror-gif" disabled title="Record a GIF, click again to save">GIF</button>
+            <button type="button" class="btn btn-small" id="device-mirror-mp4" disabled title="Record an MP4, click again to save">MP4</button>
             <button type="button" class="btn btn-small" id="device-mirror-stop" disabled>Stop</button>
           </div>
           <div class="device-mirror-stage">
@@ -1211,6 +1214,9 @@
               <button type="button" class="btn btn-small" id="mirror-connect">Connect phone…</button>
               <button type="button" class="btn btn-primary" id="mirror-start">Start mirror</button>
               <button type="button" class="btn btn-small" id="mirror-stop" disabled>Stop</button>
+              <button type="button" class="btn btn-small" id="mirror-shot" disabled title="Save a PNG of the current frame">PNG</button>
+              <button type="button" class="btn btn-small" id="mirror-gif" disabled title="Record a GIF, click again to save">GIF</button>
+              <button type="button" class="btn btn-small" id="mirror-mp4" disabled title="Record an MP4, click again to save">MP4</button>
               <label class="mirror-field">Bitrate
                 <input type="number" id="mirror-bitrate" class="patch-text-input" value="8000000" min="100000" step="100000">
               </label>
@@ -1231,7 +1237,7 @@
               <button type="button" class="btn btn-small" data-mirror-nav="volUp">Vol+</button>
               <input type="text" id="mirror-text" class="patch-text-input mirror-text" placeholder="Type and Enter to send text" spellcheck="false" autocomplete="off">
             </div>
-            <p class="muted mirror-hint">Same WebUSB session as the Device tab. Quit host <code>adb</code> first. Detach the goauld agent before Start — one ADB stream at a time. Click the picture to type; Ctrl-V pastes. Server log: <code>/data/local/tmp/droidmirror/server.log</code>.</p>
+            <p class="muted mirror-hint">Same WebUSB session as the Device tab. Quit host <code>adb</code> first. Detach the goauld agent before Start — one ADB stream at a time. Click the picture to type; Ctrl-V pastes. PNG saves the current frame; GIF and MP4 record until you click them again.</p>
           </div>
         </div>
 

@@ -908,6 +908,7 @@ header {
 .device-mirror-bar,
 .device-mirror-nav {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem;
   padding: 0.35rem 0.5rem;
@@ -10142,4 +10143,14 @@ a.btn.btn-small#security-mastg-know:hover {
 .mirror-hint {
   margin: 0;
   font-size: 0.72rem;
+}
+#mirror-shot.is-recording,
+#mirror-gif.is-recording,
+#mirror-mp4.is-recording,
+#device-mirror-shot.is-recording,
+#device-mirror-gif.is-recording,
+#device-mirror-mp4.is-recording {
+  color: #fff;
+  background: #b42318;
+  border-color: #b42318;
 }

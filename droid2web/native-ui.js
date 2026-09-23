@@ -956,6 +956,62 @@ function applyNativeCfgBlockPositions() {
   syncNativeCfgHtmlOverlay();
 }
 
+/**
+ * Push apart any AABB overlaps left after hierarchical + repulsion layout.
+ * vis nodeSpacing is center-to-center and often undershoots wide HTML blocks.
+ */
+function resolveNativeCfgOverlaps(blockSizes, { gap = 28, iterations = 48 } = {}) {
+  if (!cfgNetwork || !blockSizes) return;
+  const ids = Object.keys(blockSizes);
+  if (ids.length < 2) return;
+  let pos;
+  try {
+    pos = cfgNetwork.getPositions(ids);
+  } catch (_) {
+    return;
+  }
+  for (let iter = 0; iter < iterations; iter++) {
+    let moved = false;
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        const a = ids[i];
+        const b = ids[j];
+        const pa = pos[a];
+        const pb = pos[b];
+        const sa = blockSizes[a];
+        const sb = blockSizes[b];
+        if (!pa || !pb || !sa || !sb) continue;
+        const dx = pb.x - pa.x;
+        const dy = pb.y - pa.y;
+        const needX = (sa.width + sb.width) / 2 + gap;
+        const needY = (sa.height + sb.height) / 2 + gap;
+        const ox = needX - Math.abs(dx);
+        const oy = needY - Math.abs(dy);
+        if (ox <= 0 || oy <= 0) continue;
+        if (ox < oy) {
+          const dir = dx === 0 ? (Number(a) <= Number(b) ? -1 : 1) : Math.sign(dx);
+          const push = (ox / 2) * (dir || 1);
+          pa.x -= push;
+          pb.x += push;
+        } else {
+          const dir = dy === 0 ? 1 : Math.sign(dy);
+          const push = (oy / 2) * (dir || 1);
+          pa.y -= push;
+          pb.y += push;
+        }
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+  try {
+    for (const id of ids) {
+      const p = pos[id];
+      if (p) cfgNetwork.moveNode(id, Math.round(p.x), Math.round(p.y));
+    }
+  } catch (_) {}
+}
+
 function resetNativeCfgLayout() {
   nativeCfgBlockPositions.clear();
   endNativeCfgBlockDragSession();
@@ -1510,12 +1566,16 @@ function renderCfg(fn) {
   const widthVals = Object.values(blockSizes).map((s) => s.width);
   const maxBlockH = heightVals.length ? Math.max(...heightVals) : 80;
   const maxBlockW = widthVals.length ? Math.max(...widthVals) : 220;
-  const avgBlockH = heightVals.length
+  // vis hierarchical spacing is center-to-center: need full size + gap, not a fraction.
+  const hGap = nativeCfgCompact ? 48 : 72;
+  const wGap = nativeCfgCompact ? 56 : 80;
+  const levelSep = Math.round(Math.max(maxBlockH + hGap, nativeCfgCompact ? 140 : 160));
+  const nodeSpace = Math.round(Math.max(maxBlockW + wGap, nativeCfgCompact ? 260 : 280));
+  const treeSpace = Math.round(Math.max(maxBlockW + wGap * 1.5, nativeCfgCompact ? 340 : 380));
+  const nodeDist = Math.round(Math.max(maxBlockH, maxBlockW) + (nativeCfgCompact ? 96 : 120));
+  const nodeMargin = Math.round(Math.max(8, Math.min(16, (heightVals.length
     ? heightVals.reduce((a, b) => a + b, 0) / heightVals.length
-    : 80;
-  const levelSep = Math.round(Math.max(maxBlockH + (nativeCfgCompact ? 56 : 40), avgBlockH + (nativeCfgCompact ? 72 : 48), nativeCfgCompact ? 160 : 130));
-  const nodeSpace = Math.round(Math.max(maxBlockW * (nativeCfgCompact ? 0.62 : 0.52) + 48, nativeCfgCompact ? 220 : 200));
-  const treeSpace = Math.round(Math.max(maxBlockW * (nativeCfgCompact ? 0.88 : 0.72) + 64, nativeCfgCompact ? 300 : 250));
+    : 80) * 0.06)));
 
   const visNodes = nodesRaw.map((n) => {
     const size = blockSizes[n.id] || { width: 220, height: 64 };
@@ -1524,7 +1584,7 @@ function renderCfg(fn) {
       shape: 'box',
       label: '',
       level: levelMap[n.id],
-      margin: 8,
+      margin: nodeMargin,
       borderWidth: 0,
       widthConstraint: { minimum: size.width, maximum: size.width },
       heightConstraint: { minimum: size.height, maximum: size.height },
@@ -1616,7 +1676,22 @@ function renderCfg(fn) {
           parentCentralization: true,
         },
       },
-      physics: false,
+      physics: {
+        enabled: true,
+        hierarchicalRepulsion: {
+          nodeDistance: nodeDist,
+          centralGravity: 0.03,
+          springLength: nodeDist,
+          springConstant: 0.01,
+          damping: 0.3,
+          avoidOverlap: 1,
+        },
+        stabilization: {
+          enabled: true,
+          iterations: nativeCfgCompact ? 160 : 220,
+          fit: false,
+        },
+      },
       interaction: {
         hover: true,
         navigationButtons: false,
@@ -1669,23 +1744,33 @@ function renderCfg(fn) {
     setNativeCfgBlockSelected(null);
   });
 
-  // Pixel-snap centers for crisp orthogonal edges, then restore manual moves.
-  try {
-    const pos = cfgNetwork.getPositions();
-    for (const [id, p] of Object.entries(pos)) {
-      cfgNetwork.moveNode(id, Math.round(p.x), Math.round(p.y));
-    }
-  } catch (_) {}
-  const hadManual = nativeCfgBlockPositions.size > 0;
-  applyNativeCfgBlockPositions();
-  syncNativeCfgHtmlOverlay();
-  requestAnimationFrame(() => {
-    // Don't fit after a re-layout if the user already moved blocks (compact toggle, etc.).
-    if (!hadManual) {
-      try { cfgNetwork?.fit({ animation: false }); } catch (_) {}
-    }
+  const finishNativeCfgLayout = () => {
+    if (!cfgNetwork || finishNativeCfgLayout.done) return;
+    finishNativeCfgLayout.done = true;
+    try { cfgNetwork.setOptions({ physics: false }); } catch (_) {}
+    // Pixel-snap centers for crisp orthogonal edges.
+    try {
+      const pos = cfgNetwork.getPositions();
+      for (const [id, p] of Object.entries(pos)) {
+        cfgNetwork.moveNode(id, Math.round(p.x), Math.round(p.y));
+      }
+    } catch (_) {}
+    resolveNativeCfgOverlaps(blockSizes);
+    const hadManual = nativeCfgBlockPositions.size > 0;
+    applyNativeCfgBlockPositions();
     syncNativeCfgHtmlOverlay();
-  });
+    requestAnimationFrame(() => {
+      if (!hadManual) {
+        try { cfgNetwork?.fit({ animation: false }); } catch (_) {}
+      }
+      syncNativeCfgHtmlOverlay();
+    });
+  };
+  finishNativeCfgLayout.done = false;
+
+  cfgNetwork.once('stabilizationIterationsDone', finishNativeCfgLayout);
+  // Fallback if stabilization never fires (tiny graphs / already settled).
+  setTimeout(finishNativeCfgLayout, 1800);
 }
 
 function fillFuncSelect(filter = '') {

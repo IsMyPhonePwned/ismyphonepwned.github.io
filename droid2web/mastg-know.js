@@ -62,10 +62,12 @@ export const MASTG_KNOW_ANDROID = {
   'MASTG-KNOW-0054': { title: 'App Notifications', category: 'MASVS-STORAGE' },
   'MASTG-KNOW-0055': { title: 'Keyboard Cache', category: 'MASVS-STORAGE' },
   'MASTG-KNOW-0117': { title: 'Android ContentProvider', category: 'MASVS-CODE' },
+  'MASTG-KNOW-0118': { title: 'Runtime Application Self-Protection (RASP)', category: 'MASVS-RESILIENCE' },
   'MASTG-KNOW-0132': { title: 'Android Activities', category: 'MASVS-PLATFORM' },
   'MASTG-KNOW-0133': { title: 'Android Services', category: 'MASVS-PLATFORM' },
   'MASTG-KNOW-0134': { title: 'Android Broadcast Receivers', category: 'MASVS-PLATFORM' },
   'MASTG-KNOW-0135': { title: 'Virtual Devices Detection', category: 'MASVS-RESILIENCE' },
+  'MASTG-KNOW-0138': { title: 'URI Schemes in Android Intent Results', category: 'MASVS-CODE' },
   'MASTG-KNOW-0142': { title: 'Android DataStore', category: 'MASVS-STORAGE' },
 };
 
@@ -111,6 +113,18 @@ const RULE_HINTS = [
   [/custom.?tabs/i, ['MASTG-KNOW-0018']],
   [/encryption|cipher|aes|des|rc4|broken.?encrypt/i, ['MASTG-KNOW-0012', 'MASTG-KNOW-0011']],
   [/tracker|analytics|third.?party.?service/i, ['MASTG-KNOW-0026']],
+  [/uri.?scheme|intent.?result|setresult|grant.?uri|fileprovider|path.?scope/i, ['MASTG-KNOW-0138', 'MASTG-KNOW-0020', 'MASTG-KNOW-0117']],
+  [/app.?sign|signing|v1.?sig|v2.?sig/i, ['MASTG-KNOW-0003']],
+  [/third.?party.?librar|dependency|supply.?chain/i, ['MASTG-KNOW-0004']],
+  [/memory.?corrupt|buffer.?overflow|use.?after.?free/i, ['MASTG-KNOW-0005']],
+  [/binary.?protect|nx|pie|relro|stack.?canary/i, ['MASTG-KNOW-0006']],
+  [/exception.?handl|uncaught/i, ['MASTG-KNOW-0010']],
+  [/file.?integrit|checksum|hash.?check/i, ['MASTG-KNOW-0029']],
+  [/reverse.?engineer|frida|xposed|magisk|hook.?detect/i, ['MASTG-KNOW-0030']],
+  [/runtime.?integrit|rasp/i, ['MASTG-KNOW-0032', 'MASTG-KNOW-0118']],
+  [/key.?attest/i, ['MASTG-KNOW-0044']],
+  [/secure.?key.?import|wrapped.?key/i, ['MASTG-KNOW-0045']],
+  [/process.?memory|heap.?dump|core.?dump/i, ['MASTG-KNOW-0051']],
 ];
 
 const MASVS_CATEGORY_DEFAULTS = {

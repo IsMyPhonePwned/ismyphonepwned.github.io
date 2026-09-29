@@ -18556,6 +18556,122 @@ function securityMtFindingId(iss, idx = 0) {
   );
 }
 
+/**
+ * Issue-family tags used to collapse duplicate security hits across scanners
+ * (vuln detectors + MASTG/Semgrep often flag the same WebView/crypto/IPC issue).
+ */
+const SECURITY_ISSUE_FAMILIES = [
+  { id: 'webview', vuln: /webview|javascript_interface|webresource|custom_tabs/i, semgrep: /webview|javascriptinterface|safebrowsing|onreceivedsslerror|custom.?tabs/i, mt: /webview|javascript|evaluatejavascript/i },
+  { id: 'crypto', vuln: /weak_crypto|keystore|hardcoded_secrets|sqlcipher|biometric/i, semgrep: /broken-encryption|hardcoded-crypto|non-random|random-apis|key-generation|asymmetric|security-provider|biometric|passcode/i, mt: /crypto|cipher|keystore|random/i },
+  { id: 'pending_intent', vuln: /pending_intent/i, semgrep: /pendingintent/i, mt: /pending.?intent/i },
+  { id: 'sql', vuln: /sql_injection|sqlcipher|contentprovider.?sql/i, semgrep: /sql-injection|sql.?inject/i, mt: /sql/i },
+  { id: 'ssl', vuln: /ssl_|pinning|hostname|trust_all|weak_host/i, semgrep: /network-|ssl-socket|hostname|trust.?anchor|checkservertrusted|onreceivedsslerror/i, mt: /ssl|tls|hostname|trust/i },
+  { id: 'deserialize', vuln: /deserial/i, semgrep: /object-deserialization|deserial/i, mt: /deserial|objectinput/i },
+  { id: 'implicit_intent', vuln: /implicit_intent/i, semgrep: /implicit-intent/i, mt: /implicit.?intent/i },
+  { id: 'intent_ipc', vuln: /intent_spoof|intent_redirect|icc_|ipc_intent|broadcast|command_receiver|uri_permission|uri_grant|sensitive_broadcast|credential_broadcast/i, semgrep: /deeplink|intent-filter|provider-exported|fileprovider|content-provider|implicit-intent/i, mt: /intent|broadcast|provider|deeplink/i },
+  { id: 'storage', vuln: /path_traversal|zip_slip|storage_mode|pick_file|logcat_external|insecure_logging|logging_/i, semgrep: /shared-storage|external-api|mediastore|local-storage|backup|flag-secure|notification|keyboard|input-field|non-caching|overlay|system-alert/i, mt: /storage|file|path|log/i },
+  { id: 'root_debug', vuln: /debugger|root_detect|strictmode|debuggable/i, semgrep: /debugger|root-detection|strictmode|debuggable|sdk-version|minsdk/i, mt: /root|debug|frida/i },
+];
+
+function securityFindingIssueFamilies(scanner, f, iss) {
+  const blob = scanner === 'mt'
+    ? [iss?.rule_name, iss?.rule_code, iss?.description, iss?.callable, iss?.source_kind, iss?.sink_kind].filter(Boolean).join(' ')
+    : scanner === 'semgrep'
+      ? [f?.rule_id, f?.message, f?.vuln_class, f?.sink_desc, f?.chain_tag].filter(Boolean).join(' ')
+      : [f?.category, f?.title, f?.message, f?.vuln_class, f?.sink_desc].filter(Boolean).join(' ');
+  const out = [];
+  for (const fam of SECURITY_ISSUE_FAMILIES) {
+    const re = scanner === 'mt' ? fam.mt : scanner === 'semgrep' ? fam.semgrep : fam.vuln;
+    if (re.test(blob)) out.push(fam.id);
+  }
+  return out;
+}
+
+function securityFindingLocationKey(scanner, f, iss, idx = 0) {
+  if (scanner === 'mt') {
+    const nav = securityMtNavTarget(iss);
+    const off = nav.offset != null ? String(nav.offset) : '';
+    return [
+      String(iss?.dex_file || nav.dexFile || ''),
+      String(nav.className || ''),
+      String(nav.methodName || ''),
+      off,
+    ].join('|').toLowerCase();
+  }
+  const off = f?.sink_offset != null && f.sink_offset !== '' ? String(f.sink_offset) : '';
+  return [
+    String(f?.dex_file || ''),
+    String(f?.class_name || ''),
+    String(f?.method_name || ''),
+    off,
+  ].join('|').toLowerCase();
+}
+
+function securityFindingLocationKeyLoose(scanner, f, iss) {
+  // Class + method only (for when one scanner lacks a sink offset).
+  if (scanner === 'mt') {
+    const nav = securityMtNavTarget(iss);
+    return [
+      String(iss?.dex_file || nav.dexFile || ''),
+      String(nav.className || ''),
+      String(nav.methodName || ''),
+    ].join('|').toLowerCase();
+  }
+  return [
+    String(f?.dex_file || ''),
+    String(f?.class_name || ''),
+    String(f?.method_name || ''),
+  ].join('|').toLowerCase();
+}
+
+/** Exact within-list dedupe for Semgrep rows (same rule + location). */
+function dedupeSemgrepFindingsList(findings) {
+  if (!Array.isArray(findings) || findings.length < 2) return Array.isArray(findings) ? findings : [];
+  const seen = new Set();
+  const out = [];
+  for (const f of findings) {
+    const off = f?.sink_offset != null && f.sink_offset !== '' ? String(f.sink_offset) : '∅';
+    const sinkBit = off === '∅' ? String(f?.sink_desc || '') : '';
+    const key = [f?.rule_id, f?.class_name, f?.method_name, f?.dex_file, off, sinkBit].join('|').toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(f);
+  }
+  return out;
+}
+
+/**
+ * When "All scanners" is shown, drop Semgrep/MT hits that duplicate a vuln finding
+ * for the same class/method (and family). Vuln detectors keep the richer taint chain;
+ * MASTG links still appear on the vuln card via resolveMastgKnowledge.
+ */
+function shouldSuppressDuplicateSecurityFinding(scanner, f, iss, idx, occupied) {
+  if (!occupied || scanner === 'vuln') return false;
+  const families = securityFindingIssueFamilies(scanner, f, iss);
+  if (!families.length) return false;
+  const exact = securityFindingLocationKey(scanner, f, iss, idx);
+  const loose = securityFindingLocationKeyLoose(scanner, f, iss);
+  for (const fam of families) {
+    if (occupied.has(`${fam}::${exact}`) || occupied.has(`${fam}::${loose}`)) return true;
+  }
+  return false;
+}
+
+function buildSecurityDedupOccupiedFromVulns(vulns) {
+  const occupied = new Set();
+  for (const f of vulns || []) {
+    const families = securityFindingIssueFamilies('vuln', f, null);
+    if (!families.length) continue;
+    const exact = securityFindingLocationKey('vuln', f, null);
+    const loose = securityFindingLocationKeyLoose('vuln', f, null);
+    for (const fam of families) {
+      occupied.add(`${fam}::${exact}`);
+      occupied.add(`${fam}::${loose}`);
+    }
+  }
+  return occupied;
+}
+
 function securityMatchesVerdict(findingId) {
   if (!securityVerdictFilter) return true;
   const v = getFindingVerdict(findingId);
@@ -18973,7 +19089,7 @@ function clearSecurityResultsInMemory() {
 
 function applySecurityCacheEntry(entry) {
   securityVulnFindings = filterLibraryVulnFindings(Array.isArray(entry?.vulns) ? entry.vulns : []);
-  securitySemgrepFindings = Array.isArray(entry?.semgrep) ? entry.semgrep : [];
+  securitySemgrepFindings = dedupeSemgrepFindingsList(Array.isArray(entry?.semgrep) ? entry.semgrep : []);
   securityMtReport = entry?.mt || null;
   securityFromCache = true;
   securityCacheSavedAt = entry?.savedAt || 0;
@@ -19321,23 +19437,42 @@ function collectSeverityCountsForSource() {
     else if (r === 2) sev.low++;
     else sev.info++;
   };
+  const crossDedup = !securitySourceFilter;
+  const occupied = crossDedup ? buildSecurityDedupOccupiedFromVulns(securityVulnFindings) : null;
   if (securitySourceFilter !== 'semgrep' && securitySourceFilter !== 'mt') {
     for (const f of securityVulnFindings) bump(vulnFindingSeverityClass(f));
   }
   if (securitySourceFilter !== 'vuln' && securitySourceFilter !== 'mt') {
-    for (const f of securitySemgrepFindings) bump(semgrepSeverityClass(f.severity));
+    for (const f of securitySemgrepFindings) {
+      if (shouldSuppressDuplicateSecurityFinding('semgrep', f, null, 0, occupied)) continue;
+      bump(semgrepSeverityClass(f.severity));
+    }
   }
   if (securitySourceFilter !== 'vuln' && securitySourceFilter !== 'semgrep') {
-    const n = Array.isArray(securityMtReport?.issues) ? securityMtReport.issues.length : 0;
-    sev.med += n;
+    const issues = Array.isArray(securityMtReport?.issues) ? securityMtReport.issues : [];
+    issues.forEach((iss, idx) => {
+      if (shouldSuppressDuplicateSecurityFinding('mt', null, iss, idx, occupied)) return;
+      bump('sev-med');
+    });
   }
   return sev;
 }
 
 function collectSecurityStats() {
+  const occupied = buildSecurityDedupOccupiedFromVulns(securityVulnFindings);
   const vulnN = securityVulnFindings.length;
-  const sgN = securitySemgrepFindings.length;
-  const mtN = Array.isArray(securityMtReport?.issues) ? securityMtReport.issues.length : 0;
+  let sgN = 0;
+  for (const f of securitySemgrepFindings) {
+    if (!shouldSuppressDuplicateSecurityFinding('semgrep', f, null, 0, occupied)) sgN++;
+  }
+  const mtIssues = Array.isArray(securityMtReport?.issues) ? securityMtReport.issues : [];
+  let mtN = 0;
+  mtIssues.forEach((iss, idx) => {
+    if (!shouldSuppressDuplicateSecurityFinding('mt', null, iss, idx, occupied)) mtN++;
+  });
+  // Per-scanner tabs still show raw counts; combined total uses deduped view.
+  const rawSg = securitySemgrepFindings.length;
+  const rawMt = mtIssues.length;
   const total = vulnN + sgN + mtN;
   const sev = { high: 0, med: 0, low: 0, info: 0 };
   for (const f of securityVulnFindings) {
@@ -19348,6 +19483,7 @@ function collectSecurityStats() {
     else sev.info++;
   }
   for (const f of securitySemgrepFindings) {
+    if (shouldSuppressDuplicateSecurityFinding('semgrep', f, null, 0, occupied)) continue;
     const r = securitySeverityRank(semgrepSeverityClass(f.severity));
     if (r === 0) sev.high++;
     else if (r === 1) sev.med++;
@@ -19358,7 +19494,7 @@ function collectSecurityStats() {
   const cats = new Set(securityVulnFindings.map((f) => securityCategoryClass(f.category)));
   const scansDone = (securityScansRun.vuln ? 1 : 0) + (securityScansRun.semgrep ? 1 : 0) + (securityScansRun.mt ? 1 : 0);
   const live = securityScanBusy || total > 0 || scansDone > 0;
-  return { total, vulnN, sgN, mtN, sev, cats: cats.size, scansDone, live };
+  return { total, vulnN, sgN: rawSg, mtN: rawMt, dedupedSgN: sgN, dedupedMtN: mtN, sev, cats: cats.size, scansDone, live };
 }
 
 function vulnMatchesFilters(f) {
@@ -19587,6 +19723,8 @@ function renderSecurityChips() {
 
 function collectFilteredSecurityItems() {
   const items = [];
+  const crossDedup = !securitySourceFilter; // only when viewing all scanners
+  const occupied = crossDedup ? buildSecurityDedupOccupiedFromVulns(securityVulnFindings) : null;
   for (const f of securityVulnFindings) {
     if (!vulnMatchesFilters(f)) continue;
     const findingId = securityVulnFindingId(f);
@@ -19605,6 +19743,7 @@ function collectFilteredSecurityItems() {
   }
   for (const f of securitySemgrepFindings) {
     if (!semgrepMatchesFilters(f)) continue;
+    if (shouldSuppressDuplicateSecurityFinding('semgrep', f, null, 0, occupied)) continue;
     const findingId = securitySemgrepFindingId(f);
     if (!securityMatchesVerdict(findingId)) continue;
     const sevCls = semgrepSeverityClass(f.severity);
@@ -19622,6 +19761,7 @@ function collectFilteredSecurityItems() {
   const issues = Array.isArray(securityMtReport?.issues) ? securityMtReport.issues : [];
   issues.forEach((iss, idx) => {
     if (!mtMatchesFilters(iss)) return;
+    if (shouldSuppressDuplicateSecurityFinding('mt', null, iss, idx, occupied)) return;
     const findingId = securityMtFindingId(iss, idx);
     if (!securityMatchesVerdict(findingId)) return;
     const sevCls = 'sev-med';
@@ -21230,11 +21370,12 @@ async function runSecuritySemgrepScan(opts = {}) {
         const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
         if (!force && now - lastPartialApply < 500) return;
         lastPartialApply = now;
-        const findings = Array.isArray(partial) ? partial : [];
+        const findings = dedupeSemgrepFindingsList(Array.isArray(partial) ? partial : []);
         securitySemgrepFindings = securitySemgrepFindings.slice(0, baseline);
         for (const f of findings) {
           securitySemgrepFindings.push({ ...f, dex_file: targets.length > 1 ? t.name : (f.dex_file || t.name) });
         }
+        securitySemgrepFindings = dedupeSemgrepFindingsList(securitySemgrepFindings);
         refreshSecurityFindingsLive();
       };
       let raw;
@@ -21386,6 +21527,7 @@ async function runSecuritySemgrepScan(opts = {}) {
       for (const f of findings) {
         securitySemgrepFindings.push({ ...f, dex_file: c.label });
       }
+      securitySemgrepFindings = dedupeSemgrepFindingsList(securitySemgrepFindings);
       refreshSecurityFindingsLive();
 
       doneWeight += Math.max(xmlLen, 1);

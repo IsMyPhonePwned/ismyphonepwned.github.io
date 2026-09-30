@@ -2,9 +2,21 @@
  * OWASP MASTG Knowledge Base helpers for the Security scan UI.
  * Catalog: https://mas.owasp.org/MASTG/knowledge/
  * Article URLs: https://mas.owasp.org/MASTG-KNOW-NNNN
+ * Chains through MASWE → MASTG KNOW / BEST: see ./maswe.js
  */
 
+import {
+  MASWE_INDEX,
+  MASTG_BEST_INDEX,
+  MASTG_DEMO_INDEX,
+  resolveMasChain,
+  resolveMaswe,
+  masweUrl,
+  masvsFamilySlug,
+} from './maswe.js';
+
 export const MASTG_KNOWLEDGE_INDEX = 'https://mas.owasp.org/MASTG/knowledge/';
+export { MASWE_INDEX, MASTG_BEST_INDEX, MASTG_DEMO_INDEX, resolveMaswe, masweUrl };
 
 /** Android MASTG-KNOW articles (current) used for Security scan deep-links. */
 export const MASTG_KNOW_ANDROID = {
@@ -198,34 +210,107 @@ export function resolveMastgKnowledge(ctx = {}) {
 }
 
 /**
- * HTML block with MASTG knowledge links (stopPropagation on click).
+ * HTML block with MASWE → MASTG Knowledge / Best-Practice links (stopPropagation on click).
  * @param {{ ruleId?: string, category?: string, message?: string, title?: string, vulnClass?: string }} ctx
  * @param {{ escapeHtml: (s: string) => string, escapeAttr: (s: string) => string }} esc
  */
+/**
+ * HTML block with MASWE → MASVS → MASTG Knowledge / Best-Practice links.
+ * Prefers native fields from dex-decompiler (`maswe` / `masvs` / `mastg_know` / `mastg_best`)
+ * when present; falls back to client-side resolveMasChain for older caches / MT findings.
+ *
+ * @param {{
+ *   ruleId?: string, category?: string, message?: string, title?: string, vulnClass?: string,
+ *   maswe?: Array<{id:string,title?:string,family?:string,url?:string}>,
+ *   masvs?: Array<{id:string,title?:string,family?:string,url?:string,label?:string}>,
+ *   mastg_know?: Array<{id:string,title?:string,category?:string,family?:string,url?:string}>,
+ *   mastg_best?: Array<{id:string,title?:string,url?:string}>,
+ * }} ctx
+ * @param {{ escapeHtml: (s: string) => string, escapeAttr: (s: string) => string }} esc
+ */
 export function renderMastgKnowledgeHtml(ctx, esc) {
-  const links = resolveMastgKnowledge(ctx);
-  const masvs = extractMasvsTags([ctx.message, ctx.title, ctx.ruleId].filter(Boolean).join(' '));
-  if (!links.length && !masvs.length && !/^mastg-/i.test(String(ctx.ruleId || ''))) {
+  const nativeMaswe = Array.isArray(ctx.maswe) ? ctx.maswe : [];
+  const nativeMasvs = Array.isArray(ctx.masvs) ? ctx.masvs : [];
+  const nativeKnow = Array.isArray(ctx.mastg_know) ? ctx.mastg_know : [];
+  const nativeBest = Array.isArray(ctx.mastg_best) ? ctx.mastg_best : [];
+  const hasNative = nativeMaswe.length || nativeMasvs.length || nativeKnow.length || nativeBest.length;
+
+  let masweList = [];
+  let masvsList = [];
+  let knowList = [];
+  let bestList = [];
+
+  if (hasNative) {
+    masweList = nativeMaswe;
+    masvsList = nativeMasvs.map((c) => ({
+      ...c,
+      label: c.label || c.title || String(c.id || '').replace(/^MASVS-/, ''),
+      family: c.family || String(c.id || '').replace(/-\d+$/, ''),
+    }));
+    knowList = nativeKnow.map((l) => ({
+      ...l,
+      category: l.category || l.family || '',
+      url: l.url || mastgKnowUrl(l.id),
+    }));
+    bestList = nativeBest;
+  } else {
+    const links = resolveMastgKnowledge(ctx);
+    const chain = resolveMasChain(ctx, links);
+    masweList = chain.maswe || [];
+    masvsList = chain.masvs || [];
+    const knowById = new Map(links.map((l) => [l.id, l]));
+    for (const id of chain.knowIds || []) {
+      if (!knowById.has(id) && MASTG_KNOW_ANDROID[id]) {
+        const meta = MASTG_KNOW_ANDROID[id];
+        knowById.set(id, { id, title: meta.title, category: meta.category, url: mastgKnowUrl(id) });
+      }
+    }
+    knowList = [...knowById.values()].slice(0, 3);
+    bestList = chain.best || [];
+  }
+
+  const hasMaswe = masweList.length > 0;
+  const hasMasvs = masvsList.length > 0;
+  if (!knowList.length && !hasMasvs && !hasMaswe && !bestList.length && !/^mastg-/i.test(String(ctx.ruleId || ''))) {
     return '';
   }
-  const badges = masvs
-    .map(
-      (t) =>
-        `<span class="security-badge mastg-masvs" title="OWASP MASVS control">${esc.escapeHtml(t)}</span>`
-    )
+
+  const chip = (href, label, title, cls, id) =>
+    `<a class="mas-chip ${cls}" href="${esc.escapeAttr(href)}" target="_blank" rel="noopener noreferrer" data-mas-id="${esc.escapeAttr(id)}" title="${esc.escapeAttr(`${title} · click to filter · ⌘/Ctrl+click to open`)}" onclick="event.stopPropagation()">${esc.escapeHtml(label)}</a>`;
+
+  const masvsChips = masvsList
+    .map((c) => {
+      const slug = masvsFamilySlug(c.family);
+      const cls = slug ? `masvs masvs-${slug}` : 'masvs';
+      return chip(c.url, c.label || c.id.replace(/^MASVS-/, ''), `${c.id} · ${c.url}`, cls, c.family || c.id);
+    })
     .join('');
-  const knowLinks = links.length
-    ? links
-        .map(
-          (l) =>
-            `<a class="mastg-know-link" href="${esc.escapeAttr(l.url)}" target="_blank" rel="noopener noreferrer" data-mastg-know="${esc.escapeAttr(l.id)}" title="${esc.escapeAttr(`${l.id}: ${l.title}`)}">${esc.escapeHtml(l.id)}</a><span class="muted"> ${esc.escapeHtml(l.title)}</span>`
-        )
-        .join('<br>')
-    : `<a class="mastg-know-link" href="${esc.escapeAttr(MASTG_KNOWLEDGE_INDEX)}" target="_blank" rel="noopener noreferrer">MASTG Knowledge Base</a>`;
+
+  const masweChips = masweList
+    .map((w) => {
+      const slug = masvsFamilySlug(w.family);
+      const cls = slug ? `maswe masvs-${slug}` : 'maswe';
+      return chip(w.url, w.id.replace(/^MASWE-/, 'WE-'), `${w.id}: ${w.title || ''} (${w.family || ''})`, cls, w.id);
+    })
+    .join('');
+  const knowChips = knowList.length
+    ? knowList
+        .map((l) => chip(l.url, l.id.replace(/^MASTG-KNOW-/, 'KNOW-'), `${l.id}: ${l.title || ''}`, 'know', l.id))
+        .join('')
+    : chip(MASTG_KNOWLEDGE_INDEX, 'Knowledge', 'MASTG Knowledge Base', 'know', '');
+  const bestChips = bestList
+    .map((b) => chip(b.url, b.id.replace(/^MASTG-BEST-/, 'BEST-'), `${b.id}: ${b.title || ''}`, 'best', b.id))
+    .join('');
+
   return `<div class="security-finding-detail security-finding-mastg" onclick="event.stopPropagation()">
-    <span class="security-finding-k">MASTG</span> ${badges}
-    <div class="mastg-know-links">${knowLinks}
-      <div class="muted mastg-know-index"><a class="mastg-know-link" href="${esc.escapeAttr(MASTG_KNOWLEDGE_INDEX)}" target="_blank" rel="noopener noreferrer">Knowledge index →</a></div>
+    <div class="mas-chain-head">
+      <span class="security-finding-k">OWASP MAS</span>
+    </div>
+    <div class="mas-chain">
+      ${hasMasvs ? `<div class="mas-chain-row"><span class="mas-chain-label">MASVS</span><div class="mas-chip-row">${masvsChips}</div></div>` : ''}
+      ${hasMaswe ? `<div class="mas-chain-row"><span class="mas-chain-label">MASWE</span><div class="mas-chip-row">${masweChips}</div></div>` : ''}
+      <div class="mas-chain-row"><span class="mas-chain-label">KNOW</span><div class="mas-chip-row">${knowChips}</div></div>
+      ${bestChips ? `<div class="mas-chain-row"><span class="mas-chain-label">BEST</span><div class="mas-chip-row">${bestChips}</div></div>` : ''}
     </div>
   </div>`;
 }

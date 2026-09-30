@@ -20,7 +20,7 @@
     <div class="header-content">
       <img src="logo.png" alt="" class="app-logo" width="28" height="28">
       <div class="header-title-block">
-        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.25</span> <span class="app-date" id="app-date" title="Release date">29 Sep 2026</span></h1>
+        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.26</span> <span class="app-date" id="app-date" title="Release date">29 Sep 2026</span></h1>
         <p class="subtitle">APK, APKM, DEX, AXML, ARSC inspection in the browser</p>
       </div>
     </div>
@@ -807,7 +807,6 @@
               <div class="security-actions">
                 <button type="button" class="btn btn-primary" id="security-scan" title="Run selected scanners">Scan</button>
                 <button type="button" class="btn btn-small" id="security-rules-toggle" title="View, edit, or create Semgrep rules">Rules</button>
-                <a class="btn btn-small" id="security-mastg-know" href="https://mas.owasp.org/MASTG/knowledge/" target="_blank" rel="noopener noreferrer" title="OWASP MASTG Knowledge Base">MASTG Know</a>
                 <button type="button" class="btn btn-small" id="security-clear-cache" title="Clear cached results for this file">Clear cache</button>
                 <button type="button" class="btn btn-small" id="security-export-storage" title="Download analysis localStorage (scans, TP/FP, rules, renames, notes)">Export</button>
                 <button type="button" class="btn btn-small" id="security-import-storage" title="Import analysis localStorage from a previous export">Import…</button>
@@ -827,7 +826,6 @@
                   <span>MT taint</span>
                 </label>
               </div>
-              <input type="search" id="security-filter" class="pane-search-input" placeholder="Filter findings…" aria-label="Filter security findings" autocomplete="off">
               <span class="security-status muted" id="security-status">Load a DEX or APK, then click Scan</span>
             </div>
             <div class="security-progress" id="security-progress" hidden>
@@ -867,7 +865,7 @@
                   <button type="button" class="btn btn-small" id="security-rules-new" title="Insert a new empty rule template">New rule</button>
                 </div>
               </header>
-              <p class="security-rules-hint muted">Edit Semgrep-style YAML below (Java/XML patterns + optional <code>native:</code> SSA hints). Default builtin is <strong>All</strong> (starter + <a href="https://mas.owasp.org/MASTG/knowledge/" target="_blank" rel="noopener noreferrer">OWASP MASTG</a>). Findings link to matching <strong>MASTG-KNOW</strong> articles. Applied rules are included in Scan and stored in localStorage.</p>
+              <p class="security-rules-hint muted">Edit Semgrep-style YAML below (Java/XML patterns + optional <code>native:</code> SSA hints). Default builtin is <strong>All</strong> (starter + <a href="https://mas.owasp.org/MASTG/knowledge/" target="_blank" rel="noopener noreferrer">OWASP MASTG</a>). Findings chain to <a href="https://mas.owasp.org/MASWE/" target="_blank" rel="noopener noreferrer">MASWE</a> → <strong>MASTG-KNOW</strong> / <a href="https://mas.owasp.org/MASTG/best-practices/" target="_blank" rel="noopener noreferrer">BEST</a>. Applied rules are included in Scan and stored in localStorage.</p>
               <div class="security-rules-split">
                 <div class="security-rules-list-wrap">
                   <div class="security-rules-list-header muted" id="security-rules-count">0 rules</div>
@@ -880,27 +878,79 @@
               </div>
               <div class="security-rules-status muted" id="security-rules-status"></div>
             </div>
-            <div class="security-overview" id="security-overview" hidden>
-              <div class="security-overview-grid" id="security-overview-grid"></div>
-              <div class="security-overview-bar-wrap" id="security-overview-bar-wrap" hidden>
-                <div class="security-overview-bar" id="security-overview-bar" role="img" aria-label="Findings by severity"></div>
-                <div class="security-overview-bar-legend" id="security-overview-bar-legend"></div>
-              </div>
-              <div class="security-overview-scans" id="security-overview-scans"></div>
-            </div>
-            <div class="security-filters" id="security-filters" hidden>
-              <div class="security-source-tabs" id="security-source-tabs"></div>
-              <div class="security-sev-tabs" id="security-sev-tabs" role="toolbar" aria-label="Filter by severity"></div>
-              <div class="security-verdict-tabs" id="security-verdict-tabs" role="toolbar" aria-label="Filter by triage"></div>
-              <div class="security-chips" id="security-chips" hidden></div>
-            </div>
-            <div class="security-findings-wrap" id="security-findings-wrap">
-              <header class="security-findings-header">
-                <h3>Findings</h3>
-                <span class="muted" id="security-findings-count"></span>
-              </header>
-              <div class="security-findings" id="security-findings-list">
-              </div>
+            <div class="security-workspace" id="security-workspace">
+              <aside class="security-sidebar" id="security-sidebar">
+                <div class="security-overview" id="security-overview" hidden>
+                  <div class="security-overview-grid" id="security-overview-grid"></div>
+                  <div class="security-overview-bar-wrap" id="security-overview-bar-wrap" hidden>
+                    <div class="security-overview-bar" id="security-overview-bar" role="img" aria-label="Findings by severity"></div>
+                    <div class="security-overview-bar-legend" id="security-overview-bar-legend"></div>
+                  </div>
+                  <div class="security-mas-pie-wrap" id="security-mas-pie-wrap" hidden>
+                    <div class="security-mas-pie-title muted">MASWE by category</div>
+                    <div class="security-mas-pie-body">
+                      <div class="security-mas-pie" id="security-mas-pie" role="img" aria-label="Findings by MASVS family"></div>
+                      <div class="security-mas-pie-legend" id="security-mas-pie-legend"></div>
+                    </div>
+                  </div>
+                  <div class="security-overview-scans" id="security-overview-scans"></div>
+                </div>
+                <div class="security-filters" id="security-filters" hidden>
+                  <div class="security-sev-tabs" id="security-sev-tabs" role="toolbar" aria-label="Filter by severity"></div>
+                  <div class="security-verdict-tabs" id="security-verdict-tabs" role="toolbar" aria-label="Filter by triage"></div>
+                  <div class="security-mas-filters" id="security-mas-filters" hidden>
+                    <div class="security-mas-filters-label muted">MASVS / MASWE / MASTG</div>
+                    <div class="security-mas-filter-chips" id="security-mas-filter-chips" role="toolbar" aria-label="Filter by MASVS, MASWE or MASTG"></div>
+                  </div>
+                </div>
+                <div class="security-mas-graph-wrap" id="security-mas-graph-wrap" hidden>
+                  <div class="security-mas-graph-header">
+                    <h4 class="security-mas-graph-title">MAS map</h4>
+                    <span class="security-mas-graph-meta muted" id="security-mas-graph-meta"></span>
+                    <div class="security-mas-graph-actions">
+                      <button type="button" class="btn btn-small" id="security-mas-graph-toggle" title="Show or hide finding → MASWE → MASTG graph">Collapse</button>
+                      <button type="button" class="btn btn-small" id="security-mas-graph-fs" title="Fullscreen MAS map (Esc to exit)" aria-pressed="false">Fullscreen</button>
+                    </div>
+                  </div>
+                  <div class="security-mas-graph-legend" aria-hidden="true">
+                    <span class="mas-leg finding">Finding</span>
+                    <span class="mas-leg masvs">MASVS</span>
+                    <span class="mas-leg maswe">MASWE</span>
+                    <span class="mas-leg know">KNOW</span>
+                    <span class="mas-leg best">BEST</span>
+                  </div>
+                  <div class="security-mas-graph" id="security-mas-graph" role="img" aria-label="Findings linked to MASWE and MASTG"></div>
+                </div>
+              </aside>
+              <section class="security-findings-wrap" id="security-findings-wrap">
+                <header class="security-findings-header">
+                  <div class="security-findings-heading">
+                    <h3>Findings</h3>
+                    <span class="muted" id="security-findings-count"></span>
+                  </div>
+                  <input type="search" id="security-filter" class="pane-search-input security-findings-search" placeholder="Filter… WE-0032 · KNOW-0018 · class…" aria-label="Filter security findings" autocomplete="off">
+                </header>
+                <div class="security-findings-body">
+                  <div class="security-findings" id="security-findings-list">
+                  </div>
+                  <aside class="security-preview" id="security-preview" hidden>
+                    <header class="security-preview-header">
+                      <div class="security-preview-heading">
+                        <h4>Preview</h4>
+                        <span class="muted security-preview-meta" id="security-preview-meta"></span>
+                      </div>
+                      <div class="security-preview-actions">
+                        <button type="button" class="btn btn-small" id="security-preview-open" title="Open this finding in the Code tab">Open in Code</button>
+                        <button type="button" class="btn btn-small security-preview-close" id="security-preview-close" title="Close preview" aria-label="Close preview">×</button>
+                      </div>
+                    </header>
+                    <div class="security-preview-panes">
+                      <div class="security-preview-xml-banner" id="security-preview-xml-banner" hidden></div>
+                      <pre class="security-preview-pane source-code language-java" id="security-preview-source"></pre>
+                    </div>
+                  </aside>
+                </div>
+              </section>
             </div>
           </div>
         </div>
@@ -1287,7 +1337,7 @@
         <section class="settings-section">
           <h4 class="settings-section-title">Security scans</h4>
           <p class="settings-hint muted">Scan runs local engines from <a href="https://github.com/androguard/dex-decompiler" target="_blank" rel="noopener noreferrer">dex-decompiler</a>: vulnerability detectors (IPC, PendingIntent/PITracker, ZipSlip, Custom Tabs, nested Intent redirect, broadcasts, WebView, SSL, crypto, storage, trackers, …), Semgrep-style rules (starter + OWASP MASTG), and Mariana Trench–style taint solving (including field/extra breadcrumbs on traces). Use the <strong>Vuln / Semgrep / MT taint</strong> checkboxes in the Security toolbar to enable or disable each scanner before clicking Scan.</p>
-          <p class="settings-hint muted">Findings that match OWASP MASTG topics show <strong>MASTG-KNOW</strong> links into the <a href="https://mas.owasp.org/MASTG/knowledge/" target="_blank" rel="noopener noreferrer">Mobile Application Security Knowledge Base</a> (biometrics, WebViews, IPC, Keystore, backups, …).</p>
+          <p class="settings-hint muted">Findings chain through <a href="https://mas.owasp.org/MASVS/" target="_blank" rel="noopener noreferrer">MASVS</a> → <a href="https://mas.owasp.org/MASWE/" target="_blank" rel="noopener noreferrer">MASWE</a> → <a href="https://mas.owasp.org/MASTG/knowledge/" target="_blank" rel="noopener noreferrer">MASTG-KNOW</a> / <a href="https://mas.owasp.org/MASTG/best-practices/" target="_blank" rel="noopener noreferrer">MASTG-BEST</a>. Filter by <strong>MASVS family</strong> chips (STORAGE, CRYPTO, …), MASWE / KNOW / BEST ids, search, graph nodes, or the category pie chart. MASWE / MASVS chips use official family colors. <strong>Click a finding</strong> for a source (or Manifest XML) preview on the right. Use <strong>Fullscreen</strong> on the MAS map (Esc to exit).</p>
         </section>
         <section class="settings-section">
           <h4 class="settings-section-title">Python shell</h4>

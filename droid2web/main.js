@@ -23,7 +23,8 @@ import {
 } from './native-ui.js';
 import { initFindRefsUi } from './findrefs-ui.js';
 import { initPythonConsole } from './python-console.js';
-import { renderMastgKnowledgeHtml } from './mastg-know.js';
+import { buildMasGraph, resolveMaswe, resolveMasChain, masweUrl, MASWE_CATALOG, masvsFamilyColor, masvsFamilySlug, masvsFamilyShort, masvsFamilyUrl, MASVS_FAMILY_ORDER, MASVS_FAMILY_COLORS } from './maswe.js';
+import { renderMastgKnowledgeHtml, resolveMastgKnowledge } from './mastg-know.js';
 import {
   buildJniLinkIndex,
   clearJniLinkIndex,
@@ -1093,6 +1094,7 @@ const UI_TOKEN_GROUPS = {
     { key: '--ui-font-size', label: 'UI font size', type: 'range', min: 11, max: 18, step: 1, unit: 'px', def: 14 },
     { key: '--code-font-size', label: 'Source font size', type: 'range', min: 0.7, max: 1.15, step: 0.01, unit: 'rem', def: 0.82 },
     { key: '--bytecode-font-size', label: 'Bytecode font size', type: 'range', min: 0.65, max: 1.1, step: 0.01, unit: 'rem', def: 0.8 },
+    { key: '--security-preview-font-size', label: 'Security preview font', type: 'range', min: 0.42, max: 0.9, step: 0.01, unit: 'rem', def: 0.52 },
     { key: '--radius', label: 'Corner radius', type: 'range', min: 0, max: 16, step: 1, unit: 'px', def: null },
   ],
   ui: [
@@ -5941,6 +5943,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       c.classList.toggle('active', c.id === tab);
     });
     closeMobileNavIfNeeded();
+    if (btn.closest('.center-panel, .center-tabs')) syncSecurityFocusLayout(tab);
     if (tab === 'strings-tab') {
       scheduleEnsureDexStringsLoaded();
       requestAnimationFrame(() => paintStringsVirtualWindow());
@@ -5956,6 +5959,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       renderComponentsTab();
     }
     if (tab === 'diff-tab') dexDiffApi?.syncLoadedUi?.();
+    if (tab === 'python-tab') window.droid2webEnsurePython?.();
     syncDeviceContents(tab === 'device-tab');
   });
 });
@@ -17327,6 +17331,7 @@ function switchToCenterTab(tabId) {
   document.querySelectorAll('.center-panel .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
   document.querySelectorAll('.center-panel .tab-content').forEach(c => c.classList.toggle('active', c.id === tabId));
   if (centerTabsMenu && !centerTabsMenu.hidden) renderCenterTabsMenu();
+  syncSecurityFocusLayout(tabId);
   if (tabId === 'raw-tab' && rawHexEditor && typeof rawHexEditor.refresh === 'function') {
     requestAnimationFrame(() => rawHexEditor.refresh());
   }
@@ -17340,6 +17345,18 @@ function switchToCenterTab(tabId) {
   if (tabId === 'diff-tab') dexDiffApi?.syncLoadedUi?.();
   if (tabId === 'python-tab') window.droid2webEnsurePython?.();
   syncDeviceContents(tabId === 'device-tab');
+}
+
+/** Hide the Classes / left tree while Security is active — findings need the full width. */
+function syncSecurityFocusLayout(tabId = getActiveCenterTabId()) {
+  const focus = tabId === 'security-tab';
+  document.body.classList.toggle('security-focus', focus);
+  document.getElementById('inspector-layout')?.classList.toggle('security-focus', focus);
+  if (focus) {
+    document.body.classList.remove('mobile-nav-open');
+    const toggle = document.getElementById('mobile-nav-toggle');
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+  }
 }
 
 /** Revoke and clear all blob URLs for file tabs, remove DOM, clear state. */
@@ -17840,7 +17857,8 @@ let securitySemgrepFindings = [];
 let securityMtReport = null;
 let securityFilterQuery = '';
 let securitySourceFilter = '';
-let securityCategoryFilter = '';
+/** Active MASWE / MASTG-KNOW / MASTG-BEST id filter ('' = all). */
+let securityMasFilter = '';
 /** Severity filter: '' | 'sev-high' | 'sev-med' | 'sev-low' | 'sev-info' */
 let securitySeverityFilter = '';
 /** Triage filter: '' | 'unmarked' | 'tp' | 'fp' */
@@ -17990,14 +18008,40 @@ const securityOverviewBarWrap = document.getElementById('security-overview-bar-w
 const securityOverviewBar = document.getElementById('security-overview-bar');
 const securityOverviewBarLegend = document.getElementById('security-overview-bar-legend');
 const securityOverviewScans = document.getElementById('security-overview-scans');
+const securityMasGraphWrap = document.getElementById('security-mas-graph-wrap');
+const securityMasGraphEl = document.getElementById('security-mas-graph');
+const securityMasGraphMeta = document.getElementById('security-mas-graph-meta');
+const securityMasGraphToggle = document.getElementById('security-mas-graph-toggle');
+const securityMasGraphFsBtn = document.getElementById('security-mas-graph-fs');
+const securityMasFiltersEl = document.getElementById('security-mas-filters');
+const securityMasFilterChipsEl = document.getElementById('security-mas-filter-chips');
+/** @type {import('vis-network').Network | null} */
+let securityMasNetwork = null;
+let securityMasGraphCollapsed = false;
+let securityMasGraphFingerprint = '';
+let securityMasGraphFullscreen = false;
 const securityFiltersEl = document.getElementById('security-filters');
+const securitySidebarEl = document.getElementById('security-sidebar');
+const securityWorkspaceEl = document.getElementById('security-workspace');
 const securitySourceTabsEl = document.getElementById('security-source-tabs');
 const securitySevTabsEl = document.getElementById('security-sev-tabs');
 const securityVerdictTabsEl = document.getElementById('security-verdict-tabs');
 const securityFindingsList = document.getElementById('security-findings-list');
 const securityFindingsCount = document.getElementById('security-findings-count');
+const securityPreviewEl = document.getElementById('security-preview');
+const securityPreviewMeta = document.getElementById('security-preview-meta');
+const securityPreviewSource = document.getElementById('security-preview-source');
+const securityPreviewXmlBanner = document.getElementById('security-preview-xml-banner');
+const securityPreviewOpenBtn = document.getElementById('security-preview-open');
+const securityPreviewCloseBtn = document.getElementById('security-preview-close');
+const securityMasPieWrap = document.getElementById('security-mas-pie-wrap');
+const securityMasPieEl = document.getElementById('security-mas-pie');
+const securityMasPieLegendEl = document.getElementById('security-mas-pie-legend');
+/** @type {null | { className: string, methodName: string, dexFile: string, offset: number|null, hint: string, kind?: string, xml?: boolean, ruleId?: string }} */
+let securityPreviewNav = null;
+let securityPreviewReqId = 0;
+let securityPreviewFindingId = '';
 const securityFilterInput = document.getElementById('security-filter');
-const securityChipsEl = document.getElementById('security-chips');
 const securityRulesPanel = document.getElementById('security-rules-panel');
 const securityRulesEditor = document.getElementById('security-rules-editor');
 const securityRulesHighlight = document.getElementById('security-rules-highlight');
@@ -19061,8 +19105,8 @@ function clearSecurityCacheForCurrent() {
   securityMtReport = null;
   securityFromCache = false;
   securityCacheSavedAt = 0;
-  securityCategoryFilter = '';
   securitySourceFilter = '';
+  securityMasFilter = '';
   securitySeverityFilter = '';
   securityVerdictFilter = '';
   securityScansRun = { vuln: false, semgrep: false, mt: false };
@@ -19078,8 +19122,8 @@ function clearSecurityResultsInMemory() {
   securityMtReport = null;
   securityFromCache = false;
   securityCacheSavedAt = 0;
-  securityCategoryFilter = '';
   securitySourceFilter = '';
+  securityMasFilter = '';
   securitySeverityFilter = '';
   securityVerdictFilter = '';
   securityScansRun = { vuln: false, semgrep: false, mt: false };
@@ -19497,41 +19541,153 @@ function collectSecurityStats() {
   return { total, vulnN, sgN: rawSg, mtN: rawMt, dedupedSgN: sgN, dedupedMtN: mtN, sev, cats: cats.size, scansDone, live };
 }
 
+function findingMasCtxFromVuln(f) {
+  return {
+    ruleId: f.category,
+    category: f.category,
+    title: f.title,
+    message: `${f.problem || ''} ${f.message || ''} ${f.recommendation || ''}`,
+    vulnClass: f.vuln_class || f.category,
+    maswe: f.maswe,
+    masvs: f.masvs,
+    mastg_know: f.mastg_know,
+    mastg_best: f.mastg_best,
+  };
+}
+
+function findingMasCtxFromSemgrep(f) {
+  return {
+    ruleId: f.rule_id,
+    category: f.vuln_class,
+    title: f.rule_id,
+    message: f.message,
+    vulnClass: f.vuln_class,
+    maswe: f.maswe,
+    masvs: f.masvs,
+    mastg_know: f.mastg_know,
+    mastg_best: f.mastg_best,
+  };
+}
+
+function findingMasCtxFromMt(iss) {
+  const tag = iss.sink_kind || iss.rule_id || iss.category || '';
+  return {
+    ruleId: String(tag),
+    category: iss.category || iss.sink_kind,
+    title: iss.title || iss.rule_name || iss.message,
+    message: iss.message || iss.description || iss.sink_desc,
+    vulnClass: iss.vuln_class,
+    maswe: iss.maswe,
+    masvs: iss.masvs,
+    mastg_know: iss.mastg_know,
+    mastg_best: iss.mastg_best,
+  };
+}
+
+/** @returns {{ maswe: string[], know: string[], best: string[], families: string[], labels: string[] }} */
+function findingMasTags(ctx) {
+  // Prefer native enrichment from dex-decompiler when present on the finding.
+  const hasNative = !!(
+    (Array.isArray(ctx.maswe) && ctx.maswe.length)
+    || (Array.isArray(ctx.masvs) && ctx.masvs.length)
+    || (Array.isArray(ctx.mastg_know) && ctx.mastg_know.length)
+    || (Array.isArray(ctx.mastg_best) && ctx.mastg_best.length)
+  );
+  if (hasNative) {
+    const maswe = (ctx.maswe || []).map((w) => w.id || w).filter(Boolean);
+    const know = (ctx.mastg_know || []).map((k) => k.id || k).filter(Boolean);
+    const best = (ctx.mastg_best || []).map((b) => b.id || b).filter(Boolean);
+    const families = [
+      ...new Set([
+        ...(ctx.maswe || []).map((w) => w.family).filter(Boolean),
+        ...(ctx.masvs || []).map((c) => c.family || String(c.id || '').replace(/-\d+$/, '')).filter((f) => /^MASVS-[A-Z]+$/.test(f)),
+      ]),
+    ];
+    const labels = [
+      ...maswe,
+      ...maswe.map((id) => id.replace(/^MASWE-/, 'WE-')),
+      ...families,
+      ...families.map((f) => masvsFamilyShort(f)),
+      ...(ctx.masvs || []).map((c) => c.id).filter(Boolean),
+      ...know,
+      ...know.map((id) => id.replace(/^MASTG-KNOW-/, 'KNOW-')),
+      ...best,
+      ...best.map((id) => id.replace(/^MASTG-BEST-/, 'BEST-')),
+    ];
+    return { maswe, know, best, families, labels };
+  }
+  const knowLinks = resolveMastgKnowledge(ctx);
+  const chain = resolveMasChain(ctx, knowLinks);
+  const maswe = chain.maswe.map((w) => w.id);
+  const families = [...new Set(chain.maswe.map((w) => w.family).filter(Boolean))];
+  const know = [...(chain.knowIds || [])];
+  const best = chain.best.map((b) => b.id);
+  const labels = [
+    ...maswe,
+    ...maswe.map((id) => id.replace(/^MASWE-/, 'WE-')),
+    ...families,
+    ...families.map((f) => masvsFamilyShort(f)),
+    ...know,
+    ...know.map((id) => id.replace(/^MASTG-KNOW-/, 'KNOW-')),
+    ...best,
+    ...best.map((id) => id.replace(/^MASTG-BEST-/, 'BEST-')),
+  ];
+  return { maswe, know, best, families, labels };
+}
+
+function findingMatchesMasFilter(ctx) {
+  if (!securityMasFilter) return true;
+  const tags = findingMasTags(ctx);
+  const want = securityMasFilter;
+  if (tags.maswe.includes(want) || tags.know.includes(want) || tags.best.includes(want)) return true;
+  if (tags.families.includes(want)) return true;
+  // Family short alias: STORAGE → MASVS-STORAGE
+  if (/^[A-Z]+$/.test(want) && tags.families.includes(`MASVS-${want}`)) return true;
+  // MASWE belonging to filtered family
+  if (want.startsWith('MASVS-') && tags.maswe.some((id) => MASWE_CATALOG[id]?.family === want)) return true;
+  // allow short aliases in filter state
+  const short = want
+    .replace(/^MASWE-/, 'WE-')
+    .replace(/^MASTG-KNOW-/, 'KNOW-')
+    .replace(/^MASTG-BEST-/, 'BEST-');
+  return tags.labels.includes(want) || tags.labels.includes(short);
+}
+
+function masSearchBlob(ctx) {
+  return findingMasTags(ctx).labels.join(' ');
+}
+
 function vulnMatchesFilters(f) {
   if (securitySourceFilter === 'semgrep' || securitySourceFilter === 'mt') return false;
-  if (securityCategoryFilter && securityCategoryClass(f.category) !== securityCategoryFilter) return false;
+  const ctx = findingMasCtxFromVuln(f);
+  if (!findingMatchesMasFilter(ctx)) return false;
   if (!securityMatchesSeverity(vulnFindingSeverityClass(f))) return false;
   const q = (securityFilterQuery || '').trim().toLowerCase();
   if (!q) return true;
-  const blob = [f.category, f.title, f.severity, f.message, f.problem, f.recommendation, f.cwe, f.class_name, f.method_name, f.source_desc, f.sink_desc, f.dex_file, ...(Array.isArray(f.trace) ? f.trace.map((t) => t.description) : [])].join(' ');
+  const blob = [f.category, f.title, f.severity, f.message, f.problem, f.recommendation, f.cwe, f.class_name, f.method_name, f.source_desc, f.sink_desc, f.dex_file, masSearchBlob(ctx), ...(Array.isArray(f.trace) ? f.trace.map((t) => t.description) : [])].join(' ');
   return blob.toLowerCase().includes(q);
 }
 
 function mtMatchesFilters(iss) {
   if (securitySourceFilter === 'vuln' || securitySourceFilter === 'semgrep') return false;
-  if (securityCategoryFilter) return false;
+  const ctx = findingMasCtxFromMt(iss);
+  if (!findingMatchesMasFilter(ctx)) return false;
   if (!securityMatchesSeverity('sev-med')) return false;
   const q = (securityFilterQuery || '').trim().toLowerCase();
   if (!q) return true;
   const frames = (iss.trace || []).map((t) => `${t.class_name}#${t.method_name} ${t.description}`).join(' ');
-  const blob = [iss.rule_name, iss.rule_code, iss.source_kind, iss.sink_kind, iss.callable, iss.description, frames, iss.dex_file].join(' ');
+  const blob = [iss.rule_name, iss.rule_code, iss.source_kind, iss.sink_kind, iss.callable, iss.description, frames, iss.dex_file, masSearchBlob(ctx)].join(' ');
   return blob.toLowerCase().includes(q);
 }
 
 function semgrepMatchesFilters(f) {
   if (securitySourceFilter === 'vuln' || securitySourceFilter === 'mt') return false;
-  if (securityCategoryFilter && securityCategoryFilter.startsWith('sg_')) {
-    const want = securityCategoryFilter.slice(3);
-    if (securityCategoryClass(f.vuln_class || f.rule_id || '') !== want && securityCategoryClass(f.rule_id || '') !== want) {
-      return false;
-    }
-  } else if (securityCategoryFilter) {
-    return false;
-  }
+  const ctx = findingMasCtxFromSemgrep(f);
+  if (!findingMatchesMasFilter(ctx)) return false;
   if (!securityMatchesSeverity(semgrepSeverityClass(f.severity))) return false;
   const q = (securityFilterQuery || '').trim().toLowerCase();
   if (!q) return true;
-  const blob = [f.rule_id, f.severity, f.message, f.class_name, f.method_name, f.sink_desc, f.vuln_class, f.chain_tag, f.match_kind, f.dex_file].join(' ');
+  const blob = [f.rule_id, f.severity, f.message, f.class_name, f.method_name, f.sink_desc, f.vuln_class, f.chain_tag, f.match_kind, f.dex_file, masSearchBlob(ctx)].join(' ');
   return blob.toLowerCase().includes(q);
 }
 
@@ -19542,12 +19698,17 @@ function renderSecurityOverview() {
 
   if (securityOverviewEl) securityOverviewEl.hidden = !hasScans;
   if (securityFiltersEl) securityFiltersEl.hidden = !hasScans;
+  if (securitySidebarEl) securitySidebarEl.hidden = !hasScans;
+  if (securityWorkspaceEl) securityWorkspaceEl.classList.toggle('has-sidebar', hasScans);
 
   if (!securityOverviewGrid) return;
   if (!hasScans) {
     securityOverviewGrid.innerHTML = '';
     if (securityOverviewBarWrap) securityOverviewBarWrap.hidden = true;
     if (securityOverviewScans) securityOverviewScans.innerHTML = '';
+    if (securityMasPieWrap) securityMasPieWrap.hidden = true;
+    destroySecurityMasGraph();
+    if (securityMasGraphWrap) securityMasGraphWrap.hidden = true;
     return;
   }
 
@@ -19617,35 +19778,595 @@ function renderSecurityOverview() {
     const active = (key) => securityScanBusy && securityScanPhaseState[key] === 'active';
     const pill = (key, label, count, done) => {
       const showCount = done || count > 0 || active(key);
-      return `<button type="button" class="security-scan-pill${done ? ' done' : ''}${active(key) ? ' scanning' : ''}${securitySourceFilter === key ? ' active' : ''}" data-source="${escapeAttr(key)}">` +
+      const isActive = securitySourceFilter === key || (key === '' && !securitySourceFilter);
+      return `<button type="button" class="security-scan-pill${done || key === '' ? ' done' : ''}${active(key) ? ' scanning' : ''}${isActive ? ' active' : ''}" data-source="${escapeAttr(key)}">` +
         `<span class="security-scan-pill-k">${escapeHtml(label)}</span>` +
         `<span class="security-scan-pill-v">${showCount ? count : '—'}</span></button>`;
     };
-      securityOverviewScans.innerHTML =
-      pill('vuln', 'Vuln detectors', stats.vulnN, securityScansRun.vuln) +
+    securityOverviewScans.innerHTML =
+      pill('', 'All', stats.total, stats.scansDone > 0) +
+      pill('vuln', 'Vuln', stats.vulnN, securityScansRun.vuln) +
       pill('semgrep', 'Semgrep', stats.sgN, securityScansRun.semgrep) +
-      pill('mt', 'MT taint', stats.mtN, securityScansRun.mt) +
-      (stats.cats ? `<span class="security-scan-pill muted-pill">${stats.cats} vuln categor${stats.cats === 1 ? 'y' : 'ies'}</span>` : '');
+      pill('mt', 'MT taint', stats.mtN, securityScansRun.mt);
+  }
+
+  renderSecurityMasGraph();
+  renderSecurityMasPie();
+}
+
+/** Count findings per MASVS family (MASWE category). */
+function collectMasFamilyCounts() {
+  /** @type {Map<string, number>} */
+  const counts = new Map();
+  const bump = (fam) => {
+    if (!fam || !/^MASVS-[A-Z]+$/.test(fam)) return;
+    counts.set(fam, (counts.get(fam) || 0) + 1);
+  };
+  const ingest = (ctx) => {
+    findingMasTags(ctx).families.forEach(bump);
+  };
+  for (const f of securityVulnFindings) ingest(findingMasCtxFromVuln(f));
+  const occupied = buildSecurityDedupOccupiedFromVulns(securityVulnFindings);
+  for (const f of securitySemgrepFindings) {
+    if (shouldSuppressDuplicateSecurityFinding('semgrep', f, null, 0, occupied)) continue;
+    ingest(findingMasCtxFromSemgrep(f));
+  }
+  const mtIssues = Array.isArray(securityMtReport?.issues) ? securityMtReport.issues : [];
+  mtIssues.forEach((iss, idx) => {
+    if (shouldSuppressDuplicateSecurityFinding('mt', null, iss, idx, occupied)) return;
+    ingest(findingMasCtxFromMt(iss));
+  });
+  return MASVS_FAMILY_ORDER
+    .filter((id) => counts.has(id))
+    .map((id) => ({ id, n: counts.get(id) || 0, color: masvsFamilyColor(id) }));
+}
+
+function polarToCartesian(cx, cy, r, angleDeg) {
+  const rad = ((angleDeg - 90) * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function describeDonutSlice(cx, cy, rOuter, rInner, startAngle, endAngle) {
+  const sweep = endAngle - startAngle;
+  if (sweep <= 0.01) return '';
+  const large = sweep > 180 ? 1 : 0;
+  const o1 = polarToCartesian(cx, cy, rOuter, startAngle);
+  const o2 = polarToCartesian(cx, cy, rOuter, endAngle);
+  const i1 = polarToCartesian(cx, cy, rInner, endAngle);
+  const i2 = polarToCartesian(cx, cy, rInner, startAngle);
+  return [
+    `M ${o1.x} ${o1.y}`,
+    `A ${rOuter} ${rOuter} 0 ${large} 1 ${o2.x} ${o2.y}`,
+    `L ${i1.x} ${i1.y}`,
+    `A ${rInner} ${rInner} 0 ${large} 0 ${i2.x} ${i2.y}`,
+    'Z',
+  ].join(' ');
+}
+
+function renderSecurityMasPie() {
+  if (!securityMasPieWrap || !securityMasPieEl || !securityMasPieLegendEl) return;
+  const slices = collectMasFamilyCounts();
+  if (!slices.length) {
+    securityMasPieWrap.hidden = true;
+    securityMasPieEl.innerHTML = '';
+    securityMasPieLegendEl.innerHTML = '';
+    return;
+  }
+  securityMasPieWrap.hidden = false;
+  const total = slices.reduce((s, x) => s + x.n, 0) || 1;
+  const cx = 50;
+  const cy = 50;
+  const rOuter = 46;
+  const rInner = 26;
+  let angle = 0;
+  const paths = slices.map((s) => {
+    const sweep = (s.n / total) * 360;
+    const start = angle;
+    const end = angle + sweep;
+    angle = end;
+    const d = describeDonutSlice(cx, cy, rOuter, rInner, start, end);
+    if (!d) return '';
+    const active = securityMasFilter === s.id ? ' active' : '';
+    return `<path class="pie-slice${active}" data-mas-filter="${escapeAttr(s.id)}" d="${d}" fill="${escapeAttr(s.color)}" title="${escapeAttr(`${s.id} · ${s.n}`)}"><title>${escapeHtml(masvsFamilyShort(s.id))} · ${s.n}</title></path>`;
+  }).join('');
+  securityMasPieEl.innerHTML = `<svg viewBox="0 0 100 100" aria-hidden="true">${paths}<circle class="pie-hole" cx="${cx}" cy="${cy}" r="${rInner - 0.5}"/><text class="pie-total" x="${cx}" y="${cy}">${total}</text></svg>`;
+  securityMasPieLegendEl.innerHTML = slices.map((s) => {
+    const active = securityMasFilter === s.id ? ' active' : '';
+    return `<button type="button" class="${active}" data-mas-filter="${escapeAttr(s.id)}" title="${escapeAttr(`${s.id} · ${s.n} finding(s)`)}">
+      <span class="security-mas-pie-swatch" style="background:${escapeAttr(s.color)}"></span>
+      <span class="security-mas-pie-label">${escapeHtml(masvsFamilyShort(s.id))}</span>
+      <span class="security-mas-pie-n">${s.n}</span>
+    </button>`;
+  }).join('');
+}
+
+function destroySecurityMasGraph() {
+  if (securityMasNetwork) {
+    try { securityMasNetwork.destroy(); } catch (_) { /* ignore */ }
+    securityMasNetwork = null;
+  }
+  if (securityMasGraphEl) securityMasGraphEl.innerHTML = '';
+  securityMasGraphFingerprint = '';
+}
+
+/** Group current findings by rule / category for the MASWE graph. */
+function collectMasGraphFindingGroups() {
+  /** @type {Map<string, { id: string, label: string, masweIds: string[], count: number }>} */
+  const groups = new Map();
+  const bump = (id, label, ctx) => {
+    const tags = findingMasTags(ctx);
+    const masweIds = tags.maswe.length ? tags.maswe : resolveMaswe(ctx).map((w) => w.id);
+    const existing = groups.get(id);
+    if (existing) {
+      existing.count += 1;
+      for (const mid of masweIds) {
+        if (!existing.masweIds.includes(mid)) existing.masweIds.push(mid);
+      }
+      return;
+    }
+    groups.set(id, {
+      id,
+      label: String(label || id).slice(0, 42),
+      masweIds,
+      count: 1,
+    });
+  };
+
+  for (const f of securityVulnFindings) {
+    const cat = f.category || f.vuln_class || 'vuln';
+    bump(`vuln:${cat}`, cat, findingMasCtxFromVuln(f));
+  }
+  const occupied = buildSecurityDedupOccupiedFromVulns(securityVulnFindings);
+  for (const f of securitySemgrepFindings) {
+    if (shouldSuppressDuplicateSecurityFinding('semgrep', f, null, 0, occupied)) continue;
+    const rid = f.rule_id || 'semgrep';
+    bump(`sg:${rid}`, rid, findingMasCtxFromSemgrep(f));
+  }
+  const mtIssues = Array.isArray(securityMtReport?.issues) ? securityMtReport.issues : [];
+  mtIssues.forEach((iss, idx) => {
+    if (shouldSuppressDuplicateSecurityFinding('mt', null, iss, idx, occupied)) return;
+    const tag = iss.sink_kind || iss.rule_id || iss.category || 'mt-taint';
+    bump(`mt:${tag}`, String(tag), findingMasCtxFromMt(iss));
+  });
+
+  return [...groups.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 24);
+}
+
+function masGraphFingerprint(groups) {
+  return groups.map((g) => `${g.id}:${g.count}:${(g.masweIds || []).join(',')}`).join('|');
+}
+
+function renderSecurityMasFilterChips() {
+  if (!securityMasFiltersEl || !securityMasFilterChipsEl) return;
+  const counts = new Map(); // id -> { kind, label, n, familySlug }
+  const bump = (id, kind, label, familySlug = '') => {
+    const cur = counts.get(id);
+    if (cur) cur.n += 1;
+    else counts.set(id, { kind, label, n: 1, familySlug });
+  };
+  const ingest = (ctx) => {
+    const tags = findingMasTags(ctx);
+    tags.families.forEach((fam) => bump(fam, 'masvs', masvsFamilyShort(fam), masvsFamilySlug(fam)));
+    tags.maswe.forEach((id) => {
+      const fromNative = (ctx.maswe || []).find((w) => (w.id || w) === id);
+      const fam = fromNative?.family || MASWE_CATALOG[id]?.family;
+      bump(id, 'maswe', id.replace(/^MASWE-/, 'WE-'), masvsFamilySlug(fam));
+    });
+    tags.know.forEach((id) => bump(id, 'know', id.replace(/^MASTG-KNOW-/, 'KNOW-')));
+    tags.best.forEach((id) => bump(id, 'best', id.replace(/^MASTG-BEST-/, 'BEST-')));
+  };
+  for (const f of securityVulnFindings) ingest(findingMasCtxFromVuln(f));
+  const occupied = buildSecurityDedupOccupiedFromVulns(securityVulnFindings);
+  for (const f of securitySemgrepFindings) {
+    if (shouldSuppressDuplicateSecurityFinding('semgrep', f, null, 0, occupied)) continue;
+    ingest(findingMasCtxFromSemgrep(f));
+  }
+  const mtIssues = Array.isArray(securityMtReport?.issues) ? securityMtReport.issues : [];
+  mtIssues.forEach((iss, idx) => {
+    if (shouldSuppressDuplicateSecurityFinding('mt', null, iss, idx, occupied)) return;
+    ingest(findingMasCtxFromMt(iss));
+  });
+
+  if (!counts.size) {
+    securityMasFiltersEl.hidden = true;
+    securityMasFilterChipsEl.innerHTML = '';
+    if (securityMasFilter) securityMasFilter = '';
+    return;
+  }
+  securityMasFiltersEl.hidden = false;
+
+  const kindOrder = { masvs: 0, maswe: 1, know: 2, best: 3 };
+  const famRank = (id) => {
+    const i = MASVS_FAMILY_ORDER.indexOf(id);
+    return i < 0 ? 99 : i;
+  };
+  const entries = [...counts.entries()].sort((a, b) => {
+    const ko = (kindOrder[a[1].kind] ?? 9) - (kindOrder[b[1].kind] ?? 9);
+    if (ko) return ko;
+    if (a[1].kind === 'masvs') return famRank(a[0]) - famRank(b[0]);
+    return b[1].n - a[1].n || a[0].localeCompare(b[0]);
+  });
+
+  // Keep active filter if still valid (family / WE / KNOW / BEST).
+  if (securityMasFilter && !counts.has(securityMasFilter)) securityMasFilter = '';
+
+  const familyEntries = entries.filter(([, m]) => m.kind === 'masvs');
+  const otherEntries = entries.filter(([, m]) => m.kind !== 'masvs').slice(0, 16);
+
+  const chipHtml = (id, meta) => {
+    const famCls = (meta.kind === 'maswe' || meta.kind === 'masvs') && meta.familySlug
+      ? ` masvs-${meta.familySlug}`
+      : '';
+    const title = meta.kind === 'masvs'
+      ? `${id} · filter findings in this MASVS family`
+      : meta.kind === 'maswe' && MASWE_CATALOG[id]
+        ? `${id} · ${MASWE_CATALOG[id].family}`
+        : id;
+    return `<button type="button" class="security-mas-filter-chip ${meta.kind}${famCls}${securityMasFilter === id ? ' active' : ''}" data-mas-filter="${escapeAttr(id)}" title="${escapeAttr(title)}">${escapeHtml(meta.label)}<span class="chip-n">${meta.n}</span></button>`;
+  };
+
+  securityMasFilterChipsEl.innerHTML = [
+    `<button type="button" class="security-mas-filter-chip${!securityMasFilter ? ' active' : ''}" data-mas-filter="" title="Clear MASVS / MASWE / MASTG filter">All</button>`,
+    ...familyEntries.map(([id, meta]) => chipHtml(id, meta)),
+    ...otherEntries.map(([id, meta]) => chipHtml(id, meta)),
+  ].join('');
+}
+
+function cssVar(name, fallback) {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback;
+}
+
+function fitSecurityMasGraph() {
+  if (!securityMasNetwork) return;
+  try {
+    securityMasNetwork.redraw();
+    securityMasNetwork.fit({ animation: false });
+  } catch (_) { /* ignore */ }
+}
+
+function isMasGraphFullscreen() {
+  return document.body.classList.contains('mas-graph-fullscreen')
+    || document.fullscreenElement === securityMasGraphWrap
+    || document.webkitFullscreenElement === securityMasGraphWrap;
+}
+
+function syncMasGraphFullscreenButton() {
+  const on = isMasGraphFullscreen();
+  securityMasGraphFullscreen = on;
+  if (securityMasGraphFsBtn) {
+    securityMasGraphFsBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    securityMasGraphFsBtn.textContent = on ? 'Exit' : 'Fullscreen';
+    securityMasGraphFsBtn.title = on ? 'Exit MAS map fullscreen (Esc)' : 'Fullscreen MAS map (Esc to exit)';
   }
 }
 
-function renderSecuritySourceTabs() {
-  if (!securitySourceTabsEl) return;
-  const stats = collectSecurityStats();
-  if (!stats.live) {
-    securitySourceTabsEl.innerHTML = '';
+async function setMasGraphFullscreen(on) {
+  const want = !!on;
+  if (want) {
+    if (securityMasGraphCollapsed) {
+      securityMasGraphCollapsed = false;
+      securityMasGraphFingerprint = '';
+      renderSecurityMasGraph();
+    }
+    document.body.classList.add('mas-graph-fullscreen');
+    try {
+      const req = securityMasGraphWrap?.requestFullscreen || securityMasGraphWrap?.webkitRequestFullscreen;
+      if (securityMasGraphWrap && req && !document.fullscreenElement && !document.webkitFullscreenElement) {
+        await Promise.resolve(req.call(securityMasGraphWrap));
+      }
+    } catch (_) { /* CSS fullscreen still applies */ }
+    syncMasGraphFullscreenButton();
+    setTimeout(fitSecurityMasGraph, 160);
     return;
   }
-  const tabs = [
-    ['', 'All scanners', stats.total],
-    ['vuln', 'Vuln detectors', stats.vulnN],
-    ['semgrep', 'Semgrep', stats.sgN],
-    ['mt', 'MT taint', stats.mtN],
-  ];
-  securitySourceTabsEl.innerHTML = tabs.map(([key, label, n]) =>
-    `<button type="button" class="security-source-tab${securitySourceFilter === key ? ' active' : ''}" data-source="${escapeAttr(key)}" title="${escapeAttr(key ? securityScannerLabel(key) : 'Show findings from all scanners')}">` +
-    `${escapeHtml(label)}<span class="chip-n">${n}</span></button>`
-  ).join('');
+  document.body.classList.remove('mas-graph-fullscreen');
+  try {
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      if (exit) await Promise.resolve(exit.call(document));
+    }
+  } catch (_) { /* ignore */ }
+  syncMasGraphFullscreenButton();
+  setTimeout(fitSecurityMasGraph, 160);
+}
+
+function toggleMasGraphFullscreen() {
+  setMasGraphFullscreen(!isMasGraphFullscreen());
+}
+
+function setSecurityMasFilter(id) {
+  const next = id || '';
+  securityMasFilter = securityMasFilter === next && next ? '' : next;
+  renderSecurityPanel();
+}
+
+function renderSecurityMasGraph() {
+  if (!securityMasGraphWrap || !securityMasGraphEl) return;
+  const groups = collectMasGraphFindingGroups();
+  if (!groups.length) {
+    destroySecurityMasGraph();
+    securityMasGraphWrap.hidden = true;
+    if (isMasGraphFullscreen()) setMasGraphFullscreen(false);
+    return;
+  }
+
+  securityMasGraphWrap.hidden = false;
+  const forceOpen = isMasGraphFullscreen();
+  securityMasGraphWrap.classList.toggle('collapsed', securityMasGraphCollapsed && !forceOpen);
+  if (securityMasGraphToggle) {
+    securityMasGraphToggle.textContent = securityMasGraphCollapsed && !forceOpen ? 'Expand' : 'Collapse';
+    securityMasGraphToggle.disabled = forceOpen;
+  }
+  syncMasGraphFullscreenButton();
+
+  const fp = masGraphFingerprint(groups) + (securityMasGraphCollapsed && !forceOpen ? '|c' : '|o') + (securityMasFilter ? `|f:${securityMasFilter}` : '');
+  if (securityMasGraphMeta) {
+    const linked = groups.reduce((n, g) => n + (g.masweIds?.length ? 1 : 0), 0);
+    securityMasGraphMeta.textContent = securityMasGraphCollapsed && !forceOpen
+      ? `${groups.length} groups · ${linked} linked to MASWE`
+      : `${groups.length} finding groups · ${linked} MASWE links`;
+  }
+
+  if (securityMasGraphCollapsed && !forceOpen) {
+    destroySecurityMasGraph();
+    return;
+  }
+
+  if (fp === securityMasGraphFingerprint && securityMasNetwork) return;
+  securityMasGraphFingerprint = fp;
+
+  if (typeof vis === 'undefined') {
+    destroySecurityMasGraph();
+    securityMasGraphEl.innerHTML = '<div class="code-empty-hint muted">vis-network unavailable</div>';
+    return;
+  }
+
+  const { nodes, edges, linked } = buildMasGraph(groups);
+  if (securityMasGraphMeta) {
+    securityMasGraphMeta.textContent = `${groups.length} finding groups · ${linked} MASWE edges · ${nodes.length} nodes`;
+  }
+
+  if (securityMasNetwork) {
+    try { securityMasNetwork.destroy(); } catch (_) { /* ignore */ }
+    securityMasNetwork = null;
+  }
+  securityMasGraphEl.innerHTML = '';
+
+  const text = cssVar('--text', '#e2e8f0');
+  const border = cssVar('--border', '#334155');
+  const bg = cssVar('--bg', '#0f172a');
+  const surface = cssVar('--surface', bg);
+  const masFinding = cssVar('--mas-finding', '#fc8181');
+  const masWeBorder = '#499fff';
+  const masKnow = '#142ec3';
+  const masBest = '#087a21';
+  const chipFont = { color: '#ffffff', size: 12, face: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', bold: true };
+  const findGroup = (nid) => groups.find((g) => `f:${g.id}` === nid);
+
+  const nodeMatchesFilter = (n) => {
+    if (!securityMasFilter) return true;
+    const want = securityMasFilter;
+    if (n.id === want) return true;
+    if (n.group === 'masvs' && n.id === want) return true;
+    if (n.group === 'maswe' && (n.id === want || n.family === want)) return true;
+    if (n.group === 'finding') {
+      const g = findGroup(n.id);
+      const ids = g?.masweIds || [];
+      if (ids.includes(want)) return true;
+      if (want.startsWith('MASVS-') && ids.some((id) => MASWE_CATALOG[id]?.family === want)) return true;
+    }
+    if ((n.group === 'know' || n.group === 'best') && n.id === want) return true;
+    // KNOW/BEST under a filtered MASWE/family stay lit via edges — dim individually unless id match
+    return false;
+  };
+
+  const visNodes = nodes.map((n) => {
+    const highlighted = !!securityMasFilter && nodeMatchesFilter(n);
+    const dim = !!(securityMasFilter && n.group !== 'root' && !highlighted);
+    // Keep KNOW/BEST faintly visible when their parent MASWE/family is filtered
+    let opacity = 1;
+    if (dim) {
+      if ((n.group === 'know' || n.group === 'best') && securityMasFilter) {
+        const parentLit = nodes.some((p) =>
+          (p.group === 'maswe' || p.group === 'masvs')
+          && nodeMatchesFilter(p)
+          && edges.some((e) => e.from === p.id && e.to === n.id)
+        );
+        opacity = parentLit ? 0.85 : 0.22;
+      } else {
+        opacity = 0.22;
+      }
+    }
+    const base = {
+      id: n.id,
+      label: n.label,
+      title: n.title,
+      level: n.level,
+      font: { color: text, size: 11, face: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace' },
+      borderWidth: highlighted ? 3 : 1.25,
+      shape: 'box',
+      margin: { top: 10, right: 12, bottom: 10, left: 12 },
+      opacity,
+    };
+    if (n.group === 'root') {
+      return {
+        ...base,
+        color: { background: colorMix(surface, masWeBorder, 0.12), border: masWeBorder },
+        font: { ...base.font, size: 14, bold: true, color: text },
+        opacity: 1,
+        borderWidth: 2,
+      };
+    }
+    if (n.group === 'finding') {
+      return {
+        ...base,
+        color: {
+          background: highlighted ? colorMix(surface, masFinding, 0.22) : surface,
+          border: masFinding,
+          highlight: { background: colorMix(surface, masFinding, 0.3), border: masFinding },
+        },
+        font: { ...base.font, size: 10 },
+        shapeProperties: { borderRadius: 6 },
+      };
+    }
+    if (n.group === 'masvs') {
+      const fill = n.color || masvsFamilyColor(n.id);
+      const darkText = n.familySlug === 'network';
+      return {
+        ...base,
+        shape: 'box',
+        font: { ...chipFont, size: 11, color: darkText ? '#1a202c' : '#ffffff' },
+        color: { background: fill, border: fill, highlight: { background: fill, border: '#fff' } },
+        borderWidth: highlighted ? 3 : 2,
+        shapeProperties: { borderRadius: 8 },
+      };
+    }
+    if (n.group === 'maswe') {
+      const fill = n.color || masvsFamilyColor(n.family || n.id);
+      const darkText = n.familySlug === 'network';
+      return {
+        ...base,
+        shape: 'ellipse',
+        font: { ...chipFont, size: 11, color: darkText ? '#1a202c' : '#ffffff' },
+        color: { background: fill, border: fill, highlight: { background: fill, border: '#fff' } },
+      };
+    }
+    if (n.group === 'know') {
+      return {
+        ...base,
+        font: chipFont,
+        color: { background: masKnow, border: masKnow, highlight: { background: masKnow, border: '#fff' } },
+        shapeProperties: { borderRadius: 4 },
+      };
+    }
+    if (n.group === 'best') {
+      return {
+        ...base,
+        font: chipFont,
+        color: { background: masBest, border: masBest, highlight: { background: masBest, border: '#fff' } },
+        shapeProperties: { borderRadius: 4 },
+      };
+    }
+    return { ...base, color: { background: bg, border } };
+  });
+
+  const visEdges = edges.map((e, i) => {
+    const toNode = nodes.find((n) => n.id === e.to);
+    const fromNode = nodes.find((n) => n.id === e.from);
+    let edgeColor = border;
+    if (toNode?.group === 'masvs' || fromNode?.group === 'masvs' || toNode?.group === 'maswe') {
+      edgeColor = toNode?.color || fromNode?.color || masvsFamilyColor(toNode?.family || fromNode?.family || '') || border;
+    } else if (toNode?.group === 'know') {
+      edgeColor = masKnow;
+    } else if (toNode?.group === 'best') {
+      edgeColor = masBest;
+    }
+    return {
+      id: `e${i}`,
+      from: e.from,
+      to: e.to,
+      arrows: { to: { enabled: true, scaleFactor: 0.45 } },
+      color: { color: edgeColor, opacity: 0.55, highlight: masWeBorder },
+      width: 1.4,
+      smooth: { type: 'cubicBezier', forceDirection: 'horizontal', roundness: 0.45 },
+    };
+  });
+
+  const data = { nodes: new vis.DataSet(visNodes), edges: new vis.DataSet(visEdges) };
+  const options = {
+    interaction: { hover: true, tooltipDelay: 100, zoomView: true, dragView: true, navigationButtons: false, keyboard: false },
+    physics: { enabled: false },
+    layout: {
+      hierarchical: {
+        enabled: true,
+        direction: 'LR',
+        sortMethod: 'directed',
+        shakeTowards: 'leaves',
+        levelSeparation: 150,
+        nodeSpacing: 70,
+        treeSpacing: 90,
+        blockShifting: true,
+        edgeMinimization: true,
+        parentCentralization: true,
+      },
+    },
+    nodes: { shapeProperties: { borderRadius: 5 }, chosen: true },
+    edges: { selectionWidth: 2, hoverWidth: 1.5 },
+  };
+
+  securityMasNetwork = new vis.Network(securityMasGraphEl, data, options);
+  securityMasNetwork.once('afterDrawing', () => {
+    try { fitSecurityMasGraph(); } catch (_) { /* ignore */ }
+  });
+  setTimeout(fitSecurityMasGraph, 80);
+  securityMasNetwork.on('click', (params) => {
+    const nid = params?.nodes?.[0];
+    if (!nid || typeof nid !== 'string') return;
+    const openDocs = !!(params?.event?.srcEvent?.metaKey || params?.event?.srcEvent?.ctrlKey);
+    if (nid.startsWith('MASVS-') && MASVS_FAMILY_COLORS[nid]) {
+      if (openDocs) {
+        window.open(masvsFamilyUrl(nid), '_blank', 'noopener,noreferrer');
+        return;
+      }
+      setSecurityMasFilter(nid);
+      return;
+    }
+    if (nid.startsWith('MASWE-') || nid.startsWith('MASTG-KNOW-') || nid.startsWith('MASTG-BEST-')) {
+      if (openDocs) {
+        if (nid.startsWith('MASWE-') && MASWE_CATALOG[nid]) window.open(masweUrl(nid), '_blank', 'noopener,noreferrer');
+        else window.open(`https://mas.owasp.org/${nid}`, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      setSecurityMasFilter(nid);
+    }
+  });
+}
+
+if (securityMasGraphToggle) {
+  securityMasGraphToggle.addEventListener('click', () => {
+    if (isMasGraphFullscreen()) return;
+    securityMasGraphCollapsed = !securityMasGraphCollapsed;
+    securityMasGraphFingerprint = '';
+    renderSecurityMasGraph();
+  });
+}
+securityMasGraphFsBtn?.addEventListener('click', () => toggleMasGraphFullscreen());
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement && document.body.classList.contains('mas-graph-fullscreen')) {
+    document.body.classList.remove('mas-graph-fullscreen');
+  }
+  syncMasGraphFullscreenButton();
+  setTimeout(fitSecurityMasGraph, 160);
+});
+document.addEventListener('webkitfullscreenchange', () => {
+  if (!document.webkitFullscreenElement && document.body.classList.contains('mas-graph-fullscreen')) {
+    document.body.classList.remove('mas-graph-fullscreen');
+  }
+  syncMasGraphFullscreenButton();
+  setTimeout(fitSecurityMasGraph, 160);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (isMasGraphFullscreen()) {
+    e.preventDefault();
+    setMasGraphFullscreen(false);
+    return;
+  }
+  if (securityPreviewEl && !securityPreviewEl.hidden) {
+    e.preventDefault();
+    closeSecurityPreview();
+  }
+});
+
+function renderSecuritySourceTabs() {
+  /* Scanner filter lives on the overview pills (All / Vuln / Semgrep / MT). */
+}
+
+function renderSecurityChips() {
+  /* Vuln-type chip strip removed — severity / scanner / search are enough. */
 }
 
 function renderSecuritySevTabs() {
@@ -19689,36 +20410,6 @@ function renderSecurityVerdictTabs() {
     `<button type="button" class="security-verdict-tab${cls ? ' ' + cls : ''}${securityVerdictFilter === key ? ' active' : ''}" data-verdict-filter="${escapeAttr(key)}">` +
     `${escapeHtml(label)}<span class="chip-n">${n}</span></button>`
   ).join('');
-}
-
-function renderSecurityChips() {
-  if (!securityChipsEl) return;
-  if (securitySourceFilter === 'semgrep' || securitySourceFilter === 'mt') {
-    securityChipsEl.hidden = true;
-    securityChipsEl.innerHTML = '';
-    return;
-  }
-  const counts = new Map();
-  for (const f of securityVulnFindings) {
-    const key = securityCategoryClass(f.category);
-    counts.set(key, (counts.get(key) || 0) + 1);
-  }
-  if (!counts.size) {
-    securityChipsEl.hidden = true;
-    securityChipsEl.innerHTML = '';
-    return;
-  }
-  securityChipsEl.hidden = false;
-  const parts = [
-    `<button type="button" class="security-chip${!securityCategoryFilter ? ' active' : ''}" data-cat="">All vuln types<span class="chip-n">${securityVulnFindings.length}</span></button>`,
-  ];
-  const keys = [...counts.keys()].sort((a, b) => (counts.get(b) - counts.get(a)) || a.localeCompare(b));
-  for (const key of keys) {
-    parts.push(
-      `<button type="button" class="security-chip${securityCategoryFilter === key ? ' active' : ''}" data-cat="${escapeAttr(key)}">${escapeHtml(formatCategoryLabel(key))}<span class="chip-n">${counts.get(key)}</span></button>`
-    );
-  }
-  securityChipsEl.innerHTML = parts.join('');
 }
 
 function collectFilteredSecurityItems() {
@@ -19922,6 +20613,7 @@ function renderSecurityFindingsList() {
 
   securityFindingsList.innerHTML = renderUnifiedSecurityFindings(items);
   securityFindingsList.scrollTop = scrollTop;
+  if (securityPreviewFindingId) markSecurityFindingPreviewed(securityPreviewFindingId);
 }
 
 let securityLiveRefreshTimer = 0;
@@ -20103,7 +20795,490 @@ function readSecurityFindingNav(el) {
   const offsetRaw = el.getAttribute('data-offset');
   const offset = offsetRaw != null && offsetRaw !== '' ? parseInt(offsetRaw, 10) : null;
   const hint = el.getAttribute('data-hint') || '';
-  return { kind, className, methodName, dexFile, offset, hint };
+  const findingId = el.getAttribute('data-finding-id') || '';
+  const ruleId = el.getAttribute('data-rule-id') || '';
+  const message = el.getAttribute('data-msg') || '';
+  return { kind, className, methodName, dexFile, offset, hint, findingId, ruleId, message };
+}
+
+function markSecurityFindingPreviewed(findingId) {
+  securityPreviewFindingId = findingId || '';
+  securityFindingsList?.querySelectorAll('.security-finding.is-previewed').forEach((el) => {
+    el.classList.remove('is-previewed');
+  });
+  if (!findingId || !securityFindingsList) return;
+  const esc = (typeof CSS !== 'undefined' && CSS.escape)
+    ? CSS.escape(findingId)
+    : String(findingId).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const hit = securityFindingsList.querySelector(`.security-finding[data-finding-id="${esc}"]`);
+  hit?.classList.add('is-previewed');
+}
+
+function closeSecurityPreview() {
+  securityPreviewReqId += 1;
+  securityPreviewNav = null;
+  securityPreviewFindingId = '';
+  markSecurityFindingPreviewed('');
+  if (securityPreviewEl) securityPreviewEl.hidden = true;
+  if (securityPreviewMeta) securityPreviewMeta.textContent = '';
+  if (securityPreviewSource) securityPreviewSource.innerHTML = '';
+  if (securityPreviewXmlBanner) {
+    securityPreviewXmlBanner.hidden = true;
+    securityPreviewXmlBanner.innerHTML = '';
+  }
+}
+
+function securityPreviewEmpty(msg) {
+  return `<div class="security-preview-empty">${escapeHtml(msg)}</div>`;
+}
+
+/** Resolve AndroidManifest / AXML text for a security XML finding preview. */
+function resolveSecurityXmlText(className) {
+  const label = String(className || 'AndroidManifest.xml');
+  const usable = (s) => typeof s === 'string' && s.length
+    && !s.startsWith('(') && !s.startsWith('No ');
+  if (/AndroidManifest\.xml$/i.test(label) || label === 'AndroidManifest.xml') {
+    if (usable(apkManifestXml)) return { xml: apkManifestXml, label: 'AndroidManifest.xml' };
+  }
+  if (currentType === 'axml' && usable(currentData?.xml)) {
+    return { xml: currentData.xml, label: currentFilename || label };
+  }
+  if (usable(apkManifestXml)) return { xml: apkManifestXml, label: 'AndroidManifest.xml' };
+  if (usable(currentData?.xml)) return { xml: currentData.xml, label: currentFilename || label };
+  return null;
+}
+
+/**
+ * Build search needles to highlight in the manifest from rule patterns / messages.
+ * @returns {string[]}
+ */
+function extractXmlHighlightNeedles({ ruleId = '', hint = '', message = '' } = {}) {
+  const needles = [];
+  const seen = new Set();
+  const add = (raw) => {
+    let s = String(raw || '').trim();
+    if (!s || s.length < 3) return;
+    // Drop metavariable values → keep attr prefix for search
+    s = s.replace(/=\s*["']?\$\w+["']?/g, '=');
+    s = s.replace(/\s*\.\.\.\s*/g, ' ');
+    s = s.replace(/\s+/g, ' ').trim();
+    if (s.length < 3 || seen.has(s)) return;
+    seen.add(s);
+    needles.push(s);
+  };
+
+  const rule = ruleId
+    ? securitySemgrepRuleInfos.find((r) => r.id === ruleId)
+    : null;
+  const sources = [
+    hint,
+    rule?.pattern_preview,
+    message,
+    rule?.message,
+  ].filter(Boolean);
+
+  for (const src of sources) {
+    const text = String(src);
+    for (const m of text.matchAll(/android:[\w.]+(?:\s*=\s*(?:"[^"$]*"|'[^'$]*'|\$\w+))?/g)) {
+      add(m[0]);
+    }
+    for (const m of text.matchAll(/<\/?([\w.:-]+)/g)) {
+      const tag = m[1];
+      if (!tag || /^(manifest|application|uses-sdk)$/i.test(tag)) continue;
+      add(`<${tag}`);
+    }
+    for (const m of text.matchAll(/[\w:.-]+="(?:true|false|[^"$]{1,48})"/g)) {
+      if (!m[0].includes('$')) add(m[0]);
+    }
+  }
+
+  const id = String(ruleId || '');
+  if (/allow.?backup/i.test(id) || /allowBackup/i.test(hint + message)) add('android:allowBackup=');
+  if (/debuggable/i.test(id) || /debuggable/i.test(hint + message)) add('android:debuggable=');
+  if (/cleartext/i.test(id) || /usesCleartextTraffic/i.test(hint + message)) add('android:usesCleartextTraffic=');
+  if (/exported/i.test(id) || /exported/i.test(hint + message)) add('android:exported=');
+  if (/root-?path/i.test(id) || /root-path/i.test(hint + message)) add('<root-path');
+  if (/network.?security/i.test(id)) add('networkSecurityConfig');
+  if (/backup.?rules|fullBackupContent/i.test(id)) add('android:fullBackupContent=');
+
+  // Prefer longer / more specific needles first
+  needles.sort((a, b) => b.length - a.length);
+  return needles;
+}
+
+function lineMatchesXmlNeedle(line, needle) {
+  if (!needle) return false;
+  if (needle.endsWith('=')) {
+    // attr prefix: android:allowBackup=
+    const re = new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*["\']?', 'i');
+    return re.test(line);
+  }
+  return line.includes(needle);
+}
+
+function findXmlHitLineIndexes(xml, needles) {
+  if (!xml || !needles?.length) return [];
+  const lines = String(xml).split('\n');
+  const hits = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (needles.some((n) => lineMatchesXmlNeedle(lines[i], n))) hits.push(i);
+  }
+  return hits;
+}
+
+/** Highlight matched substrings inside already-escaped XML line HTML (best-effort). */
+function markXmlNeedlesInLineHtml(lineHtml, needles, rawLine) {
+  let html = lineHtml;
+  for (const needle of needles) {
+    if (!lineMatchesXmlNeedle(rawLine, needle)) continue;
+    // Prefer literal segments that survive highlightXml escaping as contiguous text
+    const candidates = [];
+    if (needle.endsWith('=')) {
+      const m = rawLine.match(new RegExp(
+        `(${needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*["'][^"']*["'])`,
+        'i'
+      ));
+      if (m) candidates.push(m[1]);
+      candidates.push(needle.replace(/=$/, ''));
+    } else {
+      candidates.push(needle);
+    }
+    for (const c of candidates) {
+      const esc = escapeHtml(c);
+      if (!esc || html.indexOf(esc) < 0) continue;
+      html = html.split(esc).join(`<mark class="security-xml-mark">${esc}</mark>`);
+      break;
+    }
+  }
+  return html;
+}
+
+function renderSecurityPreviewXml({ label, xml, needles, ruleId }) {
+  if (securityPreviewMeta) securityPreviewMeta.textContent = label || 'AndroidManifest.xml';
+  // AXML decode is often one long line — pretty-print like the Manifest tab.
+  const pretty = formatXmlPretty(String(xml || '')) || String(xml || '');
+  const hitLines = findXmlHitLineIndexes(pretty, needles);
+  const hitSet = new Set(hitLines);
+  const bannerBits = [];
+  if (ruleId) bannerBits.push(ruleId);
+  if (needles.length) bannerBits.push(needles.slice(0, 2).join(' · '));
+  if (securityPreviewXmlBanner) {
+    if (hitLines.length || needles.length) {
+      securityPreviewXmlBanner.hidden = false;
+      securityPreviewXmlBanner.innerHTML = hitLines.length
+        ? `<strong>${hitLines.length}</strong> matched line${hitLines.length === 1 ? '' : 's'}`
+          + (bannerBits.length ? ` · ${escapeHtml(bannerBits.join(' · '))}` : '')
+        : `No exact line match${bannerBits.length ? ` · looking for ${escapeHtml(bannerBits.join(' · '))}` : ''}`;
+    } else {
+      securityPreviewXmlBanner.hidden = true;
+      securityPreviewXmlBanner.innerHTML = '';
+    }
+  }
+
+  if (!securityPreviewSource) return;
+  try {
+    const rawLines = pretty.split('\n');
+    const html = highlightXml(pretty, { lineNumbers: true });
+    securityPreviewSource.className = 'security-preview-pane source-code language-xml';
+    securityPreviewSource.innerHTML = html;
+    securityPreviewSource.querySelectorAll('.xml-line').forEach((el) => {
+      const n = Number(el.getAttribute('data-line')) - 1;
+      if (!hitSet.has(n)) return;
+      el.classList.add('security-xml-hit');
+      const lc = el.querySelector('.xml-lc');
+      if (lc && needles.length) {
+        lc.innerHTML = markXmlNeedlesInLineHtml(lc.innerHTML, needles, rawLines[n] || '');
+      }
+    });
+    const first = securityPreviewSource.querySelector('.xml-line.security-xml-hit');
+    if (first) {
+      requestAnimationFrame(() => {
+        try { first.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) {}
+      });
+    }
+  } catch (_) {
+    securityPreviewSource.textContent = pretty;
+  }
+}
+
+function renderSecurityPreviewContent({ className, methodName, method, offset, dexLabel }) {
+  if (securityPreviewXmlBanner) {
+    securityPreviewXmlBanner.hidden = true;
+    securityPreviewXmlBanner.innerHTML = '';
+  }
+  const displayName = getDisplayMethodName(className, method?.name || methodName || '');
+  const loc = `${className || '?'}${methodName ? '#' + (displayName || methodName) : ''}`;
+  const offLabel = offset != null && !Number.isNaN(Number(offset)) ? ` @ ${formatSecHexOffset(offset)}` : '';
+  if (securityPreviewMeta) {
+    securityPreviewMeta.textContent = `${dexLabel ? dexLabel + ' · ' : ''}${loc}${offLabel}`;
+  }
+
+  const isNative = !!(method?.is_native || method?.isNative);
+  const decompilation = method?.decompilation
+    || (isNative ? '// native method — no Dalvik body\n' : '(no decompiled source)');
+  const renamed = applyMethodRenameToDecompilation(decompilation, method?.name || methodName, displayName) || decompilation;
+  if (securityPreviewSource) {
+    try {
+      securityPreviewSource.className = 'security-preview-pane source-code language-java';
+      securityPreviewSource.innerHTML = applySourceHighlight(String(renamed), '');
+    } catch (_) {
+      securityPreviewSource.textContent = String(renamed);
+    }
+  }
+}
+
+/**
+ * Resolve DEX bytes + class/method for a security finding without leaving the Security tab.
+ */
+async function resolveSecurityFindingTarget(className, methodName, dexFile, navOpts = {}) {
+  const hint = navOpts.hint || '';
+  const preferClassIdx = navOpts.classIdx != null ? Number(navOpts.classIdx) : NaN;
+  const preferMethodIdx = navOpts.methodIdx != null ? Number(navOpts.methodIdx) : NaN;
+
+  if (currentType === 'apk') {
+    await ensureApkClassIndex();
+    let file = '';
+    const hit = lookupApkClass(className, apkClassToDex);
+    if (hit?.file) file = hit.file;
+    if (!file && dexFile) file = dexFile;
+    if (!file) throw new Error('Class not found in APK index: ' + className);
+    await showApkFile(file);
+    const classes = apkExtractedFile?.data?.classes || [];
+    const bytes = apkExtractedFile?.bytes || apkExtractedFileRawBytes;
+    if (!bytes?.length) throw new Error('Could not load DEX bytes for ' + file);
+    let classIdx = findClassIndexInDex(classes, className);
+    if (classIdx < 0 && Number.isFinite(preferClassIdx) && classes[preferClassIdx]
+      && classNamesEquivalent(classes[preferClassIdx]?.name, className)) {
+      classIdx = preferClassIdx;
+    }
+    if (classIdx < 0) throw new Error('Class not in DEX: ' + className);
+    const methods = classes[classIdx]?.methods || [];
+    let methodIdx = methodName ? findMethodIndexInClass(methods, methodName, hint) : -1;
+    if (methodIdx < 0 && Number.isFinite(preferMethodIdx) && methods[preferMethodIdx]) {
+      const pm = methods[preferMethodIdx];
+      const pn = pm?.dex_name || pm?.dexName || pm?.name || '';
+      if (!methodName || pn === methodName || pm?.name === methodName) methodIdx = preferMethodIdx;
+    }
+    if (methodIdx < 0) methodIdx = null;
+    return {
+      bytes,
+      classes,
+      classIdx,
+      methodIdx,
+      className,
+      methodName: methodName || '',
+      dexLabel: shortDexLabel(file) || file,
+      method: methodIdx != null ? methods[methodIdx] : null,
+    };
+  }
+
+  if (currentType === 'dex') {
+    if (loadedDexFiles.length > 1 && dexFile) {
+      const want = String(dexFile).toLowerCase();
+      let idx = loadedDexFiles.findIndex((d) => (d.name || '').toLowerCase() === want);
+      if (idx < 0) {
+        idx = loadedDexFiles.findIndex((d) => {
+          const n = (d.name || '').toLowerCase();
+          return n.endsWith('/' + want) || n.endsWith('\\' + want) || n.includes(want);
+        });
+      }
+      if (idx >= 0 && idx !== activeDexIndex) switchActiveDex(idx);
+    }
+    if (!Array.isArray(currentData?.classes) || !currentDexBytes?.length) {
+      throw new Error('No DEX classes loaded');
+    }
+    let classIdx = findClassIndexInDex(currentData.classes, className);
+    if (classIdx < 0 && loadedDexFiles.length > 1) {
+      for (let i = 0; i < loadedDexFiles.length; i++) {
+        if (i === activeDexIndex) continue;
+        const classes = loadedDexFiles[i]?.data?.classes;
+        const found = Array.isArray(classes) ? findClassIndexInDex(classes, className) : -1;
+        if (found >= 0) {
+          switchActiveDex(i);
+          classIdx = found;
+          break;
+        }
+      }
+    }
+    if (classIdx < 0 && Number.isFinite(preferClassIdx)
+      && currentData.classes[preferClassIdx]
+      && classNamesEquivalent(currentData.classes[preferClassIdx]?.name, className)) {
+      classIdx = preferClassIdx;
+    }
+    if (classIdx < 0) throw new Error('Class not found: ' + className);
+    const methods = currentData.classes[classIdx]?.methods || [];
+    let methodIdx = methodName ? findMethodIndexInClass(methods, methodName, hint) : -1;
+    if (methodIdx < 0 && Number.isFinite(preferMethodIdx) && methods[preferMethodIdx]) {
+      methodIdx = preferMethodIdx;
+    }
+    if (methodIdx < 0) methodIdx = null;
+    const dexLabel = loadedDexFiles[activeDexIndex]?.name
+      || currentFilename
+      || 'classes.dex';
+    return {
+      bytes: currentDexBytes,
+      classes: currentData.classes,
+      classIdx,
+      methodIdx,
+      className,
+      methodName: methodName || '',
+      dexLabel: shortDexLabel(dexLabel) || dexLabel,
+      method: methodIdx != null ? methods[methodIdx] : null,
+    };
+  }
+
+  throw new Error('Load a DEX or APK first');
+}
+
+async function ensureSecurityPreviewMethodBody(target) {
+  if (!target || target.methodIdx == null) return target;
+  let method = target.classes?.[target.classIdx]?.methods?.[target.methodIdx] || target.method;
+  if (!dexMethodNeedsBodyFetch(method)) {
+    target.method = method;
+    return target;
+  }
+  const raw = await getDexMethodInWorker(target.bytes, target.classIdx, target.methodIdx);
+  const result = typeof normalizeWasmResult === 'function' ? normalizeWasmResult(raw) : raw;
+  if (result && result.ok && result.data) {
+    const data = typeof normalizeWasmResult === 'function'
+      ? (normalizeWasmResult(result.data) || result.data)
+      : result.data;
+    const loaded = markDexMethodBodyLoaded(data);
+    if (target.classes?.[target.classIdx]?.methods) {
+      target.classes[target.classIdx].methods[target.methodIdx] = loaded;
+    }
+    target.method = loaded;
+  } else if (method) {
+    markDexMethodBodyLoaded(method);
+    target.method = method;
+  }
+  return target;
+}
+
+async function previewSecurityFinding(className, methodName, dexFile, navOpts = {}) {
+  const offset = navOpts.offset != null ? Number(navOpts.offset) : null;
+  const hint = navOpts.hint || '';
+  const findingId = navOpts.findingId || '';
+  const reqId = ++securityPreviewReqId;
+
+  securityPreviewNav = {
+    className: className || '',
+    methodName: methodName || '',
+    dexFile: dexFile || '',
+    offset: offset != null && !Number.isNaN(offset) ? offset : null,
+    hint,
+    kind: navOpts.kind || '',
+    findingId,
+    ruleId: navOpts.ruleId || '',
+  };
+  markSecurityFindingPreviewed(findingId);
+
+  if (!securityPreviewEl) {
+    await navigateToSecurityFinding(className, methodName, dexFile, navOpts);
+    return;
+  }
+
+  securityPreviewEl.hidden = false;
+  if (securityPreviewXmlBanner) {
+    securityPreviewXmlBanner.hidden = true;
+    securityPreviewXmlBanner.innerHTML = '';
+  }
+  if (securityPreviewMeta) securityPreviewMeta.textContent = 'Loading…';
+  if (securityPreviewSource) securityPreviewSource.innerHTML = securityPreviewEmpty('Loading decompiled source…');
+  try {
+    securityPreviewEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  } catch (_) { /* ignore */ }
+
+  if (isXmlSecurityFinding(className, methodName)) {
+    if (reqId !== securityPreviewReqId) return;
+    securityPreviewNav.xml = true;
+    if (securityPreviewOpenBtn) securityPreviewOpenBtn.textContent = 'Open Manifest';
+    const resolved = resolveSecurityXmlText(className);
+    if (!resolved?.xml) {
+      if (securityPreviewMeta) securityPreviewMeta.textContent = className || 'AndroidManifest.xml';
+      if (securityPreviewSource) {
+        securityPreviewSource.innerHTML = securityPreviewEmpty(
+          'Manifest XML is not loaded yet. Open an APK first, or use Open Manifest.'
+        );
+      }
+      setSecurityStatus(`Preview ${className || 'XML finding'}`);
+      return;
+    }
+    const needles = extractXmlHighlightNeedles({
+      ruleId: navOpts.ruleId || '',
+      hint: hint || '',
+      message: navOpts.message || hint || '',
+    });
+    renderSecurityPreviewXml({
+      label: resolved.label,
+      xml: resolved.xml,
+      needles,
+      ruleId: navOpts.ruleId || '',
+    });
+    setSecurityStatus(`Preview ${resolved.label}${needles.length ? ` · ${needles[0]}` : ''}`);
+    return;
+  }
+
+  if (securityPreviewOpenBtn) securityPreviewOpenBtn.textContent = 'Open in Code';
+
+  if (!className) {
+    if (securityPreviewSource) securityPreviewSource.innerHTML = securityPreviewEmpty('Finding has no class.');
+    return;
+  }
+
+  try {
+    const target = await resolveSecurityFindingTarget(className, methodName, dexFile, navOpts);
+    if (reqId !== securityPreviewReqId) return;
+    await ensureSecurityPreviewMethodBody(target);
+    if (reqId !== securityPreviewReqId) return;
+
+    if (target.methodIdx == null) {
+      if (securityPreviewMeta) {
+        securityPreviewMeta.textContent = `${target.dexLabel} · ${className}${methodName ? ' — method not found' : ''}`;
+      }
+      if (securityPreviewSource) {
+        securityPreviewSource.innerHTML = securityPreviewEmpty(
+          methodName
+            ? `Opened class ${className}, but method "${methodName}" was not found.`
+            : `Class ${className} — pick a method finding for source preview.`
+        );
+      }
+      setSecurityStatus(`Preview ${className}`);
+      return;
+    }
+
+    renderSecurityPreviewContent({
+      className: target.className,
+      methodName: target.methodName,
+      method: target.method,
+      offset,
+      dexLabel: target.dexLabel,
+    });
+    if (offset != null && !Number.isNaN(offset)) {
+      setSecurityStatus(`Preview ${className}#${methodName || '?'} @ ${formatSecHexOffset(offset)}`);
+    } else {
+      setSecurityStatus(`Preview ${className}#${methodName || '?'}`);
+    }
+  } catch (e) {
+    if (reqId !== securityPreviewReqId) return;
+    const msg = String(e?.message || e);
+    if (securityPreviewMeta) securityPreviewMeta.textContent = 'Preview failed';
+    if (securityPreviewSource) securityPreviewSource.innerHTML = securityPreviewEmpty(msg);
+    setSecurityStatus(msg);
+  }
+}
+
+function openSecurityPreviewInCode() {
+  const nav = securityPreviewNav;
+  if (!nav) return;
+  if (nav.xml || isXmlSecurityFinding(nav.className, nav.methodName)) {
+    navigateToXmlSecurityFinding(nav.className);
+    return;
+  }
+  navigateToSecurityFinding(nav.className, nav.methodName, nav.dexFile, {
+    offset: nav.offset,
+    hint: nav.hint,
+  });
 }
 
 function renderScannerTag(scanner) {
@@ -20202,14 +21377,23 @@ function renderVulnFindingCard(f, opts = {}) {
   }
   detailLines.push(
     renderMastgKnowledgeHtml(
-      { category: cat, title, message: `${problem} ${message} ${recommendation}`, vulnClass: cat },
+      {
+        category: cat,
+        title,
+        message: `${problem} ${message} ${recommendation}`,
+        vulnClass: cat,
+        maswe: f.maswe,
+        masvs: f.masvs,
+        mastg_know: f.mastg_know,
+        mastg_best: f.mastg_best,
+      },
       { escapeHtml, escapeAttr }
     )
   );
   const verdictCls = verdict ? ` verdict-${verdict}` : '';
   return `<div class="security-finding ${sev}${verdictCls}" role="button" tabindex="0" data-kind="vuln" data-scanner="vuln" data-finding-id="${escapeAttr(findingId)}" data-class="${escapeAttr(f.class_name || '')}" data-method="${escapeAttr(f.method_name || '')}" data-dex="${escapeAttr(f.dex_file || '')}"${sinkOff != null ? ` data-offset="${sinkOff}"` : ''} data-hint="${escapeAttr(hint)}" title="${escapeAttr(tip)}">
-    <div class="security-finding-top">${renderScannerTag('vuln')}<span class="security-badge ${sev}">${escapeHtml(securitySeverityLabel(sev))}</span><span class="security-badge cat-${escapeAttr(catCls)}">${escapeHtml(title)}</span>${cwe ? `<span class="security-badge muted">${escapeHtml(cwe)}</span>` : ''}${dexHint}<span class="security-finding-loc">${escapeHtml(loc)}${sinkHex ? ` @ ${escapeHtml(sinkHex)}` : ''}</span>${renderFindingVerdictControls(findingId)}</div>
-    <div class="security-finding-detail security-finding-scanner"><span class="security-finding-k">Scanner</span> ${escapeHtml(securityScannerLabel('vuln'))} <span class="muted">(native vulnerability detectors)</span></div>
+    <div class="security-finding-top">${renderScannerTag('vuln')}<span class="security-badge ${sev}">${escapeHtml(securitySeverityLabel(sev))}</span><span class="security-badge cat-${escapeAttr(catCls)}">${escapeHtml(title)}</span>${cwe ? `<span class="security-badge muted">${escapeHtml(cwe)}</span>` : ''}${renderFindingVerdictControls(findingId)}</div>
+    <div class="security-finding-where"><span class="security-finding-loc">${escapeHtml(loc)}${sinkHex ? ` <code>@ ${escapeHtml(sinkHex)}</code>` : ''}</span>${dexHint}</div>
     ${detailLines.join('')}
   </div>`;
 }
@@ -20243,12 +21427,26 @@ function renderMtFindingCard(iss, idx, opts = {}) {
   const dexHint = (!grouped && iss.dex_file) ? `<span class="muted">${escapeHtml(iss.dex_file)}</span>` : '';
   const title = [iss.rule_name, nav.className && nav.methodName ? `${nav.className}#${nav.methodName}` : iss.callable, sinkHex, iss.description].filter(Boolean).join(' · ');
   const verdictCls = verdict ? ` verdict-${verdict}` : '';
+  const masHtml = renderMastgKnowledgeHtml(
+    {
+      ruleId: String(iss.sink_kind || iss.rule_name || ''),
+      category: iss.sink_kind || '',
+      title: iss.rule_name || '',
+      message: iss.description || '',
+      maswe: iss.maswe,
+      masvs: iss.masvs,
+      mastg_know: iss.mastg_know,
+      mastg_best: iss.mastg_best,
+    },
+    { escapeHtml, escapeAttr }
+  );
   return `<div class="security-finding sev-med${verdictCls}" role="button" tabindex="0" data-kind="mt" data-scanner="mt" data-finding-id="${escapeAttr(findingId)}" data-class="${escapeAttr(nav.className)}" data-method="${escapeAttr(nav.methodName)}" data-dex="${escapeAttr(nav.dexFile)}"${nav.offset != null ? ` data-offset="${nav.offset}"` : ''} data-hint="${escapeAttr(iss.callable || '')}" title="${escapeAttr(title)}">
-    <div class="security-finding-top">${renderScannerTag('mt')}<span class="security-badge mt">rule ${escapeHtml(String(iss.rule_code ?? ''))}</span>${dexHint}<span class="security-finding-loc">${escapeHtml(loc)}${sinkHex ? ` @ ${escapeHtml(sinkHex)}` : ''}</span>${renderFindingVerdictControls(findingId)}</div>
-    <div class="security-finding-detail security-finding-scanner"><span class="security-finding-k">Scanner</span> ${escapeHtml(securityScannerLabel('mt'))} <span class="muted">(Mariana Trench–style taint)</span></div>
+    <div class="security-finding-top">${renderScannerTag('mt')}<span class="security-badge mt">rule ${escapeHtml(String(iss.rule_code ?? ''))}</span>${renderFindingVerdictControls(findingId)}</div>
+    <div class="security-finding-where"><span class="security-finding-loc">${escapeHtml(loc)}${sinkHex ? ` <code>@ ${escapeHtml(sinkHex)}</code>` : ''}</span>${dexHint}</div>
     <div class="security-finding-detail"><span class="security-finding-k">Rule</span> ${escapeHtml(iss.rule_name || 'rule')}</div>
     <div class="security-finding-detail"><span class="security-finding-k">Flow</span> ${escapeHtml(iss.source_kind || '?')} → ${escapeHtml(iss.sink_kind || '?')}</div>
-    ${iss.description ? `<div class="security-finding-detail muted">${escapeHtml(iss.description)}</div>` : ''}
+    ${iss.description ? `<div class="security-finding-msg">${escapeHtml(iss.description)}</div>` : ''}
+    ${masHtml}
     ${traceHtml}
   </div>`;
 }
@@ -20266,7 +21464,10 @@ function renderSemgrepFindingCard(f, opts = {}) {
   const dexHint = (!grouped && f.dex_file) ? `<span class="muted">${escapeHtml(f.dex_file)}</span>` : '';
   const sev = String(f.severity || '').toUpperCase();
   const sevCls = sev === 'ERROR' ? 'sev-high' : (sev === 'WARNING' ? 'sev-med' : 'sev-info');
-  const hint = f.sink_desc || f.message || '';
+  const hint = isXml
+    ? (securitySemgrepRuleInfos.find((r) => r.id === f.rule_id)?.pattern_preview
+      || f.sink_desc || f.message || f.rule_id || '')
+    : (f.sink_desc || f.message || '');
   const title = [f.rule_id, `${f.class_name || '?'}#${f.method_name || '?'}`, sinkHex, f.message, f.sink_desc].filter(Boolean).join(' · ');
   const meta = [
     f.match_kind ? `match: ${f.match_kind}` : '',
@@ -20274,7 +21475,7 @@ function renderSemgrepFindingCard(f, opts = {}) {
     f.chain_tag ? `chain: ${f.chain_tag}` : '',
   ].filter(Boolean);
   const detailLines = [
-    `<div class="security-finding-detail">${escapeHtml(f.message || f.sink_desc || '(no message)')}</div>`,
+    `<div class="security-finding-msg">${escapeHtml(f.message || f.sink_desc || '(no message)')}</div>`,
   ];
   if (f.sink_desc && f.message && f.sink_desc !== f.message) {
     detailLines.push(`<div class="security-finding-detail muted"><span class="security-finding-k">Match</span> ${escapeHtml(f.sink_desc)}</div>`);
@@ -20289,17 +21490,21 @@ function renderSemgrepFindingCard(f, opts = {}) {
         message: f.message,
         title: f.rule_id,
         vulnClass: f.vuln_class,
+        maswe: f.maswe,
+        masvs: f.masvs,
+        mastg_know: f.mastg_know,
+        mastg_best: f.mastg_best,
       },
       { escapeHtml, escapeAttr }
     )
   );
   const navAttrs = isXml
-    ? `data-kind="semgrep-xml" data-scanner="semgrep" data-class="${escapeAttr(f.class_name || f.dex_file || '')}" data-method="(xml)"`
-    : `data-kind="semgrep" data-scanner="semgrep" data-class="${escapeAttr(f.class_name || '')}" data-method="${escapeAttr(f.method_name || '')}" data-dex="${escapeAttr(f.dex_file || '')}"${sinkOff != null ? ` data-offset="${sinkOff}"` : ''} data-hint="${escapeAttr(hint)}"`;
+    ? `data-kind="semgrep-xml" data-scanner="semgrep" data-class="${escapeAttr(f.class_name || f.dex_file || '')}" data-method="(xml)" data-rule-id="${escapeAttr(f.rule_id || '')}" data-hint="${escapeAttr(hint)}" data-msg="${escapeAttr(f.message || '')}"`
+    : `data-kind="semgrep" data-scanner="semgrep" data-class="${escapeAttr(f.class_name || '')}" data-method="${escapeAttr(f.method_name || '')}" data-dex="${escapeAttr(f.dex_file || '')}"${sinkOff != null ? ` data-offset="${sinkOff}"` : ''} data-hint="${escapeAttr(hint)}" data-rule-id="${escapeAttr(f.rule_id || '')}"`;
   const verdictCls = verdict ? ` verdict-${verdict}` : '';
   return `<div class="security-finding ${sevCls}${verdictCls}" role="button" tabindex="0" data-finding-id="${escapeAttr(findingId)}" ${navAttrs} title="${escapeAttr(title)}">
-    <div class="security-finding-top">${renderScannerTag('semgrep')}<span class="security-badge semgrep">${escapeHtml(sev || 'INFO')}</span><span class="security-badge cat-semgrep">${escapeHtml(f.rule_id || 'rule')}</span>${dexHint}<span class="security-finding-loc">${escapeHtml(loc)}${sinkHex ? ` @ ${escapeHtml(sinkHex)}` : ''}</span>${renderFindingVerdictControls(findingId)}</div>
-    <div class="security-finding-detail security-finding-scanner"><span class="security-finding-k">Scanner</span> ${escapeHtml(securityScannerLabel('semgrep'))} <span class="muted">${isXml ? '(XML / manifest rules)' : '(DEX pattern + native rules)'}</span></div>
+    <div class="security-finding-top">${renderScannerTag('semgrep')}<span class="security-badge semgrep">${escapeHtml(sev || 'INFO')}</span><span class="security-badge cat-semgrep">${escapeHtml(f.rule_id || 'rule')}</span>${renderFindingVerdictControls(findingId)}</div>
+    <div class="security-finding-where"><span class="security-finding-loc">${escapeHtml(loc)}${sinkHex ? ` <code>@ ${escapeHtml(sinkHex)}</code>` : ''}</span>${dexHint}</div>
     ${detailLines.join('')}
   </div>`;
 }
@@ -20309,6 +21514,7 @@ function renderSecurityPanel() {
   renderSecuritySourceTabs();
   renderSecuritySevTabs();
   renderSecurityVerdictTabs();
+  renderSecurityMasFilterChips();
   renderSecurityChips();
   renderSecurityFindingsList();
   updateStatusBar();
@@ -22063,14 +23269,21 @@ document.getElementById('security-panel')?.addEventListener('click', (e) => {
   const sourceTab = e.target.closest('[data-source]');
   if (sourceTab) {
     securitySourceFilter = sourceTab.getAttribute('data-source') || '';
-    if (securitySourceFilter) securityCategoryFilter = '';
     renderSecurityPanel();
     return;
   }
-  const chip = e.target.closest('.security-chip');
-  if (chip) {
-    securityCategoryFilter = chip.getAttribute('data-cat') || '';
-    renderSecurityPanel();
+  const masFilterBtn = e.target.closest('[data-mas-filter]');
+  if (masFilterBtn && !masFilterBtn.closest('.security-finding')) {
+    e.preventDefault();
+    setSecurityMasFilter(masFilterBtn.getAttribute('data-mas-filter') || '');
+    return;
+  }
+  const masChipLink = e.target.closest('a.mas-chip[data-mas-id], a.security-badge[data-mas-id], .security-badge[data-mas-id]');
+  if (masChipLink) {
+    if (e.metaKey || e.ctrlKey) return; // keep default: open docs
+    e.preventDefault();
+    e.stopPropagation();
+    setSecurityMasFilter(masChipLink.getAttribute('data-mas-id') || '');
     return;
   }
   const groupToggle = e.target.closest('[data-group-toggle]');
@@ -22132,11 +23345,14 @@ document.getElementById('security-panel')?.addEventListener('click', (e) => {
   if (!btn) return;
   if (e.target.closest('.security-trace-toggle') || e.target.closest('.security-trace') || e.target.closest('.security-finding-verdict') || e.target.closest('.security-finding-mastg') || e.target.closest('a.mastg-know-link')) return;
   const nav = readSecurityFindingNav(btn);
-  if (nav.kind === 'semgrep-xml' || isXmlSecurityFinding(nav.className, nav.methodName)) {
-    navigateToXmlSecurityFinding(nav.className);
-    return;
-  }
-  navigateToSecurityFinding(nav.className, nav.methodName, nav.dexFile, { offset: nav.offset, hint: nav.hint });
+  previewSecurityFinding(nav.className, nav.methodName, nav.dexFile, {
+    offset: nav.offset,
+    hint: nav.hint,
+    kind: nav.kind,
+    findingId: nav.findingId,
+    ruleId: nav.ruleId,
+    message: nav.message || nav.hint,
+  });
 });
 document.getElementById('security-panel')?.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -22145,11 +23361,23 @@ document.getElementById('security-panel')?.addEventListener('keydown', (e) => {
   if (!btn || e.target !== btn) return;
   e.preventDefault();
   const nav = readSecurityFindingNav(btn);
-  if (nav.kind === 'semgrep-xml' || isXmlSecurityFinding(nav.className, nav.methodName)) {
-    navigateToXmlSecurityFinding(nav.className);
-    return;
-  }
-  navigateToSecurityFinding(nav.className, nav.methodName, nav.dexFile, { offset: nav.offset, hint: nav.hint });
+  previewSecurityFinding(nav.className, nav.methodName, nav.dexFile, {
+    offset: nav.offset,
+    hint: nav.hint,
+    kind: nav.kind,
+    findingId: nav.findingId,
+    ruleId: nav.ruleId,
+    message: nav.message || nav.hint,
+  });
+});
+
+securityPreviewCloseBtn?.addEventListener('click', (e) => {
+  e.preventDefault();
+  closeSecurityPreview();
+});
+securityPreviewOpenBtn?.addEventListener('click', (e) => {
+  e.preventDefault();
+  openSecurityPreviewInCode();
 });
 
 try { updateStatusBar(); } catch (e) { console.warn("[droid2web] statusbar init", e); }

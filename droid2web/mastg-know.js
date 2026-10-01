@@ -13,6 +13,10 @@ import {
   resolveMaswe,
   masweUrl,
   masvsFamilySlug,
+  masweProfiles,
+  masweTests,
+  masProfileLabel,
+  masProfileTitle,
 } from './maswe.js';
 
 export const MASTG_KNOWLEDGE_INDEX = 'https://mas.owasp.org/MASTG/knowledge/';
@@ -290,8 +294,21 @@ export function renderMastgKnowledgeHtml(ctx, esc) {
     .map((w) => {
       const slug = masvsFamilySlug(w.family);
       const cls = slug ? `maswe masvs-${slug}` : 'maswe';
-      return chip(w.url, w.id.replace(/^MASWE-/, 'WE-'), `${w.id}: ${w.title || ''} (${w.family || ''})`, cls, w.id);
+      const profs = masweProfiles(w.id).map(masProfileLabel).join(' · ');
+      return chip(w.url, w.id, `${w.id}: ${w.title || ''} (${w.family || ''})${profs ? ` · ${profs}` : ''}`, cls, w.id);
     })
+    .join('');
+  const profileIds = [...new Set(masweList.flatMap((w) => masweProfiles(w.id)))];
+  const profileChips = profileIds
+    .map((code) =>
+      `<a class="mas-chip profile profile-${esc.escapeAttr(code.toLowerCase())}" href="https://mas.owasp.org/MASTG/0x03b-Testing-Profiles/" target="_blank" rel="noopener noreferrer" data-mas-profile="${esc.escapeAttr(code)}" title="${esc.escapeAttr(`${masProfileTitle(code)} · click to toggle this profile · ⌘/Ctrl+click to open`)}" onclick="event.stopPropagation()">${esc.escapeHtml(masProfileLabel(code))}</a>`
+    )
+    .join('');
+  const testList = [...new Map(
+    masweList.flatMap((w) => masweTests(w.id)).map((t) => [t.id, t])
+  ).values()].slice(0, 8);
+  const testChips = testList
+    .map((t) => chip(t.url, t.id.replace(/^MASTG-TEST-/, 'TEST-'), `${t.id}: ${t.title || ''}`, 'test', t.id))
     .join('');
   const knowChips = knowList.length
     ? knowList
@@ -309,6 +326,8 @@ export function renderMastgKnowledgeHtml(ctx, esc) {
     <div class="mas-chain">
       ${hasMasvs ? `<div class="mas-chain-row"><span class="mas-chain-label">MASVS</span><div class="mas-chip-row">${masvsChips}</div></div>` : ''}
       ${hasMaswe ? `<div class="mas-chain-row"><span class="mas-chain-label">MASWE</span><div class="mas-chip-row">${masweChips}</div></div>` : ''}
+      ${profileChips ? `<div class="mas-chain-row"><span class="mas-chain-label">Profile</span><div class="mas-chip-row">${profileChips}</div></div>` : ''}
+      ${testChips ? `<div class="mas-chain-row"><span class="mas-chain-label">TEST</span><div class="mas-chip-row">${testChips}</div></div>` : ''}
       <div class="mas-chain-row"><span class="mas-chain-label">KNOW</span><div class="mas-chip-row">${knowChips}</div></div>
       ${bestChips ? `<div class="mas-chain-row"><span class="mas-chain-label">BEST</span><div class="mas-chip-row">${bestChips}</div></div>` : ''}
     </div>

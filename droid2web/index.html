@@ -2,9 +2,16 @@
 <html lang="en" data-theme="default">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="theme-color" content="#0b0f17">
+  <meta name="color-scheme" content="dark light">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="droid2web">
   <title>droid2web — APK, APKM, DEX, AXML, ARSC Inspector</title>
   <link rel="icon" href="logo.png" type="image/png">
+  <link rel="apple-touch-icon" href="logo.png">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/styles/vis-network.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
@@ -20,7 +27,7 @@
     <div class="header-content">
       <img src="logo.png" alt="" class="app-logo" width="28" height="28">
       <div class="header-title-block">
-        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.26</span> <span class="app-date" id="app-date" title="Release date">29 Sep 2026</span></h1>
+        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.27</span> <span class="app-date" id="app-date" title="Release date">1 Oct 2026</span></h1>
         <p class="subtitle">APK, APKM, DEX, AXML, ARSC inspection in the browser</p>
       </div>
     </div>
@@ -80,6 +87,12 @@
       <span class="drop-zone-text">Drop any file here to analyze</span>
       <span class="drop-zone-hint muted">APK, APKM, DEX (one or many), AXML, ARSC — type detected automatically</span>
     </div>
+    <div class="mobile-empty-welcome" id="mobile-empty-welcome" hidden>
+      <img src="logo.png" alt="" class="mobile-empty-logo" width="56" height="56">
+      <h2 class="mobile-empty-title">Open a file to inspect</h2>
+      <p class="mobile-empty-hint muted">APK, APKM, DEX, AXML, or ARSC — analysis stays in your browser.</p>
+      <button type="button" class="btn btn-primary mobile-empty-upload" id="mobile-empty-upload">Choose file</button>
+    </div>
     <div class="inspector-layout" id="inspector-layout">
       <!-- Left: Tree / File list -->
       <section class="panel left-panel" id="left-panel">
@@ -134,7 +147,10 @@
         </div>
         <div id="work-notice" class="work-notice" hidden role="status" aria-live="polite"></div>
         <div class="tree-container" id="tree-container">
-          <div class="muted center-text" id="tree-placeholder">Upload or drop any file — type is auto-detected</div>
+          <div class="muted center-text tree-placeholder" id="tree-placeholder">
+            <p>Upload or drop any file — type is auto-detected</p>
+            <button type="button" class="btn btn-primary tree-placeholder-upload" id="tree-placeholder-upload">Choose file</button>
+          </div>
           <div id="tree-content" class="tree-content" style="display:none"></div>
         </div>
       </section>
@@ -147,21 +163,21 @@
           <button type="button" class="btn btn-small mobile-nav-toggle" id="mobile-nav-toggle" aria-label="Open contents" aria-controls="left-panel" aria-expanded="false" title="Contents">☰</button>
           <div class="center-tabs-group center-tabs-permanent" role="tablist" aria-label="Permanent workspace tabs">
             <span class="center-tabs-group-label" title="Always available">Workspace</span>
-            <button type="button" class="tab-btn tab-btn-permanent active" data-tab="bytecode-tab" data-label="Code" title="Permanent tab">Code</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="native-tab" id="native-tab-btn" data-label="Native" data-label-short="ARM" title="ARM64 ELF (.so) assembly / CFG / decompilation">Native</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="manifest-tab" data-label="Manifest" data-label-short="AXML" title="Permanent tab">Manifest</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="permissions-tab" id="permissions-tab-btn" data-label="Permissions" data-label-short="Perms" hidden title="Requested permissions and code usages">Permissions</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="components-tab" id="components-tab-btn" data-label="Components" data-label-short="Comps" hidden title="Activities, services, receivers, and providers">Components</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="raw-tab" data-label="Raw" title="Permanent tab">Raw</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="info-tab" data-label="Info" title="Permanent tab">Info</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="strings-tab" data-label="Strings" data-label-short="Str" title="Permanent tab">Strings</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="find-tab" id="find-tab-btn" data-label="Find" data-label-short="Find" title="ASC findrefs / getclass — on-demand string, type, method, field search">Find</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="security-tab" data-label="Security" data-label-short="Sec" title="Permanent tab">Security</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="diff-tab" id="diff-tab-btn" data-label="Compare" data-label-short="Diff" title="Compare DEX bytecode in two APKs">Compare</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="patch-tab" id="patch-tab-btn" data-label="Patch" data-label-short="Patch" title="Decode, edit, rebuild and sign APK (apk-patch)">Patch</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="device-tab" id="device-tab-btn" data-label="Device" data-label-short="Dev" title="WebUSB ADB + goauld attach / protocol">Device</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="mirror-tab" id="mirror-tab-btn" data-label="Mirror" data-label-short="Mir" title="Live screen via droidmirror">Mirror</button>
-            <button type="button" class="tab-btn tab-btn-permanent" data-tab="python-tab" id="python-tab-btn" data-label="Python" data-label-short="Py" title="RustPython shell over the current analysis">Python</button>
+            <button type="button" class="tab-btn tab-btn-permanent active" data-tab="bytecode-tab" data-label="Code" data-label-short="Code" data-mobile-strip="primary" title="Permanent tab">Code</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="native-tab" id="native-tab-btn" data-label="Native" data-label-short="ARM" data-mobile-strip="primary" title="ARM64 ELF (.so) assembly / CFG / decompilation">Native</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="manifest-tab" data-label="Manifest" data-label-short="AXML" data-mobile-strip="primary" title="Permanent tab">Manifest</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="permissions-tab" id="permissions-tab-btn" data-label="Permissions" data-label-short="Perms" data-mobile-strip="primary" hidden title="Requested permissions and code usages">Permissions</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="components-tab" id="components-tab-btn" data-label="Components" data-label-short="Comps" data-mobile-strip="primary" hidden title="Activities, services, receivers, and providers">Components</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="raw-tab" data-label="Raw" data-label-short="Raw" data-mobile-strip="secondary" title="Permanent tab">Raw</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="info-tab" data-label="Info" data-label-short="Info" data-mobile-strip="primary" title="Permanent tab">Info</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="strings-tab" data-label="Strings" data-label-short="Str" data-mobile-strip="primary" title="Permanent tab">Strings</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="find-tab" id="find-tab-btn" data-label="Find" data-label-short="Find" data-mobile-strip="secondary" title="ASC findrefs / getclass — on-demand string, type, method, field search">Find</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="security-tab" data-label="Security" data-label-short="Sec" data-mobile-strip="primary" title="Permanent tab">Security</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="diff-tab" id="diff-tab-btn" data-label="Compare" data-label-short="Diff" data-mobile-strip="secondary" title="Compare DEX bytecode in two APKs">Compare</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="patch-tab" id="patch-tab-btn" data-label="Patch" data-label-short="Patch" data-mobile-strip="secondary" title="Decode, edit, rebuild and sign APK (apk-patch)">Patch</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="device-tab" id="device-tab-btn" data-label="Device" data-label-short="Dev" data-mobile-strip="secondary" title="WebUSB ADB + goauld attach / protocol">Device</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="mirror-tab" id="mirror-tab-btn" data-label="Mirror" data-label-short="Mir" data-mobile-strip="secondary" title="Live screen via droidmirror">Mirror</button>
+            <button type="button" class="tab-btn tab-btn-permanent" data-tab="python-tab" id="python-tab-btn" data-label="Python" data-label-short="Py" data-mobile-strip="secondary" title="RustPython shell over the current analysis">Python</button>
           </div>
           <div class="center-tabs-sep" id="center-tabs-sep" hidden aria-hidden="true"></div>
           <div class="center-tabs-group center-tabs-files" id="center-tabs-files-group" hidden>
@@ -806,7 +822,7 @@
             <div class="security-toolbar">
               <div class="security-actions">
                 <button type="button" class="btn btn-primary" id="security-scan" title="Run selected scanners">Scan</button>
-                <button type="button" class="btn btn-small" id="security-rules-toggle" title="View, edit, or create Semgrep rules">Rules</button>
+                <button type="button" class="btn btn-small" id="security-rules-toggle" title="View, edit, or create Semgrep rules" aria-expanded="false" aria-controls="security-rules-panel">Rules</button>
                 <button type="button" class="btn btn-small" id="security-clear-cache" title="Clear cached results for this file">Clear cache</button>
                 <button type="button" class="btn btn-small" id="security-export-storage" title="Download analysis localStorage (scans, TP/FP, rules, renames, notes)">Export</button>
                 <button type="button" class="btn btn-small" id="security-import-storage" title="Import analysis localStorage from a previous export">Import…</button>
@@ -853,7 +869,10 @@
             </div>
             <div class="security-rules-panel" id="security-rules-panel" hidden>
               <header class="security-rules-header">
-                <h3>Semgrep rules</h3>
+                <div class="security-rules-heading">
+                  <h3>Semgrep rules</h3>
+                  <button type="button" class="btn btn-small security-rules-close" id="security-rules-close" title="Close rules" aria-label="Close rules">×</button>
+                </div>
                 <div class="security-rules-actions">
                   <button type="button" class="btn btn-small btn-primary" id="security-rules-all" title="Load all built-in rules (starter + OWASP MASTG)">All</button>
                   <button type="button" class="btn btn-small" id="security-rules-builtin" title="Load starter Semgrep rules only">Starter</button>
@@ -880,6 +899,10 @@
             </div>
             <div class="security-workspace" id="security-workspace">
               <aside class="security-sidebar" id="security-sidebar">
+                <div class="security-sidebar-sheet-bar" id="security-sidebar-sheet-bar" hidden>
+                  <span class="security-sidebar-sheet-title">Overview &amp; filters</span>
+                  <button type="button" class="btn btn-small security-sidebar-close" id="security-sidebar-close" title="Close overview" aria-label="Close overview">×</button>
+                </div>
                 <div class="security-overview" id="security-overview" hidden>
                   <div class="security-overview-grid" id="security-overview-grid"></div>
                   <div class="security-overview-bar-wrap" id="security-overview-bar-wrap" hidden>
@@ -899,8 +922,12 @@
                   <div class="security-sev-tabs" id="security-sev-tabs" role="toolbar" aria-label="Filter by severity"></div>
                   <div class="security-verdict-tabs" id="security-verdict-tabs" role="toolbar" aria-label="Filter by triage"></div>
                   <div class="security-mas-filters" id="security-mas-filters" hidden>
-                    <div class="security-mas-filters-label muted">MASVS / MASWE / MASTG</div>
-                    <div class="security-mas-filter-chips" id="security-mas-filter-chips" role="toolbar" aria-label="Filter by MASVS, MASWE or MASTG"></div>
+                    <div class="security-mas-profiles" id="security-mas-profiles">
+                      <div class="security-mas-filters-label muted">MAS profiles</div>
+                      <div class="security-mas-filter-chips" id="security-mas-profile-chips" role="toolbar" aria-label="Filter findings by MAS-L1, MAS-L2, MAS-R or MAS-P"></div>
+                    </div>
+                    <div class="security-mas-filters-label muted">MASVS / MASWE / TEST</div>
+                    <div class="security-mas-filter-chips" id="security-mas-filter-chips" role="toolbar" aria-label="Filter by MASVS, MASWE or MASTG TEST"></div>
                   </div>
                 </div>
                 <div class="security-mas-graph-wrap" id="security-mas-graph-wrap" hidden>
@@ -917,6 +944,7 @@
                     <span class="mas-leg masvs">MASVS</span>
                     <span class="mas-leg maswe">MASWE</span>
                     <span class="mas-leg know">KNOW</span>
+                    <span class="mas-leg test">TEST</span>
                     <span class="mas-leg best">BEST</span>
                   </div>
                   <div class="security-mas-graph" id="security-mas-graph" role="img" aria-label="Findings linked to MASWE and MASTG"></div>
@@ -928,12 +956,18 @@
                     <h3>Findings</h3>
                     <span class="muted" id="security-findings-count"></span>
                   </div>
-                  <input type="search" id="security-filter" class="pane-search-input security-findings-search" placeholder="Filter… WE-0032 · KNOW-0018 · class…" aria-label="Filter security findings" autocomplete="off">
+                  <div class="security-findings-header-actions">
+                    <button type="button" class="btn btn-small security-sidebar-toggle" id="security-sidebar-toggle" hidden aria-expanded="false" aria-controls="security-sidebar" title="Overview and filters">Overview</button>
+                    <input type="search" id="security-filter" class="pane-search-input security-findings-search" placeholder="Filter… MASWE-0032 · TEST-0207 · class…" aria-label="Filter security findings" autocomplete="off">
+                  </div>
                 </header>
+                <button type="button" class="security-sidebar-backdrop" id="security-sidebar-backdrop" hidden aria-label="Close overview"></button>
                 <div class="security-findings-body">
                   <div class="security-findings" id="security-findings-list">
                   </div>
+                  <button type="button" class="security-preview-backdrop" id="security-preview-backdrop" hidden aria-label="Close preview"></button>
                   <aside class="security-preview" id="security-preview" hidden>
+                    <div class="security-preview-sheet-handle" aria-hidden="true"></div>
                     <header class="security-preview-header">
                       <div class="security-preview-heading">
                         <h4>Preview</h4>
@@ -1337,7 +1371,7 @@
         <section class="settings-section">
           <h4 class="settings-section-title">Security scans</h4>
           <p class="settings-hint muted">Scan runs local engines from <a href="https://github.com/androguard/dex-decompiler" target="_blank" rel="noopener noreferrer">dex-decompiler</a>: vulnerability detectors (IPC, PendingIntent/PITracker, ZipSlip, Custom Tabs, nested Intent redirect, broadcasts, WebView, SSL, crypto, storage, trackers, …), Semgrep-style rules (starter + OWASP MASTG), and Mariana Trench–style taint solving (including field/extra breadcrumbs on traces). Use the <strong>Vuln / Semgrep / MT taint</strong> checkboxes in the Security toolbar to enable or disable each scanner before clicking Scan.</p>
-          <p class="settings-hint muted">Findings chain through <a href="https://mas.owasp.org/MASVS/" target="_blank" rel="noopener noreferrer">MASVS</a> → <a href="https://mas.owasp.org/MASWE/" target="_blank" rel="noopener noreferrer">MASWE</a> → <a href="https://mas.owasp.org/MASTG/knowledge/" target="_blank" rel="noopener noreferrer">MASTG-KNOW</a> / <a href="https://mas.owasp.org/MASTG/best-practices/" target="_blank" rel="noopener noreferrer">MASTG-BEST</a>. Filter by <strong>MASVS family</strong> chips (STORAGE, CRYPTO, …), MASWE / KNOW / BEST ids, search, graph nodes, or the category pie chart. MASWE / MASVS chips use official family colors. <strong>Click a finding</strong> for a source (or Manifest XML) preview on the right. Use <strong>Fullscreen</strong> on the MAS map (Esc to exit).</p>
+          <p class="settings-hint muted">Findings chain through <a href="https://mas.owasp.org/MASVS/" target="_blank" rel="noopener noreferrer">MASVS</a> → <a href="https://mas.owasp.org/MASWE/" target="_blank" rel="noopener noreferrer">MASWE</a> → <a href="https://mas.owasp.org/MASTG/tests/" target="_blank" rel="noopener noreferrer">MASTG-TEST</a> / <a href="https://mas.owasp.org/MASTG/knowledge/" target="_blank" rel="noopener noreferrer">KNOW</a> / BEST. Filter by <strong>MAS profiles</strong> (MAS-L1, MAS-L2, MAS-R, MAS-P — multi-select), MASVS family chips, MASWE / TEST ids, search, graph nodes, or the category pie. <strong>Click a finding</strong> for a source (or Manifest XML) preview on the right.</p>
         </section>
         <section class="settings-section">
           <h4 class="settings-section-title">Python shell</h4>

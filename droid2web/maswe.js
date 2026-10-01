@@ -8,6 +8,22 @@
 export const MASWE_INDEX = 'https://mas.owasp.org/MASWE/';
 export const MASTG_BEST_INDEX = 'https://mas.owasp.org/MASTG/best-practices/';
 export const MASTG_DEMO_INDEX = 'https://mas.owasp.org/MASTG/demos/';
+export const MASTG_TEST_INDEX = 'https://mas.owasp.org/MASTG/tests/';
+
+export {
+  MAS_PROFILE_IDS,
+  MAS_PROFILE_META,
+  MASWE_PROFILES,
+  MASWE_TO_TESTS,
+  MASTG_TEST_ANDROID,
+} from './mas-catalog.js';
+import {
+  MAS_PROFILE_IDS,
+  MAS_PROFILE_META,
+  MASWE_PROFILES,
+  MASWE_TO_TESTS,
+  MASTG_TEST_ANDROID,
+} from './mas-catalog.js';
 
 /**
  * Official MASVS family chip colors from mas.owasp.org/stylesheets/extra.css
@@ -365,8 +381,45 @@ export function masweUrl(id) {
   return `https://mas.owasp.org/MASWE/${meta.family}/${id}/`;
 }
 
+export function mastgTestUrl(id) {
+  return `https://mas.owasp.org/${id}`;
+}
+
 export function mastgBestUrl(id) {
   return `https://mas.owasp.org/${id}`;
+}
+
+/** Official MASWE profiles, excluding vendor extras such as EUDIW. */
+export function masweProfiles(id) {
+  return (MASWE_PROFILES[id] || []).filter((p) => MAS_PROFILE_IDS.includes(p));
+}
+
+export function masProfileLabel(code) {
+  return MAS_PROFILE_META[code]?.label || `MAS-${code}`;
+}
+
+export function masProfileTitle(code) {
+  const meta = MAS_PROFILE_META[code];
+  return meta ? `${meta.label} · ${meta.title}` : String(code || '');
+}
+
+/** Android MASTG-TEST mappings for a MASWE (static/code first). */
+export function masweTests(id) {
+  const ids = MASWE_TO_TESTS[id] || [];
+  const rank = (types) => (types.includes('static') || types.includes('code') ? 0 : 1);
+  return ids
+    .map((tid) => {
+      const meta = MASTG_TEST_ANDROID[tid] || { title: tid, type: [] };
+      return { id: tid, title: meta.title || tid, type: meta.type || [], url: mastgTestUrl(tid) };
+    })
+    .sort((a, b) => rank(a.type) - rank(b.type) || a.id.localeCompare(b.id));
+}
+
+export function masweMatchesProfiles(id, selected) {
+  if (!selected || !selected.length) return true;
+  const have = masweProfiles(id);
+  if (!have.length) return false;
+  return selected.some((p) => have.includes(p));
 }
 
 export function mastgDemoUrl(id) {
@@ -496,9 +549,9 @@ export function buildMasGraph(findingGroups = []) {
       addEdge(fid, family, 'to-family');
       addNode(
         mid,
-        mid.replace('MASWE-', 'WE-'),
+        mid,
         'maswe',
-        `${mid}: ${meta.title} · ${family}`,
+        `${mid}: ${meta.title} · ${family} · ${masweProfiles(mid).map(masProfileLabel).join(' ') || 'no profile'}`,
         { level: 3, family, familySlug: famSlug, color: famColor }
       );
       addEdge(family, mid, 'to-maswe');
@@ -510,6 +563,10 @@ export function buildMasGraph(findingGroups = []) {
       for (const bid of (map.best || []).slice(0, 2)) {
         addNode(bid, bid.replace('MASTG-BEST-', 'BEST-'), 'best', bid, { level: 4 });
         addEdge(mid, bid, 'to-best');
+      }
+      for (const test of masweTests(mid).slice(0, 2)) {
+        addNode(test.id, test.id.replace('MASTG-TEST-', 'TEST-'), 'test', `${test.id}: ${test.title}`, { level: 4 });
+        addEdge(mid, test.id, 'to-test');
       }
     }
   }

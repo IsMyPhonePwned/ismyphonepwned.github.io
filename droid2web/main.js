@@ -23,7 +23,7 @@ import {
 } from './native-ui.js';
 import { initFindRefsUi } from './findrefs-ui.js';
 import { initPythonConsole } from './python-console.js';
-import { buildMasGraph, resolveMaswe, resolveMasChain, masweUrl, MASWE_CATALOG, masvsFamilyColor, masvsFamilySlug, masvsFamilyShort, masvsFamilyUrl, MASVS_FAMILY_ORDER, MASVS_FAMILY_COLORS } from './maswe.js';
+import { buildMasGraph, resolveMaswe, resolveMasChain, masweUrl, MASWE_CATALOG, masvsFamilyColor, masvsFamilySlug, masvsFamilyShort, masvsFamilyUrl, MASVS_FAMILY_ORDER, MASVS_FAMILY_COLORS, MAS_PROFILE_IDS, MASWE_TO_TESTS, masweProfiles, masProfileLabel, masProfileTitle } from './maswe.js';
 import { renderMastgKnowledgeHtml, resolveMastgKnowledge } from './mastg-know.js';
 import {
   buildJniLinkIndex,
@@ -5843,8 +5843,13 @@ const PERMANENT_CENTER_TABS = [
   { id: 'raw-tab', label: 'Raw' },
   { id: 'info-tab', label: 'Info' },
   { id: 'strings-tab', label: 'Strings' },
+  { id: 'find-tab', label: 'Find' },
   { id: 'security-tab', label: 'Security' },
   { id: 'diff-tab', label: 'Compare' },
+  { id: 'patch-tab', label: 'Patch' },
+  { id: 'device-tab', label: 'Device' },
+  { id: 'mirror-tab', label: 'Mirror' },
+  { id: 'python-tab', label: 'Python' },
 ];
 
 function getVisiblePermanentCenterTabs() {
@@ -5943,6 +5948,9 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       c.classList.toggle('active', c.id === tab);
     });
     closeMobileNavIfNeeded();
+    try {
+      btn.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
+    } catch (_) {}
     if (btn.closest('.center-panel, .center-tabs')) syncSecurityFocusLayout(tab);
     if (tab === 'strings-tab') {
       scheduleEnsureDexStringsLoaded();
@@ -6389,8 +6397,10 @@ async function copySourceCode(feedbackBtn) {
     const mobile = window.matchMedia('(max-width: 768px)').matches;
     if (storedHex == null && mobile) showHex = false;
     else showHex = storedHex !== '0';
-    // Bytecode is the primary top pane — default open.
-    bytecodeOpen = localStorage.getItem('droid2web-bytecode-open') !== '0';
+    // Desktop: bytecode primary. Phones: prefer source-first (collapsed bytecode until opened).
+    const storedBc = localStorage.getItem('droid2web-bytecode-open');
+    if (storedBc == null && mobile) bytecodeOpen = false;
+    else bytecodeOpen = storedBc !== '0';
     sourceOpen = localStorage.getItem('droid2web-source-open') !== '0';
     const storedCfg = localStorage.getItem('droid2web-cfg-open');
     if (storedCfg == null && mobile) cfgOpen = false;
@@ -6725,11 +6735,21 @@ if (bytecodeListing) {
 }
 
 btnUpload.addEventListener('click', () => fileInput.click());
+document.getElementById('mobile-empty-upload')?.addEventListener('click', () => fileInput.click());
+document.getElementById('tree-placeholder-upload')?.addEventListener('click', () => fileInput.click());
 
 /** Phone / small-tablet: slide-over Contents drawer. */
 const MOBILE_NAV_MQ = '(max-width: 768px)';
 function isMobileNavLayout() {
   try { return window.matchMedia(MOBILE_NAV_MQ).matches; } catch (_) { return false; }
+}
+/**
+ * Security sheets (Overview overlay + preview bottom sheet) until the
+ * desktop sidebar row kicks in at ≥1100px — covers phones and tablets.
+ */
+const SECURITY_PHONE_MQ = '(max-width: 1099px)';
+function isSecurityPhoneLayout() {
+  try { return window.matchMedia(SECURITY_PHONE_MQ).matches; } catch (_) { return false; }
 }
 function setMobileNavOpen(open) {
   const want = !!open && isMobileNavLayout();
@@ -6769,19 +6789,135 @@ function closeMobileNavIfNeeded() {
     window.matchMedia(MOBILE_NAV_MQ).addEventListener('change', (ev) => {
       if (!ev.matches) setMobileNavOpen(false);
       syncMobileChrome(ev.matches);
+      try { syncSecurityPreviewPortal(); } catch (_) {}
+      try { syncSecuritySidebarChrome(); } catch (_) {}
+    });
+  } catch (_) {}
+  try {
+    window.matchMedia(SECURITY_PHONE_MQ).addEventListener('change', () => {
+      try { syncSecuritySidebarChrome(); } catch (_) {}
+      try { syncSecurityPreviewPortal(); } catch (_) {}
+      try { syncSecurityPreviewOpenBtnLabel(); } catch (_) {}
+      try {
+        const clearCacheBtn = document.getElementById('security-clear-cache');
+        if (clearCacheBtn) {
+          clearCacheBtn.textContent = isSecurityPhoneLayout() ? 'Cache' : 'Clear cache';
+        }
+      } catch (_) {}
+      // Leaving phone layout with an open sheet: close so desktop split isn't empty.
+      if (!isSecurityPhoneLayout()) {
+        try { closeSecurityPreview(); } catch (_) {}
+        try { setSecuritySidebarCollapsed(false, false); } catch (_) {}
+      }
     });
   } catch (_) {}
   syncMobileChrome(isMobileNavLayout());
+  setAppHasFile(false);
+  setupVisualViewportCssVars();
 })();
 
+/**
+ * Keep --vv-height / --vv-offset-top / --vv-bottom in sync with the visual
+ * viewport so fixed bottom sheets stay above the soft keyboard on iOS Safari
+ * and Android Chrome.
+ */
+function setupVisualViewportCssVars() {
+  const root = document.documentElement;
+  const apply = () => {
+    const vv = window.visualViewport;
+    if (!vv) {
+      root.style.setProperty('--vv-height', `${window.innerHeight}px`);
+      root.style.setProperty('--vv-offset-top', '0px');
+      root.style.setProperty('--vv-bottom', '0px');
+      return;
+    }
+    const height = Math.round(vv.height);
+    const offsetTop = Math.round(vv.offsetTop);
+    const bottom = Math.max(0, Math.round(window.innerHeight - height - offsetTop));
+    root.style.setProperty('--vv-height', `${height}px`);
+    root.style.setProperty('--vv-offset-top', `${offsetTop}px`);
+    root.style.setProperty('--vv-bottom', `${bottom}px`);
+  };
+  apply();
+  const vv = window.visualViewport;
+  if (vv) {
+    vv.addEventListener('resize', apply);
+    vv.addEventListener('scroll', apply);
+  }
+  window.addEventListener('orientationchange', () => {
+    // iOS often reports stale metrics until after the rotate settles.
+    setTimeout(apply, 50);
+    setTimeout(apply, 250);
+  });
+  window.addEventListener('resize', apply);
+}
 function syncMobileChrome(isMobile) {
   document.querySelectorAll('.tab-btn[data-label]').forEach((btn) => {
     const full = btn.getAttribute('data-label') || btn.textContent;
     const short = btn.getAttribute('data-label-short');
     btn.textContent = isMobile && short ? short : full;
   });
+  const clearCacheBtn = document.getElementById('security-clear-cache');
+  if (clearCacheBtn) {
+    clearCacheBtn.textContent = isSecurityPhoneLayout() ? 'Cache' : 'Clear cache';
+  }
   const decomp = document.getElementById('decomp-details');
   if (decomp && isMobile) decomp.open = false;
+  const emptyWelcome = document.getElementById('mobile-empty-welcome');
+  if (emptyWelcome) {
+    emptyWelcome.hidden = !(isMobile && !document.body.classList.contains('has-file'));
+  }
+  try { syncSecuritySidebarChrome(); } catch (_) {}
+  try { syncSecurityPreviewOpenBtnLabel(); } catch (_) {}
+  try {
+    if (isSecurityPhoneLayout() && typeof securityMasGraphCollapsed !== 'undefined' && !securityMasGraphCollapsed) {
+      securityMasGraphCollapsed = true;
+      securityMasGraphFingerprint = '';
+      if (typeof renderSecurityMasGraph === 'function') renderSecurityMasGraph();
+    }
+  } catch (_) {}
+  try { applyMobileCodeWorkspaceDefaults(isMobile); } catch (_) {}
+}
+
+/** Mark that a file is loaded so the phone empty-state welcome hides. */
+function setAppHasFile(hasFile) {
+  document.body.classList.toggle('has-file', !!hasFile);
+  const emptyWelcome = document.getElementById('mobile-empty-welcome');
+  if (emptyWelcome) {
+    emptyWelcome.hidden = !(isMobileNavLayout() && !hasFile);
+  }
+}
+
+/**
+ * One-shot phone defaults for the Code workspace: keep source readable,
+ * collapse CFG/emulator chrome. Does not overwrite localStorage prefs.
+ */
+function applyMobileCodeWorkspaceDefaults(isMobile) {
+  if (!isMobile) return;
+  let primed = false;
+  try {
+    primed = sessionStorage.getItem('droid2web-mobile-code-primed') === '1';
+  } catch (_) {}
+  if (primed) return;
+  try { sessionStorage.setItem('droid2web-mobile-code-primed', '1'); } catch (_) {}
+
+  const source = document.getElementById('source-pane');
+  const cfg = document.getElementById('cfg-pane');
+  const emu = document.getElementById('bytecode-emulator-area');
+  if (source && source.dataset.collapsed === 'true') {
+    setDockCollapsed(source, false, null);
+  }
+  if (cfg && cfg.dataset.collapsed !== 'true') {
+    // Only auto-collapse when the user never set a preference this session
+    // and CFG has no stored preference (first phone visit).
+    let hasCfgPref = false;
+    try { hasCfgPref = localStorage.getItem('droid2web-cfg-open') != null; } catch (_) {}
+    if (!hasCfgPref) setDockCollapsed(cfg, true, null);
+  }
+  if (emu && emu.dataset.collapsed !== 'true') {
+    setDockCollapsed(emu, true, null);
+  }
+  try { updateWorkspaceResizers(); } catch (_) {}
 }
 
 /** Open the contents drawer once after a file is ready (phones only). */
@@ -8105,6 +8241,7 @@ async function processFile(file) {
   currentFilename = file.name;
   fileName.textContent = file.name;
   fileName.title = file.name;
+  setAppHasFile(true);
   clearSourceNavStack();
 
   loadingOverlay.classList.add('visible');
@@ -17332,6 +17469,11 @@ function switchToCenterTab(tabId) {
   document.querySelectorAll('.center-panel .tab-content').forEach(c => c.classList.toggle('active', c.id === tabId));
   if (centerTabsMenu && !centerTabsMenu.hidden) renderCenterTabsMenu();
   syncSecurityFocusLayout(tabId);
+  closeMobileNavIfNeeded();
+  const activeBtn = document.querySelector(`.center-tabs .tab-btn[data-tab="${tabId}"]`);
+  try {
+    activeBtn?.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
+  } catch (_) {}
   if (tabId === 'raw-tab' && rawHexEditor && typeof rawHexEditor.refresh === 'function') {
     requestAnimationFrame(() => rawHexEditor.refresh());
   }
@@ -17356,6 +17498,8 @@ function syncSecurityFocusLayout(tabId = getActiveCenterTabId()) {
     document.body.classList.remove('mobile-nav-open');
     const toggle = document.getElementById('mobile-nav-toggle');
     if (toggle) toggle.setAttribute('aria-expanded', 'false');
+  } else {
+    closeSecurityPreview();
   }
 }
 
@@ -17848,6 +17992,7 @@ const SECURITY_CACHE_KEY = 'droid2web-security-cache-v1';
 const SECURITY_VERDICTS_KEY = 'droid2web-security-verdicts-v1';
 const SECURITY_RULES_KEY = 'droid2web-semgrep-rules-yaml';
 const SECURITY_SCANNERS_KEY = 'droid2web-security-scanners-v1';
+const SECURITY_MAS_PROFILES_KEY = 'droid2web-security-mas-profiles-v1';
 const SECURITY_CACHE_MAX_ENTRIES = 8;
 const SECURITY_CACHE_MAX_CHARS = 4_500_000;
 const SECURITY_VERDICTS_MAX_ENTRIES = 24;
@@ -17857,8 +18002,10 @@ let securitySemgrepFindings = [];
 let securityMtReport = null;
 let securityFilterQuery = '';
 let securitySourceFilter = '';
-/** Active MASWE / MASTG-KNOW / MASTG-BEST id filter ('' = all). */
+/** Active MASWE / MASTG-TEST / KNOW / BEST id filter ('' = all). */
 let securityMasFilter = '';
+/** Selected official MAS profiles (L1 / L2 / R / P). Empty = any profile. */
+let securityMasProfiles = [];
 /** Severity filter: '' | 'sev-high' | 'sev-med' | 'sev-low' | 'sev-info' */
 let securitySeverityFilter = '';
 /** Triage filter: '' | 'unmarked' | 'tp' | 'fp' */
@@ -17893,6 +18040,34 @@ function saveSecurityScannersEnabled() {
   try {
     localStorage.setItem(SECURITY_SCANNERS_KEY, JSON.stringify(securityScannersEnabled));
   } catch (_) { /* ignore */ }
+}
+
+function loadSecurityMasProfiles() {
+  try {
+    const raw = localStorage.getItem(SECURITY_MAS_PROFILES_KEY);
+    if (!raw) return;
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return;
+    securityMasProfiles = arr.filter((p) => MAS_PROFILE_IDS.includes(p));
+  } catch (_) { /* ignore */ }
+}
+
+function saveSecurityMasProfiles() {
+  try {
+    localStorage.setItem(SECURITY_MAS_PROFILES_KEY, JSON.stringify(securityMasProfiles));
+  } catch (_) { /* ignore */ }
+}
+
+function toggleSecurityMasProfile(code) {
+  const id = String(code || '').toUpperCase().replace(/^MAS-/, '');
+  if (!MAS_PROFILE_IDS.includes(id)) return;
+  if (securityMasProfiles.includes(id)) {
+    securityMasProfiles = securityMasProfiles.filter((p) => p !== id);
+  } else {
+    securityMasProfiles = [...securityMasProfiles, id];
+  }
+  saveSecurityMasProfiles();
+  renderSecurityPanel();
 }
 
 function updateSecurityScanButtonForScanners() {
@@ -18015,6 +18190,7 @@ const securityMasGraphToggle = document.getElementById('security-mas-graph-toggl
 const securityMasGraphFsBtn = document.getElementById('security-mas-graph-fs');
 const securityMasFiltersEl = document.getElementById('security-mas-filters');
 const securityMasFilterChipsEl = document.getElementById('security-mas-filter-chips');
+const securityMasProfileChipsEl = document.getElementById('security-mas-profile-chips');
 /** @type {import('vis-network').Network | null} */
 let securityMasNetwork = null;
 let securityMasGraphCollapsed = false;
@@ -18023,6 +18199,10 @@ let securityMasGraphFullscreen = false;
 const securityFiltersEl = document.getElementById('security-filters');
 const securitySidebarEl = document.getElementById('security-sidebar');
 const securityWorkspaceEl = document.getElementById('security-workspace');
+const securitySidebarToggle = document.getElementById('security-sidebar-toggle');
+const securitySidebarClose = document.getElementById('security-sidebar-close');
+const securitySidebarBackdrop = document.getElementById('security-sidebar-backdrop');
+const securitySidebarSheetBar = document.getElementById('security-sidebar-sheet-bar');
 const securitySourceTabsEl = document.getElementById('security-source-tabs');
 const securitySevTabsEl = document.getElementById('security-sev-tabs');
 const securityVerdictTabsEl = document.getElementById('security-verdict-tabs');
@@ -18034,6 +18214,9 @@ const securityPreviewSource = document.getElementById('security-preview-source')
 const securityPreviewXmlBanner = document.getElementById('security-preview-xml-banner');
 const securityPreviewOpenBtn = document.getElementById('security-preview-open');
 const securityPreviewCloseBtn = document.getElementById('security-preview-close');
+/** User expanded Overview on phone — keep across re-renders until they collapse or leave mobile. */
+let securitySidebarUserExpanded = false;
+const securityPreviewBackdrop = document.getElementById('security-preview-backdrop');
 const securityMasPieWrap = document.getElementById('security-mas-pie-wrap');
 const securityMasPieEl = document.getElementById('security-mas-pie');
 const securityMasPieLegendEl = document.getElementById('security-mas-pie-legend');
@@ -18893,6 +19076,7 @@ function mergeAnalysisEntriesJson(localRaw, importedRaw, mapField = null) {
 function applyImportedAnalysisState() {
   loadSecurityVerdictsForCurrent();
   loadSecurityScannersEnabled();
+  loadSecurityMasProfiles();
   syncSecurityScannerTogglesUi();
   try { applyArmDecompileOptionsFromStorage(); } catch (_) {}
   try { loadDexRenamesFromStorage(); } catch (_) {}
@@ -19484,11 +19668,15 @@ function collectSeverityCountsForSource() {
   const crossDedup = !securitySourceFilter;
   const occupied = crossDedup ? buildSecurityDedupOccupiedFromVulns(securityVulnFindings) : null;
   if (securitySourceFilter !== 'semgrep' && securitySourceFilter !== 'mt') {
-    for (const f of securityVulnFindings) bump(vulnFindingSeverityClass(f));
+    for (const f of securityVulnFindings) {
+      if (!findingMatchesMasProfiles(findingMasCtxFromVuln(f))) continue;
+      bump(vulnFindingSeverityClass(f));
+    }
   }
   if (securitySourceFilter !== 'vuln' && securitySourceFilter !== 'mt') {
     for (const f of securitySemgrepFindings) {
       if (shouldSuppressDuplicateSecurityFinding('semgrep', f, null, 0, occupied)) continue;
+      if (!findingMatchesMasProfiles(findingMasCtxFromSemgrep(f))) continue;
       bump(semgrepSeverityClass(f.severity));
     }
   }
@@ -19496,6 +19684,7 @@ function collectSeverityCountsForSource() {
     const issues = Array.isArray(securityMtReport?.issues) ? securityMtReport.issues : [];
     issues.forEach((iss, idx) => {
       if (shouldSuppressDuplicateSecurityFinding('mt', null, iss, idx, occupied)) return;
+      if (!findingMatchesMasProfiles(findingMasCtxFromMt(iss))) return;
       bump('sev-med');
     });
   }
@@ -19504,22 +19693,27 @@ function collectSeverityCountsForSource() {
 
 function collectSecurityStats() {
   const occupied = buildSecurityDedupOccupiedFromVulns(securityVulnFindings);
-  const vulnN = securityVulnFindings.length;
+  const vulnVisible = securityVulnFindings.filter((f) => findingMatchesMasProfiles(findingMasCtxFromVuln(f)));
+  const vulnN = vulnVisible.length;
   let sgN = 0;
   for (const f of securitySemgrepFindings) {
-    if (!shouldSuppressDuplicateSecurityFinding('semgrep', f, null, 0, occupied)) sgN++;
+    if (shouldSuppressDuplicateSecurityFinding('semgrep', f, null, 0, occupied)) continue;
+    if (!findingMatchesMasProfiles(findingMasCtxFromSemgrep(f))) continue;
+    sgN++;
   }
   const mtIssues = Array.isArray(securityMtReport?.issues) ? securityMtReport.issues : [];
   let mtN = 0;
   mtIssues.forEach((iss, idx) => {
-    if (!shouldSuppressDuplicateSecurityFinding('mt', null, iss, idx, occupied)) mtN++;
+    if (shouldSuppressDuplicateSecurityFinding('mt', null, iss, idx, occupied)) return;
+    if (!findingMatchesMasProfiles(findingMasCtxFromMt(iss))) return;
+    mtN++;
   });
   // Per-scanner tabs still show raw counts; combined total uses deduped view.
   const rawSg = securitySemgrepFindings.length;
   const rawMt = mtIssues.length;
   const total = vulnN + sgN + mtN;
   const sev = { high: 0, med: 0, low: 0, info: 0 };
-  for (const f of securityVulnFindings) {
+  for (const f of vulnVisible) {
     const r = securitySeverityRank(vulnFindingSeverityClass(f));
     if (r === 0) sev.high++;
     else if (r === 1) sev.med++;
@@ -19528,6 +19722,7 @@ function collectSecurityStats() {
   }
   for (const f of securitySemgrepFindings) {
     if (shouldSuppressDuplicateSecurityFinding('semgrep', f, null, 0, occupied)) continue;
+    if (!findingMatchesMasProfiles(findingMasCtxFromSemgrep(f))) continue;
     const r = securitySeverityRank(semgrepSeverityClass(f.severity));
     if (r === 0) sev.high++;
     else if (r === 1) sev.med++;
@@ -19584,7 +19779,31 @@ function findingMasCtxFromMt(iss) {
   };
 }
 
-/** @returns {{ maswe: string[], know: string[], best: string[], families: string[], labels: string[] }} */
+function masTagsFromMasweIds(maswe) {
+  const tests = [...new Set(maswe.flatMap((id) => (MASWE_TO_TESTS[id] || [])))];
+  const profiles = [...new Set(maswe.flatMap((id) => masweProfiles(id)))];
+  return { tests, profiles };
+}
+
+function masSearchLabels({ maswe, know, best, families, tests, profiles, extra = [] }) {
+  return [
+    ...maswe,
+    ...maswe.map((id) => id.replace(/^MASWE-/, 'WE-')),
+    ...families,
+    ...families.map((f) => masvsFamilyShort(f)),
+    ...know,
+    ...know.map((id) => id.replace(/^MASTG-KNOW-/, 'KNOW-')),
+    ...best,
+    ...best.map((id) => id.replace(/^MASTG-BEST-/, 'BEST-')),
+    ...tests,
+    ...tests.map((id) => id.replace(/^MASTG-TEST-/, 'TEST-')),
+    ...profiles,
+    ...profiles.map((p) => masProfileLabel(p)),
+    ...extra,
+  ];
+}
+
+/** @returns {{ maswe: string[], know: string[], best: string[], families: string[], tests: string[], profiles: string[], labels: string[] }} */
 function findingMasTags(ctx) {
   // Prefer native enrichment from dex-decompiler when present on the finding.
   const hasNative = !!(
@@ -19603,18 +19822,12 @@ function findingMasTags(ctx) {
         ...(ctx.masvs || []).map((c) => c.family || String(c.id || '').replace(/-\d+$/, '')).filter((f) => /^MASVS-[A-Z]+$/.test(f)),
       ]),
     ];
-    const labels = [
-      ...maswe,
-      ...maswe.map((id) => id.replace(/^MASWE-/, 'WE-')),
-      ...families,
-      ...families.map((f) => masvsFamilyShort(f)),
-      ...(ctx.masvs || []).map((c) => c.id).filter(Boolean),
-      ...know,
-      ...know.map((id) => id.replace(/^MASTG-KNOW-/, 'KNOW-')),
-      ...best,
-      ...best.map((id) => id.replace(/^MASTG-BEST-/, 'BEST-')),
-    ];
-    return { maswe, know, best, families, labels };
+    const { tests, profiles } = masTagsFromMasweIds(maswe);
+    const labels = masSearchLabels({
+      maswe, know, best, families, tests, profiles,
+      extra: (ctx.masvs || []).map((c) => c.id).filter(Boolean),
+    });
+    return { maswe, know, best, families, tests, profiles, labels };
   }
   const knowLinks = resolveMastgKnowledge(ctx);
   const chain = resolveMasChain(ctx, knowLinks);
@@ -19622,34 +19835,33 @@ function findingMasTags(ctx) {
   const families = [...new Set(chain.maswe.map((w) => w.family).filter(Boolean))];
   const know = [...(chain.knowIds || [])];
   const best = chain.best.map((b) => b.id);
-  const labels = [
-    ...maswe,
-    ...maswe.map((id) => id.replace(/^MASWE-/, 'WE-')),
-    ...families,
-    ...families.map((f) => masvsFamilyShort(f)),
-    ...know,
-    ...know.map((id) => id.replace(/^MASTG-KNOW-/, 'KNOW-')),
-    ...best,
-    ...best.map((id) => id.replace(/^MASTG-BEST-/, 'BEST-')),
-  ];
-  return { maswe, know, best, families, labels };
+  const { tests, profiles } = masTagsFromMasweIds(maswe);
+  const labels = masSearchLabels({ maswe, know, best, families, tests, profiles });
+  return { maswe, know, best, families, tests, profiles, labels };
+}
+
+function findingMatchesMasProfiles(ctx) {
+  if (!securityMasProfiles.length) return true;
+  const tags = findingMasTags(ctx);
+  return tags.profiles.some((p) => securityMasProfiles.includes(p));
 }
 
 function findingMatchesMasFilter(ctx) {
+  if (!findingMatchesMasProfiles(ctx)) return false;
   if (!securityMasFilter) return true;
   const tags = findingMasTags(ctx);
   const want = securityMasFilter;
-  if (tags.maswe.includes(want) || tags.know.includes(want) || tags.best.includes(want)) return true;
+  if (tags.maswe.includes(want) || tags.know.includes(want) || tags.best.includes(want) || tags.tests.includes(want)) return true;
   if (tags.families.includes(want)) return true;
+  if (tags.profiles.includes(want) || tags.profiles.includes(String(want).replace(/^MAS-/, ''))) return true;
   // Family short alias: STORAGE → MASVS-STORAGE
   if (/^[A-Z]+$/.test(want) && tags.families.includes(`MASVS-${want}`)) return true;
   // MASWE belonging to filtered family
   if (want.startsWith('MASVS-') && tags.maswe.some((id) => MASWE_CATALOG[id]?.family === want)) return true;
-  // allow short aliases in filter state
   const short = want
-    .replace(/^MASWE-/, 'WE-')
     .replace(/^MASTG-KNOW-/, 'KNOW-')
-    .replace(/^MASTG-BEST-/, 'BEST-');
+    .replace(/^MASTG-BEST-/, 'BEST-')
+    .replace(/^MASTG-TEST-/, 'TEST-');
   return tags.labels.includes(want) || tags.labels.includes(short);
 }
 
@@ -19700,6 +19912,7 @@ function renderSecurityOverview() {
   if (securityFiltersEl) securityFiltersEl.hidden = !hasScans;
   if (securitySidebarEl) securitySidebarEl.hidden = !hasScans;
   if (securityWorkspaceEl) securityWorkspaceEl.classList.toggle('has-sidebar', hasScans);
+  syncSecuritySidebarChrome();
 
   if (!securityOverviewGrid) return;
   if (!hasScans) {
@@ -19803,6 +20016,7 @@ function collectMasFamilyCounts() {
     counts.set(fam, (counts.get(fam) || 0) + 1);
   };
   const ingest = (ctx) => {
+    if (!findingMatchesMasProfiles(ctx)) return;
     findingMasTags(ctx).families.forEach(bump);
   };
   for (const f of securityVulnFindings) ingest(findingMasCtxFromVuln(f));
@@ -19894,6 +20108,7 @@ function collectMasGraphFindingGroups() {
   /** @type {Map<string, { id: string, label: string, masweIds: string[], count: number }>} */
   const groups = new Map();
   const bump = (id, label, ctx) => {
+    if (!findingMatchesMasProfiles(ctx)) return;
     const tags = findingMasTags(ctx);
     const masweIds = tags.maswe.length ? tags.maswe : resolveMaswe(ctx).map((w) => w.id);
     const existing = groups.get(id);
@@ -19947,13 +20162,15 @@ function renderSecurityMasFilterChips() {
     else counts.set(id, { kind, label, n: 1, familySlug });
   };
   const ingest = (ctx) => {
+    if (!findingMatchesMasProfiles(ctx)) return;
     const tags = findingMasTags(ctx);
     tags.families.forEach((fam) => bump(fam, 'masvs', masvsFamilyShort(fam), masvsFamilySlug(fam)));
     tags.maswe.forEach((id) => {
       const fromNative = (ctx.maswe || []).find((w) => (w.id || w) === id);
       const fam = fromNative?.family || MASWE_CATALOG[id]?.family;
-      bump(id, 'maswe', id.replace(/^MASWE-/, 'WE-'), masvsFamilySlug(fam));
+      bump(id, 'maswe', id, masvsFamilySlug(fam));
     });
+    tags.tests.forEach((id) => bump(id, 'test', id.replace(/^MASTG-TEST-/, 'TEST-')));
     tags.know.forEach((id) => bump(id, 'know', id.replace(/^MASTG-KNOW-/, 'KNOW-')));
     tags.best.forEach((id) => bump(id, 'best', id.replace(/^MASTG-BEST-/, 'BEST-')));
   };
@@ -19970,14 +20187,15 @@ function renderSecurityMasFilterChips() {
   });
 
   if (!counts.size) {
-    securityMasFiltersEl.hidden = true;
     securityMasFilterChipsEl.innerHTML = '';
     if (securityMasFilter) securityMasFilter = '';
+    securityMasFiltersEl.hidden = false;
+    renderSecurityMasProfileChips();
     return;
   }
   securityMasFiltersEl.hidden = false;
 
-  const kindOrder = { masvs: 0, maswe: 1, know: 2, best: 3 };
+  const kindOrder = { masvs: 0, maswe: 1, test: 2, know: 3, best: 4 };
   const famRank = (id) => {
     const i = MASVS_FAMILY_ORDER.indexOf(id);
     return i < 0 ? 99 : i;
@@ -20002,15 +20220,46 @@ function renderSecurityMasFilterChips() {
     const title = meta.kind === 'masvs'
       ? `${id} · filter findings in this MASVS family`
       : meta.kind === 'maswe' && MASWE_CATALOG[id]
-        ? `${id} · ${MASWE_CATALOG[id].family}`
+        ? `${id} · ${MASWE_CATALOG[id].family} · ${masweProfiles(id).map(masProfileLabel).join(' ') || 'no profile'}`
         : id;
     return `<button type="button" class="security-mas-filter-chip ${meta.kind}${famCls}${securityMasFilter === id ? ' active' : ''}" data-mas-filter="${escapeAttr(id)}" title="${escapeAttr(title)}">${escapeHtml(meta.label)}<span class="chip-n">${meta.n}</span></button>`;
   };
 
   securityMasFilterChipsEl.innerHTML = [
-    `<button type="button" class="security-mas-filter-chip${!securityMasFilter ? ' active' : ''}" data-mas-filter="" title="Clear MASVS / MASWE / MASTG filter">All</button>`,
+    `<button type="button" class="security-mas-filter-chip${!securityMasFilter ? ' active' : ''}" data-mas-filter="" title="Clear MASVS / MASWE / TEST filter">All</button>`,
     ...familyEntries.map(([id, meta]) => chipHtml(id, meta)),
     ...otherEntries.map(([id, meta]) => chipHtml(id, meta)),
+  ].join('');
+  renderSecurityMasProfileChips();
+}
+
+function renderSecurityMasProfileChips() {
+  if (!securityMasProfileChipsEl) return;
+  const counts = new Map(MAS_PROFILE_IDS.map((p) => [p, 0]));
+  const ingest = (ctx) => {
+    findingMasTags(ctx).profiles.forEach((p) => {
+      if (counts.has(p)) counts.set(p, counts.get(p) + 1);
+    });
+  };
+  for (const f of securityVulnFindings) ingest(findingMasCtxFromVuln(f));
+  const occupied = buildSecurityDedupOccupiedFromVulns(securityVulnFindings);
+  for (const f of securitySemgrepFindings) {
+    if (shouldSuppressDuplicateSecurityFinding('semgrep', f, null, 0, occupied)) continue;
+    ingest(findingMasCtxFromSemgrep(f));
+  }
+  const mtIssues = Array.isArray(securityMtReport?.issues) ? securityMtReport.issues : [];
+  mtIssues.forEach((iss, idx) => {
+    if (shouldSuppressDuplicateSecurityFinding('mt', null, iss, idx, occupied)) return;
+    ingest(findingMasCtxFromMt(iss));
+  });
+  const anyActive = !securityMasProfiles.length;
+  securityMasProfileChipsEl.innerHTML = [
+    `<button type="button" class="security-mas-filter-chip profile${anyActive ? ' active' : ''}" data-mas-profile="" title="Show findings from every MAS profile">Any</button>`,
+    ...MAS_PROFILE_IDS.map((code) => {
+      const n = counts.get(code) || 0;
+      const active = securityMasProfiles.includes(code) ? ' active' : '';
+      return `<button type="button" class="security-mas-filter-chip profile profile-${code.toLowerCase()}${active}" data-mas-profile="${escapeAttr(code)}" title="${escapeAttr(`${masProfileTitle(code)} · ${n} finding(s). Multi-select (e.g. MAS-L2 + MAS-R).`)}">${escapeHtml(masProfileLabel(code))}<span class="chip-n">${n}</span></button>`;
+    }),
   ].join('');
 }
 
@@ -20102,7 +20351,7 @@ function renderSecurityMasGraph() {
   }
   syncMasGraphFullscreenButton();
 
-  const fp = masGraphFingerprint(groups) + (securityMasGraphCollapsed && !forceOpen ? '|c' : '|o') + (securityMasFilter ? `|f:${securityMasFilter}` : '');
+  const fp = masGraphFingerprint(groups) + (securityMasGraphCollapsed && !forceOpen ? '|c' : '|o') + (securityMasFilter ? `|f:${securityMasFilter}` : '') + `|p:${securityMasProfiles.join(',')}`;
   if (securityMasGraphMeta) {
     const linked = groups.reduce((n, g) => n + (g.masweIds?.length ? 1 : 0), 0);
     securityMasGraphMeta.textContent = securityMasGraphCollapsed && !forceOpen
@@ -20143,6 +20392,7 @@ function renderSecurityMasGraph() {
   const masWeBorder = '#499fff';
   const masKnow = '#142ec3';
   const masBest = '#087a21';
+  const masTest = '#b45309';
   const chipFont = { color: '#ffffff', size: 12, face: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', bold: true };
   const findGroup = (nid) => groups.find((g) => `f:${g.id}` === nid);
 
@@ -20157,8 +20407,9 @@ function renderSecurityMasGraph() {
       const ids = g?.masweIds || [];
       if (ids.includes(want)) return true;
       if (want.startsWith('MASVS-') && ids.some((id) => MASWE_CATALOG[id]?.family === want)) return true;
+      if (want.startsWith('MASTG-TEST-') && ids.some((id) => (MASWE_TO_TESTS[id] || []).includes(want))) return true;
     }
-    if ((n.group === 'know' || n.group === 'best') && n.id === want) return true;
+    if ((n.group === 'know' || n.group === 'best' || n.group === 'test') && n.id === want) return true;
     // KNOW/BEST under a filtered MASWE/family stay lit via edges — dim individually unless id match
     return false;
   };
@@ -20169,7 +20420,7 @@ function renderSecurityMasGraph() {
     // Keep KNOW/BEST faintly visible when their parent MASWE/family is filtered
     let opacity = 1;
     if (dim) {
-      if ((n.group === 'know' || n.group === 'best') && securityMasFilter) {
+      if ((n.group === 'know' || n.group === 'best' || n.group === 'test') && securityMasFilter) {
         const parentLit = nodes.some((p) =>
           (p.group === 'maswe' || p.group === 'masvs')
           && nodeMatchesFilter(p)
@@ -20242,6 +20493,14 @@ function renderSecurityMasGraph() {
         shapeProperties: { borderRadius: 4 },
       };
     }
+    if (n.group === 'test') {
+      return {
+        ...base,
+        font: chipFont,
+        color: { background: masTest, border: masTest, highlight: { background: masTest, border: '#fff' } },
+        shapeProperties: { borderRadius: 4 },
+      };
+    }
     if (n.group === 'best') {
       return {
         ...base,
@@ -20261,6 +20520,8 @@ function renderSecurityMasGraph() {
       edgeColor = toNode?.color || fromNode?.color || masvsFamilyColor(toNode?.family || fromNode?.family || '') || border;
     } else if (toNode?.group === 'know') {
       edgeColor = masKnow;
+    } else if (toNode?.group === 'test') {
+      edgeColor = masTest;
     } else if (toNode?.group === 'best') {
       edgeColor = masBest;
     }
@@ -20314,7 +20575,7 @@ function renderSecurityMasGraph() {
       setSecurityMasFilter(nid);
       return;
     }
-    if (nid.startsWith('MASWE-') || nid.startsWith('MASTG-KNOW-') || nid.startsWith('MASTG-BEST-')) {
+    if (nid.startsWith('MASWE-') || nid.startsWith('MASTG-KNOW-') || nid.startsWith('MASTG-BEST-') || nid.startsWith('MASTG-TEST-')) {
       if (openDocs) {
         if (nid.startsWith('MASWE-') && MASWE_CATALOG[nid]) window.open(masweUrl(nid), '_blank', 'noopener,noreferrer');
         else window.open(`https://mas.owasp.org/${nid}`, '_blank', 'noopener,noreferrer');
@@ -20355,9 +20616,19 @@ document.addEventListener('keydown', (e) => {
     setMasGraphFullscreen(false);
     return;
   }
+  if (securityRulesPanel && !securityRulesPanel.hidden) {
+    e.preventDefault();
+    setSecurityRulesPanelOpen(false);
+    return;
+  }
   if (securityPreviewEl && !securityPreviewEl.hidden) {
     e.preventDefault();
     closeSecurityPreview();
+    return;
+  }
+  if (document.body.classList.contains('security-sidebar-open')) {
+    e.preventDefault();
+    setSecuritySidebarCollapsed(true, true);
   }
 });
 
@@ -20819,12 +21090,147 @@ function closeSecurityPreview() {
   securityPreviewNav = null;
   securityPreviewFindingId = '';
   markSecurityFindingPreviewed('');
-  if (securityPreviewEl) securityPreviewEl.hidden = true;
+  if (securityPreviewEl) {
+    securityPreviewEl.hidden = true;
+    securityPreviewEl.style.transition = '';
+    securityPreviewEl.style.transform = '';
+  }
   if (securityPreviewMeta) securityPreviewMeta.textContent = '';
   if (securityPreviewSource) securityPreviewSource.innerHTML = '';
   if (securityPreviewXmlBanner) {
     securityPreviewXmlBanner.hidden = true;
     securityPreviewXmlBanner.innerHTML = '';
+  }
+  syncSecurityPreviewOpenClass(false);
+}
+
+/** Short labels on phones; keep desktop wording. */
+function syncSecurityPreviewOpenBtnLabel() {
+  if (!securityPreviewOpenBtn) return;
+  const mode = securityPreviewOpenBtn.dataset.mode || 'code';
+  const mobile = isSecurityPhoneLayout();
+  if (mode === 'xml') {
+    securityPreviewOpenBtn.textContent = mobile ? 'Manifest' : 'Open Manifest';
+  } else {
+    securityPreviewOpenBtn.textContent = mobile ? 'Code' : 'Open in Code';
+  }
+}
+
+/**
+ * Phone: overview/filters are an overlay sheet (collapsed by default).
+ * Desktop: sidebar always in flow — never use the collapsed overlay class.
+ */
+function setSecuritySidebarCollapsed(collapsed, fromUser) {
+  if (!securityWorkspaceEl) return;
+  const mobile = isSecurityPhoneLayout();
+  if (!mobile) {
+    securityWorkspaceEl.classList.remove('sidebar-collapsed');
+    document.body.classList.remove('security-sidebar-open');
+    if (securitySidebarBackdrop) securitySidebarBackdrop.hidden = true;
+    if (securitySidebarSheetBar) securitySidebarSheetBar.hidden = true;
+    securityWorkspaceEl.style.removeProperty('--security-sidebar-top');
+    if (securitySidebarToggle) {
+      securitySidebarToggle.hidden = true;
+      securitySidebarToggle.setAttribute('aria-expanded', 'false');
+    }
+    return;
+  }
+  if (fromUser) securitySidebarUserExpanded = !collapsed;
+  if (!collapsed) {
+    try { setSecurityRulesPanelOpen(false); } catch (_) {}
+  }
+  securityWorkspaceEl.classList.toggle('sidebar-collapsed', !!collapsed);
+  document.body.classList.toggle('security-sidebar-open', !collapsed);
+  updateSecuritySidebarChromeUI();
+}
+
+function updateSecuritySidebarChromeUI() {
+  if (!securityWorkspaceEl) return;
+  const mobile = isSecurityPhoneLayout();
+  const hasSidebar = securityWorkspaceEl.classList.contains('has-sidebar')
+    && securitySidebarEl && !securitySidebarEl.hidden;
+
+  if (!mobile || !hasSidebar) {
+    if (securitySidebarToggle) securitySidebarToggle.hidden = true;
+    if (securitySidebarBackdrop) securitySidebarBackdrop.hidden = true;
+    if (securitySidebarSheetBar) securitySidebarSheetBar.hidden = true;
+    if (!mobile) {
+      securityWorkspaceEl.classList.remove('sidebar-collapsed');
+      document.body.classList.remove('security-sidebar-open');
+      securityWorkspaceEl.style.removeProperty('--security-sidebar-top');
+    }
+    return;
+  }
+
+  const collapsed = securityWorkspaceEl.classList.contains('sidebar-collapsed');
+  document.body.classList.toggle('security-sidebar-open', !collapsed);
+
+  if (securitySidebarToggle) {
+    securitySidebarToggle.hidden = false;
+    securitySidebarToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    securitySidebarToggle.textContent = collapsed ? 'Overview' : 'Close';
+    securitySidebarToggle.title = collapsed ? 'Overview and filters' : 'Close overview';
+  }
+  if (securitySidebarSheetBar) securitySidebarSheetBar.hidden = collapsed;
+  if (securitySidebarBackdrop) securitySidebarBackdrop.hidden = collapsed;
+
+  if (!collapsed) {
+    const header = document.querySelector('.security-findings-header');
+    const top = header ? Math.ceil(header.getBoundingClientRect().height) : 76;
+    securityWorkspaceEl.style.setProperty('--security-sidebar-top', `${top}px`);
+  } else {
+    securityWorkspaceEl.style.removeProperty('--security-sidebar-top');
+  }
+}
+
+/** Apply phone defaults + refresh Overview toggle / sheet chrome. */
+function syncSecuritySidebarChrome() {
+  if (!securityWorkspaceEl) return;
+  const mobile = isSecurityPhoneLayout();
+  const hasSidebar = securityWorkspaceEl.classList.contains('has-sidebar')
+    && securitySidebarEl && !securitySidebarEl.hidden;
+
+  if (!mobile) {
+    setSecuritySidebarCollapsed(false, false);
+    return;
+  }
+  if (!hasSidebar) {
+    securityWorkspaceEl.classList.add('sidebar-collapsed');
+    document.body.classList.remove('security-sidebar-open');
+    updateSecuritySidebarChromeUI();
+    return;
+  }
+  // Default collapsed on phone unless the user opened Overview this session.
+  securityWorkspaceEl.classList.toggle('sidebar-collapsed', !securitySidebarUserExpanded);
+  document.body.classList.toggle('security-sidebar-open', securitySidebarUserExpanded);
+  updateSecuritySidebarChromeUI();
+}
+
+function toggleSecuritySidebar() {
+  if (!isSecurityPhoneLayout() || !securityWorkspaceEl) return;
+  const collapsed = securityWorkspaceEl.classList.contains('sidebar-collapsed');
+  setSecuritySidebarCollapsed(!collapsed, true);
+}
+
+function syncSecurityPreviewOpenClass(open) {
+  const on = open == null ? !!(securityPreviewEl && !securityPreviewEl.hidden) : !!open;
+  document.body.classList.toggle('security-preview-open', on);
+  document.getElementById('security-panel')?.classList.toggle('has-preview', on);
+  if (securityPreviewBackdrop) securityPreviewBackdrop.hidden = !on;
+  syncSecurityPreviewPortal();
+}
+
+/** On phones, mount preview + backdrop under body so overflow:hidden ancestors don't clip the sheet. */
+function syncSecurityPreviewPortal() {
+  const host = document.querySelector('.security-findings-body');
+  if (!securityPreviewEl || !host) return;
+  const mobileOpen = isSecurityPhoneLayout() && !securityPreviewEl.hidden;
+  const target = mobileOpen ? document.body : host;
+  if (securityPreviewBackdrop && securityPreviewBackdrop.parentElement !== target) {
+    target.appendChild(securityPreviewBackdrop);
+  }
+  if (securityPreviewEl.parentElement !== target) {
+    target.appendChild(securityPreviewEl);
   }
 }
 
@@ -21179,6 +21585,8 @@ async function previewSecurityFinding(className, methodName, dexFile, navOpts = 
   }
 
   securityPreviewEl.hidden = false;
+  syncSecurityPreviewOpenClass(true);
+  try { setSecuritySidebarCollapsed(true, true); } catch (_) {}
   if (securityPreviewXmlBanner) {
     securityPreviewXmlBanner.hidden = true;
     securityPreviewXmlBanner.innerHTML = '';
@@ -21186,13 +21594,19 @@ async function previewSecurityFinding(className, methodName, dexFile, navOpts = 
   if (securityPreviewMeta) securityPreviewMeta.textContent = 'Loading…';
   if (securityPreviewSource) securityPreviewSource.innerHTML = securityPreviewEmpty('Loading decompiled source…');
   try {
-    securityPreviewEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    // On mobile the preview is a bottom sheet — don't yank the findings list.
+    if (!isSecurityPhoneLayout()) {
+      securityPreviewEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
   } catch (_) { /* ignore */ }
 
   if (isXmlSecurityFinding(className, methodName)) {
     if (reqId !== securityPreviewReqId) return;
     securityPreviewNav.xml = true;
-    if (securityPreviewOpenBtn) securityPreviewOpenBtn.textContent = 'Open Manifest';
+    if (securityPreviewOpenBtn) {
+      securityPreviewOpenBtn.dataset.mode = 'xml';
+      syncSecurityPreviewOpenBtnLabel();
+    }
     const resolved = resolveSecurityXmlText(className);
     if (!resolved?.xml) {
       if (securityPreviewMeta) securityPreviewMeta.textContent = className || 'AndroidManifest.xml';
@@ -21219,7 +21633,10 @@ async function previewSecurityFinding(className, methodName, dexFile, navOpts = 
     return;
   }
 
-  if (securityPreviewOpenBtn) securityPreviewOpenBtn.textContent = 'Open in Code';
+  if (securityPreviewOpenBtn) {
+    securityPreviewOpenBtn.dataset.mode = 'code';
+    syncSecurityPreviewOpenBtnLabel();
+  }
 
   if (!className) {
     if (securityPreviewSource) securityPreviewSource.innerHTML = securityPreviewEmpty('Finding has no class.');
@@ -23148,11 +23565,19 @@ function insertNewSemgrepRuleTemplate() {
   setSecurityRulesStatus('Inserted new rule template — edit id/pattern, then Validate / Apply');
 }
 
-function toggleSecurityRulesPanel() {
+function setSecurityRulesPanelOpen(open) {
   if (!securityRulesPanel) return;
-  const open = securityRulesPanel.hidden;
-  securityRulesPanel.hidden = !open;
-  if (open) {
+  const want = !!open;
+  securityRulesPanel.hidden = !want;
+  document.body.classList.toggle('security-rules-open', want);
+  const toggle = document.getElementById('security-rules-toggle');
+  if (toggle) {
+    toggle.setAttribute('aria-expanded', want ? 'true' : 'false');
+    toggle.classList.toggle('active', want);
+  }
+  if (want) {
+    try { setSecuritySidebarCollapsed(true, true); } catch (_) {}
+    try { closeSecurityPreview(); } catch (_) {}
     if (!(securityRulesEditor?.value || '').trim()) {
       let saved = null;
       try { saved = localStorage.getItem(SECURITY_RULES_KEY); } catch (_) {}
@@ -23172,7 +23597,17 @@ function toggleSecurityRulesPanel() {
       validateSemgrepRulesEditor();
     }
     refreshSemgrepRulesHighlight();
+    try {
+      if (isSecurityPhoneLayout()) {
+        securityRulesPanel.querySelector('#security-rules-close')?.focus({ preventScroll: true });
+      }
+    } catch (_) {}
   }
+}
+
+function toggleSecurityRulesPanel() {
+  if (!securityRulesPanel) return;
+  setSecurityRulesPanelOpen(!!securityRulesPanel.hidden);
 }
 
 document.getElementById('security-scan')?.addEventListener('click', () => runSecurityScan());
@@ -23180,6 +23615,7 @@ document.getElementById('security-enable-vuln')?.addEventListener('change', () =
 document.getElementById('security-enable-semgrep')?.addEventListener('change', () => readSecurityScannerTogglesFromUi());
 document.getElementById('security-enable-mt')?.addEventListener('change', () => readSecurityScannerTogglesFromUi());
 loadSecurityScannersEnabled();
+loadSecurityMasProfiles();
 syncSecurityScannerTogglesUi();
 document.getElementById('security-progress-stop')?.addEventListener('click', () => requestSecurityScanStop());
 document.getElementById('security-clear-cache')?.addEventListener('click', () => clearSecurityCacheForCurrent());
@@ -23222,6 +23658,10 @@ document.addEventListener('keydown', (e) => {
   closeSecurityCacheModal('keep');
 });
 document.getElementById('security-rules-toggle')?.addEventListener('click', () => toggleSecurityRulesPanel());
+document.getElementById('security-rules-close')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  setSecurityRulesPanelOpen(false);
+});
 document.getElementById('security-rules-all')?.addEventListener('click', () => loadAllSemgrepRulesFromFiles());
 document.getElementById('security-rules-builtin')?.addEventListener('click', () => loadStarterSemgrepRules());
 document.getElementById('security-rules-mastg')?.addEventListener('click', () => loadMastgSemgrepRules());
@@ -23256,6 +23696,7 @@ document.getElementById('security-panel')?.addEventListener('click', (e) => {
     const next = verdictFilterBtn.getAttribute('data-verdict-filter') || '';
     securityVerdictFilter = securityVerdictFilter === next && next ? '' : next;
     renderSecurityPanel();
+    if (isSecurityPhoneLayout()) setSecuritySidebarCollapsed(true, true);
     return;
   }
   const sevBtn = e.target.closest('[data-sev]');
@@ -23264,18 +23705,39 @@ document.getElementById('security-panel')?.addEventListener('click', (e) => {
     // Toggle off when clicking the active severity again (except Total / All levels → clear).
     securitySeverityFilter = securitySeverityFilter === next && next ? '' : next;
     renderSecurityPanel();
+    if (isSecurityPhoneLayout()) setSecuritySidebarCollapsed(true, true);
     return;
   }
   const sourceTab = e.target.closest('[data-source]');
   if (sourceTab) {
     securitySourceFilter = sourceTab.getAttribute('data-source') || '';
     renderSecurityPanel();
+    if (isSecurityPhoneLayout()) setSecuritySidebarCollapsed(true, true);
     return;
   }
   const masFilterBtn = e.target.closest('[data-mas-filter]');
   if (masFilterBtn && !masFilterBtn.closest('.security-finding')) {
     e.preventDefault();
     setSecurityMasFilter(masFilterBtn.getAttribute('data-mas-filter') || '');
+    if (isSecurityPhoneLayout()) setSecuritySidebarCollapsed(true, true);
+    return;
+  }
+  const masProfileBtn = e.target.closest('[data-mas-profile]');
+  if (masProfileBtn) {
+    if (e.metaKey || e.ctrlKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const next = masProfileBtn.getAttribute('data-mas-profile') || '';
+    if (!next) {
+      securityMasProfiles = [];
+      saveSecurityMasProfiles();
+      renderSecurityPanel();
+    } else {
+      toggleSecurityMasProfile(next);
+    }
+    if (isSecurityPhoneLayout() && !masProfileBtn.closest('.security-finding')) {
+      setSecuritySidebarCollapsed(true, true);
+    }
     return;
   }
   const masChipLink = e.target.closest('a.mas-chip[data-mas-id], a.security-badge[data-mas-id], .security-badge[data-mas-id]');
@@ -23375,9 +23837,99 @@ securityPreviewCloseBtn?.addEventListener('click', (e) => {
   e.preventDefault();
   closeSecurityPreview();
 });
+securityPreviewBackdrop?.addEventListener('click', (e) => {
+  e.preventDefault();
+  closeSecurityPreview();
+});
 securityPreviewOpenBtn?.addEventListener('click', (e) => {
   e.preventDefault();
   openSecurityPreviewInCode();
+});
+
+securitySidebarToggle?.addEventListener('click', (e) => {
+  e.preventDefault();
+  toggleSecuritySidebar();
+});
+securitySidebarClose?.addEventListener('click', (e) => {
+  e.preventDefault();
+  setSecuritySidebarCollapsed(true, true);
+});
+securitySidebarBackdrop?.addEventListener('click', (e) => {
+  e.preventDefault();
+  setSecuritySidebarCollapsed(true, true);
+});
+window.addEventListener('resize', () => {
+  try {
+    if (isSecurityPhoneLayout() && securityWorkspaceEl && !securityWorkspaceEl.classList.contains('sidebar-collapsed')) {
+      updateSecuritySidebarChromeUI();
+    }
+  } catch (_) {}
+});
+
+/* Mobile: swipe down on sheet handle/header to dismiss preview */
+(function wireSecurityPreviewSheetSwipe() {
+  const el = securityPreviewEl;
+  if (!el) return;
+  let startY = 0;
+  let dragging = false;
+  const resetTransform = () => {
+    el.style.transition = '';
+    el.style.transform = '';
+  };
+  el.addEventListener('touchstart', (e) => {
+    if (!isSecurityPhoneLayout() || el.hidden) return;
+    if (!e.target.closest('.security-preview-sheet-handle, .security-preview-header')) return;
+    const t = e.touches?.[0];
+    if (!t) return;
+    startY = t.clientY;
+    dragging = true;
+    el.style.transition = 'none';
+  }, { passive: true });
+  el.addEventListener('touchmove', (e) => {
+    if (!dragging) return;
+    const t = e.touches?.[0];
+    if (!t) return;
+    const dy = Math.max(0, t.clientY - startY);
+    el.style.transform = `translateY(${dy}px)`;
+  }, { passive: true });
+  el.addEventListener('touchend', (e) => {
+    if (!dragging) return;
+    dragging = false;
+    const t = e.changedTouches?.[0];
+    const dy = t ? Math.max(0, t.clientY - startY) : 0;
+    if (dy > 90) {
+      resetTransform();
+      closeSecurityPreview();
+      return;
+    }
+    el.style.transition = 'transform 0.2s ease';
+    el.style.transform = '';
+  }, { passive: true });
+  el.addEventListener('touchcancel', () => {
+    dragging = false;
+    resetTransform();
+  }, { passive: true });
+})();
+
+/* Escape closes Security sheets on phone/tablet layout. */
+window.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || !isSecurityPhoneLayout()) return;
+  try {
+    if (securityPreviewEl && !securityPreviewEl.hidden) {
+      e.preventDefault();
+      closeSecurityPreview();
+      return;
+    }
+    if (securityWorkspaceEl && !securityWorkspaceEl.classList.contains('sidebar-collapsed')) {
+      e.preventDefault();
+      setSecuritySidebarCollapsed(true, true);
+      return;
+    }
+    if (securityRulesPanel && !securityRulesPanel.hidden) {
+      e.preventDefault();
+      setSecurityRulesPanelOpen(false);
+    }
+  } catch (_) {}
 });
 
 try { updateStatusBar(); } catch (e) { console.warn("[droid2web] statusbar init", e); }

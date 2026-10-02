@@ -225,7 +225,7 @@ function handleJob(job) {
       raw = scan_vulns(u8, progressCb(id, op));
     } else if (op === 'taint_solve') {
       const u8 = toU8(job.bytes);
-      raw = taint_solve(u8);
+      raw = taint_solve(u8, job.options || undefined);
     } else if (op === 'get_semgrep_builtin_rules') {
       raw = get_semgrep_builtin_rules();
     } else if (op === 'diff_dex') {

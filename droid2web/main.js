@@ -768,11 +768,12 @@ function scanVulnsInWorker(bytes, onProgress) {
 }
 
 /** MT taint solve in worker. */
-function taintSolveInWorker(bytes) {
+function taintSolveInWorker(bytes, options = null) {
   const copy = bytes instanceof Uint8Array ? bytes.slice() : new Uint8Array(bytes).slice();
+  const opts = options && typeof options === 'object' ? { ...options } : undefined;
   return runInParseWorker(
     'taint_solve',
-    { bytes: copy.buffer },
+    { bytes: copy.buffer, options: opts },
     { timeoutMs: SECURITY_WORKER_TIMEOUT_MS, transfer: [copy.buffer] }
   );
 }
@@ -3015,6 +3016,10 @@ let decompileOptions = {
   showBytecode: false,
   useDebugNames: true,
   deobf: false,
+  deobfMin: 3,
+  deobfMax: 64,
+  onlyPackage: '',
+  exclude: '',
 };
 
 function loadDecompileOptionsFromStorage() {
@@ -3027,6 +3032,10 @@ function loadDecompileOptionsFromStorage() {
       if (typeof o.showBytecode === 'boolean') decompileOptions.showBytecode = o.showBytecode;
       if (typeof o.useDebugNames === 'boolean') decompileOptions.useDebugNames = o.useDebugNames;
       if (typeof o.deobf === 'boolean') decompileOptions.deobf = o.deobf;
+      if (typeof o.deobfMin === 'number' && o.deobfMin > 0) decompileOptions.deobfMin = o.deobfMin;
+      if (typeof o.deobfMax === 'number' && o.deobfMax > 0) decompileOptions.deobfMax = o.deobfMax;
+      if (typeof o.onlyPackage === 'string') decompileOptions.onlyPackage = o.onlyPackage;
+      if (typeof o.exclude === 'string') decompileOptions.exclude = o.exclude;
     }
   } catch (_) {}
 }
@@ -3040,10 +3049,18 @@ function syncDecompileOptionsUI() {
   const showBc = document.getElementById('decompile-show-bytecode');
   const dbg = document.getElementById('decompile-debug-names');
   const deobf = document.getElementById('decompile-deobf');
+  const deobfMin = document.getElementById('decompile-deobf-min');
+  const deobfMax = document.getElementById('decompile-deobf-max');
+  const onlyPkg = document.getElementById('decompile-only-package');
+  const excl = document.getElementById('decompile-exclude');
   if (modeEl) modeEl.value = decompileOptions.mode;
   if (showBc) showBc.checked = !!decompileOptions.showBytecode;
   if (dbg) dbg.checked = !!decompileOptions.useDebugNames;
   if (deobf) deobf.checked = !!decompileOptions.deobf;
+  if (deobfMin) deobfMin.value = String(decompileOptions.deobfMin ?? 3);
+  if (deobfMax) deobfMax.value = String(decompileOptions.deobfMax ?? 64);
+  if (onlyPkg) onlyPkg.value = decompileOptions.onlyPackage || '';
+  if (excl) excl.value = decompileOptions.exclude || '';
 }
 
 /** Options object for get_dex_method (renames + decompiler settings). */
@@ -3055,6 +3072,19 @@ function getDexMethodOptions() {
     useDebugNames: decompileOptions.useDebugNames !== false,
     deobf: !!decompileOptions.deobf,
   };
+  if (opts.deobf) {
+    const min = Number(decompileOptions.deobfMin);
+    const max = Number(decompileOptions.deobfMax);
+    if (Number.isFinite(min) && min > 0) opts.deobfMin = min;
+    if (Number.isFinite(max) && max > 0) opts.deobfMax = max;
+  }
+  const onlyPkg = String(decompileOptions.onlyPackage || '').trim();
+  if (onlyPkg) opts.onlyPackage = onlyPkg;
+  const excl = String(decompileOptions.exclude || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (excl.length) opts.exclude = excl;
   if (hasAny) {
     opts.renames = {
       package: dexRenames.package,
@@ -3179,12 +3209,26 @@ loadDecompileOptionsFromStorage();
   const showBc = document.getElementById('decompile-show-bytecode');
   const dbg = document.getElementById('decompile-debug-names');
   const deobf = document.getElementById('decompile-deobf');
+  const deobfMin = document.getElementById('decompile-deobf-min');
+  const deobfMax = document.getElementById('decompile-deobf-max');
+  const onlyPkg = document.getElementById('decompile-only-package');
+  const excl = document.getElementById('decompile-exclude');
   syncDecompileOptionsUI();
   function onChange() {
     if (modeEl) decompileOptions.mode = modeEl.value || 'restructure';
     if (showBc) decompileOptions.showBytecode = !!showBc.checked;
     if (dbg) decompileOptions.useDebugNames = !!dbg.checked;
     if (deobf) decompileOptions.deobf = !!deobf.checked;
+    if (deobfMin) {
+      const n = Number(deobfMin.value);
+      if (Number.isFinite(n) && n > 0) decompileOptions.deobfMin = n;
+    }
+    if (deobfMax) {
+      const n = Number(deobfMax.value);
+      if (Number.isFinite(n) && n > 0) decompileOptions.deobfMax = n;
+    }
+    if (onlyPkg) decompileOptions.onlyPackage = onlyPkg.value || '';
+    if (excl) decompileOptions.exclude = excl.value || '';
     saveDecompileOptionsToStorage();
     invalidateCurrentMethodAndRefresh();
   }
@@ -3192,6 +3236,10 @@ loadDecompileOptionsFromStorage();
   showBc?.addEventListener('change', onChange);
   dbg?.addEventListener('change', onChange);
   deobf?.addEventListener('change', onChange);
+  deobfMin?.addEventListener('change', onChange);
+  deobfMax?.addEventListener('change', onChange);
+  onlyPkg?.addEventListener('change', onChange);
+  excl?.addEventListener('change', onChange);
 })();
 
 /** DEX method name for rename / storage keys (`<init>`, not the display ctor name). */
@@ -18797,7 +18845,8 @@ const SECURITY_ISSUE_FAMILIES = [
   { id: 'implicit_intent', vuln: /implicit_intent/i, semgrep: /implicit-intent/i, mt: /implicit.?intent/i },
   { id: 'intent_ipc', vuln: /intent_spoof|intent_redirect|icc_|ipc_intent|broadcast|command_receiver|uri_permission|uri_grant|sensitive_broadcast|credential_broadcast/i, semgrep: /deeplink|intent-filter|provider-exported|fileprovider|content-provider|implicit-intent/i, mt: /intent|broadcast|provider|deeplink/i },
   { id: 'storage', vuln: /path_traversal|zip_slip|storage_mode|pick_file|logcat_external|insecure_logging|logging_/i, semgrep: /shared-storage|external-api|mediastore|local-storage|backup|flag-secure|notification|keyboard|input-field|non-caching|overlay|system-alert/i, mt: /storage|file|path|log/i },
-  { id: 'root_debug', vuln: /debugger|root_detect|strictmode|debuggable/i, semgrep: /debugger|root-detection|strictmode|debuggable|sdk-version|minsdk/i, mt: /root|debug|frida/i },
+  { id: 'root_debug', vuln: /debugger|root_detect|native_root|emulator_detect|tracerpid|anti_frida|strictmode|debuggable|sdk_int/i, semgrep: /debugger|root-detection|strictmode|debuggable|sdk-version|minsdk|emulator/i, mt: /root|debug|frida|emulator/i },
+  { id: 'resilience', vuln: /device_lock|biometric|flag_secure|overlay_protection|system_alert/i, semgrep: /biometric|flag-secure|overlay|system-alert|device.?lock/i, mt: /biometric|lock|overlay/i },
 ];
 
 function securityFindingIssueFamilies(scanner, f, iss) {
@@ -19527,6 +19576,56 @@ function formatCategoryLabel(cat) {
     uri_permission_grant_flow: 'URI grant flow',
     uri_permission_setresult_passthrough: 'setResult(getIntent()) passthrough',
     intent_parse_uri_redirect: 'Intent.parseUri redirect',
+    icc_extra_flow: 'ICC extras flow',
+    device_lock_api_check: 'Device lock / biometric API',
+    emulator_detection: 'Emulator detection',
+    root_detection: 'Root detection',
+    native_root_detection: 'Native root detection',
+    sdk_int_check: 'SDK_INT check',
+    debugger_check: 'Debugger check',
+    tracerpid_check: 'TracerPid check',
+    anti_frida_maps: 'Anti-Frida /maps check',
+    overlay_protection_api: 'Overlay protection API',
+    flag_secure: 'FLAG_SECURE',
+    strict_mode_policy: 'StrictMode policy',
+    allow_backup: 'allowBackup',
+    manifest_debuggable: 'debuggable manifest',
+    dangerous_permission: 'Dangerous permission',
+    network_security_config_user_ca: 'NSC user CA',
+    safebrowsing_disabled: 'SafeBrowsing disabled',
+    deeplink_query_unvalidated: 'Unvalidated deeplink query',
+    room_sql_injection: 'Room SQL injection',
+    prefs_plaintext_secret: 'Plaintext prefs secret',
+    hardcoded_crypto_secret: 'Hardcoded crypto secret',
+    insufficient_key_length: 'Insufficient key length',
+    insecure_random: 'Insecure random',
+    non_random_source: 'Non-random source',
+    logging_pii: 'PII logging',
+    network_pii: 'PII over network',
+    compose_password_visible: 'Compose password visible',
+    ui_password_cache: 'UI password cache',
+    activity_result_contracts: 'Activity Result Contracts',
+    activity_result_grant_smuggle: 'Activity result URI grant smuggle',
+    aidl_stub_as_interface: 'AIDL Stub.asInterface',
+    binder_intent_control: 'Binder Intent control',
+    dynamic_register_receiver: 'Dynamic registerReceiver',
+    exported_custom_action: 'Exported custom action',
+    external_storage_write: 'External storage write',
+    keystore_multipurpose: 'Keystore multipurpose',
+    notification_sensitive: 'Sensitive notification',
+    slice_provider_api: 'SliceProvider API',
+    storage_integrity_hmac: 'Storage integrity HMAC',
+    system_alert_window: 'SYSTEM_ALERT_WINDOW',
+    webview_postmessage: 'WebView postMessage',
+    webview_url_override: 'WebView URL override',
+    webview_js_bridge_file_url: 'JS bridge + file URL',
+    deeplink_webview_path_traversal: 'Deeplink WebView path traversal',
+    intent_url_network_fetch: 'Intent URL → network',
+    intent_redirect_no_sanitizer: 'Intent redirect (no sanitizer)',
+    jni_taint_import_bridge: 'JNI taint bridge',
+    ssl_bypass_webview_colocate: 'SSL bypass + WebView',
+    ssl_socket_no_hostname: 'SSLSocket no hostname',
+    explicit_security_provider: 'Explicit security provider',
   };
   return pretty[c] || c.replace(/_/g, ' ');
 }
@@ -21838,7 +21937,11 @@ function renderMtFindingCard(iss, idx, opts = {}) {
          const off = t.offset != null ? ` @ ${formatSecHexOffset(t.offset)}` : '';
          const extra = t.extra ? ` <code>${escapeHtml(t.extra)}</code>` : '';
          const field = t.field ? ` <code>${escapeHtml(t.field)}</code>` : '';
-         return `<li><strong>${escapeHtml(t.class_name || '')}#${escapeHtml(t.method_name || '')}</strong><code>${escapeHtml(off)}</code> <span class="muted">[${escapeHtml(t.kind || '')}]</span> ${escapeHtml(t.description || '')}${extra}${field}</li>`;
+         const port = t.port ? ` <span class="security-trace-port" title="Port">${escapeHtml(t.port)}</span>` : '';
+         const feats = Array.isArray(t.features) && t.features.length
+           ? ` <span class="security-trace-features">${t.features.map((f) => `<code>${escapeHtml(f)}</code>`).join(' ')}</span>`
+           : '';
+         return `<li><strong>${escapeHtml(t.class_name || '')}#${escapeHtml(t.method_name || '')}</strong><code>${escapeHtml(off)}</code> <span class="muted">[${escapeHtml(t.kind || '')}]</span>${port} ${escapeHtml(t.description || '')}${extra}${field}${feats}</li>`;
        }).join('')}</ol>`
     : '';
   const dexHint = (!grouped && iss.dex_file) ? `<span class="muted">${escapeHtml(iss.dex_file)}</span>` : '';
@@ -22264,6 +22367,19 @@ async function runSecurityVulnScan(opts = {}) {
   }
 }
 
+function getTaintSolveOptionsForWorker() {
+  const opts = {};
+  const presetEl = document.getElementById('security-mt-preset');
+  const preset = (presetEl?.value || '').trim();
+  if (preset) opts.preset = preset;
+  const xml = (typeof apkManifestXml === 'string' && apkManifestXml
+    && !apkManifestXml.startsWith('(') && !apkManifestXml.startsWith('No '))
+    ? apkManifestXml
+    : '';
+  if (xml) opts.manifestXml = xml;
+  return opts;
+}
+
 async function runSecurityTaintSolve(opts = {}) {
   const embedded = !!opts.embedded;
   if (!embedded && securityScanBusy) return;
@@ -22350,7 +22466,7 @@ async function runSecurityTaintSolve(opts = {}) {
       }, 1000);
       let raw;
       try {
-        raw = await taintSolveInWorker(t.bytes);
+        raw = await taintSolveInWorker(t.bytes, getTaintSolveOptionsForWorker());
       } catch (scanErr) {
         clearInterval(heartbeat);
         if (isSecurityScanAbortError(scanErr)) throw scanErr;

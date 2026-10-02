@@ -899,13 +899,16 @@ export function scan_vulns(bytes, on_progress) {
 
 /**
  * Run Mariana-Trench–style taint solver on a DEX. Returns `{ ok, report }` (IssueReport) or error.
+ * Optional 2nd arg: `{ maxIterations?, includePrefixes?, excludePrefixes?, includeFramework?,
+ * excludeRegexps?, priorityEntryClasses?, manifestXml?, preset?, configExtraJson? }`.
  * @param {Uint8Array} bytes
+ * @param {any | null} [options]
  * @returns {any}
  */
-export function taint_solve(bytes) {
+export function taint_solve(bytes, options) {
     const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.taint_solve(ptr0, len0);
+    const ret = wasm.taint_solve(ptr0, len0, isLikeNone(options) ? 0 : addToExternrefTable0(options));
     return ret;
 }
 
@@ -915,6 +918,16 @@ function __wbg_get_imports() {
         __wbg_Error_fe3709820da6d9f4: function(arg0, arg1) {
             const ret = Error(getStringFromWasm0(arg0, arg1));
             return ret;
+        },
+        __wbg_Number_7f57e747646990d6: function(arg0) {
+            const ret = Number(arg0);
+            return ret;
+        },
+        __wbg___wbindgen_bigint_get_as_i64_29047dd6a3491265: function(arg0, arg1) {
+            const v = arg1;
+            const ret = typeof(v) === 'bigint' ? v : undefined;
+            getDataViewMemory0().setBigInt64(arg0 + 8 * 1, isLikeNone(ret) ? BigInt(0) : ret, true);
+            getDataViewMemory0().setInt32(arg0 + 4 * 0, !isLikeNone(ret), true);
         },
         __wbg___wbindgen_boolean_get_ff8209d052ce1cc3: function(arg0) {
             const v = arg0;
@@ -930,6 +943,10 @@ function __wbg_get_imports() {
         },
         __wbg___wbindgen_in_5ba21a357fd4699f: function(arg0, arg1) {
             const ret = arg0 in arg1;
+            return ret;
+        },
+        __wbg___wbindgen_is_bigint_a6cfc71108ea453a: function(arg0) {
+            const ret = typeof(arg0) === 'bigint';
             return ret;
         },
         __wbg___wbindgen_is_function_82aa5b8e9371b250: function(arg0) {
@@ -951,6 +968,10 @@ function __wbg_get_imports() {
         },
         __wbg___wbindgen_is_undefined_7b12045c262a3121: function(arg0) {
             const ret = arg0 === undefined;
+            return ret;
+        },
+        __wbg___wbindgen_jsval_eq_ee9380582e278327: function(arg0, arg1) {
+            const ret = arg0 === arg1;
             return ret;
         },
         __wbg___wbindgen_jsval_loose_eq_cfddc78de4a067b0: function(arg0, arg1) {
@@ -1031,6 +1052,16 @@ function __wbg_get_imports() {
             const ret = result;
             return ret;
         },
+        __wbg_instanceof_Map_21a1cbb0613d7d2f: function(arg0) {
+            let result;
+            try {
+                result = arg0 instanceof Map;
+            } catch (_) {
+                result = false;
+            }
+            const ret = result;
+            return ret;
+        },
         __wbg_instanceof_Uint8Array_c21f42d2acffa054: function(arg0) {
             let result;
             try {
@@ -1063,6 +1094,10 @@ function __wbg_get_imports() {
         },
         __wbg_isArray_65307171a630ba34: function(arg0) {
             const ret = Array.isArray(arg0);
+            return ret;
+        },
+        __wbg_isSafeInteger_2b254ea166877b36: function(arg0) {
+            const ret = Number.isSafeInteger(arg0);
             return ret;
         },
         __wbg_iterator_b3054eb88cb59de4: function() {

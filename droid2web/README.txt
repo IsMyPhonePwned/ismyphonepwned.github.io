@@ -1,4 +1,4 @@
-droid2web v0.3.27 (1 Oct 2026) — static website release
+droid2web v0.3.28 (2 Oct 2026) — static website release
 
 Contents are ready to deploy as-is (HTML + JS + CSS + WASM + rules).
 

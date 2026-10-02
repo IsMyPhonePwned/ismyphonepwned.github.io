@@ -27,7 +27,7 @@
     <div class="header-content">
       <img src="logo.png" alt="" class="app-logo" width="28" height="28">
       <div class="header-title-block">
-        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.27</span> <span class="app-date" id="app-date" title="Release date">1 Oct 2026</span></h1>
+        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.28</span> <span class="app-date" id="app-date" title="Release date">2 Oct 2026</span></h1>
         <p class="subtitle">APK, APKM, DEX, AXML, ARSC inspection in the browser</p>
       </div>
     </div>
@@ -244,6 +244,22 @@
                 <label class="decomp-opt pane-toggle" title="Auto-rename short / invalid identifiers">
                   <input type="checkbox" id="decompile-deobf">
                   <span>Deobf</span>
+                </label>
+                <label class="decomp-opt" title="Rename identifiers shorter than this (jadx --deobf-min)">
+                  <span>Min</span>
+                  <input type="number" id="decompile-deobf-min" class="decomp-num-input" min="1" max="32" value="3" aria-label="Deobf min length">
+                </label>
+                <label class="decomp-opt" title="Rename identifiers longer than this">
+                  <span>Max</span>
+                  <input type="number" id="decompile-deobf-max" class="decomp-num-input" min="8" max="256" value="64" aria-label="Deobf max length">
+                </label>
+                <label class="decomp-opt" title="Only decompile this package / class (dex-decompiler --only-package)">
+                  <span>Pkg</span>
+                  <input type="text" id="decompile-only-package" class="decomp-text-input" placeholder="com.example" aria-label="Only package" autocomplete="off" spellcheck="false">
+                </label>
+                <label class="decomp-opt" title="Exclude package prefixes, comma-separated (dex-decompiler --exclude)">
+                  <span>Excl</span>
+                  <input type="text" id="decompile-exclude" class="decomp-text-input" placeholder="androidx.,kotlin." aria-label="Exclude packages" autocomplete="off" spellcheck="false">
                 </label>
                 </div>
               </details>
@@ -840,6 +856,14 @@
                 <label class="security-scanner-toggle" title="Mariana Trench–style taint solver">
                   <input type="checkbox" id="security-enable-mt" checked>
                   <span>MT taint</span>
+                </label>
+                <label class="security-mt-preset" title="Optional taint config overlay (dex-decompiler presets)">
+                  <span class="security-mt-preset-label">Preset</span>
+                  <select id="security-mt-preset" aria-label="MT taint preset">
+                    <option value="">Default</option>
+                    <option value="strict_pii">Strict PII</option>
+                    <option value="deeplink_heavy">Deeplink heavy</option>
+                  </select>
                 </label>
               </div>
               <span class="security-status muted" id="security-status">Load a DEX or APK, then click Scan</span>

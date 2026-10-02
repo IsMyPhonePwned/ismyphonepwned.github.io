@@ -2169,6 +2169,29 @@ button.anno-section-toggle:hover {
   cursor: pointer;
 }
 .decomp-mode-select:focus { outline: none; border-color: var(--accent); }
+.decomp-num-input {
+  width: 3.2rem;
+  padding: 0.18rem 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.75rem;
+  font-family: var(--mono, ui-monospace, monospace);
+}
+.decomp-text-input {
+  width: 7.5rem;
+  max-width: 28vw;
+  padding: 0.18rem 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-family: var(--mono, ui-monospace, monospace);
+}
+.decomp-num-input:focus,
+.decomp-text-input:focus { outline: none; border-color: var(--accent); }
 
 /* Context menu for rename */
 .context-menu {
@@ -4496,6 +4519,44 @@ a.bc-api-doc:hover {
 .security-scanner-toggle:has(input:disabled) {
   opacity: 0.55;
   cursor: not-allowed;
+}
+.security-mt-preset {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+.security-mt-preset-label {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.security-mt-preset select {
+  padding: 0.2rem 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-family: var(--sans);
+  cursor: pointer;
+}
+.security-mt-preset select:focus { outline: none; border-color: var(--accent); }
+.security-trace-port {
+  display: inline-block;
+  margin-left: 0.25rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-family: var(--mono, ui-monospace, monospace);
+}
+.security-trace-features code {
+  margin-left: 0.2rem;
+  font-size: 0.68rem;
+  opacity: 0.9;
 }
 .security-toolbar .pane-search-input { min-width: 10rem; flex: 1 1 12rem; max-width: 22rem; }
 .security-findings-search.pane-search-input {

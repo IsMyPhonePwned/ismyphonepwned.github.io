@@ -336,13 +336,55 @@ export const MASWE_TO_MASTG = {
   'MASWE-0066': { know: ['MASTG-KNOW-0017'], best: [] },
 };
 
+/**
+ * Detector / sink category → MASWE (mirrors dex-decompiler `category_maswe`).
+ * When present, free-text hints are skipped so class/method names cannot pollute links
+ * (e.g. mastgTestMediaStore must not add MASWE-0002 to a logging finding).
+ */
+export const CATEGORY_TO_MASWE = {
+  insecure_logging: ['MASWE-0005'],
+  Logging: ['MASWE-0005'],
+  logging_pii: ['MASWE-0005'],
+  logcat_external_storage: ['MASWE-0005', 'MASWE-0002'],
+  external_storage_write: ['MASWE-0002'],
+  pick_file_theft: ['MASWE-0002'],
+  world_readable_storage: ['MASWE-0001', 'MASWE-0002'],
+  prefs_plaintext_secret: ['MASWE-0001'],
+  activity_result_contracts: ['MASWE-0032'],
+  activity_result_grant_smuggle: ['MASWE-0032'],
+  aidl_stub_as_interface: ['MASWE-0032', 'MASWE-0018'],
+  binder_intent_control: ['MASWE-0032'],
+  deeplink_webview_path_traversal: ['MASWE-0029', 'MASWE-0033', 'MASWE-0050'],
+  dynamic_register_receiver: ['MASWE-0032'],
+  intent_url_network_fetch: ['MASWE-0029', 'MASWE-0026'],
+  jni_taint_import_bridge: ['MASWE-0049'],
+  rce_package_context: ['MASWE-0049'],
+  slice_provider_api: ['MASWE-0018'],
+  uri_permission_grant_flow: ['MASWE-0032'],
+  uri_permission_result_forward: ['MASWE-0032'],
+  uri_permission_setresult_passthrough: ['MASWE-0032'],
+  webview_js_bridge_file_url: ['MASWE-0033', 'MASWE-0034'],
+  webview_postmessage: ['MASWE-0033', 'MASWE-0035'],
+  webview_resource_response_file: ['MASWE-0034', 'MASWE-0050'],
+};
+
+/** Strip Class#method / sink-site noise before free-text MAS hint matching. */
+export function stripMasLocationNoise(s) {
+  return String(s || '')
+    .replace(/`[^`]*#[^`]*`/g, ' ')
+    .replace(/\b(?:[a-z_][\w$]*\.)+[A-Za-z_][\w$]*#[\w$<>]+/g, ' ')
+    .replace(/\b[A-Z][\w$]*#[\w$<>]+/g, ' ')
+    .replace(/\bSink:\s*`[^`]+`(?:\s+in\s+`[^`]+`)?/gi, ' ')
+    .replace(/\s@\s*0x[0-9a-fA-F]+/g, ' ');
+}
+
 /** Keyword / rule hints → MASWE IDs (ordered; first hits preferred). */
 const MASWE_HINTS = [
   [/backup|allowbackup|fullbackup|dataextraction|backup.?rules/i, ['MASWE-0006']],
-  [/logcat|logging_pii|insecure_logging|android\.util\.log|sensitive.?data.?in.?log/i, ['MASWE-0005']],
+  [/logcat|logging_pii|insecure_logging|android\.util\.log|\blogging\b|sensitive.?data.?in.?log|Log\.[devwi]/i, ['MASWE-0005']],
   [/hardcoded.?secret|hardcoded.?crypto|secretkeyspec|hardcoded.?aes|hardcoded.?key/i, ['MASWE-0004', 'MASWE-0003']],
-  [/shared.?storage|external.?storage|mediastore|getexternal|scoped.?storage/i, ['MASWE-0002']],
-  [/shared.?prefer|datastore|sqlite|sqlcipher|internal.?storage|openfileoutput|sandbox/i, ['MASWE-0001']],
+  [/shared.?storage|external.?storage|MediaStore\.|getExternal(?:Files|Storage|Cache)|scoped.?storage/i, ['MASWE-0002']],
+  [/shared.?prefer|datastore|sqlite|sqlcipher|internal.?storage|openfileoutput|app.?sandbox|sandbox.?storage/i, ['MASWE-0001']],
   [/broken.?encrypt|encryption.?mode|encryption.?algorithm|weak_crypto|cipher\.getinstance|ecb/i, ['MASWE-0007']],
   [/hmac|mac.?valid/i, ['MASWE-0009']],
   [/non.?random|random.?apis|math\.random|java\.util\.random|securerandom|insufficient.?entropy/i, ['MASWE-0012']],
@@ -352,27 +394,28 @@ const MASWE_HINTS = [
   [/biometric.?device.?credential|device.?credential.?fallback/i, ['MASWE-0021']],
   [/biometric.?invalidat|invalidatedbybiometric/i, ['MASWE-0022']],
   [/biometric|passcode|local.?auth|event.?bound|no.?confirmation|validity.?duration/i, ['MASWE-0020', 'MASWE-0016']],
-  [/ssl.?trust|trust.?all|checkservertrusted|hostname.?verif|onreceivedsslerror|trust.?anchor|pinning|network.?security|cleartext/i, ['MASWE-0027', 'MASWE-0028']],
+  [/ssl.?trust|trust.?all|checkservertrusted|hostname.?verif|onreceivedsslerror|trust.?anchor|cert(?:ificate)?.?pinning|ssl.?pinning|pinning.?bypass|network.?security|cleartext/i, ['MASWE-0027', 'MASWE-0028']],
   [/deeplink|deep.?link|autoverify|custom.?scheme|intent.?filter/i, ['MASWE-0029']],
   [/pending.?intent/i, ['MASWE-0032']],
-  [/implicit.?intent|intent.?leak|intent.?redirect|intent.?spoof|icc_|ipc_intent|broadcast/i, ['MASWE-0032']],
+  [/implicit.?intent|intent.?leak|intent.?redirect|intent.?spoof|icc_|ipc_intent|broadcast.?receiver|sendbroadcast|sticky.?broadcast|ordered.?broadcast|sensitive.?broadcast|credential.?broadcast/i, ['MASWE-0032']],
   [/content.?provider|provider.?exported|fileprovider|sql.?inject/i, ['MASWE-0018', 'MASWE-0050']],
   [/javascript.?interface|js.?bridge|addjavascriptinterface|webview.?bridges/i, ['MASWE-0033']],
-  [/webview.?file|file.?access|allowfileaccess|content.?access|webview.?settings/i, ['MASWE-0034']],
-  [/webview|loadurl|safebrowsing|webviewclient/i, ['MASWE-0035', 'MASWE-0034']],
+  [/webview.?file|allowfileaccess|setAllowFileAccess|allowcontentaccess|setAllowContentAccess|WebResourceResponse|shouldInterceptRequest/i, ['MASWE-0034']],
+  [/webviewclient|shouldOverrideUrlLoading|setWebViewClient|\bloadUrl\b|safebrowsing/i, ['MASWE-0035']],
+  [/\bWebView\b/i, ['MASWE-0035']],
   [/keyboard.?cache|input.?type|textpassword|textnonsuggestion|input.?field/i, ['MASWE-0036']],
-  [/notification/i, ['MASWE-0037']],
+  [/NotificationManager|NotificationCompat|notification_sensitive|sensitive.?data.?in.?notification|post.?notification|android\.permission\.POST_NOTIFICATIONS/i, ['MASWE-0037']],
   [/flag.?secure|screenshot|setsecure|recents.?screenshot/i, ['MASWE-0038']],
-  [/overlay|system.?alert.?window|hideoverlay|filtertouches/i, ['MASWE-0039']],
+  [/overlay.?attack|system.?alert.?window|hideoverlay|filtertouches|tapjack|draw.?over/i, ['MASWE-0039']],
   [/minsdk|sdk.?version|target.?sdk/i, ['MASWE-0041', 'MASWE-0042']],
   [/debuggable|strictmode/i, ['MASWE-0061', 'MASWE-0063']],
   [/debugger|tracerpid|ptrace|anti.?debug/i, ['MASWE-0064']],
   [/root.?detect|su.?binary|test.?keys/i, ['MASWE-0051']],
   [/emulator|virtual.?device/i, ['MASWE-0053']],
   [/deserial|object.?input|serializable/i, ['MASWE-0050']],
-  [/rce_dynamic|dexclassloader|pathclassloader|dynamic.?code|reflection_rce/i, ['MASWE-0049']],
+  [/rce_dynamic|dexclassloader|pathclassloader|dynamic.?code|reflection_rce|\bRuntime\.exec\b/i, ['MASWE-0049']],
   [/path.?traversal|zip.?slip|uri.?permission|uri.?grant/i, ['MASWE-0050', 'MASWE-0018']],
-  [/permission|dangerous.?android.?permissions/i, ['MASWE-0066']],
+  [/dangerous.?permission|uses.?permission|runtime.?permission|app.?permission|permission.?protect|detect-dangerous-android-permissions/i, ['MASWE-0066']],
 ];
 
 export function masweUrl(id) {
@@ -403,14 +446,35 @@ export function masProfileTitle(code) {
   return meta ? `${meta.label} · ${meta.title}` : String(code || '');
 }
 
-/** Android MASTG-TEST mappings for a MASWE (static/code first). */
-export function masweTests(id) {
+/** Android MASTG-TEST mappings for a MASWE.
+ * @param {string} id
+ * @param {{ mode?: 'static' | 'dynamic' | 'any' }} [opts]
+ *   `static` (default for droid2web scanners): keep tests that include static/code/config;
+ *   drop pure dynamic/hooks-only tests (e.g. MASTG-TEST-0203 on a static Log.* hit).
+ */
+export function masweTests(id, opts = {}) {
+  const mode = opts.mode || 'static';
   const ids = MASWE_TO_TESTS[id] || [];
-  const rank = (types) => (types.includes('static') || types.includes('code') ? 0 : 1);
+  const isStaticCapable = (types) => {
+    const t = types || [];
+    if (!t.length) return true;
+    return t.includes('static') || t.includes('code') || t.includes('config') || t.includes('manual');
+  };
+  const isDynamicCapable = (types) => {
+    const t = types || [];
+    return t.includes('dynamic') || t.includes('hooks') || t.includes('runtime') || t.includes('logs');
+  };
+  const rank = (types) => (isStaticCapable(types) ? 0 : 1);
   return ids
     .map((tid) => {
       const meta = MASTG_TEST_ANDROID[tid] || { title: tid, type: [] };
       return { id: tid, title: meta.title || tid, type: meta.type || [], url: mastgTestUrl(tid) };
+    })
+    .filter((t) => {
+      if (mode === 'any') return true;
+      if (mode === 'static') return isStaticCapable(t.type);
+      if (mode === 'dynamic') return isDynamicCapable(t.type);
+      return true;
     })
     .sort((a, b) => rank(a.type) - rank(b.type) || a.id.localeCompare(b.id));
 }
@@ -432,20 +496,33 @@ export function mastgDemoUrl(id) {
  * @returns {{ id: string, title: string, family: string, url: string }[]}
  */
 export function resolveMaswe(ctx = {}) {
-  const blob = [ctx.ruleId, ctx.category, ctx.vulnClass, ctx.title, ctx.message]
-    .filter(Boolean)
-    .join(' ');
   const ids = new Set();
-  for (const [re, list] of MASWE_HINTS) {
-    if (re.test(blob)) list.forEach((id) => ids.add(id));
+  // Prefer explicit category / rule mapping (same policy as dex-decompiler enrich_mas).
+  const catKeys = [ctx.category, ctx.vulnClass, ctx.ruleId].filter(Boolean).map(String);
+  for (const key of catKeys) {
+    const mapped = CATEGORY_TO_MASWE[key];
+    if (mapped?.length) {
+      mapped.forEach((id) => ids.add(id));
+      break;
+    }
   }
-  // MASVS family fallback from message tags
-  const fam = String(blob).match(/MASVS-([A-Z]+)/i);
-  if (fam && !ids.size) {
-    const prefix = `MASVS-${fam[1].toUpperCase()}`;
-    for (const [id, meta] of Object.entries(MASWE_CATALOG)) {
-      if (meta.family === prefix) ids.add(id);
-      if (ids.size >= 2) break;
+  if (!ids.size) {
+    const blob = stripMasLocationNoise(
+      [ctx.ruleId, ctx.category, ctx.vulnClass, ctx.title, ctx.message]
+        .filter(Boolean)
+        .join(' ')
+    );
+    for (const [re, list] of MASWE_HINTS) {
+      if (re.test(blob)) list.forEach((id) => ids.add(id));
+    }
+    // MASVS family fallback from message tags
+    const fam = String(blob).match(/MASVS-([A-Z]+)/i);
+    if (fam && !ids.size) {
+      const prefix = `MASVS-${fam[1].toUpperCase()}`;
+      for (const [id, meta] of Object.entries(MASWE_CATALOG)) {
+        if (meta.family === prefix) ids.add(id);
+        if (ids.size >= 2) break;
+      }
     }
   }
   const out = [];

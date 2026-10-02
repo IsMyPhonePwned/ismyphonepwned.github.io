@@ -17,6 +17,7 @@ import {
   masweTests,
   masProfileLabel,
   masProfileTitle,
+  stripMasLocationNoise,
 } from './maswe.js';
 
 export const MASTG_KNOWLEDGE_INDEX = 'https://mas.owasp.org/MASTG/knowledge/';
@@ -94,20 +95,20 @@ const RULE_HINTS = [
   [/debugger|tracerpid|ptrace|anti.?debug/i, ['MASTG-KNOW-0008', 'MASTG-KNOW-0028']],
   [/strictmode/i, ['MASTG-KNOW-0009']],
   [/key.?gen|keygen|asymmetric.?key|key.?length|keystore|keychain|crypto.?key|hardcoded.?crypto/i, ['MASTG-KNOW-0012', 'MASTG-KNOW-0043', 'MASTG-KNOW-0047']],
-  [/random|entropy|securerandom/i, ['MASTG-KNOW-0013']],
+  [/non.?random|random.?apis|math\.random|java\.util\.random|securerandom|insufficient.?entropy/i, ['MASTG-KNOW-0013']],
   [/network.?security|cleartext|trust.?anchor|insecure.?trust/i, ['MASTG-KNOW-0014']],
-  [/hostname.?verif|ssl.?error|checkservertrusted|certificate.?pin|ssl.?socket/i, ['MASTG-KNOW-0015', 'MASTG-KNOW-0014']],
-  [/permission/i, ['MASTG-KNOW-0017']],
-  [/webview|javascript.?interface|file.?access|safebrowsing|cookie/i, ['MASTG-KNOW-0018']],
+  [/hostname.?verif|ssl.?error|checkservertrusted|certificate.?pin|ssl.?socket|cert(?:ificate)?.?pinning|ssl.?pinning|pinning.?bypass/i, ['MASTG-KNOW-0015', 'MASTG-KNOW-0014']],
+  [/dangerous.?permission|uses.?permission|runtime.?permission|app.?permission|permission.?protect|detect-dangerous-android-permissions/i, ['MASTG-KNOW-0017']],
+  [/webview|javascript.?interface|allowfileaccess|setAllowFileAccess|safebrowsing|cookiemanager|http.?cookie|session.?cookie|webview.?cookie|custom.?tabs/i, ['MASTG-KNOW-0018']],
   [/deeplink|deep.?link|autoverify|custom.?scheme|intent.?filter/i, ['MASTG-KNOW-0019']],
   [/content.?provider|provider.?exported|fileprovider/i, ['MASTG-KNOW-0117', 'MASTG-KNOW-0020']],
   [/serializ|object.?input|parcelable/i, ['MASTG-KNOW-0021']],
-  [/overlay|system.?alert.?window|draw.?over/i, ['MASTG-KNOW-0022']],
+  [/overlay.?attack|system.?alert.?window|draw.?over|tapjack|hideoverlay|filtertouches/i, ['MASTG-KNOW-0022']],
   [/sdk.?version|target.?sdk|min.?sdk|enforced.?updat/i, ['MASTG-KNOW-0023']],
   [/pending.?intent/i, ['MASTG-KNOW-0024']],
   [/implicit.?intent|intent.?leak/i, ['MASTG-KNOW-0025', 'MASTG-KNOW-0020']],
-  [/broadcast|receiver/i, ['MASTG-KNOW-0134', 'MASTG-KNOW-0020']],
-  [/ipc|exported.?activit|exported.?service/i, ['MASTG-KNOW-0020', 'MASTG-KNOW-0132']],
+  [/broadcast.?receiver|BroadcastReceiver|registerreceiver|sendbroadcast|sticky.?broadcast|ordered.?broadcast/i, ['MASTG-KNOW-0134', 'MASTG-KNOW-0020']],
+  [/\bipc\b|ipc_|exported.?activit|exported.?service/i, ['MASTG-KNOW-0020', 'MASTG-KNOW-0132']],
   [/root.?detect|jailbreak/i, ['MASTG-KNOW-0027']],
   [/emulator|virtual.?device/i, ['MASTG-KNOW-0031', 'MASTG-KNOW-0135']],
   [/obfuscat/i, ['MASTG-KNOW-0033']],
@@ -116,23 +117,22 @@ const RULE_HINTS = [
   [/sql.?inject|sqlite|contentprovider.*sql/i, ['MASTG-KNOW-0037']],
   [/sqlcipher/i, ['MASTG-KNOW-0038']],
   [/firebase/i, ['MASTG-KNOW-0039']],
-  [/realm/i, ['MASTG-KNOW-0040']],
-  [/external.?storage|shared.?storage|mediastore|getexternal/i, ['MASTG-KNOW-0042']],
+  [/io\.realm|\brealm\.|realm.?database|RealmConfiguration/i, ['MASTG-KNOW-0040']],
+  [/external.?storage|shared.?storage|MediaStore\.|getExternal(?:Files|Storage|Cache)/i, ['MASTG-KNOW-0042']],
   [/internal.?storage|getfilesdir|openfileoutput/i, ['MASTG-KNOW-0041']],
-  [/logcat|logging|android\.util\.log/i, ['MASTG-KNOW-0049']],
+  [/logcat|insecure.?logging|android\.util\.log|\blogging\b/i, ['MASTG-KNOW-0049']],
   [/backup|allowbackup|fullbackup|dataextraction/i, ['MASTG-KNOW-0050']],
   [/screenshot|flag_secure|secure.?flag/i, ['MASTG-KNOW-0053']],
-  [/notification/i, ['MASTG-KNOW-0054']],
+  [/NotificationManager|NotificationCompat|notification_sensitive|sensitive.?data.?in.?notification|post.?notification|android\.permission\.POST_NOTIFICATIONS/i, ['MASTG-KNOW-0054']],
   [/keyboard.?cache|input.?type|textpassword|textnonsuggestion/i, ['MASTG-KNOW-0055']],
   [/input.?field|edittext|autofill/i, ['MASTG-KNOW-0052']],
   [/zip.?slip|path.?traversal|zipentry/i, ['MASTG-KNOW-0042', 'MASTG-KNOW-0041']],
-  [/custom.?tabs/i, ['MASTG-KNOW-0018']],
-  [/encryption|cipher|aes|des|rc4|broken.?encrypt/i, ['MASTG-KNOW-0012', 'MASTG-KNOW-0011']],
+  [/encryption|cipher|\baes\b|\bdes\b|\brc4\b|broken.?encrypt/i, ['MASTG-KNOW-0012', 'MASTG-KNOW-0011']],
   [/tracker|analytics|third.?party.?service/i, ['MASTG-KNOW-0026']],
   [/uri.?scheme|intent.?result|setresult|grant.?uri|fileprovider|path.?scope/i, ['MASTG-KNOW-0138', 'MASTG-KNOW-0020', 'MASTG-KNOW-0117']],
   [/app.?sign|signing|v1.?sig|v2.?sig/i, ['MASTG-KNOW-0003']],
   [/third.?party.?librar|dependency|supply.?chain/i, ['MASTG-KNOW-0004']],
-  [/memory.?corrupt|buffer.?overflow|use.?after.?free/i, ['MASTG-KNOW-0005']],
+  [/memory.?corrupt|buffer.?overflow|use.?after.?free|rce_dynamic|dexclassloader|pathclassloader|runtime\.exec|reflection_rce|dynamic.?load|dynamic.?code/i, ['MASTG-KNOW-0005']],
   [/binary.?protect|nx|pie|relro|stack.?canary/i, ['MASTG-KNOW-0006']],
   [/exception.?handl|uncaught/i, ['MASTG-KNOW-0010']],
   [/file.?integrit|checksum|hash.?check/i, ['MASTG-KNOW-0029']],
@@ -182,15 +182,11 @@ function masvsFamily(tag) {
  * @returns {{ id: string, title: string, category: string, url: string }[]}
  */
 export function resolveMastgKnowledge(ctx = {}) {
-  const blob = [
-    ctx.ruleId,
-    ctx.category,
-    ctx.vulnClass,
-    ctx.title,
-    ctx.message,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  const blob = stripMasLocationNoise(
+    [ctx.ruleId, ctx.category, ctx.vulnClass, ctx.title, ctx.message]
+      .filter(Boolean)
+      .join(' ')
+  );
 
   const ids = new Set();
 
@@ -304,8 +300,9 @@ export function renderMastgKnowledgeHtml(ctx, esc) {
       `<a class="mas-chip profile profile-${esc.escapeAttr(code.toLowerCase())}" href="https://mas.owasp.org/MASTG/0x03b-Testing-Profiles/" target="_blank" rel="noopener noreferrer" data-mas-profile="${esc.escapeAttr(code)}" title="${esc.escapeAttr(`${masProfileTitle(code)} · click to toggle this profile · ⌘/Ctrl+click to open`)}" onclick="event.stopPropagation()">${esc.escapeHtml(masProfileLabel(code))}</a>`
     )
     .join('');
+  const testMode = ctx.detectionMode === 'dynamic' ? 'dynamic' : 'static';
   const testList = [...new Map(
-    masweList.flatMap((w) => masweTests(w.id)).map((t) => [t.id, t])
+    masweList.flatMap((w) => masweTests(w.id, { mode: testMode })).map((t) => [t.id, t])
   ).values()].slice(0, 8);
   const testChips = testList
     .map((t) => chip(t.url, t.id.replace(/^MASTG-TEST-/, 'TEST-'), `${t.id}: ${t.title || ''}`, 'test', t.id))

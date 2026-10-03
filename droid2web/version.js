@@ -3,5 +3,5 @@
  * Prefer bumping the repo-root `VERSION` and `DATE` files, then run `./scripts/build-release.sh`
  * (or `./build-and-serve.sh`) — that regenerates this file. You can also edit here directly.
  */
-export const APP_VERSION = '0.3.31';
-export const APP_DATE = '2026-10-02';
+export const APP_VERSION = '0.3.32';
+export const APP_DATE = '2026-10-03';

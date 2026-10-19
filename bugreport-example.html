@@ -12,6 +12,10 @@
     <script src="assets/sigma-rules-urls.js"></script>
     <script src="assets/sigma-match-ui.js"></script>
     <script src="assets/timeline-view.js" defer></script>
+    <script src="assets/adb-debug-ui.js" defer></script>
+    <script src="assets/location-provider-ui.js" defer></script>
+    <script src="assets/device-policy-ui.js" defer></script>
+    <script src="assets/memory-ui.js" defer></script>
     <style>
         .info-banner {
             background: rgba(33, 150, 243, 0.1);
@@ -38,11 +42,11 @@
                 <div style="display: flex; flex-direction: column; gap: 0.25rem;">
                     <h1 class="logo-text">IsMyPhonePwned ?</h1>
                     <span class="page-version">
-                        <span>v0.7.0-beta • Updated 21 September 2026 · Example</span>
-                        <span class="page-version-edition" title="DEF CON edition">
-                            <img class="page-version-edition-logo" src="assets/defcon31-logo.png" alt="" width="18" height="18" decoding="async">
-                            <span>defcon edition</span>
-                        </span>
+                        <span>v0.8.0-beta • Updated 19 October 2026 · Example</span>
+                        <a class="page-version-edition" href="https://hack.lu/" target="_blank" rel="noopener noreferrer" title="hack.lu edition">
+                            <img class="page-version-edition-logo" src="assets/hacklu-2026-logo.png" alt="" width="18" height="18" decoding="async">
+                            <span>hack.lu edition</span>
+                        </a>
                     </span>
                 </div>
             </div>
@@ -67,7 +71,7 @@
 
         <div class="info-banner">
             <strong>📋 Example Page</strong><br>
-            Sample layout matching the live <a href="android.html" style="color: var(--accent); font-weight: 600;">Android analyzer</a> (v0.7.0-beta · 21 September 2026): <strong>44 Sigma rules</strong> from <code>/rules/</code> (amnesty, android including android/CVE, ios/darksword, spyware, mvt), timeline + Sigma matches, privacy parser (location providers, last availability, OpenStreetMap links), packages installed by user, parser cards, and full JSON export. See <a href="bugreport-status.html" style="color: var(--accent);">bugreport-status</a> for the rule catalog. All values are fictional.
+            Sample layout matching the live <a href="android.html" style="color: var(--accent); font-weight: 600;">Android analyzer</a> (v0.8.0-beta · 19 October 2026): <strong>44 Sigma rules</strong> from <code>/rules/</code> (amnesty, android including android/CVE, ios/darksword, spyware, mvt), timeline + Sigma matches, privacy parser (location providers, last availability, OpenStreetMap links), packages installed by user, parser cards, and full JSON export. See <a href="bugreport-status.html" style="color: var(--accent);">bugreport-status</a> for the rule catalog. All values are fictional.
         </div>
 
         <!-- Results -->
@@ -323,6 +327,37 @@
                     </div>
 
                     <div id="android-dash-apps" class="android-dash-panel" role="tabpanel" data-dash-panel="apps" hidden>
+                <!-- Detailed Battery Stats (after deleted packages) -->
+                <div class="result-card" id="battery-details-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>🔋 App Battery Usage</h3>
+                        <span class="count-badge" id="battery-apps-count-badge">0</span>
+                    </div>
+                    <button type="button" class="section-toggle" onclick="toggleSection('battery-details')">▼</button>
+                    <div class="section-content" id="battery-details-content">
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="battery-search" placeholder="Search package or UID…">
+                        </div>
+                        <div class="data-table-container batt-table-wrap">
+                            <table class="data-table batt-table" id="battery-table">
+                                <thead>
+                                    <tr>
+                                        <th>Package</th>
+                                        <th>UID</th>
+                                        <th>CPU</th>
+                                        <th>Network</th>
+                                        <th>Wakelock</th>
+                                        <th>Jobs</th>
+                                        <th>FG service</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="battery-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Packages installed by user (excludes system / image / apex) -->
                 <div class="result-card" id="package-details-user-card" style="display: none;">
                     <div class="section-header">
@@ -383,8 +418,8 @@
                         <h3>📦 Deleted Packages</h3>
                         <span class="count-badge" id="package-count-badge">0</span>
                     </div>
-                    <button class="section-toggle" onclick="toggleSection('package-history')">▼</button>
-                    <div class="section-content" id="package-history-content">
+                    <button class="section-toggle collapsed" onclick="toggleSection('package-history')">▼</button>
+                    <div class="section-content collapsed" id="package-history-content">
                         <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">
                             Packages that were installed or uninstalled. Packages not found in the "Package Details" section have been deleted.
                         </p>
@@ -393,38 +428,6 @@
                             <input type="text" id="package-search-input" placeholder="Search packages by name or installer...">
                         </div>
                         <div id="package-list"></div>
-                    </div>
-                </div>
-
-                <!-- Detailed Battery Stats (after deleted packages) -->
-                <div class="result-card" id="battery-details-card" style="display: none;">
-                    <div class="section-header">
-                        <h3>🔋 App Battery Usage</h3>
-                        <span class="count-badge" id="battery-apps-count-badge">0</span>
-                    </div>
-                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('battery-details')">▼</button>
-                    <div class="section-content collapsed" id="battery-details-content">
-                        <div class="search-box">
-                            <span class="search-icon">🔍</span>
-                            <input type="text" id="battery-search" placeholder="Search apps by package name...">
-                        </div>
-                        <div class="data-table-container">
-                            <table class="data-table" id="battery-table">
-                                <thead>
-                                    <tr>
-                                        <th>Package Name</th>
-                                        <th>UID</th>
-                                        <th>CPU Time</th>
-                                        <th>Network (RX/TX)</th>
-                                        <th>Wakelock Time</th>
-                                        <th>Job Time</th>
-                                        <th>FG service</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="battery-table-body">
-                                </tbody>
-                            </table>
-                        </div>
                     </div>
                 </div>
 
@@ -439,27 +442,15 @@
                     </div>
                     <button class="section-toggle collapsed" onclick="toggleSection('network-sockets')">▼</button>
                     <div class="section-content collapsed" id="network-sockets-content">
+                        <div class="qf" id="network-sockets-quick"></div>
                         <div class="search-box">
                             <span class="search-icon">🔍</span>
                             <input type="text" id="network-sockets-search-input" placeholder="Search by protocol, address, port, or state...">
                         </div>
-                        <div class="data-table-container">
-                            <table class="data-table" id="network-sockets-table">
-                                <thead>
-                                    <tr>
-                                        <th>Protocol</th>
-                                        <th>Local Address</th>
-                                        <th>Local Port</th>
-                                        <th>Remote Address</th>
-                                        <th>Remote Port</th>
-                                        <th>State</th>
-                                        <th>UID</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="network-sockets-table-body">
-                                </tbody>
-                            </table>
-                        </div>
+                        <p class="list-filter-status" id="network-sockets-filter-status"></p>
+                        <p class="list-filter-empty" id="network-sockets-filter-empty" hidden>Nothing matches these filters.</p>
+                        <div class="sock-list" id="network-sockets-table-body"></div>
+                        <button type="button" class="qf-more" id="network-sockets-more" hidden>Show more</button>
                     </div>
                 </div>
 
@@ -568,23 +559,35 @@
                     </div>
                     <button class="section-toggle" onclick="toggleSection('process-details')">▼</button>
                     <div class="section-content" id="process-details-content">
-                        <div class="search-box">
-                            <span class="search-icon">🔍</span>
-                            <input type="text" id="process-search" placeholder="Search processes by name or PID...">
+                        <div class="qf" id="process-quick"></div>
+                        <div class="proc-tools">
+                            <div class="search-box">
+                                <span class="search-icon">🔍</span>
+                                <input type="text" id="process-search" placeholder="Search processes by name or PID...">
+                            </div>
+                            <label class="proc-sort">Sort
+                                <select id="process-sort">
+                                    <option value="pid">PID</option>
+                                    <option value="name">Name</option>
+                                    <option value="cpu">CPU</option>
+                                    <option value="memory">Memory</option>
+                                </select>
+                            </label>
                         </div>
-                        <div class="data-table-container">
-                            <table class="data-table" id="process-table">
+                        <p class="list-filter-status" id="process-filter-status"></p>
+                        <p class="list-filter-empty" id="process-filter-empty" hidden>Nothing matches these filters.</p>
+                        <div class="data-table-container proc-table-wrap">
+                            <table class="data-table proc-table" id="process-table">
                                 <thead>
                                     <tr>
                                         <th>PID</th>
                                         <th>Name</th>
                                         <th>User</th>
-                                        <th>CPU%</th>
+                                        <th>CPU</th>
                                         <th>Memory</th>
                                     </tr>
                                 </thead>
-                                <tbody id="process-table-body">
-                                </tbody>
+                                <tbody id="process-table-body"></tbody>
                             </table>
                         </div>
                     </div>
@@ -852,26 +855,19 @@
         }
 
         function renderMemoryParser(el, data) {
-            if (!Array.isArray(data) || data.length === 0) {
+            const snaps = asWasmArray(data).map(function (snap) {
+                return deepPlainForJson(mapPlainTop(snap) || snap);
+            }).filter(function (snap) { return snap && typeof snap === 'object'; });
+            if (!snaps.length) {
                 el.innerHTML = '<p style="color:var(--text-secondary)">No <code>MEMORY INFO (/proc/meminfo)</code> snapshots in this bugreport.</p>';
                 return;
             }
-            el.innerHTML = data.map(function (snap, i) {
-                const o = mapPlainTop(snap) || snap;
-                if (!o || typeof o !== 'object') return '';
-                const rows = Object.keys(o).sort().map(function (k) {
-                    const v = o[k];
-                    let disp;
-                    if (typeof v === 'number') {
-                        disp = v.toLocaleString() + ' <span style="color:var(--text-secondary);font-size:0.8rem">kB</span>';
-                    } else {
-                        disp = parserCellValue(v);
-                    }
-                    return '<tr><td style="font-weight:600;color:var(--text-secondary)">' + escapeHtml(k) + '</td><td>' + disp + '</td></tr>';
-                }).join('');
-                return '<div class="detail-section" style="margin-bottom:1rem"><strong>Snapshot ' + (i + 1) +
-                    '</strong><table class="info-table" style="margin-top:0.35rem">' + rows + '</table></div>';
-            }).join('');
+            if (typeof window.renderMemoryHtml !== 'function') {
+                el.innerHTML = '<p style="color:var(--error)">Memory view failed to load.</p>';
+                return;
+            }
+            el.innerHTML = window.renderMemoryHtml(snaps);
+            if (window.bindMemoryFilter) window.bindMemoryFilter(el);
         }
 
         function renderDevicePolicySectionValue(v) {
@@ -894,10 +890,13 @@
                 el.innerHTML = '<p style="color:var(--text-secondary)">No <code>DUMP OF SERVICE device_policy</code> section found.</p>';
                 return;
             }
-            el.innerHTML = Object.keys(data).sort().map(function (sk) {
-                return '<div class="detail-section" style="margin-bottom:1rem"><strong style="word-break:break-all">' +
-                    escapeHtml(sk) + '</strong>' + renderDevicePolicySectionValue(data[sk]) + '</div>';
-            }).join('');
+            const plain = deepPlainForJson(data);
+            if (typeof window.renderDevicePolicyHtml !== 'function') {
+                el.innerHTML = '<p style="color:var(--error)">Device policy view failed to load.</p>';
+                return;
+            }
+            el.innerHTML = window.renderDevicePolicyHtml(plain, {});
+            if (window.bindDevicePolicyFilter) window.bindDevicePolicyFilter(el);
         }
 
         function renderAdbParser(el, data) {
@@ -924,24 +923,15 @@
                 parts.push(g);
             }
             const dm = mapPlainTop(data.debugging_manager) || data.debugging_manager;
-            if (dm && typeof dm === 'object') {
-                let block = '<div class="detail-section" style="margin-top:0.75rem"><strong>Debugging manager</strong>';
-                const skip = { user_keys: true, keystore: true };
-                const sub = {};
-                Object.keys(dm).forEach(function (k) {
-                    if (!skip[k]) sub[k] = dm[k];
-                });
-                if (Object.keys(sub).length) block += renderKeyValueTableFromObject(sub);
-                if (Array.isArray(dm.user_keys_parsed) && dm.user_keys_parsed.length) {
-                    block += '<div style="margin-top:0.5rem"><strong>Authorized keys (parsed)</strong>' +
-                        renderObjectArrayTable(dm.user_keys_parsed) + '</div>';
+            if (dm && typeof dm === 'object' && typeof window.renderDebuggingManagerHtml === 'function') {
+                const view = Object.assign({}, dm);
+                if (view.keystore_parsed) view.keystore_parsed = mapPlainTop(view.keystore_parsed) || view.keystore_parsed;
+                if (view.user_keys_parsed) {
+                    view.user_keys_parsed = asWasmArray(view.user_keys_parsed).map(function (k) {
+                        return mapPlainTop(k) || k;
+                    });
                 }
-                if (dm.keystore_parsed && typeof dm.keystore_parsed === 'object') {
-                    block += '<div style="margin-top:0.5rem"><strong>Keystore hints</strong>' +
-                        renderKeyValueTableFromObject(dm.keystore_parsed) + '</div>';
-                }
-                block += '</div>';
-                parts.push(block);
+                parts.push(window.renderDebuggingManagerHtml(view));
             }
             const rest = {};
             Object.keys(data).forEach(function (k) {
@@ -1140,46 +1130,18 @@
             el.innerHTML = providers
                 .map(function (p, idx) {
                     const prov = deepPlainForJson(mapPlainTop(p) || p);
-                    let h =
-                        '<div class="detail-section" style="margin-bottom:1rem"><strong>Location provider ' +
-                        (idx + 1) +
-                        '</strong>';
-                    if (prov.type) {
-                        h +=
-                            '<p style="font-size:0.85rem;color:var(--text-secondary);margin:0.25rem 0">' +
-                            escapeHtml(String(prov.type)) +
-                            '</p>';
-                    }
-                    if (Object.prototype.hasOwnProperty.call(prov, 'last_availability')) {
-                        h +=
-                            '<p style="margin:0.35rem 0">Last availability: <strong>' +
-                            (prov.last_availability ? 'true' : 'false') +
-                            '</strong></p>';
-                    }
+                    if (!Array.isArray(prov.listeners)) prov.listeners = asWasmArray(prov.listeners);
+                    let extra = '';
                     if (privacyFieldPresent(prov.last_location_fine)) {
-                        h += renderPrivacyLocationSnapshot(prov.last_location_fine, 'Last location (fine)');
+                        extra += renderPrivacyLocationSnapshot(prov.last_location_fine, 'Last location (fine)');
                     }
                     if (privacyFieldPresent(prov.last_location_coarse)) {
-                        h += renderPrivacyLocationSnapshot(prov.last_location_coarse, 'Last location (coarse)');
+                        extra += renderPrivacyLocationSnapshot(prov.last_location_coarse, 'Last location (coarse)');
                     }
-                    if (privacyFieldPresent(prov.source)) {
-                        const src = deepPlainForJson(mapPlainTop(prov.source) || prov.source);
-                        h += '<div style="margin-top:0.65rem"><strong>Source</strong>';
-                        if (src && typeof src === 'object' && !Array.isArray(src)) {
-                            h += renderKeyValueTableFromObject(src);
-                        } else {
-                            h += '<p style="margin:0.25rem 0">' + parserCellValue(prov.source) + '</p>';
-                        }
-                        h += '</div>';
+                    if (typeof window.renderLocationProviderHtml === 'function') {
+                        return window.renderLocationProviderHtml(prov, idx, extra);
                     }
-                    if (Array.isArray(prov.listeners) && prov.listeners.length) {
-                        h +=
-                            '<div style="margin-top:0.65rem"><strong>Listeners</strong>' +
-                            renderObjectArrayTable(prov.listeners) +
-                            '</div>';
-                    }
-                    h += '</div>';
-                    return h;
+                    return extra;
                 })
                 .join('');
         }
@@ -2125,32 +2087,31 @@
             processTableBody.innerHTML = '';
             data.processes.forEach(p => {
                 const row = document.createElement('tr');
-                row.setAttribute('data-pid', p.pid);
-                row.setAttribute('data-name', p.name.toLowerCase());
-                row.innerHTML = `
-                    <td>${p.pid}</td>
-                    <td>${escapeHtml(p.name)}</td>
-                    <td>${escapeHtml(p.user)}</td>
-                    <td>${p.cpu_percent.toFixed(2)}%</td>
-                    <td>${escapeHtml(p.memory)}</td>
-                `;
+                row.className = 'proc-row';
+                row.setAttribute('data-pid', String(p.pid));
+                row.setAttribute('data-name', String(p.name || '').toLowerCase());
+                const cpuNum = p.cpu_percent != null && isFinite(Number(p.cpu_percent)) ? Number(p.cpu_percent) : null;
+                const cpu = cpuNum != null ? cpuNum.toFixed(1) + '%' : '—';
+                row.innerHTML =
+                    '<td class="proc-num">' + escapeHtml(String(p.pid)) + '</td>' +
+                    '<td class="proc-name">' + escapeHtml(p.name || '—') + '</td>' +
+                    '<td>' + escapeHtml(p.user || '—') + '</td>' +
+                    '<td class="proc-num"><span class="proc-cpu"' +
+                    (cpuNum == null ? '' : ' style="--cpu:' + Math.max(0, Math.min(100, cpuNum)) + '"') +
+                    '>' + escapeHtml(cpu) + '</span></td>' +
+                    '<td class="proc-num">' + escapeHtml(p.memory || '—') + '</td>';
                 processTableBody.appendChild(row);
             });
 
             const searchInput = document.getElementById('process-search');
-            searchInput.addEventListener('input', (e) => {
+            searchInput.oninput = (e) => {
                 const query = e.target.value.toLowerCase();
-                const rows = processTableBody.querySelectorAll('tr');
-                rows.forEach(row => {
-                    const pid = row.getAttribute('data-pid');
-                    const name = row.getAttribute('data-name');
-                    if (pid.includes(query) || name.includes(query)) {
-                        row.style.display = '';
-                    } else {
-                        row.style.display = 'none';
-                    }
+                processTableBody.querySelectorAll('.proc-row').forEach(row => {
+                    const pid = row.getAttribute('data-pid') || '';
+                    const name = row.getAttribute('data-name') || '';
+                    row.hidden = !(pid.includes(query) || name.includes(query));
                 });
-            });
+            };
         }
 
         function displayBatteryDetails(data) {
@@ -2166,39 +2127,58 @@
             batteryCard.style.display = 'block';
             countBadge.textContent = data.battery_apps.length;
 
-            batteryTableBody.innerHTML = '';
-            data.battery_apps.forEach(app => {
-                const row = document.createElement('tr');
-                row.setAttribute('data-package', app.package_name.toLowerCase());
-                const networkRx = (app.network_rx_mobile || 0) + (app.network_rx_wifi || 0);
-                const networkTx = (app.network_tx_mobile || 0) + (app.network_tx_wifi || 0);
-                const fgMs = app.foreground_service_time_ms || 0;
-                const fgStr = fgMs > 0 ? formatTime(fgMs) : '-';
-                row.innerHTML = `
-                    <td>${escapeHtml(app.package_name)}</td>
-                    <td>${app.uid}</td>
-                    <td>${formatTime(app.total_cpu_time_ms || 0)}</td>
-                    <td>${formatBytes(networkRx)} / ${formatBytes(networkTx)}</td>
-                    <td>${formatTime(app.total_wakelock_time_ms || 0)}</td>
-                    <td>${formatTime(app.total_job_time_ms || 0)}</td>
-                    <td>${fgStr}</td>
-                `;
-                batteryTableBody.appendChild(row);
+            const apps = data.battery_apps.map(function (app) {
+                const rx = (app.network_rx_mobile || 0) + (app.network_rx_wifi || 0);
+                const tx = (app.network_tx_mobile || 0) + (app.network_tx_wifi || 0);
+                return {
+                    name: app.package_name || '',
+                    uid: app.uid != null ? String(app.uid) : '',
+                    cpu: app.total_cpu_time_ms || 0,
+                    rx: rx,
+                    tx: tx,
+                    net: rx + tx,
+                    wake: app.total_wakelock_time_ms || 0,
+                    job: app.total_job_time_ms || 0,
+                    jobCount: app.total_job_count || 0,
+                    fg: app.foreground_service_time_ms || 0
+                };
             });
+            const max = function (key) {
+                return apps.reduce(function (m, row) { return Math.max(m, row[key]); }, 0);
+            };
+            const maxCpu = max('cpu'), maxNet = max('net'), maxWake = max('wake'), maxJob = max('job'), maxFg = max('fg');
+            const bar = function (value, peak, label) {
+                if (!value) return '<td class="batt-empty">—</td>';
+                const pct = peak > 0 ? Math.max(3, Math.round((value / peak) * 100)) : 100;
+                return '<td class="batt-num"><span class="batt-bar" style="--pct:' + pct + '">' + escapeHtml(label) + '</span></td>';
+            };
+            batteryTableBody.innerHTML = apps.map(function (app) {
+                const netCell = app.net > 0
+                    ? '<td class="batt-num"><span class="batt-bar batt-bar--net" style="--pct:' +
+                      (maxNet > 0 ? Math.max(3, Math.round((app.net / maxNet) * 100)) : 100) +
+                      '">↓ ' + escapeHtml(formatBytes(app.rx)) + '  ↑ ' + escapeHtml(formatBytes(app.tx)) + '</span></td>'
+                    : '<td class="batt-empty">—</td>';
+                const jobLabel = app.job > 0 ? formatTime(app.job) + (app.jobCount ? ' · ' + app.jobCount : '') : (app.jobCount ? String(app.jobCount) : '');
+                return '<tr class="batt-row" data-package="' + escapeHtml(app.name.toLowerCase()) + '" data-uid="' + escapeHtml(app.uid) + '">' +
+                    '<td class="batt-pkg">' + escapeHtml(app.name) + '</td>' +
+                    '<td class="batt-num">' + escapeHtml(app.uid || '—') + '</td>' +
+                    bar(app.cpu, maxCpu, app.cpu ? formatTime(app.cpu) : '') +
+                    netCell +
+                    bar(app.wake, maxWake, app.wake ? formatTime(app.wake) : '') +
+                    bar(app.job || app.jobCount, maxJob || 1, jobLabel) +
+                    bar(app.fg, maxFg, app.fg ? formatTime(app.fg) : '') +
+                    '</tr>';
+            }).join('');
 
             const searchInput = document.getElementById('battery-search');
-            searchInput.addEventListener('input', (e) => {
+            searchInput.oninput = (e) => {
                 const query = e.target.value.toLowerCase();
-                const rows = batteryTableBody.querySelectorAll('tr');
-                rows.forEach(row => {
-                    const pkg = row.getAttribute('data-package');
-                    if (pkg.includes(query)) {
-                        row.style.display = '';
-                    } else {
-                        row.style.display = 'none';
-                    }
+                batteryTableBody.querySelectorAll('.batt-row').forEach(row => {
+                    const pkg = row.getAttribute('data-package') || '';
+                    const uid = row.getAttribute('data-uid') || '';
+                    row.hidden = !(pkg.includes(query) || uid.includes(query));
                 });
-            });
+            };
         }
 
         function displayPackageHistory(data) {
@@ -3008,37 +2988,32 @@
 
             networkSocketsTableBody.innerHTML = '';
             data.sockets.forEach(socket => {
-                const row = document.createElement('tr');
-                row.setAttribute('data-protocol', (socket.protocol || '').toLowerCase());
-                row.setAttribute('data-local', (socket.local_address || '').toLowerCase());
-                row.setAttribute('data-remote', (socket.remote_address || '').toLowerCase());
-                row.setAttribute('data-state', (socket.state || '').toLowerCase());
-                row.innerHTML = `
-                    <td>${escapeHtml(socket.protocol || '-')}</td>
-                    <td><code>${escapeHtml(socket.local_address || '-')}</code></td>
-                    <td>${socket.local_port || '-'}</td>
-                    <td><code>${escapeHtml(socket.remote_address || '-')}</code></td>
-                    <td>${socket.remote_port || '-'}</td>
-                    <td>${escapeHtml(socket.state || '-')}</td>
-                    <td>${socket.uid || '-'}</td>
-                `;
-                networkSocketsTableBody.appendChild(row);
+                const card = document.createElement('article');
+                card.className = 'sock-card';
+                const protocol = socket.protocol || '-';
+                const local = (socket.local_address || '-') + (socket.local_port ? ':' + socket.local_port : '');
+                const remote = (socket.remote_address || '-') + (socket.remote_port ? ':' + socket.remote_port : '');
+                const state = socket.state || '-';
+                const stateClass =
+                    /^(ESTABLISHED|ESTAB)$/i.test(state) ? ' is-up' :
+                    /^(LISTEN|LISTENING)$/i.test(state) ? ' is-listen' :
+                    /(WAIT|CLOSE)/i.test(state) ? ' is-wait' : '';
+                card.setAttribute('data-search-text', [protocol, local, remote, state, socket.uid].join(' ').toLowerCase());
+                card.innerHTML =
+                    '<div class="sock-card__head"><span class="sock-card__proto">' + escapeHtml(protocol) +
+                    '</span><span class="sock-card__state' + stateClass + '">' + escapeHtml(state) + '</span>' +
+                    (socket.uid != null ? '<span class="sock-card__uid">uid ' + escapeHtml(String(socket.uid)) + '</span>' : '') +
+                    '</div><div class="sock-card__flow"><code>' + escapeHtml(local) +
+                    '</code><span class="sock-card__arrow">→</span><code>' + escapeHtml(remote) + '</code></div>';
+                networkSocketsTableBody.appendChild(card);
             });
 
             const searchInput = document.getElementById('network-sockets-search-input');
             searchInput.addEventListener('input', (e) => {
                 const query = e.target.value.toLowerCase();
-                const rows = networkSocketsTableBody.querySelectorAll('tr');
-                rows.forEach(row => {
-                    const protocol = row.getAttribute('data-protocol');
-                    const local = row.getAttribute('data-local');
-                    const remote = row.getAttribute('data-remote');
-                    const state = row.getAttribute('data-state');
-                    if (protocol.includes(query) || local.includes(query) || remote.includes(query) || state.includes(query)) {
-                        row.style.display = '';
-                    } else {
-                        row.style.display = 'none';
-                    }
+                networkSocketsTableBody.querySelectorAll('.sock-card').forEach(row => {
+                    const hay = row.getAttribute('data-search-text') || '';
+                    row.hidden = !hay.includes(query);
                 });
             });
         }

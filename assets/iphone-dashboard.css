@@ -265,14 +265,33 @@
     text-decoration: underline;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 720px) {
     .iphone-dash-tabs {
-        padding: 0.25rem;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        gap: 0.4rem;
+        padding: 0.35rem;
     }
-
+    .iphone-dash-tabs::-webkit-scrollbar {
+        display: none;
+    }
     .iphone-dash-tab {
-        font-size: 0.72rem;
-        padding: 0.4rem 0.55rem;
+        flex: 0 0 auto;
+        min-height: 2.75rem;
+        padding: 0.55rem 0.9rem;
+        font-size: 0.84rem;
+    }
+    .iphone-proc-identity {
+        min-width: 0;
+        max-width: none;
+    }
+    .iphone-proc-started {
+        white-space: normal;
+    }
+    .iphone-proc-mem {
+        align-items: flex-start;
     }
 }
 

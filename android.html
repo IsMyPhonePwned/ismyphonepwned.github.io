@@ -15,6 +15,11 @@
     <script src="assets/sigma-match-ui.js"></script>
     <script src="assets/sigma-rules-editor.js"></script>
     <script src="assets/timeline-view.js" defer></script>
+    <script src="assets/adb-debug-ui.js" defer></script>
+    <script src="assets/location-provider-ui.js" defer></script>
+    <script src="assets/device-policy-ui.js" defer></script>
+    <script src="assets/memory-ui.js" defer></script>
+    <script src="assets/results-mobile.js" defer></script>
 
 </head>
 <body>
@@ -25,11 +30,11 @@
                 <div style="display: flex; flex-direction: column; gap: 0.25rem;">
                     <h1 class="logo-text">IsMyPhonePwned ?</h1>
                     <span class="page-version">
-                        <span data-i18n="pageVersion">v0.7.0-beta • Updated 21 September 2026</span>
-                        <span class="page-version-edition" title="DEF CON edition">
-                            <img class="page-version-edition-logo" src="assets/defcon31-logo.png" alt="" width="18" height="18" decoding="async">
-                            <span>defcon edition</span>
-                        </span>
+                        <span data-i18n="pageVersion">v0.8.0-beta • Updated 19 October 2026</span>
+                        <a class="page-version-edition" href="https://hack.lu/" target="_blank" rel="noopener noreferrer" title="hack.lu edition">
+                            <img class="page-version-edition-logo" src="assets/hacklu-2026-logo.png" alt="" width="18" height="18" decoding="async">
+                            <span>hack.lu edition</span>
+                        </a>
                     </span>
                 </div>
             </div>
@@ -509,6 +514,53 @@
                     </div>
 
                     <div id="android-dash-apps" class="android-dash-panel" role="tabpanel" data-dash-panel="apps" hidden>
+                <!-- Detailed Battery Stats (after deleted packages) -->
+                <div class="result-card" id="battery-details-card" style="display: none;">
+                    <div class="section-header">
+                        <h3>🔋 App Battery Usage</h3>
+                        <span class="count-badge" id="battery-apps-count-badge">0</span>
+                    </div>
+                    <button type="button" class="section-toggle" onclick="toggleSection('battery-details')">▼</button>
+                    <div class="section-content" id="battery-details-content">
+                        <div class="qf" id="battery-quick"></div>
+                        <div class="proc-tools">
+                            <div class="search-box">
+                                <span class="search-icon">🔍</span>
+                                <input type="text" id="battery-search" data-i18n-placeholder="batterySearch" placeholder="Search package or UID…">
+                            </div>
+                            <label class="proc-sort">
+                                <span data-i18n="processSortLabel">Sort</span>
+                                <select id="battery-sort">
+                                    <option value="drain" data-i18n-option="batterySortDrain">Heaviest</option>
+                                    <option value="cpu" data-i18n-option="processSortCpu">CPU</option>
+                                    <option value="net" data-i18n-option="batterySortNet">Network</option>
+                                    <option value="wake" data-i18n-option="batterySortWake">Wakelock</option>
+                                    <option value="job" data-i18n-option="batterySortJob">Jobs</option>
+                                    <option value="fg" data-i18n-option="batterySortFg">FG service</option>
+                                    <option value="package" data-i18n-option="filterPackage">Package</option>
+                                </select>
+                            </label>
+                        </div>
+                        <p class="list-filter-status" id="battery-filter-status"></p>
+                        <div class="data-table-container batt-table-wrap">
+                            <table class="data-table batt-table" id="battery-table">
+                                <thead>
+                                    <tr>
+                                        <th><button type="button" class="proc-sort-btn" data-sort="package" data-i18n="filterPackage">Package</button></th>
+                                        <th><button type="button" class="proc-sort-btn" data-sort="uid">UID</button></th>
+                                        <th><button type="button" class="proc-sort-btn" data-sort="cpu" data-i18n="processSortCpu">CPU</button></th>
+                                        <th><button type="button" class="proc-sort-btn" data-sort="net" data-i18n="batterySortNet">Network</button></th>
+                                        <th><button type="button" class="proc-sort-btn" data-sort="wake" data-i18n="batterySortWake">Wakelock</button></th>
+                                        <th><button type="button" class="proc-sort-btn" data-sort="job" data-i18n="batterySortJob">Jobs</button></th>
+                                        <th><button type="button" class="proc-sort-btn" data-sort="fg" data-i18n="batterySortFg">FG service</button></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="battery-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Packages installed by user (excludes system / image / apex) -->
                 <div class="result-card" id="package-details-user-card" style="display: none;">
                     <div class="section-header">
@@ -569,8 +621,8 @@
                         <h3>📦 Deleted Packages</h3>
                         <span class="count-badge" id="package-count-badge">0</span>
                     </div>
-                    <button class="section-toggle" onclick="toggleSection('package-history')">▼</button>
-                    <div class="section-content" id="package-history-content">
+                    <button class="section-toggle collapsed" onclick="toggleSection('package-history')">▼</button>
+                    <div class="section-content collapsed" id="package-history-content">
                         <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">
                             Packages that were installed or uninstalled. Packages not found in the "Package Details" section have been deleted.
                         </p>
@@ -579,38 +631,6 @@
                             <input type="text" id="package-search-input" placeholder="Search packages by name or installer...">
                         </div>
                         <div id="package-list"></div>
-                    </div>
-                </div>
-
-                <!-- Detailed Battery Stats (after deleted packages) -->
-                <div class="result-card" id="battery-details-card" style="display: none;">
-                    <div class="section-header">
-                        <h3>🔋 App Battery Usage</h3>
-                        <span class="count-badge" id="battery-apps-count-badge">0</span>
-                    </div>
-                    <button type="button" class="section-toggle collapsed" onclick="toggleSection('battery-details')">▼</button>
-                    <div class="section-content collapsed" id="battery-details-content">
-                        <div class="search-box">
-                            <span class="search-icon">🔍</span>
-                            <input type="text" id="battery-search" placeholder="Search apps by package name...">
-                        </div>
-                        <div class="data-table-container">
-                            <table class="data-table" id="battery-table">
-                                <thead>
-                                    <tr>
-                                        <th>Package Name</th>
-                                        <th>UID</th>
-                                        <th>CPU Time</th>
-                                        <th>Network (RX/TX)</th>
-                                        <th>Wakelock Time</th>
-                                        <th>Job Time</th>
-                                        <th>FG service</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="battery-table-body">
-                                </tbody>
-                            </table>
-                        </div>
                     </div>
                 </div>
 
@@ -626,28 +646,17 @@
                     <button class="section-toggle collapsed" onclick="toggleSection('network-sockets')">▼</button>
                     <div class="section-content collapsed" id="network-sockets-content">
                         <p class="network-sockets-hint" data-i18n="networkSocketsHint">
-                            Owner is resolved from UID → package (and process when needed). Click a package owner to open that package card; click a socket row for details.
+                            Owner is resolved from UID → package (and process when needed). Click a package name to open that package; click a socket card for details.
                         </p>
+                        <div class="qf" id="network-sockets-quick"></div>
                         <div class="search-box">
                             <span class="search-icon">🔍</span>
                             <input type="text" id="network-sockets-search-input" placeholder="Search protocol, address, owner, package, or UID…">
                         </div>
-                        <div class="data-table-container">
-                            <table class="data-table" id="network-sockets-table">
-                                <thead>
-                                    <tr>
-                                        <th>Protocol</th>
-                                        <th>Local</th>
-                                        <th>Remote</th>
-                                        <th>State</th>
-                                        <th>Owner</th>
-                                        <th>UID</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="network-sockets-table-body">
-                                </tbody>
-                            </table>
-                        </div>
+                        <p class="list-filter-status" id="network-sockets-filter-status"></p>
+                        <p class="list-filter-empty" id="network-sockets-filter-empty" hidden>Nothing matches these filters.</p>
+                        <div class="sock-list" id="network-sockets-table-body"></div>
+                        <button type="button" class="qf-more" id="network-sockets-more" hidden>Show more</button>
                     </div>
                 </div>
 
@@ -756,24 +765,37 @@
                     </div>
                     <button class="section-toggle" onclick="toggleSection('process-details')">▼</button>
                     <div class="section-content" id="process-details-content">
-                        <div class="search-box">
-                            <span class="search-icon">🔍</span>
-                            <input type="text" id="process-search" placeholder="Search processes by name or PID...">
+                        <div class="qf" id="process-quick"></div>
+                        <div class="proc-tools">
+                            <div class="search-box">
+                                <span class="search-icon">🔍</span>
+                                <input type="text" id="process-search" placeholder="Search name, package, user, or PID…">
+                            </div>
+                            <label class="proc-sort">
+                                <span data-i18n="processSortLabel">Sort</span>
+                                <select id="process-sort">
+                                    <option value="pid" data-i18n-option="processSortPid">PID</option>
+                                    <option value="name" data-i18n-option="processSortName">Name</option>
+                                    <option value="cpu" data-i18n-option="processSortCpu">CPU</option>
+                                    <option value="memory" data-i18n-option="processSortMem">Memory</option>
+                                </select>
+                            </label>
                         </div>
-                        <div class="data-table-container">
-                            <table class="data-table" id="process-table">
+                        <p class="list-filter-status" id="process-filter-status"></p>
+                        <p class="list-filter-empty" id="process-filter-empty" hidden>Nothing matches these filters.</p>
+                        <div class="data-table-container proc-table-wrap">
+                            <table class="data-table proc-table" id="process-table">
                                 <thead>
                                     <tr>
-                                        <th>PID</th>
-                                        <th>Name</th>
-                                        <th>Package</th>
-                                        <th>User</th>
-                                        <th>CPU%</th>
-                                        <th>Memory</th>
+                                        <th aria-sort="ascending"><button type="button" class="proc-sort-btn is-active" data-sort="pid" data-i18n="processSortPid">PID</button></th>
+                                        <th aria-sort="none"><button type="button" class="proc-sort-btn" data-sort="name" data-i18n="processSortName">Name</button></th>
+                                        <th aria-sort="none"><button type="button" class="proc-sort-btn" data-sort="package" data-i18n="filterPackage">Package</button></th>
+                                        <th aria-sort="none"><button type="button" class="proc-sort-btn" data-sort="user" data-i18n="processColUser">User</button></th>
+                                        <th aria-sort="none"><button type="button" class="proc-sort-btn" data-sort="cpu" data-i18n="processSortCpu">CPU</button></th>
+                                        <th aria-sort="none"><button type="button" class="proc-sort-btn" data-sort="memory" data-i18n="processSortMem">Memory</button></th>
                                     </tr>
                                 </thead>
-                                <tbody id="process-table-body">
-                                </tbody>
+                                <tbody id="process-table-body"></tbody>
                             </table>
                         </div>
                     </div>
@@ -899,7 +921,7 @@
     <script>
         window.BUGREPORT_I18N = {
             en: {
-                pageVersion: 'v0.7.0-beta • Updated 21 September 2026',
+                pageVersion: 'v0.8.0-beta • Updated 19 October 2026',
                 wasmLoading: 'Loading…',
                 wasmReady: 'Ready',
                 wasmFailed: 'Failed',
@@ -1199,9 +1221,22 @@
                 batteryChartCaption: '{n} samples · {span}',
                 level: 'Level',
                 health: 'Health',
-                networkSocketsHint: 'Owner is resolved from UID → package (and process when needed). Click a package owner to open that package card; click a socket row for details.',
+                networkSocketsHint: 'Owner is resolved from UID → package (and process when needed). Click a package name to open that package; click a socket card for details.',
                 socketOwnerPackage: 'Package',
                 socketOwnerProcess: 'Process',
+                socketOwnerApp: 'App',
+                socketOwnerDaemon: 'System process',
+                socketGroupCount: '{n} sockets',
+                socketStateListen: 'Listening',
+                socketStateUp: 'Established',
+                socketStateOpen: 'Open',
+                socketNoPeer: 'No peer',
+                socketAllIfaces: 'all interfaces',
+                socketListeningOn: 'Listening on',
+                socketBoundOn: 'Bound on',
+                socketRaw: 'Raw socket',
+                socketPort: 'port {n}',
+                socketProtoNum: 'protocol {n}',
                 socketOwnerUidOnly: 'UID only — no package match',
                 socketOwnerStale: 'Stale',
                 socketViewPackage: 'View package',
@@ -1265,7 +1300,30 @@
                 packageDetailsUser: '📲 Packages installed by user',
                 packageDetailsUserHint: 'Same non-system rules as below (flags/paths), plus installation metadata: installer, install times, install logs, or per-user install fields. Packages with none of these are omitted here.',
                 runningProcesses: '⚙️ Running Processes',
-                searchProcesses: 'Search processes by name or PID...',
+                searchProcesses: 'Search name, package, user, or PID…',
+                processSortLabel: 'Sort',
+                processSortPid: 'PID',
+                processSortName: 'Name',
+                processSortCpu: 'CPU',
+                processSortMem: 'Memory',
+                processColUser: 'User',
+                filterEstablished: 'Established',
+                filterListening: 'Listening',
+                filterWaiting: 'Waiting',
+                filterExternal: 'External',
+                filterPackage: 'Package',
+                filterApps: 'Apps',
+                filterSystem: 'System',
+                filterShowing: 'Showing {n} of {total}',
+                filterNoMatch: 'Nothing matches these filters.',
+                filterShowMore: 'Show more',
+                batterySearch: 'Search package or UID…',
+                batterySortDrain: 'Heaviest',
+                batterySortNet: 'Network',
+                batterySortWake: 'Wakelock',
+                batterySortJob: 'Jobs',
+                batterySortFg: 'FG service',
+                batteryFilterFg: 'Foreground',
                 btnDownloadJson: '📥 Download JSON',
                 btnCopyClipboard: '📋 Copy to Clipboard',
                 copyJsonDone: 'JSON copied to clipboard.',
@@ -1283,7 +1341,7 @@
                 navGitHub: 'GitHub'
             },
             fr: {
-                pageVersion: 'v0.7.0-beta • Mis à jour le 21 septembre 2026',
+                pageVersion: 'v0.8.0-beta • Mis à jour le 19 octobre 2026',
                 wasmLoading: 'Chargement…',
                 wasmReady: 'Prêt',
                 wasmFailed: 'Échec',
@@ -1584,9 +1642,22 @@
                 batteryChartCaption: '{n} échantillons · {span}',
                 level: 'Niveau',
                 health: 'Santé',
-                networkSocketsHint: 'Le propriétaire est résolu UID → package (et processus si besoin). Cliquez un package pour ouvrir sa fiche ; cliquez une ligne pour les détails.',
+                networkSocketsHint: 'Le propriétaire est résolu UID → package (et processus si besoin). Cliquez un package pour ouvrir sa fiche ; cliquez une carte pour les détails.',
                 socketOwnerPackage: 'Package',
                 socketOwnerProcess: 'Processus',
+                socketOwnerApp: 'App',
+                socketOwnerDaemon: 'Processus système',
+                socketGroupCount: '{n} sockets',
+                socketStateListen: 'Écoute',
+                socketStateUp: 'Établie',
+                socketStateOpen: 'Ouvert',
+                socketNoPeer: 'Aucun pair',
+                socketAllIfaces: 'toutes les interfaces',
+                socketListeningOn: 'Écoute sur',
+                socketBoundOn: 'Lié à',
+                socketRaw: 'Socket brut',
+                socketPort: 'port {n}',
+                socketProtoNum: 'protocole {n}',
                 socketOwnerUidOnly: 'UID seul — aucun package trouvé',
                 socketOwnerStale: 'Obsolète',
                 socketViewPackage: 'Voir le package',
@@ -1650,7 +1721,30 @@
                 packageDetailsUser: '📲 Paquets installés par l’utilisateur',
                 packageDetailsUserHint: 'Mêmes règles « non système » que ci-dessous (drapeaux/chemins), plus des métadonnées d’installation : installateur, dates, journaux ou champs par utilisateur. Sans aucun de ces éléments, le paquet n’apparaît pas ici.',
                 runningProcesses: '⚙️ Processus en cours',
-                searchProcesses: 'Rechercher par nom ou PID...',
+                searchProcesses: 'Nom, paquet, utilisateur ou PID…',
+                processSortLabel: 'Trier',
+                processSortPid: 'PID',
+                processSortName: 'Nom',
+                processSortCpu: 'CPU',
+                processSortMem: 'Mémoire',
+                processColUser: 'Utilisateur',
+                filterEstablished: 'Établie',
+                filterListening: 'Écoute',
+                filterWaiting: 'Attente',
+                filterExternal: 'Externe',
+                filterPackage: 'Paquet',
+                filterApps: 'Apps',
+                filterSystem: 'Système',
+                filterShowing: '{n} affichés sur {total}',
+                filterNoMatch: 'Aucun résultat pour ces filtres.',
+                filterShowMore: 'Afficher plus',
+                batterySearch: 'Paquet ou UID…',
+                batterySortDrain: 'Plus gros',
+                batterySortNet: 'Réseau',
+                batterySortWake: 'Wakelock',
+                batterySortJob: 'Tâches',
+                batterySortFg: 'Service FG',
+                batteryFilterFg: 'Premier plan',
                 btnDownloadJson: '📥 Télécharger JSON',
                 btnCopyClipboard: '📋 Copier dans le presse-papiers',
                 copyJsonDone: 'JSON copié dans le presse-papiers.',
@@ -1668,7 +1762,7 @@
                 navGitHub: 'GitHub'
             },
             zh: {
-                pageVersion: 'v0.7.0-beta • 更新于 2026年9月21日',
+                pageVersion: 'v0.8.0-beta • 更新于 2026年10月19日',
                 wasmLoading: '加载中…',
                 wasmReady: '就绪',
                 wasmFailed: '失败',
@@ -1965,9 +2059,22 @@
                 batteryChartCaption: '{n} 个采样 · {span}',
                 level: '电量',
                 health: '健康',
-                networkSocketsHint: '所有者由 UID → 应用包（必要时再用进程）解析。点击包名打开对应卡片；点击行查看详情。',
+                networkSocketsHint: '所有者由 UID → 应用包（必要时再用进程）解析。点击包名打开对应卡片；点击套接字卡片查看详情。',
                 socketOwnerPackage: '应用包',
                 socketOwnerProcess: '进程',
+                socketOwnerApp: '应用',
+                socketOwnerDaemon: '系统进程',
+                socketGroupCount: '{n} 个套接字',
+                socketStateListen: '监听',
+                socketStateUp: '已建立',
+                socketStateOpen: '打开',
+                socketNoPeer: '无对端',
+                socketAllIfaces: '所有接口',
+                socketListeningOn: '监听于',
+                socketBoundOn: '绑定于',
+                socketRaw: '原始套接字',
+                socketPort: '端口 {n}',
+                socketProtoNum: '协议 {n}',
                 socketOwnerUidOnly: '仅 UID — 未匹配到应用包',
                 socketOwnerStale: '过期',
                 socketViewPackage: '查看应用包',
@@ -2031,7 +2138,30 @@
                 packageDetailsUser: '📲 用户安装的应用包',
                 packageDetailsUserHint: '与下方相同的非系统判定（标志/路径），并需具备安装元数据：安装程序、安装时间、安装日志或按用户的安装字段。以上皆无的包不显示在此。',
                 runningProcesses: '⚙️ 运行中的进程',
-                searchProcesses: '按名称或 PID 搜索进程...',
+                searchProcesses: '按名称、包名、用户或 PID 搜索…',
+                processSortLabel: '排序',
+                processSortPid: 'PID',
+                processSortName: '名称',
+                processSortCpu: 'CPU',
+                processSortMem: '内存',
+                processColUser: '用户',
+                filterEstablished: '已建立',
+                filterListening: '监听',
+                filterWaiting: '等待',
+                filterExternal: '外部',
+                filterPackage: '应用包',
+                filterApps: '应用',
+                filterSystem: '系统',
+                filterShowing: '显示 {n} / {total}',
+                filterNoMatch: '没有符合这些筛选条件的结果。',
+                filterShowMore: '显示更多',
+                batterySearch: '搜索包名或 UID…',
+                batterySortDrain: '最高消耗',
+                batterySortNet: '网络',
+                batterySortWake: '唤醒锁',
+                batterySortJob: '任务',
+                batterySortFg: '前台服务',
+                batteryFilterFg: '前台',
                 btnDownloadJson: '📥 下载 JSON',
                 btnCopyClipboard: '📋 复制到剪贴板',
                 copyJsonDone: 'JSON 已复制到剪贴板。',
@@ -2069,6 +2199,30 @@
             });
             var ps = document.getElementById('process-search');
             if (ps && t.searchProcesses) ps.placeholder = t.searchProcesses;
+            var processSort = document.getElementById('process-sort');
+            if (processSort) {
+                Array.prototype.forEach.call(processSort.options, function (opt) {
+                    var ok = opt.getAttribute('data-i18n-option');
+                    if (ok && t[ok]) opt.textContent = t[ok];
+                });
+            }
+            var batterySort = document.getElementById('battery-sort');
+            if (batterySort) {
+                Array.prototype.forEach.call(batterySort.options, function (opt) {
+                    var ok = opt.getAttribute('data-i18n-option');
+                    if (ok && t[ok]) opt.textContent = t[ok];
+                });
+            }
+            var batterySearch = document.getElementById('battery-search');
+            if (batterySearch && t.batterySearch) batterySearch.placeholder = t.batterySearch;
+            ['process-filter-empty', 'network-sockets-filter-empty'].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el && t.filterNoMatch) el.textContent = t.filterNoMatch;
+            });
+            ['network-sockets-more'].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el && t.filterShowMore) el.textContent = t.filterShowMore;
+            });
             var dpf = document.getElementById('parser-device-policy-filter');
             if (dpf && t.devicePolicyFilterPlaceholder) dpf.placeholder = t.devicePolicyFilterPlaceholder;
             var apkSearch = document.getElementById('apk-downgrade-search');
@@ -3071,6 +3225,146 @@
             showStatus('Download started: ' + filename, 'success');
         }
 
+        var LIST_FILTER_PAGE = 40;
+
+        function listFilterText(key, fallback) {
+            var pack = i18nPack();
+            return (pack && pack[key]) || fallback;
+        }
+
+        function listFilterSelected(host) {
+            var groups = {};
+            if (!host) return groups;
+            host.querySelectorAll('.qf__chip[aria-pressed="true"]').forEach(function (btn) {
+                var row = btn.closest('[data-qf-group]');
+                var group = row ? row.getAttribute('data-qf-group') : '';
+                if (!group) return;
+                if (!groups[group]) groups[group] = [];
+                groups[group].push(btn.getAttribute('data-qf') || '');
+            });
+            return groups;
+        }
+
+        function listFilterMatches(el, groups) {
+            var names = Object.keys(groups);
+            for (var i = 0; i < names.length; i++) {
+                var name = names[i];
+                var val = el.getAttribute('data-qf-' + name) || '';
+                if (groups[name].indexOf(val) === -1) return false;
+            }
+            return true;
+        }
+
+        function fillQuickFilters(host, groups) {
+            if (!host) return;
+            host.innerHTML = groups
+                .map(function (group) {
+                    var chips = group.chips.filter(function (chip) {
+                        return chip.count > 0;
+                    });
+                    if (!chips.length) return '';
+                    return (
+                        '<div class="qf__row" data-qf-group="' +
+                        escapeAttr(group.id) +
+                        '">' +
+                        chips
+                            .map(function (chip) {
+                                return (
+                                    '<button type="button" class="qf__chip" data-qf="' +
+                                    escapeAttr(chip.key) +
+                                    '" aria-pressed="false">' +
+                                    escapeHtml(chip.label) +
+                                    '<span class="qf__n">' +
+                                    chip.count +
+                                    '</span></button>'
+                                );
+                            })
+                            .join('') +
+                        '</div>'
+                    );
+                })
+                .join('');
+        }
+
+        function bindQuickFilters(host, apply) {
+            if (!host || host.dataset.bound) {
+                if (host) host._applyFilter = apply;
+                return;
+            }
+            host.dataset.bound = '1';
+            host._applyFilter = apply;
+            host.addEventListener('click', function (ev) {
+                var btn = ev.target.closest('.qf__chip');
+                if (!btn || !host.contains(btn)) return;
+                btn.setAttribute('aria-pressed', btn.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+                if (host._applyFilter) host._applyFilter(true);
+            });
+        }
+
+        function applyPagedList(cards, groups, matchesQuery, statusEl, emptyEl, moreBtn, limit) {
+            var matched = [];
+            cards.forEach(function (card) {
+                if (matchesQuery(card) && listFilterMatches(card, groups)) matched.push(card);
+                card.hidden = true;
+            });
+            var shown = Math.min(matched.length, limit);
+            for (var i = 0; i < shown; i++) matched[i].hidden = false;
+            if (statusEl) {
+                statusEl.textContent = listFilterText('filterShowing', 'Showing {n} of {total}')
+                    .replace('{n}', String(shown))
+                    .replace('{total}', String(matched.length));
+            }
+            if (emptyEl) emptyEl.hidden = matched.length !== 0;
+            if (moreBtn) moreBtn.hidden = shown >= matched.length;
+        }
+
+        function topCountChips(counts, limit, minCount) {
+            return Object.keys(counts)
+                .map(function (key) {
+                    return { key: key, count: counts[key] };
+                })
+                .filter(function (item) {
+                    return item.key && item.count >= minCount;
+                })
+                .sort(function (a, b) {
+                    return b.count - a.count || a.key.localeCompare(b.key);
+                })
+                .slice(0, limit);
+        }
+
+        function processPrefix(name) {
+            var n = String(name || '').toLowerCase();
+            if (n.indexOf('.') === -1) return '';
+            var parts = n.split('.');
+            if (parts.length >= 3 && parts[0] && parts[1]) return parts[0] + '.' + parts[1];
+            return parts[0] || '';
+        }
+
+        function memoryRank(value) {
+            var match = String(value || '').trim().match(/^([\d.]+)\s*([kmg])?/i);
+            if (!match) return -1;
+            var n = parseFloat(match[1]);
+            if (!isFinite(n)) return -1;
+            var unit = (match[2] || '').toLowerCase();
+            if (unit === 'g') return n * 1024 * 1024;
+            if (unit === 'm') return n * 1024;
+            return n;
+        }
+
+        function socketStateKind(state) {
+            if (/^(ESTABLISHED|ESTAB)$/i.test(state)) return 'up';
+            if (/^(LISTEN|LISTENING)$/i.test(state)) return 'listen';
+            if (/(WAIT|CLOSE)/i.test(state)) return 'wait';
+            return 'other';
+        }
+
+        function socketIsExternal(remoteAddr) {
+            var match = String(remoteAddr || '').trim().match(/^(.*):(\d+)$/);
+            if (!match || match[2] === '0') return false;
+            var host = match[1].replace(/^\[|\]$/g, '');
+            return !!host && host !== '*' && host !== '0.0.0.0' && host !== '::' && host !== '::1' && host !== '127.0.0.1';
+        }
+
         // Display process details
         function displayProcessDetails(data) {
             const processCard = document.getElementById('process-details-card');
@@ -3099,6 +3393,10 @@
                     return String(a.pid ?? '').localeCompare(String(b.pid ?? ''), undefined, { numeric: true });
                 });
 
+            const kindCounts = { app: 0, system: 0 };
+            const userCounts = {};
+            const prefixCounts = {};
+
             // Batch rows (per-row DOM create freezes on large process lists)
             processTableBody.innerHTML = procsSorted
                 .map(function (proc) {
@@ -3106,11 +3404,18 @@
                     const name = proc.name != null ? String(proc.name) : '';
                     const user = proc.user != null ? String(proc.user) : '';
                     const linkedPkg = resolveAndroidProcessPackage(name);
-                    const cpu =
-                        proc.cpu_percent !== undefined && proc.cpu_percent !== null
-                            ? Number(proc.cpu_percent).toFixed(1) + '%'
-                            : '-';
+                    const cpuNum =
+                        proc.cpu_percent !== undefined && proc.cpu_percent !== null && isFinite(Number(proc.cpu_percent))
+                            ? Number(proc.cpu_percent)
+                            : null;
+                    const cpu = cpuNum != null ? cpuNum.toFixed(1) + '%' : '-';
                     const mem = proc.memory != null ? String(proc.memory) : '-';
+                    const kind = name.indexOf('.') !== -1 ? 'app' : 'system';
+                    const prefix = processPrefix(name);
+                    const userKey = user.toLowerCase();
+                    kindCounts[kind] += 1;
+                    if (userKey) userCounts[userKey] = (userCounts[userKey] || 0) + 1;
+                    if (prefix) prefixCounts[prefix] = (prefixCounts[prefix] || 0) + 1;
                     const pkgCell = linkedPkg
                         ? '<button type="button" class="socket-owner-link" data-focus-package="' +
                           escapeAttr(linkedPkg) +
@@ -3121,30 +3426,68 @@
                           '</button>'
                         : '<span class="socket-owner socket-owner--muted">—</span>';
                     return (
-                        '<tr data-pid="' +
+                        '<tr class="proc-row" data-pid="' +
                         escapeAttr(pid) +
                         '" data-name="' +
                         escapeAttr(name.toLowerCase()) +
                         '" data-user="' +
-                        escapeAttr(user.toLowerCase()) +
+                        escapeAttr(userKey) +
                         '" data-package="' +
                         escapeAttr((linkedPkg || '').toLowerCase()) +
-                        '"><td>' +
-                        escapeHtml(pid || '-') +
+                        '" data-qf-kind="' +
+                        kind +
+                        '" data-qf-user="' +
+                        escapeAttr(userKey) +
+                        '" data-qf-prefix="' +
+                        escapeAttr(prefix) +
+                        '" data-cpu="' +
+                        (cpuNum == null ? '' : String(cpuNum)) +
+                        '" data-mem-rank="' +
+                        String(memoryRank(mem)) +
+                        '"><td class="proc-num">' +
+                        escapeHtml(pid || '—') +
+                        '</td><td class="proc-name">' +
+                        escapeHtml(name || '—') +
+                        '</td><td class="proc-pkg">' +
+                        (linkedPkg ? pkgCell : '—') +
                         '</td><td>' +
-                        escapeHtml(name || '-') +
-                        '</td><td class="socket-owner-cell">' +
-                        pkgCell +
-                        '</td><td>' +
-                        escapeHtml(user || '-') +
-                        '</td><td>' +
+                        escapeHtml(user || '—') +
+                        '</td><td class="proc-num"><span class="proc-cpu"' +
+                        (cpuNum == null ? '' : ' style="--cpu:' + Math.max(0, Math.min(100, cpuNum)) + '"') +
+                        '>' +
                         escapeHtml(cpu) +
-                        '</td><td>' +
+                        '</span></td><td class="proc-num">' +
                         escapeHtml(mem) +
                         '</td></tr>'
                     );
                 })
                 .join('');
+
+            const processQuick = document.getElementById('process-quick');
+            const bothKinds = kindCounts.app > 0 && kindCounts.system > 0;
+            fillQuickFilters(processQuick, [
+                {
+                    id: 'kind',
+                    chips: bothKinds
+                        ? [
+                              { key: 'app', label: listFilterText('filterApps', 'Apps'), count: kindCounts.app },
+                              { key: 'system', label: listFilterText('filterSystem', 'System'), count: kindCounts.system }
+                          ]
+                        : []
+                },
+                {
+                    id: 'prefix',
+                    chips: topCountChips(prefixCounts, 8, 3).map(function (item) {
+                        return { key: item.key, label: item.key, count: item.count };
+                    })
+                },
+                {
+                    id: 'user',
+                    chips: topCountChips(userCounts, 6, 2).map(function (item) {
+                        return { key: item.key, label: item.key, count: item.count };
+                    })
+                }
+            ]);
 
             if (!processTableBody.dataset.pkgDelegated) {
                 processTableBody.dataset.pkgDelegated = '1';
@@ -3156,27 +3499,101 @@
                 });
             }
 
-            // Add search functionality
             const searchInput = document.getElementById('process-search');
-            if (searchInput) {
-                searchInput.oninput = function (e) {
-                    const query = (e.target.value || '').toLowerCase().trim();
-                    processTableBody.querySelectorAll('tr').forEach(function (row) {
-                        const pid = row.getAttribute('data-pid') || '';
-                        const name = row.getAttribute('data-name') || '';
-                        const user = row.getAttribute('data-user') || '';
-                        const pkg = row.getAttribute('data-package') || '';
-                        row.style.display =
-                            !query ||
-                            pid.includes(query) ||
-                            name.includes(query) ||
-                            user.includes(query) ||
-                            pkg.includes(query)
-                                ? ''
-                                : 'none';
+            const statusEl = document.getElementById('process-filter-status');
+            const emptyEl = document.getElementById('process-filter-empty');
+            const sortSel = document.getElementById('process-sort');
+
+            function markProcessSort(mode) {
+                const table = document.getElementById('process-table');
+                if (!table) return;
+                table.querySelectorAll('.proc-sort-btn').forEach(function (btn) {
+                    const on = btn.getAttribute('data-sort') === mode;
+                    btn.classList.toggle('is-active', on);
+                    const th = btn.closest('th');
+                    if (!th) return;
+                    if (!on) th.setAttribute('aria-sort', 'none');
+                    else if (mode === 'cpu' || mode === 'memory') th.setAttribute('aria-sort', 'descending');
+                    else th.setAttribute('aria-sort', 'ascending');
+                });
+            }
+
+            function sortProcessRows() {
+                const mode = sortSel ? sortSel.value : 'pid';
+                const rows = Array.prototype.slice.call(processTableBody.querySelectorAll('.proc-row'));
+                rows.sort(function (a, b) {
+                    if (mode === 'name' || mode === 'package' || mode === 'user') {
+                        const key = mode === 'name' ? 'data-name' : mode === 'package' ? 'data-package' : 'data-user';
+                        return (a.getAttribute(key) || '').localeCompare(b.getAttribute(key) || '');
+                    }
+                    if (mode === 'cpu') {
+                        return (parseFloat(b.getAttribute('data-cpu')) || -1) - (parseFloat(a.getAttribute('data-cpu')) || -1);
+                    }
+                    if (mode === 'memory') {
+                        return (parseFloat(b.getAttribute('data-mem-rank')) || -1) - (parseFloat(a.getAttribute('data-mem-rank')) || -1);
+                    }
+                    return (parseInt(a.getAttribute('data-pid'), 10) || 0) - (parseInt(b.getAttribute('data-pid'), 10) || 0);
+                });
+                const frag = document.createDocumentFragment();
+                rows.forEach(function (row) {
+                    frag.appendChild(row);
+                });
+                processTableBody.appendChild(frag);
+                markProcessSort(mode);
+            }
+
+            function applyProcessFilter() {
+                const query = searchInput ? (searchInput.value || '').toLowerCase().trim() : '';
+                const groups = listFilterSelected(processQuick);
+                const rows = processTableBody.querySelectorAll('.proc-row');
+                let shown = 0;
+                rows.forEach(function (row) {
+                    const textOk = !query ||
+                        (row.getAttribute('data-pid') || '').includes(query) ||
+                        (row.getAttribute('data-name') || '').includes(query) ||
+                        (row.getAttribute('data-user') || '').includes(query) ||
+                        (row.getAttribute('data-package') || '').includes(query);
+                    const ok = textOk && listFilterMatches(row, groups);
+                    row.hidden = !ok;
+                    if (ok) shown += 1;
+                });
+                if (statusEl) {
+                    statusEl.textContent = shown === rows.length
+                        ? String(rows.length)
+                        : listFilterText('filterShowing', 'Showing {n} of {total}')
+                            .replace('{n}', String(shown))
+                            .replace('{total}', String(rows.length));
+                }
+                if (emptyEl) emptyEl.hidden = shown !== 0;
+            }
+
+            const processTable = document.getElementById('process-table');
+            if (processTable) {
+                processTable._sortProcesses = sortProcessRows;
+                processTable._applyProcesses = applyProcessFilter;
+                if (!processTable.dataset.sortBound) {
+                    processTable.dataset.sortBound = '1';
+                    processTable.addEventListener('click', function (ev) {
+                        const btn = ev.target.closest('.proc-sort-btn');
+                        if (!btn || !processTable.contains(btn)) return;
+                        if (sortSel) sortSel.value = btn.getAttribute('data-sort') || 'pid';
+                        if (processTable._sortProcesses) processTable._sortProcesses();
+                        if (processTable._applyProcesses) processTable._applyProcesses();
                     });
+                }
+            }
+
+            bindQuickFilters(processQuick, applyProcessFilter);
+            if (searchInput) searchInput.oninput = function () { applyProcessFilter(); };
+            if (sortSel) {
+                sortSel.onchange = function () {
+                    sortProcessRows();
+                    applyProcessFilter();
                 };
             }
+            if (sortSel && sortSel.value !== 'pid') sortProcessRows();
+            else markProcessSort(sortSel ? sortSel.value : 'pid');
+            applyProcessFilter();
         }
 
         // Display battery details
@@ -3215,76 +3632,198 @@
             batteryCard.style.display = 'block';
             document.getElementById('battery-apps-count-badge').textContent = batApps.length;
 
-            // Clear table
-            batteryTableBody.innerHTML = '';
-
-            // Add battery stats to table
-            batApps.forEach((batt) => {
-                const row = document.createElement('tr');
-                const pkgName = batt.package_name || '';
-                row.setAttribute('data-package', pkgName.toLowerCase());
-                
-                // Format CPU time
-                const cpuTimeMs = batt.total_cpu_time_ms || 0;
-                const cpuTimeStr = cpuTimeMs > 0 ? formatTime(cpuTimeMs) : '-';
-                
-                // Format network usage
-                const networkRx = (batt.network_rx_mobile || 0) + (batt.network_rx_wifi || 0);
-                const networkTx = (batt.network_tx_mobile || 0) + (batt.network_tx_wifi || 0);
-                const networkStr = (networkRx > 0 || networkTx > 0) 
-                    ? `${formatBytes(networkRx)} / ${formatBytes(networkTx)}`
-                    : '-';
-                
-                // Format wakelock time
-                const wakelockTimeMs = batt.total_wakelock_time_ms || 0;
-                const wakelockStr = wakelockTimeMs > 0 ? formatTime(wakelockTimeMs) : '-';
-                
-                // Format job time
-                const jobTimeMs = batt.total_job_time_ms || 0;
-                const jobCount = batt.total_job_count || 0;
-                const jobStr =
-                    jobTimeMs > 0
-                        ? formatTime(jobTimeMs) + (jobCount ? ' (' + jobCount + ')' : '')
-                        : jobCount
-                          ? String(jobCount)
-                          : '-';
-
-                const fgMs = batt.foreground_service_time_ms || 0;
-                const fgStr = fgMs > 0 ? formatTime(fgMs) : '-';
-                
-                row.innerHTML = `
-                    <td>${pkgName || '-'}</td>
-                    <td>${batt.uid || '-'}</td>
-                    <td>${cpuTimeStr}</td>
-                    <td>${networkStr}</td>
-                    <td>${wakelockStr}</td>
-                    <td>${jobStr}</td>
-                    <td>${fgStr}</td>
-                `;
-                
-                batteryTableBody.appendChild(row);
+            const prepared = batApps.map(function (batt) {
+                const pkgName = batt.package_name != null ? String(batt.package_name) : '';
+                const uid = batt.uid != null ? String(batt.uid) : '';
+                const cpu = Number(batt.total_cpu_time_ms) || 0;
+                const rx = (Number(batt.network_rx_mobile) || 0) + (Number(batt.network_rx_wifi) || 0);
+                const tx = (Number(batt.network_tx_mobile) || 0) + (Number(batt.network_tx_wifi) || 0);
+                const wake = Number(batt.total_wakelock_time_ms) || 0;
+                const job = Number(batt.total_job_time_ms) || 0;
+                const jobCount = Number(batt.total_job_count) || 0;
+                const fg = Number(batt.foreground_service_time_ms) || 0;
+                return { batt, pkgName, uid, cpu, rx, tx, net: rx + tx, wake, job, jobCount, fg, drain: batteryAppDrainScore(batt) };
             });
+            const maxOf = function (key) {
+                return prepared.reduce(function (max, row) {
+                    return Math.max(max, row[key]);
+                }, 0);
+            };
+            const maxCpu = maxOf('cpu');
+            const maxNet = maxOf('net');
+            const maxWake = maxOf('wake');
+            const maxJob = maxOf('job');
+            const maxFg = maxOf('fg');
+            const signalCounts = { net: 0, wake: 0, job: 0, fg: 0 };
 
-            // Add search functionality
-            const searchInput = document.getElementById('battery-search');
-            if (searchInput) {
-                searchInput.addEventListener('input', (e) => {
-                    const query = e.target.value.toLowerCase();
-                    const rows = batteryTableBody.querySelectorAll('tr');
-                    let visibleCount = 0;
+            function battBar(ms, max, label) {
+                if (!ms) return '<td class="batt-empty">—</td>';
+                const pct = max > 0 ? Math.max(3, Math.round((ms / max) * 100)) : 100;
+                return '<td class="batt-num"><span class="batt-bar" style="--pct:' + pct + '">' + escapeHtml(label) + '</span></td>';
+            }
 
-                    rows.forEach(row => {
-                        const pkg = row.getAttribute('data-package');
-                        
-                        if (pkg.includes(query)) {
-                            row.style.display = '';
-                            visibleCount++;
-                        } else {
-                            row.style.display = 'none';
-                        }
-                    });
+            batteryTableBody.innerHTML = prepared
+                .map(function (row) {
+                    if (row.net > 0) signalCounts.net += 1;
+                    if (row.wake > 0) signalCounts.wake += 1;
+                    if (row.job > 0 || row.jobCount > 0) signalCounts.job += 1;
+                    if (row.fg > 0) signalCounts.fg += 1;
+                    const jobLabel = row.job > 0
+                        ? formatTime(row.job) + (row.jobCount ? ' · ' + row.jobCount : '')
+                        : row.jobCount
+                          ? String(row.jobCount)
+                          : '';
+                    const netCell = row.net > 0
+                        ? '<td class="batt-num"><span class="batt-bar batt-bar--net" style="--pct:' +
+                          (maxNet > 0 ? Math.max(3, Math.round((row.net / maxNet) * 100)) : 100) +
+                          '"><span class="batt-rx">↓ ' + escapeHtml(formatBytes(row.rx)) +
+                          '</span><span class="batt-tx">↑ ' + escapeHtml(formatBytes(row.tx)) +
+                          '</span></span></td>'
+                        : '<td class="batt-empty">—</td>';
+                    const pkgCell = row.pkgName
+                        ? '<button type="button" class="socket-owner-link" data-focus-package="' +
+                          escapeAttr(row.pkgName) +
+                          '" title="' + escapeAttr(row.pkgName) +
+                          '">' + escapeHtml(row.pkgName) + '</button>'
+                        : '—';
+                    return (
+                        '<tr class="batt-row" data-package="' + escapeAttr(row.pkgName.toLowerCase()) +
+                        '" data-uid="' + escapeAttr(row.uid) +
+                        '" data-cpu="' + row.cpu +
+                        '" data-net="' + row.net +
+                        '" data-wake="' + row.wake +
+                        '" data-job="' + row.job +
+                        '" data-fg="' + row.fg +
+                        '" data-drain="' + row.drain +
+                        '" data-has-net="' + (row.net > 0 ? '1' : '') +
+                        '" data-has-wake="' + (row.wake > 0 ? '1' : '') +
+                        '" data-has-job="' + (row.job > 0 || row.jobCount > 0 ? '1' : '') +
+                        '" data-has-fg="' + (row.fg > 0 ? '1' : '') +
+                        '"><td class="batt-pkg">' + pkgCell +
+                        '</td><td class="batt-num">' + escapeHtml(row.uid || '—') +
+                        '</td>' + battBar(row.cpu, maxCpu, row.cpu > 0 ? formatTime(row.cpu) : '') +
+                        netCell +
+                        battBar(row.wake, maxWake, row.wake > 0 ? formatTime(row.wake) : '') +
+                        battBar(row.job || row.jobCount, maxJob || 1, jobLabel) +
+                        battBar(row.fg, maxFg, row.fg > 0 ? formatTime(row.fg) : '') +
+                        '</tr>'
+                    );
+                })
+                .join('');
+
+            const batteryQuick = document.getElementById('battery-quick');
+            fillQuickFilters(batteryQuick, [
+                {
+                    id: 'signal',
+                    chips: [
+                        { key: 'net', label: listFilterText('batterySortNet', 'Network'), count: signalCounts.net },
+                        { key: 'wake', label: listFilterText('batterySortWake', 'Wakelock'), count: signalCounts.wake },
+                        { key: 'job', label: listFilterText('batterySortJob', 'Jobs'), count: signalCounts.job },
+                        { key: 'fg', label: listFilterText('batteryFilterFg', 'Foreground'), count: signalCounts.fg }
+                    ]
+                }
+            ]);
+
+            if (!batteryTableBody.dataset.pkgDelegated) {
+                batteryTableBody.dataset.pkgDelegated = '1';
+                batteryTableBody.addEventListener('click', function (ev) {
+                    const btn = ev.target.closest('.socket-owner-link');
+                    if (!btn || !batteryTableBody.contains(btn)) return;
+                    ev.preventDefault();
+                    focusPackageByName(btn.getAttribute('data-focus-package'));
                 });
             }
+
+            const searchInput = document.getElementById('battery-search');
+            const statusEl = document.getElementById('battery-filter-status');
+            const sortSel = document.getElementById('battery-sort');
+            const batteryTable = document.getElementById('battery-table');
+
+            function markBatterySort(mode) {
+                if (!batteryTable) return;
+                batteryTable.querySelectorAll('.proc-sort-btn').forEach(function (btn) {
+                    const on = btn.getAttribute('data-sort') === mode;
+                    btn.classList.toggle('is-active', on);
+                });
+            }
+
+            function sortBatteryRows() {
+                const mode = sortSel ? sortSel.value : 'drain';
+                const rows = Array.prototype.slice.call(batteryTableBody.querySelectorAll('.batt-row'));
+                rows.sort(function (a, b) {
+                    if (mode === 'package') {
+                        return (a.getAttribute('data-package') || '').localeCompare(b.getAttribute('data-package') || '');
+                    }
+                    if (mode === 'uid') {
+                        return (parseInt(a.getAttribute('data-uid'), 10) || 0) - (parseInt(b.getAttribute('data-uid'), 10) || 0);
+                    }
+                    const key = mode === 'cpu' ? 'data-cpu'
+                        : mode === 'net' ? 'data-net'
+                        : mode === 'wake' ? 'data-wake'
+                        : mode === 'job' ? 'data-job'
+                        : mode === 'fg' ? 'data-fg'
+                        : 'data-drain';
+                    return (parseFloat(b.getAttribute(key)) || 0) - (parseFloat(a.getAttribute(key)) || 0);
+                });
+                const frag = document.createDocumentFragment();
+                rows.forEach(function (row) { frag.appendChild(row); });
+                batteryTableBody.appendChild(frag);
+                markBatterySort(mode);
+            }
+
+            function selectedBatterySignals() {
+                const groups = listFilterSelected(batteryQuick);
+                return groups.signal || [];
+            }
+
+            function applyBatteryFilter() {
+                const query = searchInput ? (searchInput.value || '').toLowerCase().trim() : '';
+                const signals = selectedBatterySignals();
+                let shown = 0;
+                const rows = batteryTableBody.querySelectorAll('.batt-row');
+                rows.forEach(function (row) {
+                    const textOk = !query ||
+                        (row.getAttribute('data-package') || '').includes(query) ||
+                        (row.getAttribute('data-uid') || '').includes(query);
+                    const signalOk = !signals.length || signals.some(function (key) {
+                        return row.getAttribute('data-has-' + key) === '1';
+                    });
+                    const ok = textOk && signalOk;
+                    row.hidden = !ok;
+                    if (ok) shown += 1;
+                });
+                if (statusEl) {
+                    statusEl.textContent = listFilterText('filterShowing', 'Showing {n} of {total}')
+                        .replace('{n}', String(shown))
+                        .replace('{total}', String(rows.length));
+                }
+            }
+
+            bindQuickFilters(batteryQuick, function () { applyBatteryFilter(); });
+            if (searchInput) searchInput.oninput = function () { applyBatteryFilter(); };
+            if (sortSel) {
+                sortSel.onchange = function () {
+                    sortBatteryRows();
+                    applyBatteryFilter();
+                };
+            }
+            if (batteryTable) {
+                batteryTable._sortBattery = sortBatteryRows;
+                batteryTable._applyBattery = applyBatteryFilter;
+                if (!batteryTable.dataset.sortBound) {
+                    batteryTable.dataset.sortBound = '1';
+                    batteryTable.addEventListener('click', function (ev) {
+                        const btn = ev.target.closest('.proc-sort-btn');
+                        if (!btn || !batteryTable.contains(btn)) return;
+                        if (sortSel) sortSel.value = btn.getAttribute('data-sort') || 'drain';
+                        if (batteryTable._sortBattery) batteryTable._sortBattery();
+                        if (batteryTable._applyBattery) batteryTable._applyBattery();
+                    });
+                }
+            }
+            if (sortSel && sortSel.value !== 'drain') sortBatteryRows();
+            else markBatterySort('drain');
+            applyBatteryFilter();
         }
 
         const KNOWN_STORE_INSTALLERS = {
@@ -5770,26 +6309,19 @@
         }
 
         function renderMemoryParser(el, data) {
-            if (!Array.isArray(data) || data.length === 0) {
+            const snaps = asWasmArray(data).map(function (snap) {
+                return deepPlainForJson(mapPlainTop(snap) || snap);
+            }).filter(function (snap) { return snap && typeof snap === 'object'; });
+            if (!snaps.length) {
                 el.innerHTML = '<p style="color:var(--text-secondary)">No <code>MEMORY INFO (/proc/meminfo)</code> snapshots in this bugreport.</p>';
                 return;
             }
-            el.innerHTML = data.map(function (snap, i) {
-                const o = mapPlainTop(snap) || snap;
-                if (!o || typeof o !== 'object') return '';
-                const rows = Object.keys(o).sort().map(function (k) {
-                    const v = o[k];
-                    let disp;
-                    if (typeof v === 'number') {
-                        disp = v.toLocaleString() + ' <span style="color:var(--text-secondary);font-size:0.8rem">kB</span>';
-                    } else {
-                        disp = parserCellValue(v);
-                    }
-                    return '<tr><td style="font-weight:600;color:var(--text-secondary)">' + escapeHtml(k) + '</td><td>' + disp + '</td></tr>';
-                }).join('');
-                return '<div class="detail-section" style="margin-bottom:1rem"><strong>Snapshot ' + (i + 1) +
-                    '</strong><table class="info-table" style="margin-top:0.35rem">' + rows + '</table></div>';
-            }).join('');
+            if (typeof window.renderMemoryHtml !== 'function') {
+                el.innerHTML = '<p style="color:var(--error)">Memory view failed to load.</p>';
+                return;
+            }
+            el.innerHTML = window.renderMemoryHtml(snaps);
+            if (window.bindMemoryFilter) window.bindMemoryFilter(el);
         }
 
         function renderDevicePolicySectionValue(v) {
@@ -5813,103 +6345,13 @@
                     '<p style="color:var(--text-secondary)">No <code>DUMP OF SERVICE device_policy</code> section found.</p>';
                 return;
             }
-            const t = getDevicePolicyPack();
-            const intro = t.devicePolicyIntro || '';
-            const ph = escapeHtml(t.devicePolicyFilterPlaceholder || 'Filter…');
-            const keys = Object.keys(data);
-            const adminKeys = keys
-                .filter(function (k) {
-                    return k === 'device_admins' || /^device_admins_user_\d+$/.test(k);
-                })
-                .sort(function (a, b) {
-                    if (a === 'device_admins') return -1;
-                    if (b === 'device_admins') return 1;
-                    const na = parseInt((/^device_admins_user_(\d+)$/.exec(a) || [, '0'])[1], 10);
-                    const nb = parseInt((/^device_admins_user_(\d+)$/.exec(b) || [, '0'])[1], 10);
-                    return na - nb;
-                });
-            const preferred = ['profile_owner']
-                .concat(adminKeys)
-                .concat([
-                    'local_policies',
-                    'global_policies',
-                    'personal_apps_suspension',
-                    'overlay_packages',
-                    'device_policy_cache',
-                    'device_state_cache',
-                ]);
-            const ordered = [];
-            preferred.forEach(function (k) {
-                if (keys.indexOf(k) >= 0 && ordered.indexOf(k) < 0) ordered.push(k);
-            });
-            keys
-                .sort()
-                .forEach(function (k) {
-                    if (ordered.indexOf(k) < 0) ordered.push(k);
-                });
-
-            const blocks = ordered
-                .map(function (sectionKey) {
-                    const v = data[sectionKey];
-                    const blob = devicePolicySearchBlob(sectionKey, v);
-                    let body;
-                    if (sectionKey === 'profile_owner' && v && typeof v === 'object' && !Array.isArray(v)) {
-                        body = renderKeyValueTableFromObject(v);
-                    } else if (
-                        (sectionKey === 'device_admins' || /^device_admins_user_\d+$/.test(sectionKey)) &&
-                        Array.isArray(v)
-                    ) {
-                        body = renderDevicePolicyAdminsTable(v, t);
-                    } else if (
-                        (sectionKey === 'local_policies' || sectionKey === 'global_policies') &&
-                        v &&
-                        typeof v === 'object' &&
-                        !Array.isArray(v)
-                    ) {
-                        body = renderDevicePolicyRestrictionsTables(v, t);
-                    } else if (
-                        (sectionKey === 'personal_apps_suspension' || sectionKey === 'overlay_packages') &&
-                        v &&
-                        typeof v === 'object' &&
-                        !Array.isArray(v)
-                    ) {
-                        body = renderDevicePolicyNamedAppLists(v, t);
-                    } else {
-                        body = renderDevicePolicySectionValue(v);
-                    }
-                    return (
-                        '<article class="parser-dp-block" data-dp-search="' +
-                        escapeHtml(blob.slice(0, 24000)) +
-                        '"><h4 class="parser-dp-block-title">' +
-                        escapeHtml(devicePolicySectionHeading(sectionKey, t)) +
-                        '</h4><div class="parser-dp-block-body">' +
-                        body +
-                        '</div></article>'
-                    );
-                })
-                .join('');
-
-            el.innerHTML =
-                '<p class="parser-dp-intro">' +
-                intro +
-                '</p><div class="search-box parser-dp-search-wrap" style="margin:0 0 0.75rem">' +
-                '<span class="search-icon">🔍</span><input type="search" id="parser-device-policy-filter" class="parser-dp-filter" placeholder="' +
-                ph +
-                '" autocomplete="off" /></div><div class="parser-dp-blocks">' +
-                blocks +
-                '</div>';
-
-            const inp = document.getElementById('parser-device-policy-filter');
-            if (inp) {
-                const runFilter = function () {
-                    const q = inp.value.trim().toLowerCase();
-                    el.querySelectorAll('.parser-dp-block').forEach(function (blk) {
-                        const hay = (blk.getAttribute('data-dp-search') || '').toLowerCase();
-                        blk.style.display = !q || hay.indexOf(q) >= 0 ? '' : 'none';
-                    });
-                };
-                inp.addEventListener('input', runFilter);
+            const plain = deepPlainForJson(data);
+            if (typeof window.renderDevicePolicyHtml !== 'function') {
+                el.innerHTML = '<p style="color:var(--error)">Device policy view failed to load.</p>';
+                return;
             }
+            el.innerHTML = window.renderDevicePolicyHtml(plain, getDevicePolicyPack());
+            if (window.bindDevicePolicyFilter) window.bindDevicePolicyFilter(el);
         }
 
         function renderAdbParser(el, data) {
@@ -5936,24 +6378,15 @@
                 parts.push(g);
             }
             const dm = mapPlainTop(data.debugging_manager) || data.debugging_manager;
-            if (dm && typeof dm === 'object') {
-                let block = '<div class="detail-section" style="margin-top:0.75rem"><strong>Debugging manager</strong>';
-                const skip = { user_keys: true, keystore: true };
-                const sub = {};
-                Object.keys(dm).forEach(function (k) {
-                    if (!skip[k]) sub[k] = dm[k];
-                });
-                if (Object.keys(sub).length) block += renderKeyValueTableFromObject(sub);
-                if (Array.isArray(dm.user_keys_parsed) && dm.user_keys_parsed.length) {
-                    block += '<div style="margin-top:0.5rem"><strong>Authorized keys (parsed)</strong>' +
-                        renderObjectArrayTable(dm.user_keys_parsed) + '</div>';
+            if (dm && typeof dm === 'object' && typeof window.renderDebuggingManagerHtml === 'function') {
+                const view = Object.assign({}, dm);
+                if (view.keystore_parsed) view.keystore_parsed = mapPlainTop(view.keystore_parsed) || view.keystore_parsed;
+                if (view.user_keys_parsed) {
+                    view.user_keys_parsed = asWasmArray(view.user_keys_parsed).map(function (k) {
+                        return mapPlainTop(k) || k;
+                    });
                 }
-                if (dm.keystore_parsed && typeof dm.keystore_parsed === 'object') {
-                    block += '<div style="margin-top:0.5rem"><strong>Keystore hints</strong>' +
-                        renderKeyValueTableFromObject(dm.keystore_parsed) + '</div>';
-                }
-                block += '</div>';
-                parts.push(block);
+                parts.push(window.renderDebuggingManagerHtml(view));
             }
             const rest = {};
             Object.keys(data).forEach(function (k) {
@@ -6141,46 +6574,18 @@
             el.innerHTML = providers
                 .map(function (p, idx) {
                     const prov = deepPlainForJson(mapPlainTop(p) || p);
-                    let h =
-                        '<div class="detail-section" style="margin-bottom:1rem"><strong>Location provider ' +
-                        (idx + 1) +
-                        '</strong>';
-                    if (prov.type) {
-                        h +=
-                            '<p style="font-size:0.85rem;color:var(--text-secondary);margin:0.25rem 0">' +
-                            escapeHtml(String(prov.type)) +
-                            '</p>';
-                    }
-                    if (Object.prototype.hasOwnProperty.call(prov, 'last_availability')) {
-                        h +=
-                            '<p style="margin:0.35rem 0">Last availability: <strong>' +
-                            (prov.last_availability ? 'true' : 'false') +
-                            '</strong></p>';
-                    }
+                    if (!Array.isArray(prov.listeners)) prov.listeners = asWasmArray(prov.listeners);
+                    let extra = '';
                     if (privacyFieldPresent(prov.last_location_fine)) {
-                        h += renderPrivacyLocationSnapshot(prov.last_location_fine, 'Last location (fine)');
+                        extra += renderPrivacyLocationSnapshot(prov.last_location_fine, 'Last location (fine)');
                     }
                     if (privacyFieldPresent(prov.last_location_coarse)) {
-                        h += renderPrivacyLocationSnapshot(prov.last_location_coarse, 'Last location (coarse)');
+                        extra += renderPrivacyLocationSnapshot(prov.last_location_coarse, 'Last location (coarse)');
                     }
-                    if (privacyFieldPresent(prov.source)) {
-                        const src = deepPlainForJson(mapPlainTop(prov.source) || prov.source);
-                        h += '<div style="margin-top:0.65rem"><strong>Source</strong>';
-                        if (src && typeof src === 'object' && !Array.isArray(src)) {
-                            h += renderKeyValueTableFromObject(src);
-                        } else {
-                            h += '<p style="margin:0.25rem 0">' + parserCellValue(prov.source) + '</p>';
-                        }
-                        h += '</div>';
+                    if (typeof window.renderLocationProviderHtml === 'function') {
+                        return window.renderLocationProviderHtml(prov, idx, extra);
                     }
-                    if (Array.isArray(prov.listeners) && prov.listeners.length) {
-                        h +=
-                            '<div style="margin-top:0.65rem"><strong>Listeners</strong>' +
-                            renderObjectArrayTable(prov.listeners) +
-                            '</div>';
-                    }
-                    h += '</div>';
-                    return h;
+                    return extra;
                 })
                 .join('');
         }
@@ -8228,6 +8633,12 @@
         function filterSocketsByPackage(packageName) {
             if (!packageName) return;
             ensureSectionExpanded('network-sockets');
+            const quick = document.getElementById('network-sockets-quick');
+            if (quick) {
+                quick.querySelectorAll('.qf__chip[aria-pressed="true"]').forEach(function (btn) {
+                    btn.setAttribute('aria-pressed', 'false');
+                });
+            }
             const search = document.getElementById('network-sockets-search-input');
             if (search) {
                 search.value = packageName;
@@ -8254,8 +8665,13 @@
             countBadge.textContent = sockRows.length;
             const pack = i18nPack();
 
-            networkSocketsTableBody.innerHTML = sockRows
-                .map(function (rawSocket) {
+            const stateCounts = { up: 0, listen: 0, wait: 0 };
+            const protoCounts = {};
+            let externalCount = 0;
+            let packageCount = 0;
+
+            const renderedSockets = sockRows
+                .map(function (rawSocket, idx) {
                     const socket = mapPlainTop(rawSocket) || rawSocket;
                     const resolved = resolveSocketOwner(socket);
                     const protocol = socket.protocol || '-';
@@ -8301,20 +8717,20 @@
                             '" title="' +
                             escapeAttr(resolved.packageName) +
                             '">' +
-                            escapeHtml(resolved.label) +
+                            escapeHtml(resolved.packageName) +
                             '</button>' +
                             '<div class="socket-owner-meta">' +
-                            escapeHtml(pack.socketOwnerPackage || 'Package') +
+                            escapeHtml(pack.socketOwnerApp || 'App') +
                             '</div>';
                     } else if (resolved.kind === 'process' && resolved.processName) {
                         ownerCell =
                             '<span class="socket-owner" title="' +
                             escapeAttr(resolved.processName) +
                             '">' +
-                            escapeHtml(resolved.label) +
+                            escapeHtml(resolved.processName) +
                             '</span>' +
                             '<div class="socket-owner-meta">' +
-                            escapeHtml(pack.socketOwnerProcess || 'Process') +
+                            escapeHtml(pack.socketOwnerDaemon || 'System process') +
                             '</div>';
                     } else if (resolved.kind === 'uid' || (uid !== '-' && uid !== '0')) {
                         const hint = resolved.uidHint || uidOwnerPresentation('uid:' + uid);
@@ -8345,43 +8761,160 @@
                         ownerCell = '<span class="socket-owner socket-owner--muted">—</span>';
                     }
 
-                    return (
-                        '<tr class="socket-row" data-search-text="' +
-                        escapeAttr(search) +
+                    const view = describeSocket(socket);
+                    const stateClass =
+                        view.stateKind === 'up' ? ' is-up' :
+                        view.stateKind === 'listen' ? ' is-listen' :
+                        view.stateKind === 'wait' ? ' is-wait' : '';
+                    const stateKind = view.stateKind;
+                    const protoKey = String(protocol || '').toLowerCase();
+                    const external = socketIsExternal(remoteAddr);
+                    const ownerKind = resolved.isStale
+                        ? 'stale'
+                        : resolved.kind === 'package'
+                          ? 'package'
+                          : resolved.kind === 'process'
+                            ? 'process'
+                            : 'other';
+                    if (stateCounts[stateKind] != null) stateCounts[stateKind] += 1;
+                    if (protoKey && protoKey !== '-') protoCounts[protoKey] = (protoCounts[protoKey] || 0) + 1;
+                    if (external) externalCount += 1;
+                    if (ownerKind === 'package') packageCount += 1;
+                    const uidName = androidUidName(uid);
+                    const stateLabel = socketStateLabel(state, view.kind, pack);
+                    const groupKey = resolved.kind === 'package' && resolved.packageName
+                        ? 'pkg:' + resolved.packageName
+                        : resolved.kind === 'process' && resolved.processName
+                          ? 'proc:' + resolved.processName
+                          : resolved.isStale
+                            ? 'stale'
+                            : uid !== '-' && uid !== '0'
+                              ? 'uid:' + uid
+                              : 'other';
+
+                    return {
+                        idx: idx,
+                        groupKey: groupKey,
+                        ownerKind: ownerKind,
+                        ownerCell: ownerCell,
+                        sortName: (resolved.packageName || resolved.processName || uid || '').toLowerCase(),
+                        html:
+                        '<article class="sock-card socket-row" data-sock-index="' +
+                        idx +
+                        '" data-search-text="' +
+                        escapeAttr(search + ' ' + view.searchExtra) +
                         '" data-uid="' +
                         escapeAttr(uid) +
                         '" data-package="' +
                         escapeAttr((resolved.packageName || '').toLowerCase()) +
                         '" data-owner="' +
                         escapeAttr(ownerSearch) +
+                        '" data-qf-state="' +
+                        escapeAttr(stateKind) +
+                        '" data-qf-proto="' +
+                        escapeAttr(protoKey) +
+                        '" data-qf-focus="' +
+                        (external ? 'external' : '') +
+                        '" data-qf-owner="' +
+                        escapeAttr(ownerKind) +
+                        '"><div class="sock-card__head"><span class="sock-card__proto">' +
+                        escapeHtml(view.kindLabel) +
+                        '</span>' +
+                        (view.family ? '<span class="sock-card__fam">' + escapeHtml(view.family) + '</span>' : '') +
+                        '<span class="sock-card__state' +
+                        stateClass +
                         '">' +
-                        '<td><code>' +
-                        escapeHtml(protocol) +
-                        '</code></td>' +
-                        '<td><code class="socket-endpoint">' +
-                        escapeHtml(localAddr) +
-                        '</code></td>' +
-                        '<td><code class="socket-endpoint">' +
-                        escapeHtml(remoteAddr) +
-                        '</code></td>' +
-                        '<td>' +
-                        escapeHtml(state) +
-                        '</td>' +
-                        '<td class="socket-owner-cell">' +
-                        ownerCell +
-                        '</td>' +
-                        '<td>' +
-                        escapeHtml(uid) +
-                        '</td></tr>'
+                        escapeHtml(stateLabel) +
+                        '</span>' +
+                        (uid !== '-' ? '<span class="sock-card__uid">uid ' + escapeHtml(uid) + (uidName ? ' · ' + escapeHtml(uidName) : '') + '</span>' : '') +
+                        '</div>' +
+                        socketFlowHtml(view, pack) +
+                        '</article>'
+                    };
+                });
+
+            const socketGroups = [];
+            const socketGroupMap = {};
+            renderedSockets.forEach(function (item) {
+                let group = socketGroupMap[item.groupKey];
+                if (!group) {
+                    group = {
+                        key: item.groupKey,
+                        ownerKind: item.groupKey.indexOf('pkg:') === 0
+                            ? 'package'
+                            : item.groupKey.indexOf('proc:') === 0
+                              ? 'process'
+                              : item.groupKey.indexOf('uid:') === 0
+                                ? 'uid'
+                                : item.ownerKind,
+                        ownerCell: item.ownerCell,
+                        sortName: item.sortName,
+                        items: []
+                    };
+                    socketGroupMap[item.groupKey] = group;
+                    socketGroups.push(group);
+                }
+                group.items.push(item);
+            });
+            const ownerRank = { package: 0, process: 1, uid: 2, stale: 3, other: 4 };
+            socketGroups.sort(function (a, b) {
+                const rank = (ownerRank[a.ownerKind] == null ? 9 : ownerRank[a.ownerKind]) -
+                    (ownerRank[b.ownerKind] == null ? 9 : ownerRank[b.ownerKind]);
+                if (rank) return rank;
+                if (b.items.length !== a.items.length) return b.items.length - a.items.length;
+                return a.sortName.localeCompare(b.sortName);
+            });
+
+            networkSocketsTableBody.innerHTML = socketGroups
+                .map(function (group) {
+                    return (
+                        '<section class="sock-group">' +
+                        '<header class="sock-group__head">' +
+                        group.ownerCell +
+                        '<span class="sock-group__count">' +
+                        escapeHtml((pack.socketGroupCount || '{n} sockets').replace('{n}', String(group.items.length))) +
+                        '</span></header><div class="sock-group__list">' +
+                        group.items.map(function (item) { return item.html; }).join('') +
+                        '</div></section>'
                     );
                 })
                 .join('');
 
-            networkSocketsTableBody.querySelectorAll('tr.socket-row').forEach(function (row, idx) {
+            const socketQuick = document.getElementById('network-sockets-quick');
+            const protoChips = topCountChips(protoCounts, 6, 1);
+            fillQuickFilters(socketQuick, [
+                {
+                    id: 'state',
+                    chips: [
+                        { key: 'up', label: listFilterText('filterEstablished', 'Established'), count: stateCounts.up },
+                        { key: 'listen', label: listFilterText('filterListening', 'Listening'), count: stateCounts.listen },
+                        { key: 'wait', label: listFilterText('filterWaiting', 'Waiting'), count: stateCounts.wait }
+                    ]
+                },
+                {
+                    id: 'proto',
+                    chips: protoChips.length > 1
+                        ? protoChips.map(function (item) {
+                              return { key: item.key, label: socketProtoChipLabel(item.key), count: item.count };
+                          })
+                        : []
+                },
+                {
+                    id: 'focus',
+                    chips: [{ key: 'external', label: listFilterText('filterExternal', 'External'), count: externalCount }]
+                },
+                {
+                    id: 'owner',
+                    chips: [{ key: 'package', label: listFilterText('filterPackage', 'Package'), count: packageCount }]
+                }
+            ]);
+
+            networkSocketsTableBody.querySelectorAll('.socket-row').forEach(function (row) {
                 row.addEventListener('click', function (ev) {
                     if (ev.target.closest('.socket-owner-link')) return;
+                    const idx = Number(row.getAttribute('data-sock-index'));
                     const socket = mapPlainTop(sockRows[idx]) || sockRows[idx];
-                    showSocketDetails(socket);
+                    if (socket) showSocketDetails(socket);
                 });
             });
 
@@ -8398,15 +8931,243 @@
             }
 
             const searchInput = document.getElementById('network-sockets-search-input');
-            if (searchInput) {
-                searchInput.oninput = function (e) {
-                    const query = (e.target.value || '').toLowerCase().trim();
-                    networkSocketsTableBody.querySelectorAll('tr').forEach(function (row) {
-                        const hay = row.getAttribute('data-search-text') || '';
-                        row.style.display = !query || hay.includes(query) ? '' : 'none';
+            const statusEl = document.getElementById('network-sockets-filter-status');
+            const emptyEl = document.getElementById('network-sockets-filter-empty');
+            const moreBtn = document.getElementById('network-sockets-more');
+            let visibleLimit = LIST_FILTER_PAGE;
+
+            function applySocketFilter(reset) {
+                if (reset) visibleLimit = LIST_FILTER_PAGE;
+                const query = searchInput ? (searchInput.value || '').toLowerCase().trim() : '';
+                const selected = listFilterSelected(socketQuick);
+                const rows = networkSocketsTableBody.querySelectorAll('.socket-row');
+                let matched = 0;
+                rows.forEach(function (row) {
+                    const hay = row.getAttribute('data-search-text') || '';
+                    const ok = (!query || hay.includes(query)) && listFilterMatches(row, selected);
+                    row.hidden = true;
+                    row.dataset.hit = ok ? '1' : '';
+                    if (ok) matched += 1;
+                });
+                let shown = 0;
+                networkSocketsTableBody.querySelectorAll('.sock-group').forEach(function (section) {
+                    const hits = section.querySelectorAll('.socket-row[data-hit="1"]');
+                    if (!hits.length || shown >= visibleLimit) {
+                        section.hidden = true;
+                        return;
+                    }
+                    section.hidden = false;
+                    Array.prototype.forEach.call(hits, function (row) {
+                        row.hidden = false;
+                        shown += 1;
                     });
+                });
+                if (statusEl) {
+                    statusEl.textContent = listFilterText('filterShowing', 'Showing {n} of {total}')
+                        .replace('{n}', String(shown))
+                        .replace('{total}', String(matched));
+                }
+                if (emptyEl) emptyEl.hidden = matched !== 0;
+                if (moreBtn) moreBtn.hidden = shown >= matched;
+            }
+
+            bindQuickFilters(socketQuick, applySocketFilter);
+            if (searchInput) searchInput.oninput = function () { applySocketFilter(true); };
+            if (moreBtn) {
+                moreBtn.onclick = function () {
+                    visibleLimit += LIST_FILTER_PAGE;
+                    applySocketFilter(false);
                 };
             }
+            applySocketFilter(true);
+        }
+
+        function androidUidName(uid) {
+            const n = Number(uid);
+            if (!Number.isFinite(n)) return '';
+            const names = KNOWN_ANDROID_NAMED_UIDS;
+            const keys = Object.keys(names);
+            for (let i = 0; i < keys.length; i++) {
+                if (names[keys[i]] === n && keys[i] !== 'phone') return keys[i].replace('_', ' ');
+            }
+            return '';
+        }
+
+        function socketKindOf(protocol) {
+            const p = String(protocol || '').toLowerCase();
+            if (p.indexOf('raw') === 0) return 'raw';
+            if (p.indexOf('udp') === 0) return 'udp';
+            if (p.indexOf('tcp') === 0) return 'tcp';
+            return 'other';
+        }
+
+        function socketFamilyOf(protocol) {
+            const p = String(protocol || '').toLowerCase();
+            if (p.endsWith('6')) return 'IPv6';
+            if (p === 'tcp' || p === 'udp' || p === 'raw') return 'IPv4';
+            return '';
+        }
+
+        function socketProtoChipLabel(protocol) {
+            const kind = socketKindOf(protocol);
+            const fam = socketFamilyOf(protocol);
+            const name = kind === 'tcp' ? 'TCP' : kind === 'udp' ? 'UDP' : kind === 'raw' ? 'RAW' : String(protocol || '').toUpperCase();
+            return fam ? name + ' ' + fam : name;
+        }
+
+        function socketHostPort(address, ip, port) {
+            let host = ip != null && String(ip) !== '' ? stripSocketIpZone(String(ip)) : '';
+            let p = port != null && String(port) !== '' ? String(port) : '';
+            if (!host && address) {
+                const s = stripSocketIpZone(String(address)).trim();
+                const bracket = s.match(/^\[([^\]]+)\](?::(\d+|\*))?$/);
+                if (bracket) {
+                    host = bracket[1];
+                    if (!p && bracket[2]) p = bracket[2];
+                } else {
+                    const plain = s.match(/^(.*):(\d+|\*)$/);
+                    if (plain && plain[1].indexOf(':') === -1) {
+                        host = plain[1];
+                        if (!p) p = plain[2];
+                    } else {
+                        host = s;
+                    }
+                }
+            }
+            host = normalizeSocketHost(host);
+            if (p === '*') p = '0';
+            return { host: host, port: p };
+        }
+
+        function normalizeSocketHost(host) {
+            let h = stripSocketIpZone(String(host || '')).trim();
+            const wrapped = h.match(/^\[([^\]]+)\](?::(\d+|\*))?$/);
+            if (wrapped) h = wrapped[1];
+            h = h.replace(/^\[|\]$/g, '');
+            const mapped = h.match(/^::ffff:(?:0:)?(\d{1,3}(?:\.\d{1,3}){3})$/i);
+            if (mapped) return mapped[1];
+            const hex = h.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
+            if (hex) {
+                const hi = parseInt(hex[1], 16);
+                const lo = parseInt(hex[2], 16);
+                if (Number.isFinite(hi) && Number.isFinite(lo)) {
+                    return ((hi >> 8) & 255) + '.' + (hi & 255) + '.' + ((lo >> 8) & 255) + '.' + (lo & 255);
+                }
+            }
+            return h;
+        }
+
+        function socketHostIsAny(host) {
+            return !host || host === '::' || host === '0.0.0.0' || host === '*' || host === '::0';
+        }
+
+        function socketPortIsEmpty(port) {
+            return port == null || port === '' || port === '0' || port === '*';
+        }
+
+        function rawIpProtocolName(port) {
+            const names = {
+                1: 'ICMP',
+                2: 'IGMP',
+                6: 'TCP',
+                17: 'UDP',
+                47: 'GRE',
+                50: 'ESP',
+                51: 'AH',
+                58: 'ICMPv6',
+                89: 'OSPF',
+                132: 'SCTP'
+            };
+            const n = Number(port);
+            if (!Number.isFinite(n)) return '';
+            return names[n] || '';
+        }
+
+        function socketStateLabel(state, kind, pack) {
+            if (/^(ESTABLISHED|ESTAB)$/i.test(state)) return (pack && pack.socketStateUp) || 'Established';
+            if (/^(LISTEN|LISTENING)$/i.test(state)) return (pack && pack.socketStateListen) || 'Listening';
+            if (!state || state === '-' || /^unknown$/i.test(state)) {
+                return kind === 'tcp' ? '—' : ((pack && pack.socketStateOpen) || 'Open');
+            }
+            return state;
+        }
+
+        function describeSocket(socket) {
+            const kind = socketKindOf(socket.protocol);
+            const family = socketFamilyOf(socket.protocol);
+            const local = socketHostPort(socket.local_address, socket.local_ip, socket.local_port);
+            const remote = socketHostPort(
+                socket.remote_address,
+                socket.remote_ip || socket.peer_ip,
+                socket.remote_port
+            );
+            const stateKind = socketStateKind(socket.state || '');
+            const noPeer = stateKind === 'listen' || (socketHostIsAny(remote.host) && socketPortIsEmpty(remote.port));
+            const rawName = kind === 'raw' ? rawIpProtocolName(local.port) : '';
+            const kindLabel = kind === 'tcp' ? 'TCP' : kind === 'udp' ? 'UDP' : kind === 'raw' ? 'RAW' : String(socket.protocol || 'SOCKET').toUpperCase();
+            const searchExtra = [
+                kindLabel,
+                family,
+                rawName,
+                noPeer ? 'no peer' : '',
+                socketHostIsAny(local.host) ? 'all interfaces' : ''
+            ].join(' ').toLowerCase();
+            return { kind: kind, kindLabel: kindLabel, family: family, local: local, remote: remote, stateKind: stateKind, noPeer: noPeer, rawName: rawName, searchExtra: searchExtra };
+        }
+
+        function socketHostHtml(host, family, pack) {
+            if (socketHostIsAny(host)) {
+                return '<span class="sock-card__any">' + escapeHtml((pack && pack.socketAllIfaces) || 'all interfaces') + '</span>';
+            }
+            const text = String(host).indexOf(':') !== -1 ? '[' + host + ']' : (host || '—');
+            return '<code>' + escapeHtml(text) + '</code>';
+        }
+
+        function socketFlowHtml(view, pack) {
+            const t = pack || {};
+            const portLabel = function (n) {
+                return (t.socketPort || 'port {n}').replace('{n}', String(n));
+            };
+            if (view.kind === 'raw') {
+                const named = view.rawName || String(view.local.port || '?');
+                return (
+                    '<div class="sock-card__flow"><span class="sock-card__role">' +
+                    escapeHtml(t.socketRaw || 'Raw socket') +
+                    '</span><code>' +
+                    escapeHtml(named) +
+                    '</code><span class="sock-card__hint">' +
+                    escapeHtml((t.socketProtoNum || 'protocol {n}').replace('{n}', view.local.port || '?')) +
+                    '</span></div>' +
+                    (view.noPeer
+                        ? '<div class="sock-card__peer">' + escapeHtml(t.socketNoPeer || 'No peer') + '</div>'
+                        : '')
+                );
+            }
+            const localCode = socketHostHtml(view.local.host, view.family, t) +
+                (view.local.port && view.local.port !== '0' ? '<span class="sock-card__port">' + escapeHtml(portLabel(view.local.port)) + '</span>' : '');
+            if (view.noPeer) {
+                const role = view.stateKind === 'listen'
+                    ? (t.socketListeningOn || 'Listening on')
+                    : (t.socketBoundOn || 'Bound on');
+                return (
+                    '<div class="sock-card__flow"><span class="sock-card__role">' +
+                    escapeHtml(role) +
+                    '</span>' +
+                    localCode +
+                    '</div><div class="sock-card__peer">' +
+                    escapeHtml(t.socketNoPeer || 'No peer') +
+                    '</div>'
+                );
+            }
+            const remoteCode = socketHostHtml(view.remote.host, view.family, t) +
+                (view.remote.port && view.remote.port !== '0' ? '<span class="sock-card__port">' + escapeHtml(portLabel(view.remote.port)) + '</span>' : '');
+            return (
+                '<div class="sock-card__flow">' +
+                localCode +
+                '<span class="sock-card__arrow" aria-hidden="true">→</span>' +
+                remoteCode +
+                '</div>'
+            );
         }
 
         function stripSocketIpZone(value) {
@@ -8441,6 +9202,10 @@
             }
 
             addRow('Protocol', socket.protocol, true);
+            if (socketKindOf(socket.protocol) === 'raw') {
+                const rawName = rawIpProtocolName(socket.local_port);
+                addRow('IP protocol', rawName ? rawName + ' (' + socket.local_port + ')' : socket.local_port, true);
+            }
             addRow('Local Address', socket.local_address, true);
             addRow('Local IP', socket.local_ip, true);
             if (socket.local_port != null) addRow('Local Port', socket.local_port, true);

@@ -54,7 +54,7 @@
 
         <section class="ioc-catalog" id="ioc-catalog">
             <h2 data-i18n="iocTitle">Rules &amp; IOCs</h2>
-            <p class="ioc-catalog-lead" data-i18n="iocLead">Every Sigma rule loaded by the Android and iPhone analyzers. Packs under amnesty/ credit Amnesty International Tech Security Lab; mvt/ packs are adapted from mvt-project/mvt-indicators.</p>
+            <p class="ioc-catalog-lead" data-i18n="iocLead">Every Sigma rule loaded by the Android and iPhone analyzers. Packs under amnesty/ credit Amnesty International Tech Security Lab; mvt/ packs are adapted from mvt-project/mvt-indicators; stalkware/ covers commercial stalkerware.</p>
             <p class="ioc-catalog-credit">
                 <a href="https://github.com/AmnestyTech/investigations" target="_blank" rel="noopener noreferrer">AmnestyTech/investigations</a>
                 ·
@@ -95,7 +95,7 @@
                 navStatus: 'Rules & parsers',
                 navGitHub: 'GitHub',
                 iocTitle: 'Rules & IOCs',
-                iocLead: 'Every Sigma rule loaded by the Android and iPhone analyzers. Packs under amnesty/ credit Amnesty International Tech Security Lab; mvt/ packs are adapted from mvt-project/mvt-indicators.',
+                iocLead: 'Every Sigma rule loaded by the Android and iPhone analyzers. Packs under amnesty/ credit Amnesty International Tech Security Lab; mvt/ packs are adapted from mvt-project/mvt-indicators; stalkware/ covers commercial stalkerware.',
                 iocSearch: 'Search',
                 iocSearchPlaceholder: 'Filter by title, id, file, or category…',
                 iocLoading: 'Loading {n} rule files…',
@@ -109,6 +109,7 @@
                 catAndroid: 'android',
                 catIos: 'ios',
                 catSpyware: 'spyware',
+                catStalkware: 'stalkware',
                 catMvt: 'mvt',
                 catOther: 'other'
             },
@@ -123,7 +124,7 @@
                 navStatus: 'Règles & parseurs',
                 navGitHub: 'GitHub',
                 iocTitle: 'Règles & IoC',
-                iocLead: 'Toutes les règles Sigma chargées par les analyseurs Android et iPhone. Les packs amnesty/ sont crédités à Amnesty International Tech Security Lab ; les packs mvt/ viennent de mvt-project/mvt-indicators.',
+                iocLead: 'Toutes les règles Sigma chargées par les analyseurs Android et iPhone. Les packs amnesty/ sont crédités à Amnesty International Tech Security Lab ; les packs mvt/ viennent de mvt-project/mvt-indicators ; stalkware/ couvre les stalkerwares commerciaux.',
                 iocSearch: 'Rechercher',
                 iocSearchPlaceholder: 'Filtrer par titre, id, fichier ou catégorie…',
                 iocLoading: 'Chargement de {n} fichiers…',
@@ -137,6 +138,7 @@
                 catAndroid: 'android',
                 catIos: 'ios',
                 catSpyware: 'spyware',
+                catStalkware: 'stalkware',
                 catMvt: 'mvt',
                 catOther: 'autre'
             },
@@ -151,7 +153,7 @@
                 navStatus: '规则与解析器',
                 navGitHub: 'GitHub',
                 iocTitle: '规则与 IoC',
-                iocLead: 'Android / iPhone 分析器加载的全部 Sigma 规则。amnesty/ 归功于 Amnesty International Tech Security Lab；mvt/ 改编自 mvt-project/mvt-indicators。',
+                iocLead: 'Android / iPhone 分析器加载的全部 Sigma 规则。amnesty/ 归功于 Amnesty International Tech Security Lab；mvt/ 改编自 mvt-project/mvt-indicators；stalkware/ 为商业跟踪软件。',
                 iocSearch: '搜索',
                 iocSearchPlaceholder: '按标题、id、文件或分类筛选…',
                 iocLoading: '正在加载 {n} 个规则文件…',
@@ -165,6 +167,7 @@
                 catAndroid: 'android',
                 catIos: 'ios',
                 catSpyware: 'spyware',
+                catStalkware: 'stalkware',
                 catMvt: 'mvt',
                 catOther: '其他'
             }
@@ -193,6 +196,7 @@
             if (url.indexOf('/android/') >= 0) return 'android';
             if (url.indexOf('/ios/') >= 0) return 'ios';
             if (url.indexOf('/spyware/') >= 0) return 'spyware';
+            if (url.indexOf('/stalkware/') >= 0) return 'stalkware';
             if (url.indexOf('/mvt/') >= 0) return 'mvt';
             return 'other';
         }
@@ -272,13 +276,14 @@
         function renderFilters() {
             const host = document.getElementById('ioc-filters');
             if (!host) return;
-            const cats = ['all', 'amnesty', 'android', 'ios', 'spyware', 'mvt'];
+            const cats = ['all', 'amnesty', 'android', 'ios', 'spyware', 'stalkware', 'mvt'];
             const labels = {
                 all: t('iocAll', 'All'),
                 amnesty: t('catAmnesty', 'amnesty'),
                 android: t('catAndroid', 'android'),
                 ios: t('catIos', 'ios'),
                 spyware: t('catSpyware', 'spyware'),
+                stalkware: t('catStalkware', 'stalkware'),
                 mvt: t('catMvt', 'mvt')
             };
             host.innerHTML = cats.map(function (c) {

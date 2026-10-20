@@ -6,7 +6,7 @@ description: |
   domains, brand infrastructure, package names (com.android.core.mn*), enrolment
   artefact path, sample APK hashes, and attributed OVH / DigitalOcean hosts.
   Package suffixes rotate between builds (mntan, mntau, mngam, mngag, …).
-author: IsMyPhonePwned
+author: Sebdraven https://github.com/sebdraven
 date: 2026/10/20
 logsource:
   product: android

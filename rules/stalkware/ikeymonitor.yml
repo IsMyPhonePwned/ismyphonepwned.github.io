@@ -5,7 +5,7 @@ description: |
   iKeyMonitor commercial stalkerware IoCs (packages, C2 domains, REST/WebSocket
   fingerprints, sample APK and signing-certificate SHA-256 hashes).
   Package names are often date-stamped weekly builds (e.g. com.android.internet.aYYYYMMDD).
-author: IsMyPhonePwned
+author: Sebdraven https://github.com/sebdraven
 date: 2026/10/20
 logsource:
   product: android

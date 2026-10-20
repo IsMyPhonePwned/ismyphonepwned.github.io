@@ -17,6 +17,7 @@ Additional packs credit Osservatorio Nessuno, iVerify, Mythos Sentinel, ESET, Cy
 | `android/CVE/` | Android CVE exploit signatures (FreeType 2025-27363, Quram 2025-21055, …) |
 | `ios/darksword/` | DarkSword / Coruna iOS campaign (network, logs, filesystem, crash cluster) |
 | `spyware/` | Vendor spyware without an MVT pack (Cellebrite, NoviSpy) |
+| `stalkware/` | Commercial stalkerware (iKeyMonitor, Hoverwatch/Snoopza, Mobile Tracker Free) |
 | `mvt/` | MVT indicator packs (Spyrtacus, Morpheus, BTMOB, Assistenza Clienti, Coruna/DarkSword, Predator RF return) — single source; do not duplicate under `spyware/` |
 
 ## Loading

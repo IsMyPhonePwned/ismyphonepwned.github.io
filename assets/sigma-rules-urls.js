@@ -24,6 +24,10 @@ window.SIGMA_RULE_URLS = [
     // Spyware / vendor-specific (no MVT duplicate — MVT packs live under mvt/)
     '/rules/spyware/cellebrite.yml',
     '/rules/spyware/novispy.yml',
+    // Commercial stalkerware
+    '/rules/stalkware/ikeymonitor.yml',
+    '/rules/stalkware/hoverwatch-snoopza.yml',
+    '/rules/stalkware/mobile-tracker-free.yml',
     // MVT indicator packs (issues #44/#46/#48, PRs #16/#56/#57, …)
     '/rules/mvt/2026_04_09_sio_spyrtacus.yml',
     '/rules/mvt/2026_04_23_ips_morpheus.yml',

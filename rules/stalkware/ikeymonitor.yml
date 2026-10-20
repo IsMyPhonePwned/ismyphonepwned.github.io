@@ -1,0 +1,81 @@
+title: Stalkware - iKeyMonitor
+id: f61d49f3-ac79-46ef-b870-b9aab9b5258e
+status: stable
+description: |
+  iKeyMonitor commercial stalkerware IoCs (packages, C2 domains, REST/WebSocket
+  fingerprints, sample APK and signing-certificate SHA-256 hashes).
+  Package names are often date-stamped weekly builds (e.g. com.android.internet.aYYYYMMDD).
+author: IsMyPhonePwned
+date: 2026/10/20
+logsource:
+  product: android
+  category: stalkware
+level: high
+detection:
+  selection_pkg:
+    pkg:
+      - 'com.android.internet.a20251031'
+      - 'com.sec.android.internet.im.service.im20210815'
+      - 'com.a_Xf1Mc3Fh6Tb0Bv1Od8Jv'
+  selection_package_name:
+    package_name:
+      - 'com.android.internet.a20251031'
+      - 'com.sec.android.internet.im.service.im20210815'
+      - 'com.a_Xf1Mc3Fh6Tb0Bv1Od8Jv'
+  selection_pkg_prefix:
+    package_name|startswith:
+      - 'com.android.internet.a'
+      - 'com.sec.android.internet.im.service'
+  selection_process:
+    process_name|contains:
+      - 'com.android.internet.a'
+      - 'com.sec.android.internet.im.service'
+      - 'com.a_Xf1Mc3Fh6Tb0Bv1Od8Jv'
+  selection_domain:
+    destination_domain:
+      - 'ikmws.awsapi.io'
+      - 'ikmws-mirror.awsapi.io'
+      - 'ikm-sv2.awsapi.io'
+      - 'ikm-sv3.awsapi.io'
+      - 'ikm-sv4.awsapi.io'
+      - 'emcpanel.com'
+  selection_hash:
+    file_hash:
+      - '580d0e5f3790c2e446360e642c2a3e8d07ce2502ba1a2a92a0478e700a133789'
+      - 'bf2b3610814694ab86fb34370cbd97ef4520c7850db4c46f6c2f912aae424761'
+      - '769fc64d8e05b842319e65e087b1d8fd7ee4c9c192a7541f9c257dd71834aae1'
+      - '3cdc9034cce775d12b1998322a3fca2c7384e197290ee851c205a91786a61e43'
+  selection_message:
+    message|contains:
+      - 'ikmws.awsapi.io'
+      - 'ikmws-mirror.awsapi.io'
+      - 'ikm-sv2.awsapi.io'
+      - 'ikm-sv3.awsapi.io'
+      - 'ikm-sv4.awsapi.io'
+      - 'emcpanel.com'
+      - 'index.php?m=api&a='
+      - 'uoload_'
+      - 'com.ab.ikm.portal.request'
+      - '<IKMService>'
+      - '<ThreerdPartySecurityapps>'
+      - 'com.android.internet.a'
+      - 'com.sec.android.internet.im.service'
+      - 'com.a_Xf1Mc3Fh6Tb0Bv1Od8Jv'
+      - '/sdcard/Android/.bak/.com.android.internet.service/.device.data'
+      - '/ikm_logs/'
+      - 'smartkey://'
+      - 'AccessibilityPreference'
+      - 'ACTION_.CHECK._ALIVE'
+      - 'ACTION_.CHECK._WEBSOCKET'
+      - 'B.k_BackgWork'
+      - 'B.k.BackClipAc'
+      - '580d0e5f3790c2e446360e642c2a3e8d07ce2502ba1a2a92a0478e700a133789'
+      - 'bf2b3610814694ab86fb34370cbd97ef4520c7850db4c46f6c2f912aae424761'
+  condition: >
+    selection_pkg or selection_package_name or selection_pkg_prefix
+    or selection_process or selection_domain or selection_hash or selection_message
+tags:
+  - attack.command_and_control
+  - attack.collection
+  - stalkware.ikeymonitor
+  - stalkware

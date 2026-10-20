@@ -1,0 +1,119 @@
+title: Stalkware - Mobile Tracker Free
+id: daafd55e-6429-4174-9279-6aa3c3ee064a
+status: stable
+description: |
+  Mobile Tracker Free commercial stalkerware IoCs (payload and dropper packages,
+  C2 and TURN domains, Firebase project ID, unique User-Agents, sample APK and
+  signing-certificate SHA-256 hashes). Package names often include a year or
+  build date (phone.monitor2026, monitor.phone062026, …).
+  Cloudflare anycast IPs for tracker-free.com / mobile-tracker-free.com are
+  omitted because they are shared and must not be used as standalone blocks.
+author: Sebdraven https://github.com/sebdraven
+date: 2026/10/20
+logsource:
+  product: android
+  category: stalkware
+level: high
+detection:
+  selection_pkg:
+    pkg:
+      - 'phone.monitor2026'
+      - 'monitor.phone062026'
+      - 'mobile.parental2025'
+      - 'com.protect2025'
+      - 'phone.child2024'
+      - 'mobile.monitor.child2022'
+      - 'phone.child2020'
+      - 'com.mtf.protect'
+      - 'com.mtf.download'
+  selection_package_name:
+    package_name:
+      - 'phone.monitor2026'
+      - 'monitor.phone062026'
+      - 'mobile.parental2025'
+      - 'com.protect2025'
+      - 'phone.child2024'
+      - 'mobile.monitor.child2022'
+      - 'phone.child2020'
+      - 'com.mtf.protect'
+      - 'com.mtf.download'
+  selection_pkg_prefix:
+    package_name|startswith:
+      - 'phone.monitor'
+      - 'monitor.phone'
+      - 'mobile.parental'
+      - 'com.protect20'
+      - 'phone.child'
+      - 'mobile.monitor.child'
+      - 'com.mtf.'
+  selection_process:
+    process_name|contains:
+      - 'phone.monitor'
+      - 'monitor.phone'
+      - 'mobile.parental'
+      - 'com.protect20'
+      - 'phone.child'
+      - 'mobile.monitor.child'
+      - 'com.mtf.protect'
+      - 'com.mtf.download'
+      - 'com.app.service.AccessService'
+      - 'com.app.service.MyFirebaseMTFMessagingService'
+      - 'com.app.received.PolicyActivate'
+  selection_domain:
+    destination_domain:
+      - 'mobile-track-data.com'
+      - 'mobile-tracker-free.com'
+      - 'turn-server-mobile.com'
+      - 'tracker-free.com'
+      - 'apkv2.tracker-free.com'
+      - 'appapk.mtf.re'
+  selection_ip:
+    remote_ip:
+      - '51.159.22.22'
+  selection_hash:
+    file_hash:
+      - 'ac7d51ff1f77469f0d1dae322edc72c849c51ac71195362ba2ad5f86751b0ce7'
+      - 'c76d9b3ef2bcda430a9b60fa4db82db298f07e996801de91f6377d6c3dfc86a3'
+      - 'd83d68fc7dc8b31a96d8b0326d567336bf63bf3c5088529087540f5def958a97'
+  selection_message:
+    message|contains:
+      - 'mobile-track-data.com'
+      - 'mobile-tracker-free.com'
+      - 'turn-server-mobile.com'
+      - 'tracker-free.com'
+      - 'apkv2.tracker-free.com'
+      - 'appapk.mtf.re'
+      - 'myappmobile-537f7'
+      - 'ILAHK20DKA8751LD9D729OJD6D7HJDK2AQMFT2019'
+      - 'KABNKNHFFHDHYD58698347556988AD89GH2020'
+      - 'downloadAPK.php'
+      - 'getVersionApp.php'
+      - 'getURLFTP.php'
+      - 'remoteControl/setLog.php'
+      - 'dashboard/setInfoPhone.php'
+      - 'user/verifIDPhone.php'
+      - 'sim/setChangeSIM.php'
+      - 'REALM=turn-server-mobile.com'
+      - "SOFTWARE: Coturn-4.6.1 'Gorst'"
+      - 'socialNetwork/noRoot/insert'
+      - 'socialNetwork/root/insert'
+      - 'com.app.service.AccessService'
+      - 'com.app.service.MyFirebaseMTFMessagingService'
+      - 'com.app.received.PolicyActivate'
+      - 'com.mtf.protect'
+      - 'com.mtf.download'
+      - 'phone.monitor'
+      - 'monitor.phone'
+      - 'mobile.parental'
+      - '51.159.22.22'
+      - 'ac7d51ff1f77469f0d1dae322edc72c849c51ac71195362ba2ad5f86751b0ce7'
+      - 'c76d9b3ef2bcda430a9b60fa4db82db298f07e996801de91f6377d6c3dfc86a3'
+  condition: >
+    selection_pkg or selection_package_name or selection_pkg_prefix
+    or selection_process or selection_domain or selection_ip
+    or selection_hash or selection_message
+tags:
+  - attack.command_and_control
+  - attack.collection
+  - stalkware.mobile_tracker_free
+  - stalkware

@@ -1,0 +1,164 @@
+title: Stalkware - Hoverwatch / Snoopza
+id: 39b25970-152e-4445-b844-e5437603f45f
+status: stable
+description: |
+  Hoverwatch (HWA) and Snoopza (SNPA) commercial stalkerware IoCs: bootstrap C2
+  domains, brand infrastructure, package names (com.android.core.mn*), enrolment
+  artefact path, sample APK hashes, and attributed OVH / DigitalOcean hosts.
+  Package suffixes rotate between builds (mntan, mntau, mngam, mngag, …).
+author: IsMyPhonePwned
+date: 2026/10/20
+logsource:
+  product: android
+  category: stalkware
+level: high
+detection:
+  selection_pkg:
+    pkg:
+      - 'com.android.core.mntan'
+      - 'com.android.core.mntau'
+      - 'com.android.core.mngam'
+      - 'com.android.core.mngag'
+  selection_package_name:
+    package_name:
+      - 'com.android.core.mntan'
+      - 'com.android.core.mntau'
+      - 'com.android.core.mngam'
+      - 'com.android.core.mngag'
+  selection_pkg_prefix:
+    package_name|startswith:
+      - 'com.android.core.mnt'
+      - 'com.android.core.mnga'
+  selection_process:
+    process_name|contains:
+      - 'com.android.core.mnt'
+      - 'com.android.core.mnga'
+  selection_domain:
+    destination_domain:
+      - 'a.syncvch.com'
+      - 'i1.hoverwatch.com'
+      - 'hwa.cab'
+      - 'snsync.com'
+      - 'api.snoopza.com'
+      - 'app.snoopza.com'
+      - 'app.hoverwatch.com'
+      - 'app2.hoverwatch.com'
+      - 'i3.hoverwatch.com'
+      - 'hoverwatch.com'
+      - 'hover.watch'
+      - 'blog.hoverwatch.com'
+      - 'dev.hoverwatch.com'
+      - 'dev.snoopza.com'
+      - 'get.hover.watch'
+      - 'app.hover.watch'
+      - 'd.hover.watch'
+      - 'i.hoverwatch.com'
+      - 'my.hoverwatch.com'
+      - 'viewer.hoverwatch.com'
+      - 'get.snoopza.com'
+      - 'my.snoopza.com'
+      - 'hw.cab'
+      - 'w.hw.cab'
+      - 'm.hw.cab'
+      - 'a.hw.cab'
+      - 'office.hw.cab'
+      - 'pc.hw.cab'
+      - 'pc2.hw.cab'
+      - 'hwa.cab'
+      - 'hwm.cab'
+      - 'hww.cab'
+      - 'hws.icu'
+      - 'a.hws.icu'
+      - 'v.hws.icu'
+      - 'my.hws.icu'
+      - 'syncvch.com'
+      - 'gethw.me'
+      - 'm.gethw.me'
+      - 'w.gethw.me'
+      - 'gethw.net'
+      - 'insthw.net'
+      - 'insthw.com'
+      - 'insthw.org'
+      - 'insthw.info'
+      - 'insthw.xyz'
+      - 'insthw.online'
+      - 'hwinst.xyz'
+      - 'hwget.xyz'
+      - 'a.hwget.xyz'
+      - 'hw2get.xyz'
+      - 'inshw2.xyz'
+      - 'inst2hw.xyz'
+      - 'hw2int.xyz'
+      - 'hw2in.xyz'
+      - 'hw2sin.xyz'
+      - 'ovh1.refog.com'
+      - 'ovh3.refog.com'
+      - 'ovh3.hw.cab'
+      - 'dev2.refog.com'
+  selection_ip:
+    remote_ip:
+      - '192.99.170.173'
+      - '198.50.155.157'
+      - '158.69.24.236'
+      - '149.56.26.44'
+      - '188.130.241.205'
+      - '104.236.73.120'
+      - '159.65.240.20'
+  selection_hash:
+    file_hash:
+      - '148cee4508bff32e54e3539d9d6190a12736c310ea31b1a4e19612cc922d5b26'
+      - '49eb2fb7f5968909c06d75d71cf8be0849038e213fddbc1e899c835367c63b50'
+      - '71190de70d9da9dc52f08739837bceb4d65e2e2b5af8cf2cf7ad269d37eabc6c'
+      - 'd092e50b61ab832b9c20b453c418fec4b6b5f05168b589dc2bdd45134d087e79'
+      - '3faacaf1994eba94aacd14e97e5bf7ea04e14ed33664041c9321561000bbc8cf'
+      - '7cdd2c1df453e1db2845f3e26cb73ea9012f2bed64485da7278a5a88f8f67895'
+      - 'e22a2762b626abca1239a4100883349ba1e10ba110c85e9616443c80fd1d4b56'
+      - '3206994639eb0d9b90f75ee394e3f7f7938cc490b9d3e726fd36ffb47c92939b'
+      - 'b381c0594c19edf27fe02fb317bc6d2c7637ab68c35c4ea3b5d91c10ff469a12'
+      - '85e671aaa53ebccffa903efa090c4a065fc8fb6e75561386e506055bca8d704b'
+  selection_message:
+    message|contains:
+      - 'a.syncvch.com'
+      - 'i1.hoverwatch.com'
+      - 'hwa.cab'
+      - 'snsync.com'
+      - 'api.snoopza.com'
+      - 'app.snoopza.com'
+      - 'hoverwatch.com'
+      - 'hover.watch'
+      - 'snoopza.com'
+      - '/api/online/'
+      - '/api/online/programversion/HWA/'
+      - '/api/online/programversion/SNPA/'
+      - '/api/online/programversion/HWA_TST/'
+      - 'Android Monitor '
+      - 'x-auth-key'
+      - 'x-settings-ver'
+      - 'com.android.core.mnt'
+      - 'com.android.core.mnga'
+      - '/sdcard/dev_'
+      - 'AppInstState'
+      - '192.99.170.173'
+      - '198.50.155.157'
+      - '158.69.24.236'
+      - '149.56.26.44'
+      - '188.130.241.205'
+      - '104.236.73.120'
+      - '159.65.240.20'
+      - 'gethw.me'
+      - 'insthw.'
+      - 'hwget.xyz'
+      - 'hws.icu'
+      - 'syncvch.com'
+      - '148cee4508bff32e54e3539d9d6190a12736c310ea31b1a4e19612cc922d5b26'
+      - '49eb2fb7f5968909c06d75d71cf8be0849038e213fddbc1e899c835367c63b50'
+  condition: >
+    selection_pkg or selection_package_name or selection_pkg_prefix
+    or selection_process or selection_domain or selection_ip
+    or selection_hash or selection_message
+tags:
+  - attack.command_and_control
+  - attack.collection
+  - stalkware.hoverwatch
+  - stalkware.snoopza
+  - stalkware

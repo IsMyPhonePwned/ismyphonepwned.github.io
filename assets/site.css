@@ -163,8 +163,9 @@
 
         .header-actions {
             display: flex;
-            align-items: center;
-            gap: 0.75rem;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.35rem;
         }
 
         .header-toolbar {
@@ -4341,18 +4342,132 @@
     }
 }
 
-/* Buy Me a Coffee footer widget */
-.bmc-footer {
-    margin-top: 1.25rem;
+/* Sponsors (tiny logos → enlarge on hover/focus) */
+.sponsors-footer {
+    margin: 1.35rem 0 0;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--border);
+    text-align: center;
+}
+.sponsors-footer__label {
+    margin: 0 0 0.65rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    opacity: 0.85;
+}
+.sponsors-footer__list {
     display: flex;
+    flex-wrap: wrap;
     justify-content: center;
     align-items: center;
+    gap: 0.65rem 0.85rem;
+    min-height: 1.85rem;
+}
+.sponsor-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.85rem;
+    height: 1.1rem;
+    padding: 0.12rem 0.28rem;
+    border-radius: 5px;
+    background: #0a0a0a;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    text-decoration: none;
+    line-height: 0;
+    overflow: visible;
+    transition:
+        width 0.22s ease,
+        height 0.22s ease,
+        padding 0.22s ease,
+        border-color 0.22s ease,
+        box-shadow 0.22s ease,
+        transform 0.22s ease;
+    z-index: 1;
+}
+.sponsor-link img {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    pointer-events: none;
+}
+.sponsor-link:hover,
+.sponsor-link:focus-visible {
+    width: 6.5rem;
+    height: 2.4rem;
+    padding: 0.3rem 0.45rem;
+    border-color: rgba(255, 255, 255, 0.22);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+    transform: translateY(-2px);
+    z-index: 2;
+    outline: none;
+}
+.sponsor-link:focus-visible {
+    box-shadow:
+        0 0 0 2px var(--bg-primary),
+        0 0 0 4px var(--accent),
+        0 6px 18px rgba(0, 0, 0, 0.28);
+}
+@media (max-width: 480px) {
+    .sponsor-link {
+        width: 2.5rem;
+        height: 0.95rem;
+    }
+    .sponsor-link:hover,
+    .sponsor-link:focus-visible {
+        width: 5.75rem;
+        height: 2.1rem;
+    }
+}
+@media (hover: none) {
+    /* Touch: tap opens the link; keep logos compact */
+    .sponsor-link:hover {
+        width: 2.5rem;
+        height: 0.95rem;
+        padding: 0.12rem 0.28rem;
+        box-shadow: none;
+        transform: none;
+    }
+    .sponsor-link:focus-visible {
+        width: 5.75rem;
+        height: 2.1rem;
+        padding: 0.3rem 0.45rem;
+    }
+}
+
+/* Buy Me a Coffee — under lang/theme toolbar, compact & quiet */
+.bmc-footer {
+    margin: 0;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    line-height: 0;
+    opacity: 0.5;
+    transform: scale(0.48);
+    transform-origin: top right;
+    transition: opacity 0.2s ease;
+}
+.bmc-footer:hover,
+.bmc-footer:focus-within {
+    opacity: 0.88;
 }
 .bmc-footer a,
 .bmc-footer button,
 .bmc-footer img {
     width: auto !important;
     max-width: 100%;
+}
+@media (max-width: 768px) {
+    .bmc-footer {
+        transform: scale(0.42);
+        transform-origin: top right;
+        opacity: 0.45;
+    }
 }
 
 /* fakeMustache anonymizer */

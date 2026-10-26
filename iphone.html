@@ -430,7 +430,7 @@
                         </div>
                         <div id="iphone-accounts-card" class="iphone-dash-card hidden">
                             <h3 data-i18n="dashAccountsTitle">Accounts</h3>
-                            <p class="iphone-dash-card__lead" data-i18n="dashAccountsBlurb">Apple IDs, owner emails, and related identity rows from the accounts parser.</p>
+                            <p class="iphone-dash-card__lead" data-i18n="dashAccountsBlurb">Owner emails, org emails, Activation Lock, Apple IDs, contacts, and linked devices from the accounts analyser.</p>
                             <div id="iphone-accounts-mount"></div>
                         </div>
                         <div id="iphone-storage-card" class="iphone-dash-card hidden">
@@ -438,10 +438,40 @@
                             <p class="iphone-dash-card__lead" data-i18n="dashStorageBlurb">Mounted volumes and capacity from the disks parser.</p>
                             <div id="iphone-storage-mount"></div>
                         </div>
+                        <div id="iphone-integrity-card" class="iphone-dash-card hidden">
+                            <h3 data-i18n="dashIntegrityTitle">System partition integrity</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashIntegrityBlurb">Root mount sealed / read-only flags from mount.txt.</p>
+                            <div id="iphone-integrity-mount"></div>
+                        </div>
+                        <div id="iphone-collection-meta-card" class="iphone-dash-card hidden">
+                            <h3 data-i18n="dashCollectionMetaTitle">Collection metadata</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashCollectionMetaBlurb">taskSummary, errors/, summaries/, and sysdiagnose.log — useful when parsers return empty.</p>
+                            <div id="iphone-collection-meta-mount"></div>
+                        </div>
                         <div id="iphone-activation-card" class="iphone-dash-card hidden">
                             <h3 data-i18n="dashActivationTitle">Activation</h3>
-                            <p class="iphone-dash-card__lead" data-i18n="dashActivationBlurb">Activation state and hardware hints from mobileactivation.</p>
+                            <p class="iphone-dash-card__lead" data-i18n="dashActivationBlurb">Activation state, hardware hints, and DCRT/BAA attestation dumps from mobileactivation.</p>
                             <div id="iphone-activation-mount"></div>
+                        </div>
+                        <div id="iphone-ckks-card" class="iphone-dash-card hidden">
+                            <h3 data-i18n="dashCkksTitle">CloudKit Key Sync / PCS</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashCkksBlurb">ckksctl_status and pcsstatus dumps (iCloud key sync / Protected Cloud Storage).</p>
+                            <div id="iphone-ckks-mount"></div>
+                        </div>
+                        <div id="iphone-ota-card" class="iphone-dash-card hidden">
+                            <h3 data-i18n="dashOtaTitle">OTA / restore</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashOtaBlurb">OTAUpdateLogs restore_perform and related update / restore text.</p>
+                            <div id="iphone-ota-mount"></div>
+                        </div>
+                        <div id="iphone-usermgmt-card" class="iphone-dash-card hidden">
+                            <h3 data-i18n="dashUsermgmtTitle">User management</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashUsermgmtBlurb">umtool / usermanagerd personas and local user dumps.</p>
+                            <div id="iphone-usermgmt-mount"></div>
+                        </div>
+                        <div id="iphone-preferences-card" class="iphone-dash-card hidden">
+                            <h3 data-i18n="dashPreferencesTitle">Preferences dumps</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashPreferencesBlurb">Preferences/*.txt locale, Screen Time, and accessibility text dumps.</p>
+                            <div id="iphone-preferences-mount"></div>
                         </div>
                         <div id="iphone-paired-card" class="iphone-dash-card hidden">
                             <h3 data-i18n="dashPairedTitle">Paired / trusted entries</h3>
@@ -453,12 +483,17 @@
                             <p class="iphone-dash-card__lead" data-i18n="dashIoserviceBlurb">Compact IOService property preview (serial, model, chip).</p>
                             <div id="iphone-ioservice-mount"></div>
                         </div>
+                        <div id="iphone-mdm-card" class="iphone-dash-card hidden">
+                            <h3 data-i18n="dashMdmTitle">MDM / managed profiles</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashMdmBlurb">Managed configuration and profile snippets from mcstateshared / MCState.</p>
+                            <div id="iphone-mdm-mount"></div>
+                        </div>
                     </div>
 
                     <div id="iphone-dash-apps" class="iphone-dash-panel" role="tabpanel" data-dash-panel="apps" hidden>
                         <div class="iphone-dash-card">
                             <h3 data-i18n="dashAppsTitle">Applications</h3>
-                            <p class="iphone-dash-card__lead" data-i18n="dashAppsBlurb">Installed apps inventory from powerlogs App Info (mobipwn Packages), plus MI / install / TCC / iTunes sources.</p>
+                            <p class="iphone-dash-card__lead" data-i18n="dashAppsBlurb">Installed apps from the apps analyser (MobileInstallation, App Info, Store, TCC, and related sources).</p>
                             <div id="iphone-apps-mount"></div>
                         </div>
                         <div class="iphone-dash-card">
@@ -572,6 +607,16 @@
                             <p class="iphone-dash-card__lead" data-i18n="dashUsbLockdownBlurb">Attach, pair, trust, and usbmux messages from lockdownd.</p>
                             <div id="iphone-usb-lockdown-mount"></div>
                         </div>
+                        <div class="iphone-dash-card hidden" id="iphone-bluetooth-card">
+                            <h3 data-i18n="dashBluetoothTitle">Bluetooth / AWDL</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashBluetoothBlurb">Bluetooth status, AWDL, and companion-link dumps.</p>
+                            <div id="iphone-bluetooth-mount"></div>
+                        </div>
+                        <div class="iphone-dash-card hidden" id="iphone-wifi-diag-card">
+                            <h3 data-i18n="dashWifiDiagTitle">Wi‑Fi diagnostics</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashWifiDiagBlurb">ifconfig, ARP, netstat, and wifi_status text from WiFi/.</p>
+                            <div id="iphone-wifi-diag-mount"></div>
+                        </div>
                     </div>
 
                     <div id="iphone-dash-auth" class="iphone-dash-panel" role="tabpanel" data-dash-panel="auth" hidden>
@@ -593,6 +638,12 @@
                             <p class="iphone-dash-card__lead" data-i18n="dashBatteryBlurb">State of charge and power status from battery_bdc (and powerlogs Battery Level).</p>
                             <div id="iphone-battery-hero-mount"></div>
                         </div>
+                        <div class="iphone-dash-card hidden" id="iphone-battery-chart-card">
+                            <h3 data-i18n="dashBatteryChartTitle">Battery level over time</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashBatteryChartBlurb">State of charge series from BatteryBDC / powerlogs. Green bands mark charging intervals.</p>
+                            <div id="iphone-battery-chart-mount" class="iphone-battery-chart-mount" role="img" aria-label="Battery level chart"></div>
+                            <p id="iphone-battery-chart-caption" class="iphone-battery-chart-caption"></p>
+                        </div>
                         <div class="iphone-dash-card hidden" id="iphone-battery-samples-card">
                             <h3 data-i18n="dashBatterySamplesTitle">Recent battery samples</h3>
                             <p class="iphone-dash-card__lead" data-i18n="dashBatterySamplesBlurb">Recent SoC / charging / external-power samples.</p>
@@ -610,6 +661,11 @@
                             <h3 data-i18n="dashServicesTitle">Running services</h3>
                             <p class="iphone-dash-card__lead" data-i18n="dashServicesBlurb">Remotectl-registered services with no live PID (launchd-style).</p>
                             <div id="iphone-services-mount"></div>
+                        </div>
+                        <div id="iphone-runningboard-card" class="iphone-dash-card hidden">
+                            <h3 data-i18n="dashRunningboardTitle">RunningBoard</h3>
+                            <p class="iphone-dash-card__lead" data-i18n="dashRunningboardBlurb">Process assertion domain hints and jetsam bands from RunningBoard_state.log.</p>
+                            <div id="iphone-runningboard-mount"></div>
                         </div>
                     </div>
 
@@ -645,6 +701,10 @@
                 <div id="sysdiagnose-analyser-cards" class="sysdiagnose-analyser-cards"></div>
                 <h3 class="sysdiagnose-section-head" data-i18n="parserModulesTitle">Parser modules</h3>
                 <p class="sysdiagnose-section-lead" data-i18n="parserModulesBlurb">One row per SAF parser module. Expand a row for timeline counts, payload stats, and sample events. Full payloads are in the Download JSON export.</p>
+                <div class="search-box iphone-dash-search" style="margin-bottom: 0.75rem;">
+                    <span class="search-icon" aria-hidden="true">🔍</span>
+                    <input type="search" id="sysdiagnose-parser-filter" autocomplete="off" data-i18n-placeholder="parserSearchPlaceholder" placeholder="Filter parsers…" />
+                </div>
                 <div id="sysdiagnose-parser-timeline-summary" class="sysdiagnose-parser-timeline-summary hidden" aria-live="polite"></div>
                 <ul id="sysdiagnose-parser-list" class="sysdiagnose-parser-list" role="list" aria-label="Parser modules"></ul>
                 <table class="data-table hidden" id="sysdiagnose-parser-table" aria-hidden="true">
@@ -948,7 +1008,7 @@
                 dashSideloadBlurb: 'MobileInstallation events correlated with IPA / sideload-tool activity.',
                 dashAppsTitle: 'Applications',
                 dashAppsBlurb:
-                    'Installed apps inventory from powerlogs App Info (mobipwn Packages), plus MI / install / TCC / iTunes sources.',
+                    'Installed apps from the apps analyser (MobileInstallation, App Info, Store, TCC, and related sources).',
                 dashPermsTitle: 'Sensitive permissions (TCC)',
                 dashPermsBlurb: 'Camera, mic, location, and other privacy-sensitive TCC grants by app.',
                 dashNetworkTitle: 'Network IOCs',
@@ -981,11 +1041,26 @@
                 dashNetTransparencyTitle: 'Transparency contact URIs',
                 dashNetTransparencyBlurb: 'im://mailto and im://tel contacts from transparency_json.',
                 dashAccountsTitle: 'Accounts',
-                dashAccountsBlurb: 'Apple IDs, owner emails, and related identity rows from the accounts parser.',
+                dashAccountsBlurb:
+                    'Owner emails, org emails, Activation Lock, Apple IDs, contacts, and linked devices from the accounts analyser.',
                 dashStorageTitle: 'Storage',
                 dashStorageBlurb: 'Mounted volumes and capacity from the disks parser.',
+                dashIntegrityTitle: 'System partition integrity',
+                dashIntegrityBlurb: 'Root mount sealed / read-only flags from mount.txt.',
+                dashCollectionMetaTitle: 'Collection metadata',
+                dashCollectionMetaBlurb:
+                    'taskSummary, errors/, summaries/, and sysdiagnose.log — useful when parsers return empty.',
                 dashActivationTitle: 'Activation',
-                dashActivationBlurb: 'Activation state and hardware hints from mobileactivation.',
+                dashActivationBlurb:
+                    'Activation state, hardware hints, and DCRT/BAA attestation dumps from mobileactivation.',
+                dashCkksTitle: 'CloudKit Key Sync / PCS',
+                dashCkksBlurb: 'ckksctl_status and pcsstatus dumps (iCloud key sync / Protected Cloud Storage).',
+                dashOtaTitle: 'OTA / restore',
+                dashOtaBlurb: 'OTAUpdateLogs restore_perform and related update / restore text.',
+                dashUsermgmtTitle: 'User management',
+                dashUsermgmtBlurb: 'umtool / usermanagerd personas and local user dumps.',
+                dashPreferencesTitle: 'Preferences dumps',
+                dashPreferencesBlurb: 'Preferences/*.txt locale, Screen Time, and accessibility text dumps.',
                 dashPairedTitle: 'Paired / trusted entries',
                 dashPairedBlurb: 'Keychain / pairing labels from security_sysdiagnose.',
                 dashIoserviceTitle: 'IOService hardware',
@@ -1002,6 +1077,66 @@
                 dashUsbDevicesBlurb: 'Attached USB products from iousb.',
                 dashUsbLockdownTitle: 'USB / pairing (lockdownd)',
                 dashUsbLockdownBlurb: 'Attach, pair, trust, and usbmux messages from lockdownd.',
+                dashBluetoothTitle: 'Bluetooth / AWDL',
+                dashBluetoothBlurb: 'Bluetooth status, AWDL, and companion-link dumps.',
+                dashWifiDiagTitle: 'Wi‑Fi diagnostics',
+                dashWifiDiagBlurb: 'ifconfig, ARP, netstat, and wifi_status text from WiFi/.',
+                dashRunningboardTitle: 'RunningBoard',
+                dashRunningboardBlurb:
+                    'Process assertion domain hints and jetsam bands from RunningBoard_state.log.',
+                dashYes: 'Yes',
+                dashNo: 'No',
+                dashColDetail: 'Detail',
+                dashColRootSealed: 'Root sealed',
+                dashColRootReadonly: 'Root read-only',
+                dashColIntegrityHint: 'Integrity hint',
+                dashColDevice: 'Device',
+                dashColFlags: 'Flags',
+                dashColTaskSummary: 'Task summary rows',
+                dashColCollectionErrors: 'Error files',
+                dashColCollectionSummaries: 'Summary logs',
+                dashColSysdiagnoseLog: 'sysdiagnose.log',
+                dashColPath: 'Path',
+                dashColDcrtBaa: 'DCRT / BAA',
+                dashDcrtBaaCounts: '{req} request(s), {resp} response(s), {other} other',
+                dashColFile: 'File',
+                dashColPreview: 'Preview',
+                dashColChars: 'Chars',
+                dashColJetsamBands: 'Jetsam bands',
+                dashColDomainHints: 'Domain hints',
+                dashColDomain: 'Domain',
+                dashColFs: 'Filesystem',
+                dashLockdownMode: 'Lockdown Mode',
+                dashEnabled: 'enabled',
+                dashDisabled: 'disabled',
+                dashIoserviceNodes: 'IOService nodes',
+                dashIoserviceNodeNote: '{n} IOService nodes',
+                dashUsbDeviceFallback: 'USB device',
+                dashDownloadGpx: 'Download GPX',
+                dashMdmTitle: 'MDM / managed profiles',
+                dashMdmBlurb: 'Managed configuration and profile snippets from mcstateshared / MCState.',
+                dashEmptyOverview: 'No curated identity cards for this archive.',
+                dashEmptyExternal: 'No Wi‑Fi, USB, Bluetooth, or diagnostic rows in this archive.',
+                dashEmptyAuth: 'No lock / unlock authentication events found.',
+                dashEmptyBattery: 'No battery samples in this archive.',
+                dashBattCharging: 'Charging',
+                dashBattExternal: 'External power',
+                dashBattFullyCharged: 'Fully charged',
+                dashBattCritical: 'Critical',
+                dashBattLow: 'Low',
+                dashBattSoc: 'State of charge',
+                dashBattTemp: 'Temperature',
+                dashBattVoltage: 'Voltage',
+                dashBattAmperage: 'Amperage',
+                dashBattDesign: 'Design capacity',
+                dashBattMax: 'Max capacity',
+                dashBattHealth: 'Health',
+                parserSearchPlaceholder: 'Filter parsers…',
+                crashChipPid: 'pid {n}',
+                crashChipThread: 'thread {n}',
+                crashChipThreads: '{n} threads',
+                crashChipFrames: '{n} frames',
+                sigmaMatchFallback: 'Sigma match',
                 dashAuthSummaryTitle: 'Lock / unlock summary',
                 dashAuthSummaryBlurb: 'Counts of unlock, lock, auto-lock, and failed authentication events.',
                 dashAuthEventsTitle: 'Lock / unlock events',
@@ -1012,6 +1147,10 @@
                 dashAuthFailed: 'Failed auth',
                 dashBatteryTitle: 'Battery',
                 dashBatteryBlurb: 'State of charge and power status from battery_bdc (and powerlogs Battery Level).',
+                dashBatteryChartTitle: 'Battery level over time',
+                dashBatteryChartBlurb:
+                    'State of charge series from BatteryBDC / powerlogs. Green bands mark charging intervals.',
+                dashBatteryChartCaption: '{n} samples · {span} · {min}–{max}%',
                 dashBatterySamplesTitle: 'Recent battery samples',
                 dashBatterySamplesBlurb: 'Recent SoC / charging / external-power samples.',
                 dashColAccount: 'Account',
@@ -1566,7 +1705,7 @@
                 dashSideloadBlurb: 'Événements MobileInstallation corrélés à l’activité IPA / outils de sideload.',
                 dashAppsTitle: 'Applications',
                 dashAppsBlurb:
-                    'Inventaire des apps depuis App Info powerlogs (Packages mobipwn), plus MI / install / TCC / iTunes.',
+                    'Applications depuis l’analyseur apps (MobileInstallation, App Info, Store, TCC et sources liées).',
                 dashPermsTitle: 'Autorisations sensibles (TCC)',
                 dashPermsBlurb: 'Caméra, micro, localisation et autres grants TCC sensibles par app.',
                 dashNetworkTitle: 'IOC réseau',
@@ -1599,11 +1738,26 @@
                 dashNetTransparencyTitle: 'URI contacts Transparency',
                 dashNetTransparencyBlurb: 'Contacts im://mailto et im://tel (transparency_json).',
                 dashAccountsTitle: 'Comptes',
-                dashAccountsBlurb: 'Apple ID, e-mails propriétaire et identités (parseur accounts).',
+                dashAccountsBlurb:
+                    'E-mails propriétaire, org, Activation Lock, Apple ID, contacts et appareils liés (analyseur accounts).',
                 dashStorageTitle: 'Stockage',
                 dashStorageBlurb: 'Volumes montés et capacité (parseur disks).',
+                dashIntegrityTitle: 'Intégrité partition système',
+                dashIntegrityBlurb: 'Drapeaux sealed / read-only du montage racine (mount.txt).',
+                dashCollectionMetaTitle: 'Métadonnées de collecte',
+                dashCollectionMetaBlurb:
+                    'taskSummary, errors/, summaries/ et sysdiagnose.log — utile si des parseurs sont vides.',
                 dashActivationTitle: 'Activation',
-                dashActivationBlurb: 'État d’activation et indices matériels (mobileactivation).',
+                dashActivationBlurb:
+                    'État d’activation, indices matériels et dumps DCRT/BAA (mobileactivation).',
+                dashCkksTitle: 'CloudKit Key Sync / PCS',
+                dashCkksBlurb: 'Dumps ckksctl_status et pcsstatus (sync clés iCloud / PCS).',
+                dashOtaTitle: 'OTA / restauration',
+                dashOtaBlurb: 'restore_perform et journaux OTAUpdateLogs.',
+                dashUsermgmtTitle: 'Gestion des utilisateurs',
+                dashUsermgmtBlurb: 'Dumps umtool / usermanagerd (personas et comptes locaux).',
+                dashPreferencesTitle: 'Dumps Preferences',
+                dashPreferencesBlurb: 'Preferences/*.txt (locale, Temps d’écran, accessibilité).',
                 dashPairedTitle: 'Entrées appairées / de confiance',
                 dashPairedBlurb: 'Libellés keychain / appairage (security_sysdiagnose).',
                 dashIoserviceTitle: 'Matériel IOService',
@@ -1620,6 +1774,66 @@
                 dashUsbDevicesBlurb: 'Produits USB attachés (iousb).',
                 dashUsbLockdownTitle: 'USB / appairage (lockdownd)',
                 dashUsbLockdownBlurb: 'Messages attach, pair, trust et usbmux (lockdownd).',
+                dashBluetoothTitle: 'Bluetooth / AWDL',
+                dashBluetoothBlurb: 'Statut Bluetooth, AWDL et companion-link.',
+                dashWifiDiagTitle: 'Diagnostics Wi‑Fi',
+                dashWifiDiagBlurb: 'ifconfig, ARP, netstat et wifi_status (WiFi/).',
+                dashRunningboardTitle: 'RunningBoard',
+                dashRunningboardBlurb:
+                    'Domaines d’assertions et jetsam bands (RunningBoard_state.log).',
+                dashYes: 'Oui',
+                dashNo: 'Non',
+                dashColDetail: 'Détail',
+                dashColRootSealed: 'Racine sealed',
+                dashColRootReadonly: 'Racine read-only',
+                dashColIntegrityHint: 'Indice d’intégrité',
+                dashColDevice: 'Périphérique',
+                dashColFlags: 'Options',
+                dashColTaskSummary: 'Lignes taskSummary',
+                dashColCollectionErrors: 'Fichiers d’erreur',
+                dashColCollectionSummaries: 'Journaux summaries',
+                dashColSysdiagnoseLog: 'sysdiagnose.log',
+                dashColPath: 'Chemin',
+                dashColDcrtBaa: 'DCRT / BAA',
+                dashDcrtBaaCounts: '{req} requête(s), {resp} réponse(s), {other} autre(s)',
+                dashColFile: 'Fichier',
+                dashColPreview: 'Aperçu',
+                dashColChars: 'Car.',
+                dashColJetsamBands: 'Jetsam bands',
+                dashColDomainHints: 'Domaines',
+                dashColDomain: 'Domaine',
+                dashColFs: 'Système de fichiers',
+                dashLockdownMode: 'Mode Isolation',
+                dashEnabled: 'activé',
+                dashDisabled: 'désactivé',
+                dashIoserviceNodes: 'Nœuds IOService',
+                dashIoserviceNodeNote: '{n} nœuds IOService',
+                dashUsbDeviceFallback: 'Périphérique USB',
+                dashDownloadGpx: 'Télécharger GPX',
+                dashMdmTitle: 'MDM / profils gérés',
+                dashMdmBlurb: 'Extraits de configuration gérée (mcstateshared / MCState).',
+                dashEmptyOverview: 'Aucune carte d’identité pour cette archive.',
+                dashEmptyExternal: 'Aucun Wi‑Fi, USB, Bluetooth ou diagnostic dans cette archive.',
+                dashEmptyAuth: 'Aucun événement de verrouillage / authentification.',
+                dashEmptyBattery: 'Aucun échantillon batterie dans cette archive.',
+                dashBattCharging: 'En charge',
+                dashBattExternal: 'Alimentation externe',
+                dashBattFullyCharged: 'Pleinement chargé',
+                dashBattCritical: 'Critique',
+                dashBattLow: 'Faible',
+                dashBattSoc: 'État de charge',
+                dashBattTemp: 'Température',
+                dashBattVoltage: 'Tension',
+                dashBattAmperage: 'Courant',
+                dashBattDesign: 'Capacité nominale',
+                dashBattMax: 'Capacité max',
+                dashBattHealth: 'Santé',
+                parserSearchPlaceholder: 'Filtrer les parseurs…',
+                crashChipPid: 'pid {n}',
+                crashChipThread: 'thread {n}',
+                crashChipThreads: '{n} threads',
+                crashChipFrames: '{n} frames',
+                sigmaMatchFallback: 'Correspondance Sigma',
                 dashAuthSummaryTitle: 'Résumé verrouillage / déverrouillage',
                 dashAuthSummaryBlurb: 'Compteurs unlock, lock, auto-lock et authentifications échouées.',
                 dashAuthEventsTitle: 'Événements verrouillage / déverrouillage',
@@ -1630,6 +1844,10 @@
                 dashAuthFailed: 'Auth échouée',
                 dashBatteryTitle: 'Batterie',
                 dashBatteryBlurb: 'État de charge et alimentation (battery_bdc / powerlogs Battery Level).',
+                dashBatteryChartTitle: 'Niveau de batterie dans le temps',
+                dashBatteryChartBlurb:
+                    'Série d’état de charge (BatteryBDC / powerlogs). Les bandes vertes marquent la charge.',
+                dashBatteryChartCaption: '{n} échantillons · {span} · {min}–{max}%',
                 dashBatterySamplesTitle: 'Échantillons batterie récents',
                 dashBatterySamplesBlurb: 'Échantillons SoC / charge / alimentation externe récents.',
                 dashColAccount: 'Compte',
@@ -2180,7 +2398,7 @@
                 dashSideloadBlurb: 'MobileInstallation 事件与 IPA / sideload 工具活动关联。',
                 dashAppsTitle: '应用程序',
                 dashAppsBlurb:
-                    '已安装应用清单：powerlogs App Info（同 mobipwn Packages），以及 MI / 安装 / TCC / iTunes 来源。',
+                    '来自 apps 分析器的已安装应用（MobileInstallation、App Info、Store、TCC 及相关来源）。',
                 dashPermsTitle: '敏感权限（TCC）',
                 dashPermsBlurb: '相机、麦克风、定位等敏感 TCC 授权（按应用）。',
                 dashNetworkTitle: '网络 IOC',
@@ -2213,11 +2431,25 @@
                 dashNetTransparencyTitle: 'Transparency 联系人 URI',
                 dashNetTransparencyBlurb: 'transparency_json 中的 im://mailto 与 im://tel。',
                 dashAccountsTitle: '账户',
-                dashAccountsBlurb: 'accounts 解析器中的 Apple ID、所有者邮箱等相关身份。',
+                dashAccountsBlurb:
+                    'accounts 分析器中的所有者邮箱、组织邮箱、激活锁、Apple ID、联系人与关联设备。',
                 dashStorageTitle: '存储',
                 dashStorageBlurb: 'disks 解析器中的挂载卷与容量。',
+                dashIntegrityTitle: '系统分区完整性',
+                dashIntegrityBlurb: 'mount.txt 中根挂载的 sealed / 只读标志。',
+                dashCollectionMetaTitle: '采集元数据',
+                dashCollectionMetaBlurb:
+                    'taskSummary、errors/、summaries/ 与 sysdiagnose.log — 解析器为空时有用。',
                 dashActivationTitle: '激活',
-                dashActivationBlurb: 'mobileactivation 中的激活状态与硬件提示。',
+                dashActivationBlurb: 'mobileactivation 中的激活状态、硬件提示与 DCRT/BAA 证明转储。',
+                dashCkksTitle: 'CloudKit Key Sync / PCS',
+                dashCkksBlurb: 'ckksctl_status 与 pcsstatus（iCloud 密钥同步 / PCS）。',
+                dashOtaTitle: 'OTA / 恢复',
+                dashOtaBlurb: 'OTAUpdateLogs 中的 restore_perform 及相关更新日志。',
+                dashUsermgmtTitle: '用户管理',
+                dashUsermgmtBlurb: 'umtool / usermanagerd 角色与本地用户转储。',
+                dashPreferencesTitle: 'Preferences 转储',
+                dashPreferencesBlurb: 'Preferences/*.txt 区域、屏幕使用时间与辅助功能文本。',
                 dashPairedTitle: '配对 / 信任条目',
                 dashPairedBlurb: 'security_sysdiagnose 中的钥匙串 / 配对标签。',
                 dashIoserviceTitle: 'IOService 硬件',
@@ -2234,6 +2466,65 @@
                 dashUsbDevicesBlurb: 'iousb 中的已连接 USB 产品。',
                 dashUsbLockdownTitle: 'USB / 配对（lockdownd）',
                 dashUsbLockdownBlurb: 'lockdownd 中的 attach、pair、trust、usbmux 消息。',
+                dashBluetoothTitle: 'Bluetooth / AWDL',
+                dashBluetoothBlurb: 'Bluetooth 状态、AWDL 与 companion-link 转储。',
+                dashWifiDiagTitle: 'Wi‑Fi 诊断',
+                dashWifiDiagBlurb: 'WiFi/ 下的 ifconfig、ARP、netstat 与 wifi_status。',
+                dashRunningboardTitle: 'RunningBoard',
+                dashRunningboardBlurb: 'RunningBoard_state.log 中的断言域提示与 jetsam bands。',
+                dashYes: '是',
+                dashNo: '否',
+                dashColDetail: '详情',
+                dashColRootSealed: '根分区 sealed',
+                dashColRootReadonly: '根分区只读',
+                dashColIntegrityHint: '完整性提示',
+                dashColDevice: '设备',
+                dashColFlags: '标志',
+                dashColTaskSummary: 'taskSummary 行数',
+                dashColCollectionErrors: '错误文件',
+                dashColCollectionSummaries: '摘要日志',
+                dashColSysdiagnoseLog: 'sysdiagnose.log',
+                dashColPath: '路径',
+                dashColDcrtBaa: 'DCRT / BAA',
+                dashDcrtBaaCounts: '{req} 请求、{resp} 响应、{other} 其他',
+                dashColFile: '文件',
+                dashColPreview: '预览',
+                dashColChars: '字符',
+                dashColJetsamBands: 'Jetsam bands',
+                dashColDomainHints: '域提示数',
+                dashColDomain: '域',
+                dashColFs: '文件系统',
+                dashLockdownMode: '锁定模式',
+                dashEnabled: '已启用',
+                dashDisabled: '已禁用',
+                dashIoserviceNodes: 'IOService 节点',
+                dashIoserviceNodeNote: '{n} 个 IOService 节点',
+                dashUsbDeviceFallback: 'USB 设备',
+                dashDownloadGpx: '下载 GPX',
+                dashMdmTitle: 'MDM / 托管配置',
+                dashMdmBlurb: '来自 mcstateshared / MCState 的托管配置与描述文件摘要。',
+                dashEmptyOverview: '此归档无可用身份卡片。',
+                dashEmptyExternal: '此归档无 Wi‑Fi、USB、Bluetooth 或诊断行。',
+                dashEmptyAuth: '未找到锁定 / 解锁认证事件。',
+                dashEmptyBattery: '此归档无电池采样。',
+                dashBattCharging: '充电中',
+                dashBattExternal: '外接电源',
+                dashBattFullyCharged: '已充满',
+                dashBattCritical: '电量极低',
+                dashBattLow: '电量低',
+                dashBattSoc: '电量',
+                dashBattTemp: '温度',
+                dashBattVoltage: '电压',
+                dashBattAmperage: '电流',
+                dashBattDesign: '设计容量',
+                dashBattMax: '最大容量',
+                dashBattHealth: '健康度',
+                parserSearchPlaceholder: '筛选解析器…',
+                crashChipPid: 'pid {n}',
+                crashChipThread: 'thread {n}',
+                crashChipThreads: '{n} 个线程',
+                crashChipFrames: '{n} 帧',
+                sigmaMatchFallback: 'Sigma 匹配',
                 dashAuthSummaryTitle: '锁定 / 解锁摘要',
                 dashAuthSummaryBlurb: '解锁、锁定、自动锁定与认证失败计数。',
                 dashAuthEventsTitle: '锁定 / 解锁事件',
@@ -2244,6 +2535,9 @@
                 dashAuthFailed: '认证失败',
                 dashBatteryTitle: '电池',
                 dashBatteryBlurb: 'battery_bdc（及 powerlogs Battery Level）中的电量与供电状态。',
+                dashBatteryChartTitle: '电量随时间变化',
+                dashBatteryChartBlurb: '来自 BatteryBDC / powerlogs 的电量序列。绿色带表示充电区间。',
+                dashBatteryChartCaption: '{n} 个采样 · {span} · {min}–{max}%',
                 dashBatterySamplesTitle: '近期电池采样',
                 dashBatterySamplesBlurb: '近期 SoC / 充电 / 外部供电采样。',
                 dashColAccount: '账户',
@@ -2558,6 +2852,10 @@
                 if (el.closest('#webusb-status')) return;
                 var key = el.getAttribute('data-i18n');
                 if (t[key] !== undefined) el.textContent = t[key];
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
+                var key = el.getAttribute('data-i18n-placeholder');
+                if (t[key] !== undefined) el.setAttribute('placeholder', t[key]);
             });
             var themeBtn = document.querySelector('.theme-toggle');
             var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -3212,6 +3510,18 @@
             if (!list) return;
             list.innerHTML = '';
             renderParserTimelineSummary(out);
+            var filterInput = document.getElementById('sysdiagnose-parser-filter');
+            if (filterInput && !filterInput._iphoneWired) {
+                filterInput._iphoneWired = true;
+                filterInput.addEventListener('input', function () {
+                    var q = filterInput.value.trim().toLowerCase();
+                    var items = list.querySelectorAll('.sysdiagnose-parser-item');
+                    for (var fi = 0; fi < items.length; fi++) {
+                        var nm = (items[fi].getAttribute('data-parser') || '').toLowerCase();
+                        items[fi].style.display = !q || nm.indexOf(q) >= 0 ? '' : 'none';
+                    }
+                });
+            }
             if (!entries || !entries.length) {
                 list.classList.add('hidden');
                 return;
@@ -3233,6 +3543,7 @@
                 var ok = parserEntryOk(pp);
                 var timelineCount = Number(eventsPerParser[name]) || 0;
                 var li = document.createElement('li');
+                li.setAttribute('data-parser', name);
                 li.className =
                     'sysdiagnose-parser-item ' + (ok ? 'sysdiagnose-parser-item--ok' : 'sysdiagnose-parser-item--fail');
 
@@ -3696,8 +4007,18 @@
             if (name === 'mcstateshared' && Array.isArray(payload.rows)) {
                 return trIphone('analyserPreviewRows').replace('{n}', String(payload.rows.length));
             }
-            if ((name === 'wifi_geolocation' || name === 'wifi_geolocation_kml') && payload.point_count != null) {
-                return trIphone('analyserPreviewWifi').replace('{n}', String(payload.point_count));
+            if (name === 'wifi_geolocation' || name === 'wifi_geolocation_kml') {
+                if (payload.point_count != null) {
+                    return trIphone('analyserPreviewWifi').replace('{n}', String(payload.point_count));
+                }
+                if (typeof payload.xml === 'string' && payload.xml) {
+                    var m =
+                        payload.format === 'kml'
+                            ? payload.xml.match(/<Placemark[\s>]/gi)
+                            : payload.xml.match(/<wpt[\s>]/gi);
+                    var nPts = m ? m.length : 0;
+                    if (nPts) return trIphone('analyserPreviewWifi').replace('{n}', String(nPts));
+                }
             }
             if (name === 'network_iocs') {
                 var nIoc =
@@ -4998,6 +5319,90 @@
                 return root;
             }
 
+            if (id === 'accounts') {
+                var counts = payload.counts && typeof payload.counts === 'object' ? payload.counts : {};
+                root.appendChild(
+                    analyserElStatGrid([
+                        ['owner_emails', counts.owner_emails != null ? counts.owner_emails : asArr(payload.owner_emails).length],
+                        [
+                            'organization_emails',
+                            counts.organization_emails != null
+                                ? counts.organization_emails
+                                : asArr(payload.organization_emails).length
+                        ],
+                        [
+                            'activation_lock',
+                            counts.activation_lock_usernames != null
+                                ? counts.activation_lock_usernames
+                                : asArr(payload.activation_lock_usernames).length
+                        ],
+                        ['contacts', counts.contacts != null ? counts.contacts : asArr(payload.contacts).length],
+                        [
+                            'apple_accounts',
+                            counts.apple_accounts != null
+                                ? counts.apple_accounts
+                                : asArr(payload.apple_accounts).length
+                        ],
+                        [
+                            'linked_devices',
+                            counts.linked_devices != null
+                                ? counts.linked_devices
+                                : asArr(payload.linked_devices).length
+                        ],
+                        [
+                            'lockdown_mode',
+                            payload.lockdown_mode === true
+                                ? 'true'
+                                : payload.lockdown_mode === false
+                                  ? 'false'
+                                  : '—'
+                        ]
+                    ])
+                );
+                var accRows = [];
+                function pushAcc(email, kind, detail) {
+                    if (!email || accRows.length >= ANALYSER_UI_MAX_ROWS) return;
+                    accRows.push([String(email), String(kind || ''), String(detail || '')]);
+                }
+                asArr(payload.owner_emails).forEach(function (row) {
+                    var r = mapPlainTop(row) || {};
+                    pushAcc(r.email, 'owner_email', r.source || r.path || '');
+                });
+                asArr(payload.organization_emails).forEach(function (row) {
+                    var r = mapPlainTop(row) || {};
+                    pushAcc(r.email, r.account_type || 'organization_email', r.organization_name || '');
+                });
+                asArr(payload.activation_lock_usernames).forEach(function (row) {
+                    var r = mapPlainTop(row) || {};
+                    pushAcc(r.email, r.account_type || 'activation_lock', r.source || '');
+                });
+                asArr(payload.contacts).forEach(function (row) {
+                    var r = mapPlainTop(row) || {};
+                    pushAcc(r.email || r.phone || r.uri, r.kind || 'contact', r.source || '');
+                });
+                asArr(payload.apple_accounts).forEach(function (row) {
+                    var r = mapPlainTop(row) || {};
+                    pushAcc(r.account_id || r.email, r.account_type || 'apple_account', r.source || '');
+                });
+                asArr(payload.linked_devices).forEach(function (row) {
+                    var r = mapPlainTop(row) || {};
+                    pushAcc(
+                        r.name || r.serial || r.model,
+                        'linked_device',
+                        [r.serial, r.model, r.os_version].filter(Boolean).join(' · ')
+                    );
+                });
+                if (accRows.length) {
+                    root.appendChild(
+                        buildAnalyserScrollTable(
+                            [trIphone('dashColAccount'), trIphone('dashColKind'), trIphone('dashColDetail')],
+                            accRows
+                        )
+                    );
+                }
+                return root;
+            }
+
             if (id === 'network_iocs') {
                 root.appendChild(
                     analyserElStatGrid([
@@ -5060,6 +5465,56 @@
                 return root;
             }
 
+            if (id === 'install_enrichment') {
+                var ieEvents = asArr(payload.events);
+                root.appendChild(
+                    analyserElStatGrid([
+                        [
+                            'events',
+                            payload.event_count != null ? payload.event_count : ieEvents.length
+                        ],
+                        ['enriched', ieEvents.filter(function (e) {
+                            var p = mapPlainTop(e) || {};
+                            return asArr(p.enrichments).length > 0;
+                        }).length]
+                    ])
+                );
+                var ieRows = [];
+                for (var iei = 0; iei < ieEvents.length && ieRows.length < ANALYSER_UI_MAX_ROWS; iei++) {
+                    var iev = mapPlainTop(ieEvents[iei]) || {};
+                    var enr = asArr(iev.enrichments)
+                        .map(function (e) {
+                            var x = mapPlainTop(e) || {};
+                            return x.label || x.kind || '';
+                        })
+                        .filter(Boolean)
+                        .join(', ');
+                    if (!enr && !iev.bundle_id) continue;
+                    ieRows.push([
+                        String(iev.kind || ''),
+                        String(iev.bundle_id || ''),
+                        String(iev.label || iev.version || ''),
+                        String(iev.datetime || ''),
+                        enr || '—'
+                    ]);
+                }
+                if (ieRows.length) {
+                    root.appendChild(
+                        buildAnalyserScrollTable(
+                            [
+                                trIphone('dashColKind'),
+                                trIphone('dashColBundle'),
+                                trIphone('dashColLabel'),
+                                trIphone('dashColTime'),
+                                trIphone('dashColEnrichments')
+                            ],
+                            ieRows
+                        )
+                    );
+                }
+                return root;
+            }
+
             if (id === 'wifi_geolocation' && payload.format === 'gpx') {
                 var gpxFrag = renderWifiGeoStructured(payload, 'gpx');
                 if (gpxFrag) root.appendChild(gpxFrag);
@@ -5070,6 +5525,47 @@
                 var kmlFrag = renderWifiGeoStructured(payload, 'kml');
                 if (kmlFrag) root.appendChild(kmlFrag);
                 return root;
+            }
+
+            // Generic table fallback for analysers that only expose events/rows/entries arrays
+            var tableArr =
+                Array.isArray(payload.events)
+                    ? payload.events
+                    : Array.isArray(payload.rows)
+                      ? payload.rows
+                      : Array.isArray(payload.entries)
+                        ? payload.entries
+                        : null;
+            if (tableArr && tableArr.length) {
+                var sampleObj = mapPlainTop(tableArr[0]) || {};
+                var colKeys = Object.keys(sampleObj).filter(function (k) {
+                    var v = sampleObj[k];
+                    return v == null || typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean';
+                }).slice(0, 6);
+                if (colKeys.length) {
+                    var genRows = [];
+                    var capG = Math.min(tableArr.length, ANALYSER_UI_MAX_ROWS);
+                    for (var gi = 0; gi < capG; gi++) {
+                        var gr = mapPlainTop(tableArr[gi]) || {};
+                        genRows.push(
+                            colKeys.map(function (ck) {
+                                var cv = gr[ck];
+                                return cv == null ? '—' : analyserTruncate(String(cv), 120);
+                            })
+                        );
+                    }
+                    root.appendChild(buildAnalyserScrollTable(colKeys, genRows));
+                    if (tableArr.length > capG) {
+                        root.appendChild(
+                            analyserElMuted(
+                                trIphone('analyserShowingFirst')
+                                    .replace('{n}', String(capG))
+                                    .replace('{total}', String(tableArr.length))
+                            )
+                        );
+                    }
+                    return root;
+                }
             }
 
             var dl = document.createElement('dl');
@@ -5933,7 +6429,7 @@
                     (level === 'critical' || level === 'high' ? '' : ' iphone-finding-card--warn');
                 var title = document.createElement('div');
                 title.className = 'iphone-finding-card__title';
-                title.textContent = m.title || m.rule_name || m.rule || 'Sigma match';
+                title.textContent = m.title || m.rule_name || m.rule || trIphone('sigmaMatchFallback');
                 var meta = document.createElement('div');
                 meta.className = 'iphone-finding-card__meta';
                 var hits = m.count != null ? m.count : m.event_count != null ? m.event_count : m.matches;
@@ -6119,6 +6615,9 @@
                 iphoneDashLazy.battery = true;
             } else if (name === 'processes' && !iphoneDashLazy.processes) {
                 renderIphoneProcessesPanel(out);
+                if (window.IphoneMobipwnPanels && window.IphoneMobipwnPanels.renderProcessesExtras) {
+                    window.IphoneMobipwnPanels.renderProcessesExtras(out);
+                }
                 iphoneDashLazy.processes = true;
             } else if (name === 'crashes' && !iphoneDashLazy.crashes) {
                 renderIphoneCrashesPanel(out);
@@ -6433,19 +6932,74 @@
             var names = ['networkextension', 'networkextensioncache'];
             var outRows = [];
             var seen = {};
+
+            function consider(value, path) {
+                if (outRows.length >= 40) return;
+                var s = String(value || '').trim();
+                if (!s || s.length < 4 || s.length > 240) return;
+                var low = s.toLowerCase();
+                if (
+                    !(
+                        low.indexOf('://') >= 0 ||
+                        low.indexOf('.') >= 0 ||
+                        /^\d{1,3}(\.\d{1,3}){3}/.test(s) ||
+                        /vpn|proxy|server|host|endpoint/i.test(s)
+                    )
+                ) {
+                    return;
+                }
+                // Skip binary-ish / plist type tags
+                if (/^(data|dict|array|true|false|\d+)$/i.test(s)) return;
+                var key = s.toLowerCase() + ':' + path;
+                if (seen[key]) return;
+                seen[key] = true;
+                outRows.push({ value: s, path: path });
+            }
+
+            function walk(v, path) {
+                if (outRows.length >= 40 || v == null) return;
+                var tp = typeof v;
+                if (tp === 'string') {
+                    consider(v, path);
+                    return;
+                }
+                if (tp === 'number' || tp === 'boolean') return;
+                if (Array.isArray(v)) {
+                    for (var i = 0; i < v.length && outRows.length < 40; i++) walk(v[i], path + '[' + i + ']');
+                    return;
+                }
+                if (tp === 'object') {
+                    var keys = Object.keys(v);
+                    for (var k = 0; k < keys.length && outRows.length < 40; k++) {
+                        var key = keys[k];
+                        var child = v[key];
+                        var next = path ? path + '/' + key : key;
+                        var lk = key.toLowerCase();
+                        if (
+                            typeof child === 'string' &&
+                            /(server|host|url|proxy|remote|address|endpoint|vpn|hostname|gateway)/i.test(lk)
+                        ) {
+                            consider(child, next);
+                        } else {
+                            walk(child, next);
+                        }
+                    }
+                }
+            }
+
             for (var n = 0; n < names.length; n++) {
+                var data = getParserPayload(out, names[n]);
+                if (data) walk(data, names[n]);
+                // Also try flattened events if present
                 var rows = iosParserEvents(out, names[n]);
-                for (var i = 0; i < rows.length && outRows.length < 30; i++) {
+                for (var i = 0; i < rows.length && outRows.length < 40; i++) {
                     var ev = mapPlainTop(rows[i]) || rows[i];
                     var value =
                         iosLooseField(ev, 'value', 'url', 'server', 'remote address', 'remote_address', 'hostname') ||
                         iosLooseField(ev, 'message');
                     if (!value) continue;
                     var path = iosLooseField(ev, 'path', 'key', 'source_path') || names[n];
-                    var key = value + ':' + path;
-                    if (seen[key]) continue;
-                    seen[key] = true;
-                    outRows.push({ value: value, path: path });
+                    consider(value, path);
                 }
             }
             return outRows;
@@ -7737,14 +8291,20 @@
             var meta = document.createElement('div');
             meta.className = 'iphone-crash-incident__meta';
             var chips = [
-                detail.pid ? 'pid ' + detail.pid : '',
+                detail.pid ? trIphone('crashChipPid').replace('{n}', String(detail.pid)) : '',
                 detail.exceptionType,
                 detail.signal,
                 detail.ipsFormat,
                 detail.threadName ||
-                    (detail.faultingThread !== '' ? 'thread ' + detail.faultingThread : ''),
-                detail.threadsTotal > 0 ? detail.threadsTotal + ' threads' : '',
-                detail.frameCount > 0 ? detail.frameCount + ' frames' : ''
+                    (detail.faultingThread !== ''
+                        ? trIphone('crashChipThread').replace('{n}', String(detail.faultingThread))
+                        : ''),
+                detail.threadsTotal > 0
+                    ? trIphone('crashChipThreads').replace('{n}', String(detail.threadsTotal))
+                    : '',
+                detail.frameCount > 0
+                    ? trIphone('crashChipFrames').replace('{n}', String(detail.frameCount))
+                    : ''
             ].filter(Boolean);
             for (var c = 0; c < chips.length; c++) {
                 var chip = document.createElement('span');

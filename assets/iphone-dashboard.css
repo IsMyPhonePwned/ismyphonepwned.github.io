@@ -670,3 +670,125 @@
     color: var(--text-primary);
     margin: 0.25rem 0 0.5rem;
 }
+
+.iphone-battery-gauge {
+    margin: 0.35rem 0 0.75rem;
+    max-width: 22rem;
+}
+
+.iphone-battery-gauge__track {
+    height: 10px;
+    border-radius: 999px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+
+.iphone-battery-gauge__fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--success), #8bc34a);
+    transition: width 0.35s ease;
+}
+
+.iphone-battery-gauge__fill.is-mid {
+    background: linear-gradient(90deg, var(--warning), #ffc107);
+}
+
+.iphone-battery-gauge__fill.is-low {
+    background: linear-gradient(90deg, var(--error), var(--warning));
+}
+
+.iphone-battery-chart-mount {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background:
+        radial-gradient(120% 80% at 10% 0%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 55%),
+        var(--bg-secondary);
+    overflow: hidden;
+}
+
+.iphone-battery-chart-mount svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.iphone-battery-chart-caption {
+    margin: 0.55rem 0 0;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.iphone-battery-chart-tip {
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+    min-width: 7.5rem;
+    padding: 0.4rem 0.55rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--bg-card) 92%, transparent);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+    font-size: 0.72rem;
+    line-height: 1.35;
+    color: var(--text-primary);
+    transform: translate(-50%, calc(-100% - 10px));
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+
+.iphone-battery-chart-tip.is-visible {
+    opacity: 1;
+}
+
+.iphone-battery-chart-tip__soc {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.9rem;
+}
+
+.iphone-battery-chart-tip__meta {
+    color: var(--text-secondary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.68rem;
+}
+
+.iphone-battery-chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem 1rem;
+    margin: 0 0 0.55rem;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+}
+
+.iphone-battery-chart-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.iphone-battery-chart-legend i {
+    display: inline-block;
+    width: 0.85rem;
+    height: 0.35rem;
+    border-radius: 2px;
+}
+
+.iphone-battery-chart-legend i.soc {
+    background: var(--accent);
+}
+
+.iphone-battery-chart-legend i.charge {
+    background: rgba(76, 175, 80, 0.45);
+}
+
+.iphone-battery-chart-legend i.low {
+    height: 0;
+    border-top: 2px dashed rgba(244, 67, 54, 0.55);
+    width: 0.95rem;
+}

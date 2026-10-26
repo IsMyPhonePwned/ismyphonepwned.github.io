@@ -1,5 +1,5 @@
 /**
- * Find tab — on-demand references (string, type, method, field) and class decompile.
+ * Find tab — on-demand ASC findrefs (string, type, method, field, extends, impl) and getclass.
  */
 
 /** @type {{ runInParseWorker: Function, switchToCenterTab: Function, normalizeWasmResult?: Function, timeoutMs?: number, getFindBytes?: Function, getDecompileOptions?: Function, navigateToRef?: Function, highlightJava?: Function, escapeHtml?: Function, escapeAttr?: Function, formatHexOffset?: Function, setStatus?: Function } | null} */
@@ -11,28 +11,54 @@ const KINDS = {
   string: {
     label: 'String',
     placeholder: 'Text used by const-string…',
-    hint: 'Every const-string and encoded use of this text.',
+    hint: 'Every const-string and encoded use of this text. Fast RawDex scan — no full xref index.',
+    action: 'Find references',
     example: { value: 'http://', className: '' },
   },
   type: {
     label: 'Type',
     placeholder: 'Class name, e.g. android.app.Activity',
     hint: 'References to a type: check-cast, new-instance, const-class, and method signatures.',
+    action: 'Find references',
     example: { value: 'android.app.Activity', className: '' },
   },
   method: {
     label: 'Method',
     placeholder: 'Method name, e.g. startActivity',
     hint: 'Invoke sites. Set the declaring class to limit the search to one type.',
+    action: 'Find references',
     example: { value: 'startActivity', className: 'android.app.Activity' },
   },
   field: {
     label: 'Field',
     placeholder: 'Field name, e.g. TAG',
     hint: 'iget, sget, iput, and sput sites. Set the declaring class to limit the owner.',
+    action: 'Find references',
     example: { value: 'TAG', className: '' },
   },
+  extends: {
+    label: 'Extends',
+    placeholder: 'Base class, e.g. android.app.Activity',
+    hint: 'Classes whose direct superclass is this type (ASC findrefs extends).',
+    action: 'Find subclasses',
+    hierarchy: true,
+    hitLabel: 'subclass',
+    example: { value: 'android.app.Activity', className: '' },
+  },
+  impl: {
+    label: 'Implements',
+    placeholder: 'Interface, e.g. java.io.Serializable',
+    hint: 'Classes that directly implement this interface (ASC findrefs impl).',
+    action: 'Find implementors',
+    hierarchy: true,
+    hitLabel: 'implementor',
+    example: { value: 'java.io.Serializable', className: '' },
+  },
 };
+
+function isHierarchy(k) {
+  return !!KINDS[k]?.hierarchy;
+}
 
 /** @type {object | null} */
 let lastInfo = null;
@@ -98,6 +124,13 @@ function syncKindUi(next) {
   if (hint && meta) {
     hint.innerHTML = `${esc(meta.hint)} <kbd>Enter</kbd> searches. <kbd>↑</kbd><kbd>↓</kbd> move. <kbd>Enter</kbd> on a hit opens it.`;
   }
+  const btn = $('find-refs-btn');
+  if (btn && meta) {
+    btn.textContent = meta.action || 'Find references';
+    btn.title = isHierarchy(k)
+      ? 'List matching classes across every DEX in the file'
+      : 'Search references across every DEX in the file';
+  }
 }
 
 function normalize(raw) {
@@ -151,7 +184,7 @@ function paintEmpty() {
     .join('');
   host.innerHTML = `<div class="find-empty">
     <h2>Find where something is used</h2>
-    <p>Search the loaded DEX or APK without building a full cross-reference index. Pick a kind, enter a name, then open a hit in Code.</p>
+    <p>On-demand ASC findrefs over every DEX — strings, types, methods, fields, subclasses, and interface implementors — without building a full xref index. Open a hit in Code or decompile a class here.</p>
     <div class="find-examples">${cards}</div>
   </div>`;
 }
@@ -174,14 +207,49 @@ function paintResults() {
   if (!host || !lastInfo) return;
   const sites = Array.isArray(lastInfo.sites) ? lastInfo.sites : [];
   const shown = visibleIndexes();
+  const hierarchy = isHierarchy(lastInfo.kind);
+  const nouns = hierarchy ? 'classes' : 'usages';
   if (!sites.length) {
-    host.innerHTML = `<div class="find-empty"><h2>No usages</h2><p>Nothing matched ${esc(lastInfo.kind || '')} <strong>${esc(lastInfo.value || '')}</strong>.</p></div>`;
+    host.innerHTML = `<div class="find-empty"><h2>No ${nouns}</h2><p>Nothing matched ${esc(lastInfo.kind || '')} <strong>${esc(lastInfo.value || '')}</strong>.</p></div>`;
     return;
   }
   if (!shown.length) {
-    host.innerHTML = `<div class="find-empty"><h2>No matches in this list</h2><p>Clear the filter to see all ${sites.length} usages.</p></div>`;
+    host.innerHTML = `<div class="find-empty"><h2>No matches in this list</h2><p>Clear the filter to see all ${sites.length} ${nouns}.</p></div>`;
     return;
   }
+  const trunc = lastInfo.truncated
+    ? `<p class="find-trunc">Showing the first ${sites.length} ${nouns}. Narrow the query to see the rest.</p>`
+    : '';
+
+  if (hierarchy) {
+    /** @type {Map<string, number[]>} */
+    const byPkg = new Map();
+    for (const i of shown) {
+      const name = siteOf(sites[i]).className || '(unknown class)';
+      const pkg = name.includes('.') ? name.slice(0, name.lastIndexOf('.')) : '(default)';
+      if (!byPkg.has(pkg)) byPkg.set(pkg, []);
+      byPkg.get(pkg).push(i);
+    }
+    const role = KINDS[lastInfo.kind]?.hitLabel || 'class';
+    const blocks = [...byPkg.entries()]
+      .map(([pkg, idxs]) => {
+        const rows = idxs
+          .map((i) => {
+            const hit = siteOf(sites[i]);
+            const simple = hit.className.split('.').pop() || hit.className;
+            const dexShort = hit.dex ? String(hit.dex).split('/').pop() : '';
+            const on = i === selected ? ' is-on' : '';
+            return `<button type="button" class="find-hit find-hit-class${on}" data-index="${i}" data-class="${escAttr(hit.className)}" data-method="" data-dex="${escAttr(hit.dex)}" data-class-idx="${hit.ci ?? ''}" data-method-idx="" data-offset=""><span class="find-hit-method">${esc(simple)}</span><span class="find-hit-meta muted">${esc(role)}${dexShort ? ` · ${esc(dexShort)}` : ''}</span></button>`;
+          })
+          .join('');
+        return `<section class="find-group"><header class="find-group-head"><span class="find-group-name">${esc(pkg)}</span><span class="find-group-count">${idxs.length}</span></header><div class="find-hit-list">${rows}</div></section>`;
+      })
+      .join('');
+    host.innerHTML = `${trunc}${blocks}`;
+    host.querySelector('.find-hit.is-on')?.scrollIntoView({ block: 'nearest' });
+    return;
+  }
+
   /** @type {Map<string, number[]>} */
   const groups = new Map();
   for (const i of shown) {
@@ -189,9 +257,6 @@ function paintResults() {
     if (!groups.has(name)) groups.set(name, []);
     groups.get(name).push(i);
   }
-  const trunc = lastInfo.truncated
-    ? `<p class="find-trunc">Showing the first ${sites.length} usages. Narrow the class or the name to see the rest.</p>`
-    : '';
   const blocks = [...groups.entries()]
     .map(([className, idxs]) => {
       const rows = idxs
@@ -226,6 +291,10 @@ function clearInspector() {
   if (code && !sourceText) code.hidden = true;
   if (meta && !sourceText) meta.textContent = 'No selection';
   if (openBtn && !openBtn.dataset.class) openBtn.hidden = true;
+  if (openBtn) {
+    openBtn.textContent = 'Open';
+    openBtn.title = 'Open this method in Code';
+  }
   if (copyBtn && !sourceText) copyBtn.hidden = true;
 }
 
@@ -235,22 +304,34 @@ function showHit(index) {
   if (!raw) return;
   selected = index;
   const hit = siteOf(raw);
+  const hierarchy = isHierarchy(lastInfo?.kind);
   const empty = $('find-inspector-empty');
   const fields = $('find-inspector-fields');
   const meta = $('find-source-meta');
   const openBtn = $('find-source-open');
   const copyBtn = $('find-source-copy');
   if (empty) empty.hidden = true;
-  if (meta) meta.textContent = `${hit.className}.${hit.methodName || '?'}`;
+  if (meta) {
+    meta.textContent = hierarchy
+      ? hit.className
+      : `${hit.className}.${hit.methodName || '?'}`;
+  }
   if (fields) {
-    const rows = [
-      ['Class', hit.className],
-      ['Method', hit.methodName || '—'],
-      ['DEX', hit.dex || '—'],
-      ['Offset', formatOff(hit.off) || '—'],
-      ['File offset', formatOff(hit.fileOff) || '—'],
-      ['Pool', hit.pool != null ? String(hit.pool) : '—'],
-    ];
+    const rows = hierarchy
+      ? [
+          ['Class', hit.className],
+          ['Relation', KINDS[lastInfo.kind]?.hitLabel || lastInfo.kind],
+          ['Base / interface', lastInfo.value || '—'],
+          ['DEX', hit.dex || '—'],
+        ]
+      : [
+          ['Class', hit.className],
+          ['Method', hit.methodName || '—'],
+          ['DEX', hit.dex || '—'],
+          ['Offset', formatOff(hit.off) || '—'],
+          ['File offset', formatOff(hit.fileOff) || '—'],
+          ['Pool', hit.pool != null ? String(hit.pool) : '—'],
+        ];
     fields.hidden = false;
     fields.innerHTML = rows
       .map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`)
@@ -258,17 +339,21 @@ function showHit(index) {
   }
   if (openBtn) {
     openBtn.hidden = !hit.className;
+    openBtn.textContent = hierarchy ? 'Open class' : 'Open';
+    openBtn.title = hierarchy ? 'Open this class in Code' : 'Open this method in Code';
     openBtn.dataset.class = hit.className;
-    openBtn.dataset.method = hit.methodName;
+    openBtn.dataset.method = hierarchy ? '' : hit.methodName;
     openBtn.dataset.dex = hit.dex;
     openBtn.dataset.classIdx = hit.ci ?? '';
-    openBtn.dataset.methodIdx = hit.mi ?? '';
-    openBtn.dataset.offset = hit.off ?? '';
+    openBtn.dataset.methodIdx = hierarchy ? '' : (hit.mi ?? '');
+    openBtn.dataset.offset = hierarchy ? '' : (hit.off ?? '');
   }
   if (copyBtn) {
     copyBtn.hidden = false;
     copyBtn.dataset.mode = 'hit';
-    copyBtn.dataset.source = `${hit.className}.${hit.methodName} @ ${formatOff(hit.off)}${hit.dex ? ` (${hit.dex})` : ''}`;
+    copyBtn.dataset.source = hierarchy
+      ? `${hit.className}${hit.dex ? ` (${hit.dex})` : ''}`
+      : `${hit.className}.${hit.methodName} @ ${formatOff(hit.off)}${hit.dex ? ` (${hit.dex})` : ''}`;
   }
   paintResults();
 }
@@ -412,12 +497,17 @@ async function runFindRefs() {
     const info = result.data || result;
     renderSites(info);
     const n = info.sites?.length || 0;
-    const classes = new Set((info.sites || []).map((s) => siteOf(s).className)).size;
-    setStatus(
-      n
-        ? `${n} usage${n === 1 ? '' : 's'} in ${classes} class${classes === 1 ? '' : 'es'} · ${info.dex_count || 1} DEX`
-        : 'No usages',
-    );
+    const hierarchy = isHierarchy(info.kind || k);
+    if (!n) {
+      setStatus(hierarchy ? 'No classes' : 'No usages');
+    } else if (hierarchy) {
+      setStatus(`${n} class${n === 1 ? '' : 'es'} · ${info.dex_count || 1} DEX`);
+    } else {
+      const classes = new Set((info.sites || []).map((s) => siteOf(s).className)).size;
+      setStatus(
+        `${n} usage${n === 1 ? '' : 's'} in ${classes} class${classes === 1 ? '' : 'es'} · ${info.dex_count || 1} DEX`,
+      );
+    }
     rememberQuery({ kind: k, value, className: classFilter, exact: exactClass });
     if (n) $('find-results')?.focus();
   } catch (e) {

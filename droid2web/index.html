@@ -27,7 +27,7 @@
     <div class="header-content">
       <img src="logo.png" alt="" class="app-logo" width="28" height="28">
       <div class="header-title-block">
-        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.32</span> <span class="app-date" id="app-date" title="Release date">3 Oct 2026</span></h1>
+        <h1>droid2web <span class="app-version" id="app-version" title="App version">v0.3.33</span> <span class="app-date" id="app-date" title="Release date">25 Oct 2026</span></h1>
         <p class="subtitle">APK, APKM, DEX, AXML, ARSC inspection in the browser</p>
       </div>
     </div>
@@ -785,12 +785,16 @@
                 <label class="find-kind-opt"><input type="radio" name="find-kind-ui" value="type">Type</label>
                 <label class="find-kind-opt"><input type="radio" name="find-kind-ui" value="method">Method</label>
                 <label class="find-kind-opt"><input type="radio" name="find-kind-ui" value="field">Field</label>
+                <label class="find-kind-opt"><input type="radio" name="find-kind-ui" value="extends">Extends</label>
+                <label class="find-kind-opt"><input type="radio" name="find-kind-ui" value="impl">Implements</label>
               </div>
               <select id="find-kind" class="find-kind-select" aria-label="Findrefs kind" hidden>
                 <option value="string">string</option>
                 <option value="type">type</option>
                 <option value="method">method</option>
                 <option value="field">field</option>
+                <option value="extends">extends</option>
+                <option value="impl">impl</option>
               </select>
               <div class="find-query">
                 <input type="search" id="find-value" class="find-value-input" placeholder="Text used by const-string…" aria-label="Findrefs value" autocomplete="off" spellcheck="false">
@@ -1527,6 +1531,14 @@
   <footer class="app-statusbar" id="app-statusbar" aria-live="polite">
     <div class="statusbar-inner" id="statusbar-inner">
       <span class="statusbar-item statusbar-muted">No file loaded</span>
+    </div>
+    <div class="statusbar-sponsors" aria-label="Sponsors">
+      <a class="statusbar-sponsor" href="https://nlnet.nl/" target="_blank" rel="noopener noreferrer" title="NLnet Foundation">
+        <img src="sponsor-nlnet.png" alt="NLnet Foundation" width="120" height="46" decoding="async">
+      </a>
+      <a class="statusbar-sponsor" href="https://www.randorisec.fr/" target="_blank" rel="noopener noreferrer" title="RandoriSec">
+        <img src="sponsor-randorisec.png" alt="RandoriSec" width="56" height="49" decoding="async">
+      </a>
     </div>
     <div class="statusbar-bmc" title="Support droid2web">
       <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="ping2a" data-color="#FFDD00" data-emoji="☕" data-font="Cookie" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#ffffff"></script>

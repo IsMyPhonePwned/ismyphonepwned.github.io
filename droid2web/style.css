@@ -8540,6 +8540,55 @@ footer.app-statusbar {
   box-shadow: 0 -1px 0 color-mix(in srgb, var(--border) 80%, transparent);
 }
 
+/* Sponsor logos — compact chips in the status bar */
+.statusbar-sponsors {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  gap: 0.45rem;
+  padding: 0 0.55rem;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+}
+.statusbar-sponsor {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  padding: 0.12rem 0.3rem;
+  border-radius: 4px;
+  outline: none;
+  opacity: 0.95;
+  transition: opacity 0.12s ease, transform 0.12s ease, filter 0.12s ease;
+}
+.statusbar-sponsor:hover,
+.statusbar-sponsor:focus-visible {
+  opacity: 1;
+  transform: translateY(-0.5px);
+  filter: brightness(1.04);
+}
+.statusbar-sponsor:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+/* PNGs are alpha; plate behind each mark matches how the logo was designed */
+.statusbar-sponsor[href*="nlnet"] {
+  background: #fff;
+}
+.statusbar-sponsor[href*="randorisec"] {
+  background: #111;
+}
+.statusbar-sponsor img {
+  display: block;
+  height: 1.45rem;
+  width: auto;
+  max-width: 7.5rem;
+  object-fit: contain;
+  background: transparent;
+  /* avoid premultiplied fringing against the plate */
+  mix-blend-mode: normal;
+}
+
 /* Buy Me a Coffee — compact chip in the status bar */
 .statusbar-bmc {
   flex-shrink: 0;
@@ -9162,6 +9211,14 @@ footer.app-statusbar {
   .statusbar-bmc {
     padding: 0 0.4rem;
   }
+  .statusbar-sponsors {
+    gap: 0.3rem;
+    padding: 0 0.4rem;
+  }
+  .statusbar-sponsor img {
+    height: 1.25rem;
+    max-width: 5.5rem;
+  }
 
   .info-res-value {
     flex-wrap: wrap;
@@ -9353,6 +9410,14 @@ footer.app-statusbar {
   }
   .statusbar-bmc .bmc-btn-text {
     display: none !important;
+  }
+  .statusbar-sponsors {
+    gap: 0.25rem;
+    padding: 0 0.3rem;
+  }
+  .statusbar-sponsor img {
+    height: 1.15rem;
+    max-width: 4.75rem;
   }
 
   .center-tabs-menu-btn {
@@ -11495,7 +11560,9 @@ footer.app-statusbar {
 }
 .find-kind-seg {
   display: inline-flex;
+  flex-wrap: wrap;
   align-self: flex-start;
+  max-width: 100%;
   padding: 0.15rem;
   border: 1px solid var(--border);
   border-radius: 8px;

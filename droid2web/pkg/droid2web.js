@@ -265,7 +265,7 @@ export function find_permission_usages(bytes, permissions) {
 }
 
 /**
- * ASC findrefs: `kind` = string | type | method | field. Works on DEX or APK bytes.
+ * ASC findrefs: `kind` = string | type | method | field | extends | impl. Works on DEX or APK bytes.
  * @param {Uint8Array} bytes
  * @param {string} kind
  * @param {string} value

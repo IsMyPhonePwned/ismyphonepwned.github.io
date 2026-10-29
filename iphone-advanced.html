@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>IsMyPhonePwned · iPhone Advanced (WebUSB)</title>
     <link rel="icon" href="favicon.ico" sizes="any">
-    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <link rel="stylesheet" href="assets/site.css">
     <link rel="stylesheet" href="assets/idevice-workspace.css">
     <script>(function(){ if (localStorage.getItem("theme") === "dark") document.documentElement.setAttribute("data-theme","dark"); })();</script>
@@ -34,6 +35,9 @@
                     <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" title="Theme">
                         <span id="theme-icon" aria-hidden="true">🌙</span>
                     </button>
+                </div>
+                <div class="bmc-footer">
+                    <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="ping2a" data-color="#FFDD00" data-emoji="☕" data-font="Cookie" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#ffffff"></script>
                 </div>
             </div>
         </header>
@@ -549,8 +553,24 @@
         </div>
 
         <footer style="text-align: center; padding: 1.5rem 0; color: var(--text-secondary); font-size: 0.813rem;">
-            <a href="https://github.com/ping2A/idevice-rs" target="_blank" rel="noopener noreferrer" style="color: var(--accent);">idevice-rs</a>
-        </footer>
+            <div style="margin-bottom: 0.75rem;">
+                Built with opensource tools <a href="https://github.com/IsMyPhonePwned/" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none; font-weight: 500;">IsMyPhonePwned</a>
+            </div>
+            <div class="sponsors-footer">
+                <p class="sponsors-footer__label">Sponsors</p>
+                <div class="sponsors-footer__list">
+                    <a class="sponsor-link" href="https://www.edf.fr/" target="_blank" rel="noopener noreferrer" title="EDF">
+                        <img src="assets/sponsor-edf.png" alt="EDF" width="132" height="56" loading="lazy" decoding="async">
+                    </a>
+                    <a class="sponsor-link" href="https://nlnet.nl/" target="_blank" rel="noopener noreferrer" title="NLnet Foundation">
+                        <img src="assets/sponsor-nlnet.png" alt="NLnet Foundation" width="480" height="183" loading="lazy" decoding="async">
+                    </a>
+                    <a class="sponsor-link" href="https://shindan.io/" target="_blank" rel="noopener noreferrer" title="Shindan">
+                        <img src="assets/sponsor-shindan.png" alt="Shindan" width="240" height="179" loading="lazy" decoding="async">
+                    </a>
+                </div>
+            </div>
+</footer>
     </div>
 
     <script>
